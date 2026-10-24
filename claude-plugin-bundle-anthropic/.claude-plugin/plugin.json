@@ -5,15 +5,17 @@
   "description": "Security analysis for engineering materials via Claude API (Anthropic SDK).",
   "author": {
     "name": "dvddv9",
-    "email": "hndav9@yahoo.com"
+    "email": "mailto:hndav9@yahoo.com"
   },
   "homepage": "https://github.com/dvddv9/vishap",
   "repository": "https://github.com/dvddv9/vishap",
   "license": "AGPL-3.0-or-later",
+  "privacyPolicyUrl": "https://github.com/dvddv9/vishap/blob/main/claude-plugin-bundle-anthropic/README.md#privacy",
+  "icon": "./assets/icon.png",
   "keywords": ["security", "sast", "claude", "anthropic", "audit"],
   "mcpServers": {
     "vishap-analyze": {
-      "command": "C:\\Users\\dvddv\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+      "command": "python",
       "args": [
         "${CLAUDE_PLUGIN_ROOT}/scripts/analyze.py"
       ],
