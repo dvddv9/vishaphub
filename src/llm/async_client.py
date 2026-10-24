@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Async LLM entry point — custom (OpenAI-compatible / DSH endpoint) only.
+"""Async LLM entry point — custom (OpenAI-compatible) only.
 
 The custom client is synchronous (HTTP + polling a session log), so it runs in a
 worker thread. This is the async twin of `src.llm.client.chat`: same configuration,
@@ -13,7 +13,7 @@ from src.llm._observe import observe_llm_result
 async def async_chat(system: str, user: str,
                      temperature: float = 0.0,
                      max_tokens: int = 2000) -> dict:
-    """Async LLM entry point — custom (OpenAI-compatible / DSH endpoint).
+    """Async LLM entry point — custom (OpenAI-compatible).
 
     Mirrors `src.llm.client.chat`: provider is resolved via
     `_resolve_provider()` (always custom in v7.3.5).

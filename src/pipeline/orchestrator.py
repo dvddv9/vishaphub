@@ -59,10 +59,10 @@ LLM_ERROR_PREFIX = "[LLM error]"
 #: Shown instead of a silent "SAFE" report when no stage ever reached the model.
 LLM_UNAVAILABLE_BANNER = (
     "## Анализ не выполнен: LLM недоступен\n\n"
-    "DSH endpoint не ответил, поэтому стадии не собрали отчёт — "
+    "LLM не ответил, поэтому стадии не собрали отчёт — "
     "ниже пустой результат, а audit помечен `critique_verdict: ERROR`.\n\n"
     "Проверьте `CUSTOM_LLM_URL` / `CUSTOM_LLM_KEY` (OpenAI-compatible endpoint; "
-    "для DSH — `dsh-model-endpoint` на `http://127.0.0.1:8787/v1`).\n\n"
+    "Проверьте `CUSTOM_LLM_URL` / `CUSTOM_LLM_KEY` (OpenAI-compatible endpoint).\n\n"
     "```\n{error}\n```\n\n---\n\n"
 )
 

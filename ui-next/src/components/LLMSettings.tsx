@@ -93,7 +93,7 @@ export default function LLMSettings() {
         <option value="openai">OpenAI</option>
         <option value="groq">Groq</option>
         <option value="ollama">Ollama (local)</option>
-        <option value="dsh">DSH endpoint</option>
+
         <option value="anthropic">Anthropic (Claude)</option>
         <option value="android">Android (OpenAI-compatible)</option>
       </select>

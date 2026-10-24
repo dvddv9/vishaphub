@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 Стадии pipeline Vishap.
 v2: улучшенный JSON-парсинг + max_tokens из config.
@@ -56,7 +56,7 @@ def _clean_json_string(text: str) -> str:
 
 
 def _recover_truncated_json(text: str) -> dict | None:
-    """v7.3.4: Восстановить обрезанный JSON (DSH/DeepSeek-flash игнорирует max_tokens).
+    """v7.3.4: Восстановить обрезанный JSON (DeepSeek-flash игнорирует max_tokens).
 
     Стратегии:
     1) Закрыть все незакрытые { и [ в правильном порядке.
@@ -183,7 +183,7 @@ def _try_parse(text: str) -> dict | None:
         except json.JSONDecodeError:
             pass
 
-    # v7.3.4: recovery для обрезанного JSON (DSH)
+    # v7.3.4: recovery для обрезанного JSON
     recovered = _recover_truncated_json(text)
     if recovered is not None:
         return recovered

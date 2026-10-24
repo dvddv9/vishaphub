@@ -1,15 +1,15 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """Cost tracking for LLM calls (USD per 1M tokens).
 
-Since v7.3.5 every call goes through the custom endpoint (OpenAI-compatible / DSH), which does not report
+Since v7.3.5 every call goes through the custom endpoint (OpenAI-compatible), which does not report
 token counts back to Vishap — so stage costs are `0.0` and this table exists only
-for the historical/mock paths. If a legacy harness ever returns token usage, add its
+for the historical/mock paths. If a legacy provider ever returns token usage, add its
 price row here.
 """
 
 # Prices per 1M tokens (USD)
 PRICES = {
-    "harness":           {"in": 0.0,  "out": 0.0},
+
     "default":           {"in": 0.0,  "out": 0.0},
 }
 

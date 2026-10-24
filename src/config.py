@@ -28,7 +28,7 @@ except ImportError:
 
 TOOLS_DIR = ROOT_DIR / "src" / "tools"
 
-# === LLM: custom (OpenAI-compatible / DSH endpoint) ===
+# === LLM: custom (OpenAI-compatible) ===
 # DeepSeek / OpenAI / OpenAI-compatible API call any more (v7.0.0).
 
 LLM_PROVIDER = os.getenv("VISHAP_LLM_PROVIDER", "auto").strip().lower()

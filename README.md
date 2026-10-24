@@ -29,7 +29,7 @@
 - **Android (Gemini) provider** — `android` в dropdown + auto-fill (`https://generativelanguage.googleapis.com/v1beta/openai/`, `gemini-2.0-flash`). Ключ: `AIza...` из aistudio.google.com/apikey.
 - **Runtime config из `settings.json`** — `custom_client.py` читает `CUSTOM_LLM_*` из `settings.json` (runtime) поверх `.env` (defaults). Изменения в UI применяются «на лету».
 - **Fix `NameError: _cfg`** — `_cfg` определена на уровне модуля (фикс `5ecbed3`).
-- **DSH endpoint support** — `dsh-model-endpoint` plugin exposes `http://127.0.0.1:8787/v1` as an OpenAI-compatible API. Set `VISHAP_LLM_PROVIDER=custom`, `CUSTOM_LLM_URL=http://127.0.0.1:8787/v1`, `CUSTOM_LLM_KEY=<dsh-key>`, `CUSTOM_LLM_MODEL=auto`.
+
 - **reasoning_content fallback** — `custom_client.py` falls back to `message.reasoning_content` when `content` is empty (DeepSeek flash / V4).
 - **Truncated JSON recovery** — `parse_json_response` recovers JSON truncated at `max_tokens` (closes unclosed `{` / `[`, cuts at last valid object).
 - **Version sync** — single source of truth in `src/version.py`; CI checks `pyproject.toml` / `package.json` / `README.md`.
@@ -49,7 +49,7 @@
 - **#8 `report_date` / `valid_until`** — ISO + 90 days
 
 ### UI (`ui-next/`)
-- **LLMSettings**: 7 providers (`custom` / `openai` / `groq` / `ollama` / `dsh` / `anthropic` / `android`)
+- **LLMSettings**: 7 providers (`custom` / `openai` / `groq` / `ollama` / `anthropic` / `android`)
 - **Report v7.2 block**: Fidelity / Bias check / Reproducer / Negative evidence / Report date / valid_until
 - **CORS fix**: `app.add_middleware(CORSMiddleware, ...)` — Settings form works in browser
 - **mojibake fix**: em-dash `—`, ellipsis `…`, emoji 🐉
@@ -60,68 +60,12 @@
 - **CI**: ruff F401 cleanup; `services.postgres` fix
 - **Version sync**: 7.2.2 (`pyproject.toml`, `version.py`, `package.json`, `main.py`, `layout.tsx`)
 
-## 🔌 DSH (DeepSeek Harness) — via endpoint (**optional**)
-
-> **Default:** DeepSeek API (`https://api.deepseek.com/v1`). Use DSH endpoint **only** if you want local inference (no API key). (**optional**)
-
-> **Default:** DeepSeek API (`https://api.deepseek.com/v1`). Use DSH endpoint **only** if you want local inference (no API key).
-
-DSH has **no inbound HTTP API**. To use DSH with Vishap, you need the [`dsh-model-endpoint`](https://github.com/Xxsttb/dsh-model-endpoint) plugin, which exposes DSH as an OpenAI-compatible endpoint (`http://127.0.0.1:8787/v1`).
-
-### 1. Install the plugin in DSH
-
-```bash
-dsh plugin --profile desktop add github:Xxsttb/dsh-model-endpoint
-```
-
-> ⚠️ The plugin is **not** published on npm as `dsh-model-endpoint` — install it from GitHub (or from a local folder/tarball, see plugin README).
-
-### 2. Enable the endpoint in DSH
-
-- DSH → **Settings → Model endpoint**
-- Toggle **Run the endpoint** (on)
-- **Generate** an API key (copy it — you will need it in Vishap)
-- Optional: **Lend this profile's tools** (on) — gives Vishap access to DSH tools (bash, files, search). This is the "smart mode".
-- **Save**
-
-The endpoint will listen on `http://127.0.0.1:8787/v1`.
-
-### 3. Configure Vishap
-
-In `.env`:
-
-```
-VISHAP_LLM_PROVIDER=custom
-CUSTOM_LLM_URL=http://127.0.0.1:8787/v1
-CUSTOM_LLM_KEY=<dsh-key>
-CUSTOM_LLM_MODEL=auto
-```
-
-> **`CUSTOM_LLM_MODEL=auto`** means: *"use the model currently selected in DSH"*. The plugin ignores the literal `auto` value and routes to whatever model is picked in the DSH chat / Settings → Models. It is **not** auto-detection by Vishap and **not** a model name.
-
-### Verify
-
-```powershell
-Test-NetConnection 127.0.0.1 -Port 8787 -InformationLevel Quiet
-# True = endpoint is listening
-```
-
-And a quick smoke test:
-
-```powershell
-cd C:\path\to\vishap
-.\venv\Scripts\python.exe -c "from src.llm.client import chat; print(chat('You are a helpful assistant.', 'Say hello in 5 words.'))"
-```
-
-Expected: `mode: custom`, text like `Hello there, how are you?`.
-
----
 
 ## 🛠️ Features
 
 - **6-stage pipeline:** Ingestion → Taint Analysis → Dataflow → Risk Assessment → Verdict → Report.
 - **Multi-language:** Python, Java, C, **JavaScript / TypeScript** (AST + taint patterns).
-- **Multi-provider LLM:** DeepSeek (custom), Anthropic (Claude), Android (Gemini), any OpenAI-compatible endpoint (Groq, OpenAI, Mistral, OpenRouter, Together), or a local DSH endpoint via the `dsh-model-endpoint` plugin (`http://127.0.0.1:8787/v1`). Endpoint-only since v7.3.5 (legacy `harness` removed).
+- **Multi-provider LLM:** DeepSeek (custom), Anthropic (Claude), Android (Gemini), any OpenAI-compatible endpoint (Groq, OpenAI, Mistral, OpenRouter, Together).
 - **Async API:** FastAPI + Celery workers (optional in-process fallback).
 - **Security:** HMAC-SHA256 for API keys (with pepper), Fernet for secrets.
 - **Observability:** Structlog (JSON), Prometheus `/metrics`, OpenTelemetry traces.

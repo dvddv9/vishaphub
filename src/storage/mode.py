@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-"""LLM mode: custom (OpenAI-compatible / DSH endpoint) — only valid mode (v7.3.5)."""
+"""LLM mode: custom (OpenAI-compatible) — only valid mode (v7.3.5)."""
 import json
 
 from src.config import DATA_DIR
 
 MODE_FILE = DATA_DIR / "mode.json"
 DEFAULT_MODE = "custom"
-VALID_MODES = ("custom", "dsh", "openai", "groq", "ollama", "anthropic", "android")
+VALID_MODES = ("custom", "openai", "groq", "ollama", "anthropic", "android")
 
 
 def get_mode() -> str:

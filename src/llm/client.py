@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Unified LLM entry point (v7.2).
 
-Providers: custom (OpenAI-compatible / DSH endpoint).
+Providers: custom (OpenAI-compatible).
 Selection: always custom (endpoint-only, v7.3.5).
 
 DeepSeek is reachable via custom: CUSTOM_LLM_URL=https://api.deepseek.com/v1.
@@ -21,13 +21,13 @@ def _resolve_provider() -> str:
     """v7.3.16: provider selection (DeepSeek API is default).
 
     Priority:
-      1. explicit VISHAP_LLM_PROVIDER (custom | openai | groq | ollama | dsh | anthropic | android | auto)
+      1. explicit VISHAP_LLM_PROVIDER (custom | openai | groq | ollama | anthropic | android | auto)
       2. auto -> custom if CUSTOM_LLM_URL set, else custom
       3. default: custom (DeepSeek API: https://api.deepseek.com/v1)
     """
     import os
     mode = os.getenv("VISHAP_LLM_PROVIDER", "custom").strip().lower()
-    if mode in ("custom", "openai", "groq", "ollama", "dsh", "harness", "anthropic", "android"):
+    if mode in ("custom", "openai", "groq", "ollama", "anthropic", "android"):
         # all map to custom (OpenAI-compatible endpoint)
         return "custom"
     if mode == "auto":
@@ -61,7 +61,7 @@ def chat(system: str, user: str,
     provider = _resolve_provider()
     if provider == "custom":
         return _chat_custom(system, user, temperature, max_tokens)
-    return {"text": "[LLM error] custom provider failed (v7.3.5: harness removed)", "tokens_in": 0, "tokens_out": 0, "model": "none", "mode": "error"}
+    return {"text": "[LLM error] custom provider failed", "tokens_in": 0, "tokens_out": 0, "model": "none", "mode": "error"}
 
 
 def current_provider() -> str:
