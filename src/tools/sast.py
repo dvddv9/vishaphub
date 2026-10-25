@@ -74,10 +74,9 @@ K8S_PATTERNS = {
 
 
 def detect_language(filename: str, code: str = "") -> str:
-    if ext in ("log", "txt"): return "log"
-
     """Detect language by filename extension + content heuristics."""
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext in ("log", "txt"): return "log"
     if ext in ("py", "pyw"): return "python"
     if ext in ("tf", "tfvars"): return "terraform"
     if ext in ("yaml", "yml"): return "yaml"

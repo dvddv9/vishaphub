@@ -15,6 +15,14 @@ def run(path):
         [sys.executable, "-m", "pytest", "-v", path],
         cwd="C:/AI/conveyor_app",
     )
+    if result.returncode == 0:
+        PASSED += 1
+    else:
+        FAILED += 1
+    if result.returncode == 0:
+        PASSED += 1
+    else:
+        FAILED += 1
     return result.returncode
 
 
@@ -39,8 +47,8 @@ def main():
     rc |= run("tests/test_runbook.py")
     rc |= run("tests/test_security_md.py")
     rc |= run("tests/test_llm_providers.py")
-    rc |= run("tests/test_harness_launcher.py")
-    rc |= run("tests/test_harness_api.py")
+    # rc |= run("tests/test_harness_launcher.py")  # v7.4.0: file removed
+    # rc |= run("tests/test_harness_api.py")  # v7.4.1: file removed
     rc |= run("tests/test_job_delete_api.py")
     rc |= run("tests/test_llm_error_failclosed.py")
     rc |= run("tests/test_anomaly.py")
@@ -54,10 +62,10 @@ def main():
     rc |= run("tests/test_fernet.py")
     rc |= run("tests/test_token_metrics.py")
     rc |= run("tests/test_observe.py")
-    rc |= run("tests/test_ui_headers.py")
-    rc |= run("tests/test_ui_async.py")
-    rc |= run("tests/test_ui_badge_version.py")
-    rc |= run("tests/test_api_client.py")
+    # rc |= run("tests/test_ui_headers.py")  # v7.4.1: file removed
+    # rc |= run("tests/test_ui_async.py")  # v7.4.1: file removed
+    # rc |= run("tests/test_ui_badge_version.py")  # v7.4.1: file removed
+    # rc |= run("tests/test_api_client.py")  # v7.4.1: file removed
     rc |= run("tests/test_risk_verdict.py")
     rc |= run("tests/test_risk_verdict_security.py")
     rc |= run("tests/test_verdict.py")
@@ -100,7 +108,17 @@ def main():
     if "--all" in sys.argv:
         print("\n[--all] E2E tests (real LLM, slow, uses API):")
         rc |= run("tests/test_e2e.py")
+    rc |= run("tests/test_cors_pna.py")
+    rc |= run("tests/test_desktop_mode.py")
+    rc |= run("tests/test_desktop_startup.py")
+    rc |= run("tests/test_docker_distribution.py")
+    rc |= run("tests/test_stage2_5_redteam.py")
+    rc |= run("tests/test_tauri_desktop.py")
+    rc |= run("tests/test_tenants.py")
+    rc |= run("tests/test_job_store_postgres_integration.py")
 
+    print(f"\n=== SUMMARY: PASSED={PASSED} FAILED={FAILED} (rc={rc}) ===")
+    print(f"\n=== SUMMARY: PASSED={PASSED} FAILED={FAILED} (rc={rc}) ===")
     sys.exit(rc)
 
 
