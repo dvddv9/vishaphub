@@ -130,6 +130,13 @@ def run_semgrep(file_path: str, timeout: int = 60) -> dict:
 
 
 def run_sast(file_path: str, language: str = "") -> dict:
+    if not language:
+        try:
+            with open(file_path, encoding="utf-8", errors="replace") as _f:
+                _code = _f.read()
+            language = detect_language(file_path, _code)
+        except Exception:
+            pass
     """Static SAST. Auto-detect language if not given."""
     if not language:
         try:
