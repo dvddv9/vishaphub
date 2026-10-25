@@ -17,8 +17,6 @@ RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 COPY pyproject.toml README.md LICENSE ./
 COPY src/ ./src/
 COPY vishap/ ./vishap/
-COPY alembic.ini ./
-COPY alembic/ ./alembic/
 RUN pip install --no-cache-dir --no-deps --prefix=/install .
 
 # ---------- runtime ----------
@@ -41,6 +39,8 @@ USER root
 RUN ln -s /usr/local/lib/python3.12/site-packages/src /home/vishap/src
 USER vishap
 WORKDIR /home/vishap
+COPY alembic.ini ./
+COPY alembic/ ./alembic/
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
