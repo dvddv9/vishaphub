@@ -124,18 +124,3 @@ docker run --rm -p 5001:5001 \
   -e CUSTOM_LLM_MODEL=deepseek-chat \
   -e CUSTOM_LLM_KEY=sk-... \
   vishap
-
-## 🧠 Claude Desktop extension
-
-Install **Vishap Security Analysis** in Claude Desktop (Windows/macOS):
-
-1. Download [`claude-plugin/claude-plugin.mcpb`](claude-plugin/claude-plugin.mcpb).
-2. Claude → **Settings** → **Extensions** → **Install extension** → select `.mcpb`.
-3. **Configure**:
-   - `LLM Base URL` — `https://api.deepseek.com/v1` (or OpenAI / Groq / Ollama / any OpenAI-compatible)
-   - `LLM API Key` — your key (empty for local Ollama)
-   - `LLM Model` — `deepseek-chat` / `gpt-4o-mini` / `llama3.1` / ...
-4. **Enable** → ask Claude: *"Analyze this code for SQL injection: ..."*
-
-Source: [`claude-plugin/`](claude-plugin/) · `.mcpb` built with `mcpb pack`.
-
