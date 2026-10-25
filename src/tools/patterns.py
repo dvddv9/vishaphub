@@ -573,12 +573,15 @@ AST_TAINT_SINKS = {
 def detect_exploitability(material: str) -> dict:
     """Detect exploitability: reachability, auth, blast radius.
 
-    For IaC (Terraform/YAML): reachable=True (apply = compromise),
-    blast_radius=high (AWS account / K8s cluster).
+    - IaC (Terraform/YAML): reachable=True (apply = compromise), blast=high.
+    - JS/Express (app.get/post/router.get): reachable=True, blast=high.
+    - Python (Flask/FastAPI): reachable=True, blast=high.
+    - Else: reachable=False, blast=none.
     """
-    is_iac = material.lstrip().startswith(("resource ", "provider ", "apiVersion:", "terraform "))
+    stripped = material.lstrip()
 
-    if is_iac:
+    # IaC
+    if stripped.startswith(("resource ", "provider ", "apiVersion:", "terraform ")):
         return {
             "reachable": True,
             "auth_required": False,
@@ -588,8 +591,29 @@ def detect_exploitability(material: str) -> dict:
             "blast_indicators": ["AWS account", "public S3", "public RDS"],
         }
 
-    # ... остальное (Python/JS) ...
-    # (здесь должен быть старый код detect_exploitability)
+    # JS/Express
+    if any(p in stripped for p in ("app.get(", "app.post(", "app.put(", "app.delete(", "router.get(", "router.post(", "express(")):
+        return {
+            "reachable": True,
+            "auth_required": False,
+            "exploit_path": [{"type": "chain", "path": "js_route -> exec"}],
+            "blast_radius": "high",
+            "entry_points": ["HTTP route"],
+            "blast_indicators": ["RCE", "SSRF", "SQLi"],
+        }
+
+    # Python Flask/FastAPI
+    if any(p in stripped for p in ("@app.", "@router.", "Flask(", "FastAPI(")):
+        return {
+            "reachable": True,
+            "auth_required": False,
+            "exploit_path": [{"type": "chain", "path": "py_route -> exec"}],
+            "blast_radius": "high",
+            "entry_points": ["HTTP route"],
+            "blast_indicators": ["RCE", "SSRF", "SQLi"],
+        }
+
+    # Fallback
     return {
         "reachable": False,
         "auth_required": False,
