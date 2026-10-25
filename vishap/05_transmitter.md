@@ -290,3 +290,35 @@ force_emergency: true ТОЛЬКО если действия НЕМЕДЛЕНН�
 Пример:
 - force_emergency: true + ACTION: NOW: stop, kill switch — OK
 - force_emergency: true + ACTION: hotfix завтра — ПРОТИВОРЕЧИЕ
+
+## IMPORTANT — Anti-hallucination rules
+
+DO NOT invent files, variables, or code that are not present in the material.
+For example, if material has no `page.html`, do NOT ask about `page.html` or `|safe`.
+If unsure — omit the question entirely.
+
+DO NOT mention tools that are not applicable to the detected language.
+For Python: do NOT mention `ASan` (AddressSanitizer), `valgrind`, `clang`.
+Use `bandit`, `ruff`, `sqlfluff`, `semgrep` instead.
+
+DO NOT hardcode numbers (e.g. `pool_size=50`) unless they are computed from the material.
+If SQLite is detected: write "pool_size: N/A (SQLite file-lock; use WAL + busy_timeout)".
+If Postgres is detected: compute pool_size from RPS and latency, or omit.
+
+For compliance:
+- GDPR: only if PII detected (email, phone, passport, IBAN).
+- HIPAA: only if medical/health data detected.
+- PCI-DSS: only if payment data detected.
+- Do NOT list standards that are not triggered by the material.
+## IMPORTANT — CVE / estimates / tools
+
+DO NOT describe a CVE unless you are certain of its mechanism.
+If you mention CVE-2024-34069 (Werkzeug debugger): it is NOT a "PIN bypass".
+It requires the victim to visit an attacker-controlled domain and enter the PIN;
+the issue is that the debugger did not validate the Host header.
+If unsure — omit the CVE or write "see NVD".
+
+DO NOT give effort estimates unless they are computed from material.
+Write "estimate: NOT SET" instead of "0.5–1 day" or "1–2 days".
+
+DO NOT mention ASan / valgrind / clang for Python. Use bandit / ruff / sqlfluff / semgrep.

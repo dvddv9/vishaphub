@@ -623,7 +623,7 @@ def detect_exploitability(material: str) -> dict:
     return {
         "reachable": reachable,
         "auth_required": auth_required,
-        "exploit_path": path,
+        "exploit_path": [{"type": "chain", "path": path}],  # list for consistency with dataflow_path
         "blast_radius": blast,
         "entry_points": entry_points,
         "blast_indicators": blast_indicators,
