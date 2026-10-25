@@ -1,7 +1,7 @@
 # Deploying Vishap to a VPS
 
 Step by step, from an empty account to a working API behind TLS. Roughly 30
-minutes, most of it DNS propagation and Stripe verification.
+minutes, most of it DNS propagation and Lemon Squeezy verification.
 
 Vishap is distributed through **PyPI** (`pip install vishap-analyzer`) and runs as a
 plain Python service under **systemd**. There is no container in the deployment
@@ -89,9 +89,9 @@ Minimum for a working deployment:
 | `HARNESS_AUTOSTART` | `0` on a server — run `dsh web` yourself under its own service |
 | `CLERK_SECRET_KEY` | `sk_live_...` |
 | `CLERK_JWKS_URL` | `https://<clerk-instance>/.well-known/jwks.json` |
-| `STRIPE_SECRET_KEY` | `sk_live_...` (see [STRIPE-LIVE.md](STRIPE-LIVE.md)) |
-| `STRIPE_WEBHOOK_SECRET` | `whsec_...` from the live webhook endpoint |
-| `STRIPE_PRICE_ID` | price id **created in live mode** |
+| `LEMONSQUEEZY_API_KEY` | `sk_live_...` (see [Lemon Squeezy-LIVE.md](Lemon Squeezy-LIVE.md)) |
+| `LEMONSQUEEZY_WEBHOOK_SECRET` | `whsec_...` from the live webhook endpoint |
+| `LEMONSQUEEZY_VARIANT_ID` | price id **created in live mode** |
 | `FERNET_KEY` | `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |
 
 Add `VISHAP_TENANT_KEYS=true` only if you sell manual (bank transfer) plans —
@@ -152,13 +152,13 @@ systemctl reload caddy
 
 Verify: `curl https://api.example.com/health`.
 
-Do not rewrite request bodies — Stripe's signature covers the raw payload.
+Do not rewrite request bodies — Lemon Squeezy's signature covers the raw payload.
 
 ## 10. Smoke test
 
 ```bash
 curl -fsS https://api.example.com/health
-curl -fsS https://api.example.com/billing/products    # [] until Stripe is set up
+curl -fsS https://api.example.com/billing/products    # [] until Lemon Squeezy is set up
 
 # an analysis end to end
 curl -sS -X POST https://api.example.com/analyze/async \

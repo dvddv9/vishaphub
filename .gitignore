@@ -1,4 +1,4 @@
-﻿.venv/
+.venv/
 __pycache__/
 *.pyc
 .env
@@ -115,3 +115,12 @@ claude-plugin-anthropic/*.mcpb
 claude-plugin-anthropic/scripts/__pycache__/
 
 *.bak-*
+
+_body*.json
+_ls_dump_*/
+_docs_backup_*/
+_logs_*/
+_run_*/
+fix-*.ps1
+finish-ls.ps1
+patch-ls-webhook.ps1

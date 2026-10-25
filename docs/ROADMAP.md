@@ -1,4 +1,4 @@
-﻿# Roadmap — Vishap
+# Roadmap — Vishap
 
 **Where the project is going. What is deferred and why.**
 
@@ -48,7 +48,7 @@
 
 **Focus:** SaaS (optional, deferred from v7.0).
 
-- [ ] Multi-tenant (Clerk orgs, Stripe billing)
+- [ ] Multi-tenant (Clerk orgs, Lemon Squeezy billing)
 - [ ] Postgres job store (optional; memory still default for desktop)
 - [ ] REST API v2 (async jobs, SSE streaming)
 - [ ] Dashboard (metrics, trends, MTTR)

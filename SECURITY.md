@@ -199,7 +199,7 @@ requirements.txt uses >= without pinning. Use pip-audit separately.
 | AC-1 | Spoofing | Unauthenticated API call | X-API-Key required when VISHAP_API_KEY set; bind 127.0.0.1 if empty | manual / test_api.py |
 | AC-2 | Tampering | Prompt injection via material | SUBST_MAX_ATTEMPTS=2; PII redaction BEFORE LLM | tests/test_pipeline_mock.py |
 | AC-3 | Repudiation | Audit trail forged or modified | SHA-256 hash of material; audit_id; UTC timestamp | tests/test_tools.py |
-| AC-4 | Information Disclosure | PII sent to LLM | 15 regex redact (email, phone, AWS, Stripe, GitHub, ...) | tests/test_tools.py |
+| AC-4 | Information Disclosure | PII sent to LLM | 15 regex redact (email, phone, AWS, Lemon Squeezy, GitHub, ...) | tests/test_tools.py |
 | AC-5 | Information Disclosure | Secrets in logs | redact_pii applied to audit trail | tests/test_tools.py |
 | AC-6 | Denial of Service | Large material -> OOM | MAX_CHARS=12000 truncation; max_file_bytes=10000 | tests/test_deps.py |
 | AC-7 | Denial of Service | Rate-limit bypass | 10 req/min per IP on /analyze | manual |

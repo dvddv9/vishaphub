@@ -19,7 +19,7 @@ git clone https://github.com/dvddv9/vishap.git
 cd vishap
 python -m venv .venv && .venv/bin/pip install -r requirements.txt
 cp .env.example .env
-# fill in DATABASE_URL, CONVEYOR_API_KEY, STRIPE_SECRET_KEY, CLERK_SECRET_KEY
+# fill in DATABASE_URL, CONVEYOR_API_KEY, LEMONSQUEEZY_API_KEY, CLERK_SECRET_KEY
 .venv/bin/alembic upgrade head
 .venv/bin/python -m src.main
 ```
@@ -55,17 +55,17 @@ start** if a required value is missing:
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `DATABASE_URL` | yes | Postgres connection string (`postgresql+asyncpg://...`) |
-| `STRIPE_SECRET_KEY` | yes | Checkout, invoices, price listing |
+| `LEMONSQUEEZY_API_KEY` | yes | Checkout, invoices, price listing |
 | `CLERK_SECRET_KEY` | yes | Authentication |
 | `CONVEYOR_API_KEY` | in production | API-key auth; also makes the server bind `0.0.0.0` |
-| `STRIPE_WEBHOOK_SECRET` | for billing | Verifies Stripe webhook signatures |
-| `STRIPE_PRICE_ID` | for checkout | Price created by `python -m src.billing.stripe_setup` |
+| `LEMONSQUEEZY_WEBHOOK_SECRET` | for billing | Verifies Lemon Squeezy webhook signatures |
+| `LEMONSQUEEZY_VARIANT_ID` | for checkout | Price created by `python -m src.billing.stripe_setup` |
 | `CLERK_JWKS_URL` | for `/analyze/secure` | Token verification keys |
 | `FERNET_KEY` | yes for secrets | Encrypts stored integration secrets |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | no | Trace export; empty disables it |
 
 `VISHAP_DEV=true` downgrades the startup check to a warning, which is how the
-demo environment runs without Stripe or Clerk keys.
+demo environment runs without Lemon Squeezy or Clerk keys.
 
 ### Why `CONVEYOR_API_KEY` matters in production
 
@@ -97,7 +97,7 @@ api.example.com {
 }
 ```
 
-Forward `Host` and keep request bodies unmodified — Stripe's signature covers
+Forward `Host` and keep request bodies unmodified — Lemon Squeezy's signature covers
 the raw payload.
 
 ## Health and observability
@@ -106,7 +106,7 @@ the raw payload.
 | --- | --- |
 | `GET /health` | liveness |
 | `GET /metrics` | Prometheus exposition |
-| `GET /billing/products` | active prices, `[]` when Stripe is unconfigured |
+| `GET /billing/products` | active prices, `[]` when Lemon Squeezy is unconfigured |
 
 Traces go out over OTLP to whatever collector `OTEL_EXPORTER_OTLP_ENDPOINT`
 points at (Tempo, an OTel collector, a vendor backend). Tracing is fail-open: if
@@ -131,7 +131,7 @@ additive, so prefer rolling forward over downgrading.
 | --- | --- |
 | `Missing env vars: DATABASE_URL...` on start | `validate_config()` — fill `.env` or set `VISHAP_DEV=true` |
 | Process healthy, unreachable outside | `CONVEYOR_API_KEY` unset → bound to loopback |
-| Stripe webhooks return 400 | `STRIPE_WEBHOOK_SECRET` missing or body was modified by a proxy |
-| Stripe webhooks return 500 | `STRIPE_WEBHOOK_SECRET` not set at all |
+| Lemon Squeezy webhooks return 400 | `LEMONSQUEEZY_WEBHOOK_SECRET` missing or body was modified by a proxy |
+| Lemon Squeezy webhooks return 500 | `LEMONSQUEEZY_WEBHOOK_SECRET` not set at all |
 | Jobs stay `queued` | worker not running, or `JOB_STORE` differs between api and worker |
 | `/analyze/secure` returns 401 "Clerk not configured" | `CLERK_JWKS_URL` empty |

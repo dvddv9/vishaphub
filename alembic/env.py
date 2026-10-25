@@ -11,6 +11,12 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from src.api.job_store_postgres import Base
 
+# Register all model modules on Base.metadata before autogenerate compares it
+# against the live schema. Without these imports, Alembic sees the tables only
+# in the DB and proposes to drop them.
+from src.api import tenants as _tenants  # noqa: F401
+from src.billing.lemonsqueezy import webhook as _ls_webhook  # noqa: F401
+
 config = context.config
 
 if config.config_file_name is not None:

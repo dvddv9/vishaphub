@@ -1,10 +1,10 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """Tenant lifecycle and manual-billing API keys (v6.5).
 
 Two responsibilities live here:
 
 * **Subscriptions** — ``activate_tenant`` / ``deactivate_tenant`` are called by the
-  Stripe webhook and flip ``status`` for the row whose ``stripe_customer_id``
+  Stripe webhook and flip ``status`` for the row whose ``ls_customer_id``
   matches.
 * **Manual billing** — for customers who pay by bank transfer there is no Stripe
   subscription, so ``scripts/generate_key.py`` creates a row directly with an
@@ -24,10 +24,11 @@ from typing import Any
 
 from sqlalchemy import DateTime, String, select, update
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column
 
 from src.observability.logging import get_logger
 
+from src.api.job_store_postgres import Base
 log = get_logger(__name__)
 
 #: Plans Vishap sells. Kept in code so a typo in a script fails here.
@@ -44,10 +45,6 @@ class TenantStoreError(RuntimeError):
     """Raised when the tenant store cannot be used (usually no DATABASE_URL)."""
 
 
-class Base(DeclarativeBase):
-    """Declarative base for the tenant model."""
-
-
 class TenantModel(Base):
     """SQLAlchemy model mapping to the ``tenants`` table (revision 004)."""
 
@@ -58,12 +55,12 @@ class TenantModel(Base):
     api_key_hash: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
     plan: Mapped[str] = mapped_column(String(32), nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default=STATUS_ACTIVE)
-    email: Mapped[str] = mapped_column(String(255), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    stripe_customer_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    ls_customer_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
 
 def _iso(value: Any) -> str | None:
@@ -83,7 +80,7 @@ def tenant_to_dict(model: TenantModel) -> dict:
         "email": model.email,
         "created_at": _iso(model.created_at),
         "expires_at": _iso(model.expires_at),
-        "stripe_customer_id": model.stripe_customer_id,
+        "ls_customer_id": model.ls_customer_id,
     }
 
 
@@ -139,7 +136,7 @@ class TenantStore:
         email: str,
         status: str = STATUS_ACTIVE,
         expires_at: datetime | None = None,
-        stripe_customer_id: str | None = None,
+        ls_customer_id: str | None = None,
     ) -> dict:
         model = TenantModel(
             tenant_id=tenant_id,
@@ -150,7 +147,7 @@ class TenantStore:
             email=email,
             created_at=datetime.now(UTC),
             expires_at=expires_at,
-            stripe_customer_id=stripe_customer_id,
+            ls_customer_id=ls_customer_id,
         )
         async with self._session_factory() as session:
             session.add(model)
@@ -202,7 +199,7 @@ class TenantStore:
         async with self._session_factory() as session:
             result = await session.execute(
                 update(TenantModel)
-                .where(TenantModel.stripe_customer_id == customer_id)
+                .where(TenantModel.ls_customer_id == customer_id)
                 .values(status=status)
             )
             await session.commit()
@@ -242,7 +239,7 @@ async def create_tenant(
     email: str,
     status: str = STATUS_ACTIVE,
     expires_at: datetime | None = None,
-    stripe_customer_id: str | None = None,
+    ls_customer_id: str | None = None,
 ) -> dict:
     """Insert a tenant row. Raises on a duplicate tenant_id or api_key."""
     if plan not in PLANS:
@@ -254,7 +251,7 @@ async def create_tenant(
         email=email,
         status=status,
         expires_at=expires_at,
-        stripe_customer_id=stripe_customer_id,
+        ls_customer_id=ls_customer_id,
     )
 
 
@@ -280,9 +277,9 @@ async def activate_tenant(customer_id: str) -> dict:
     try:
         updated = await get_store().set_status_by_customer(customer_id, STATUS_ACTIVE)
     except Exception as exc:  # TenantStoreError, connection errors
-        log.warning("tenant_activation_skipped", stripe_customer_id=customer_id, error=str(exc))
+        log.warning("tenant_activation_skipped", ls_customer_id=customer_id, error=str(exc))
 
-    log.info("tenant_activated", stripe_customer_id=customer_id, rows_updated=updated)
+    log.info("tenant_activated", ls_customer_id=customer_id, rows_updated=updated)
     return {"ok": True, "customer_id": customer_id, "status": "active", "rows_updated": updated}
 
 
@@ -292,9 +289,9 @@ async def deactivate_tenant(customer_id: str) -> dict:
     try:
         updated = await get_store().set_status_by_customer(customer_id, STATUS_CANCELED)
     except Exception as exc:
-        log.warning("tenant_deactivation_skipped", stripe_customer_id=customer_id, error=str(exc))
+        log.warning("tenant_deactivation_skipped", ls_customer_id=customer_id, error=str(exc))
 
-    log.info("tenant_deactivated", stripe_customer_id=customer_id, rows_updated=updated)
+    log.info("tenant_deactivated", ls_customer_id=customer_id, rows_updated=updated)
     return {
         "ok": True,
         "customer_id": customer_id,

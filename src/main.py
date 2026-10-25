@@ -39,9 +39,6 @@ from src.github_app.webhook import handle_webhook
 from src.api.job_store import tenant_scope
 from src.auth.middleware import current_tenant, current_user
 from src.auth.sso import saml_callback, saml_login
-from src.billing.stripe_client import create_checkout_session, create_invoice
-from src.billing.stripe_setup import list_prices
-from src.billing.webhook import handle_stripe_webhook_async
 from src.api.gdpr import delete_user_data, export_user_data
 from src.api.reports import InvalidReportPath, report_path, save_report
 from src.api.webhooks import notify_webhook
@@ -264,6 +261,18 @@ async def github_webhook(request: Request):
     return await handle_webhook(request)
 
 
+
+@app.post("/webhook/lemonsqueezy")
+async def lemonsqueezy_webhook(request: Request):
+    """Lemon Squeezy webhook: HMAC verify, idempotency, tenant status update."""
+    from src.api.tenants import get_store
+    from src.billing.lemonsqueezy.webhook import handle_lemonsqueezy_webhook
+
+    store = get_store()
+    payload = await request.body()
+    sig = request.headers.get("X-Signature", "")
+    async with store._session_factory() as session:
+        return await handle_lemonsqueezy_webhook(payload, sig, session)
 @app.post("/billing/checkout")
 async def checkout(req: CheckoutRequest):
     return create_checkout_session(req.email, req.success_url, req.cancel_url)
@@ -310,23 +319,12 @@ async def sso_callback(payload: dict):
 
 
 def verify_webhook_signature(payload: bytes, signature: str, secret: str, algo: str = "sha256") -> bool:
-    """Verify webhook signature (Stripe/GitHub). Returns True if valid."""
+    """Verify webhook signature (GitHub). Returns True if valid."""
     import hmac, hashlib
     if not secret or not signature:
         return False
     expected = hmac.new(secret.encode(), payload, getattr(hashlib, algo)).hexdigest()
     return hmac.compare_digest(expected, signature.replace("sha256=", "").replace("sha1=", ""))
-
-@app.post("/webhook/stripe")
-async def stripe_webhook(request: Request):
-    _secret = os.getenv("STRIPE_WEBHOOK_SECRET", "")
-    _sig = request.headers.get("Stripe-Signature", "")
-    if not _secret or not _sig or not verify_webhook_signature(await request.body(), _sig, _secret):
-        from fastapi import HTTPException
-        raise HTTPException(status_code=401, detail="invalid Stripe signature")
-    payload = await request.body()
-    sig = request.headers.get("Stripe-Signature", "")
-    return await handle_stripe_webhook_async(payload, sig)
 
 
 @app.post("/analyze", response_model=AnalyzeResponse, dependencies=[Depends(verify_api_key), Depends(rate_limit_analyze)])

@@ -83,10 +83,6 @@ GITHUB_WEBHOOK_SECRET = os.getenv("GITHUB_WEBHOOK_SECRET", "")
 CLERK_SECRET_KEY = os.getenv("CLERK_SECRET_KEY", "")
 CLERK_JWKS_URL = os.getenv("CLERK_JWKS_URL", "")
 
-# === Stripe billing (v6.1) ===
-STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
-STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
-STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID", "")
 
 # === Audit webhook (v6.3) ===
 # When set, job lifecycle events are POSTed here for SIEM/compliance ingestion.
@@ -107,7 +103,7 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 # === Startup validation (v6.4) ===
 #: Environment variables the API cannot run without.
-REQUIRED_ENV_VARS = ("DATABASE_URL", "STRIPE_SECRET_KEY", "CLERK_SECRET_KEY")
+REQUIRED_ENV_VARS = ("DATABASE_URL", "CLERK_SECRET_KEY")
 
 _TRUE_VALUES = {"1", "true", "yes", "on"}
 

@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """PostgreSQL JobStore implementation (v6.1) via SQLAlchemy 2.0 async.
 
 Multi-tenant isolation (v6.3) is delegated to PostgreSQL row-level security:
@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, UTC
 from typing import AsyncIterator
 
-from sqlalchemy import DateTime, String, Text, delete, func, select, text
+from sqlalchemy import DateTime, Index, String, Text, delete, func, select, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -46,6 +46,10 @@ class JobModel(Base):
     tenant_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     result: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    __table_args__ = (
+        Index("ix_jobs_tenant_created", "tenant_id", "created_at"),
+    )
 
 
 class PostgresJobStore:

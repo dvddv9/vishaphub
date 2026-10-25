@@ -82,7 +82,7 @@
 
 ## 9. PII redaction — не полная
 
-- 15 regex-паттернов для email, phone, passport, snils, iban, aws, stripe, github, slack, google, private_key, password, secret.
+- 15 regex-паттернов для email, phone, passport, snils, iban, aws, Lemon Squeezy, github, slack, google, private_key, password, secret.
 - **Не покрыто:** имена, адреса, даты рождения, фотографии, голос, биометрия.
 - **Не покрыто:** обфусцированные секреты (base64, hex, rot13).
 
