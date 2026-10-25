@@ -324,6 +324,9 @@ def run_audit(material: str, session_id: str, model: str = "custom",
     compliance = detect_compliance(material, pii)
     cwe_ids = detect_cwe(material)
     cwe_ids = cwe_ids + [c for c in collect_findings_cwe(stage2_result) if c not in cwe_ids]
+    # PII -> CWE-359 (patch-drift): если pii_detected, CWE-359 обязателен
+    if pii and "CWE-359" not in cwe_ids:
+        cwe_ids.append("CWE-359")
     risk_verdict, critique = compute_risk_verdict(
         stage2_result=stage2_result,
         pii=pii,
