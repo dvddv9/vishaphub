@@ -331,7 +331,7 @@ def verify_webhook_signature(payload: bytes, signature: str, secret: str, algo: 
 @traced("analyze")
 async def analyze(req: AnalyzeRequest, x_llm_api_key: str | None = Header(None, alias="X-LLM-Api-Key")):
     if not req.material.strip():
-        raise HTTPException(status_code=400, detail="material не может быть пустым")
+        raise HTTPException(status_code=400, detail="material must not be empty")
 
     from src.llm.client import set_api_key
     set_api_key(x_llm_api_key)
@@ -434,12 +434,12 @@ async def analyze_secure(req: AnalyzeRequest, user: dict = Depends(current_user)
 @app.post("/analyze/batch", response_model=BatchResponse, dependencies=[Depends(verify_api_key), Depends(rate_limit_analyze)])
 async def analyze_batch(req: BatchRequest):
     if not req.items:
-        raise HTTPException(status_code=400, detail="items не может быть пустым")
+        raise HTTPException(status_code=400, detail="items must not be empty")
     for i, item in enumerate(req.items):
         if not item.material.strip():
             raise HTTPException(
                 status_code=400,
-                detail=f"items[{i}].material не может быть пустым",
+                detail=f"items[{i}].material must not be empty",
             )
 
     materials = [(item.material, item.filename) for item in req.items]

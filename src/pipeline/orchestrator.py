@@ -59,10 +59,10 @@ LLM_ERROR_PREFIX = "[LLM error]"
 #: Shown instead of a silent "SAFE" report when no stage ever reached the model.
 LLM_UNAVAILABLE_BANNER = (
     "## Анализ не выполнен: LLM недоступен\n\n"
-    "LLM не ответил, поэтому стадии не собрали отчёт — "
-    "ниже пустой результат, а audit помечен `critique_verdict: ERROR`.\n\n"
-    "Проверьте `CUSTOM_LLM_URL` / `CUSTOM_LLM_KEY` (OpenAI-compatible endpoint; "
-    "Проверьте `CUSTOM_LLM_URL` / `CUSTOM_LLM_KEY` (OpenAI-compatible endpoint).\n\n"
+    "LLM did not respond, so the stages did not produce a report — "
+    "below is an empty result, and audit is marked `critique_verdict: ERROR`.\n\n"
+    "Check `CUSTOM_LLM_URL` / `CUSTOM_LLM_KEY` (OpenAI-compatible endpoint; "
+    "Check `CUSTOM_LLM_URL` / `CUSTOM_LLM_KEY` (OpenAI-compatible endpoint).\n\n"
     "```\n{error}\n```\n\n---\n\n"
 )
 

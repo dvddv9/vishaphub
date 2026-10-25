@@ -29,9 +29,9 @@ async def async_run_stage(stage_name: str, prompt_name: str, material: str,
         print(f"  [!] {stage_name}: JSON parse failed, retry...")
         retry_user = (
             user
-            + "\n\n## ВАЖНО\n\n"
-            + "Верни только валидный JSON без Markdown, без комментариев, "
-            + "без текста до или после. Только { ... }."
+            + "\n\n## IMPORTANT\n\n"
+            + "Return only valid JSON without Markdown, without comments, "
+            + "without any text before or after. Only { ... }."
         )
         result = await async_chat(system, retry_user, temperature=temperature, max_tokens=max_tokens)
         parsed = parse_json_response(result["text"])

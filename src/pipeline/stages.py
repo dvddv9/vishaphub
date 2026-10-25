@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 Стадии pipeline Vishap.
 v2: улучшенный JSON-парсинг + max_tokens из config.
@@ -236,8 +236,8 @@ def run_stage(stage_name: str, prompt_name: str, material: str,
         retry_user = (
             user
             + "\n\n## ВАЖНО\n\n"
-            + "Верни ТОЛЬКО валидный JSON без Markdown, без комментариев, "
-            + "без текста до или после. Только { ... }."
+            + "Return ONLY valid JSON without Markdown, without comments, "
+            + "without any text before or after. Only { ... }."
         )
         result = llm_chat(system, retry_user, temperature=temperature, max_tokens=max_tokens)
         parsed = parse_json_response(result["text"])
@@ -427,13 +427,13 @@ def stage2_5_redteam(material: str, context: dict, async_mode: bool = False, ver
     )[:4000]
 
     system = (
-        "Ты — red team. Вот отчёт Analyst (JSON):\n" + analyst_json + "\n\n"
-        "⚠️ Если отчёт > 4000 токенов — анализируй только risk_nodes, не весь JSON.\n\n"
-        "Твоя задача:\n"
-        "1. Найди, что Analyst ПРОПУСТИЛ (CWE, edge cases, trust boundaries).\n"
-        "2. Не соглашайся с Analyst. Если он говорит \"SAFE\" — ищи, что не так.\n"
-        "3. Верни JSON: {\"missed\": [{\"cwe\": \"...\", \"reason\": \"...\", \"severity\": \"...\"}]}\n\n"
-        "⚠️ Не выдумывай. Если не уверен — не включай в missed.\n"
+        "You are a red team. Here is the Analyst report (JSON):\n" + analyst_json + "\n\n"
+        "⚠️ If the report > 4000 tokens — analyze only risk_nodes, not the whole JSON.\n\n"
+        "Your task:\n"
+        "1. Find what the Analyst MISSED (CWE, edge cases, trust boundaries).\n"
+        "2. Do not agree with the Analyst. If it says \"SAFE\" — look for what is wrong.\n"
+        "3. Return JSON: {\"missed\": [{\"cwe\": \"...\", \"reason\": \"...\", \"severity\": \"...\"}]}\n\n"
+        "⚠️ Do not hallucinate. If unsure — do not include in missed.\n"
         "Return ONLY valid JSON, no markdown, no comments."
     )
     user = "Material (first 3000 chars):\n" + material[:3000]
