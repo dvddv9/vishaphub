@@ -1,4 +1,4 @@
-﻿services:
+services:
   - type: web
     name: vishap
     runtime: docker
@@ -7,6 +7,7 @@
     dockerContext: .
     healthCheckPath: /health
     autoDeploy: true
+    startCommand: alembic upgrade head && python -m src.main
     envVars:
       - key: VISHAP_DEV
         value: "true"
