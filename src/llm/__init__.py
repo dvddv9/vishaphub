@@ -6,7 +6,7 @@ __all__ = [
 ]
 
 
-def get_llm_client():
+def get_llm_client(api_key: str | None = None):
     """
     Returns a client object with a .chat(system, user) method,
     based on LLM_PROVIDER env variable.

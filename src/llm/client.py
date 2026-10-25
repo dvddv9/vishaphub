@@ -8,8 +8,20 @@ DeepSeek is reachable via custom: CUSTOM_LLM_URL=https://api.deepseek.com/v1.
 """
 from __future__ import annotations
 
+from contextvars import ContextVar
 
 from src.llm._observe import observe_llm_result
+
+
+_api_key_var: ContextVar[str | None] = ContextVar("llm_api_key", default=None)
+
+
+def set_api_key(key: str | None) -> None:
+    _api_key_var.set(key)
+
+
+def get_api_key() -> str | None:
+    return _api_key_var.get()
 
 
 NO_CUSTOM_TEXT = (
@@ -18,17 +30,10 @@ NO_CUSTOM_TEXT = (
 
 
 def _resolve_provider() -> str:
-    """v7.3.16: provider selection (DeepSeek API is default).
-
-    Priority:
-      1. explicit VISHAP_LLM_PROVIDER (custom | openai | groq | ollama | anthropic | android | auto)
-      2. auto -> custom if CUSTOM_LLM_URL set, else custom
-      3. default: custom (DeepSeek API: https://api.deepseek.com/v1)
-    """
+    """v7.3.16: provider selection (DeepSeek API is default)."""
     import os
     mode = os.getenv("VISHAP_LLM_PROVIDER", "custom").strip().lower()
     if mode in ("custom", "openai", "groq", "ollama", "anthropic", "android"):
-        # all map to custom (OpenAI-compatible endpoint)
         return "custom"
     if mode == "auto":
         if os.getenv("CUSTOM_LLM_URL", "").strip() and os.getenv("CUSTOM_LLM_KEY", "").strip():
@@ -37,10 +42,11 @@ def _resolve_provider() -> str:
     return "custom"
 
 
-def _chat_custom(system: str, user: str, temperature: float, max_tokens: int) -> dict:
+def _chat_custom(system: str, user: str, temperature: float, max_tokens: int, api_key: str | None = None) -> dict:
     try:
         from src.llm.custom_client import CustomClient
-        c = CustomClient()
+        api_key = api_key or get_api_key()
+        c = CustomClient(api_key=api_key)
         try:
             result = c.chat(user, system, temperature=temperature, max_tokens=max_tokens)
         finally:
@@ -54,15 +60,8 @@ def _chat_custom(system: str, user: str, temperature: float, max_tokens: int) ->
         }, status="error")
 
 
-
 def chat(system: str, user: str,
          temperature: float = 0.0,
-         max_tokens: int = 2000) -> dict:
-    provider = _resolve_provider()
-    if provider == "custom":
-        return _chat_custom(system, user, temperature, max_tokens)
-    return {"text": "[LLM error] custom provider failed", "tokens_in": 0, "tokens_out": 0, "model": "none", "mode": "error"}
-
-
-def current_provider() -> str:
-    return _resolve_provider()
+         max_tokens: int = 2000,
+         api_key: str | None = None) -> dict:
+    return _chat_custom(system, user, temperature, max_tokens, api_key=api_key)

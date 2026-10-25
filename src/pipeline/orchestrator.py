@@ -457,7 +457,7 @@ def _timed_stage(log, stage: str, session_id: str, fn, *args, **kwargs):
     return result
 
 
-def run_pipeline(material: str, filename: str, verbose: bool = True,
+def run_pipeline(material: str, filename: str, verbose: bool = True, api_key: str | None = None,
                  session_suffix: str = "",
                  baseline_path: str = None,
                  save_baseline_path: str = None,
@@ -964,7 +964,7 @@ def run_pipeline(material: str, filename: str, verbose: bool = True,
     return result
 
 
-async def run_pipeline_async(material: str, filename: str, verbose: bool = False,
+async def run_pipeline_async(material: str, filename: str, verbose: bool = False, api_key: str | None = None,
                               session_suffix: str = "",
                               baseline_path: str = None,
                               save_baseline_path: str = None) -> dict:

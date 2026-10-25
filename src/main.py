@@ -9,7 +9,7 @@ import time
 import uuid
 from datetime import datetime
 
-from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks, Request, Query
+from fastapi import Header, FastAPI, HTTPException, Depends, BackgroundTasks, Request, Query
 from typing import Literal
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -256,7 +256,7 @@ async def github_webhook(request: Request):
     _secret = os.getenv("GITHUB_WEBHOOK_SECRET", "")
     _sig = request.headers.get("X-Hub-Signature-256", "")
     if not _secret or not _sig or not verify_webhook_signature(await request.body(), _sig, _secret):
-        from fastapi import HTTPException
+        from fastapi import Header, HTTPException
         raise HTTPException(status_code=401, detail="invalid GitHub signature")
     return await handle_webhook(request)
 
@@ -312,7 +312,7 @@ async def sso_callback(payload: dict):
     # SEC-6: validate SAML assertion (CWE-347)
     from src.auth.saml_guard import validate_saml_assertion
     if not validate_saml_assertion(payload):
-        from fastapi import HTTPException
+        from fastapi import Header, HTTPException
         raise HTTPException(status_code=401, detail="invalid SAML assertion")
     return await saml_callback(payload)
 
@@ -329,10 +329,12 @@ def verify_webhook_signature(payload: bytes, signature: str, secret: str, algo: 
 
 @app.post("/analyze", response_model=AnalyzeResponse, dependencies=[Depends(verify_api_key), Depends(rate_limit_analyze)])
 @traced("analyze")
-async def analyze(req: AnalyzeRequest):
+async def analyze(req: AnalyzeRequest, x_llm_api_key: str | None = Header(None, alias="X-LLM-Api-Key")):
     if not req.material.strip():
         raise HTTPException(status_code=400, detail="material не может быть пустым")
 
+    from src.llm.client import set_api_key
+    set_api_key(x_llm_api_key)
     from src.pipeline.orchestrator import compute_hash
     from src.storage.history import find_done_by_hash
 
@@ -426,7 +428,7 @@ async def analyze(req: AnalyzeRequest):
 @app.post("/analyze/secure", dependencies=[Depends(current_user)])
 async def analyze_secure(req: AnalyzeRequest, user: dict = Depends(current_user)):
     with tenant_scope(user["tenant_id"]):
-        return await analyze(req)
+        return await analyze(req, x_llm_api_key=None)
 
 
 @app.post("/analyze/batch", response_model=BatchResponse, dependencies=[Depends(verify_api_key), Depends(rate_limit_analyze)])
