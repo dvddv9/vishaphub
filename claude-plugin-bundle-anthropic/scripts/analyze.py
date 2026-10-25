@@ -10,7 +10,12 @@ ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514")
 
 
-@mcp.tool
+@mcp.tool(
+    name="vishap_analyze",
+    title="Vishap Security Analysis",
+    description="Analyze code, spec, logs, or config for security risks (SQLi, XSS, RCE). Read-only.",
+    annotations={"readOnlyHint": True, "destructiveHint": False},
+)
 def vishap_analyze(material: str, filename: str) -> str:
     """Analyze code / text for security risks via Claude API (Anthropic SDK)."""
     if not ANTHROPIC_API_KEY:
@@ -34,7 +39,7 @@ def vishap_analyze(material: str, filename: str) -> str:
         client = Anthropic(api_key=ANTHROPIC_API_KEY)
         resp = client.messages.create(
             model=ANTHROPIC_MODEL,
-            max_tokens=4096,
+            max_tokens=8192,
             system="You are a security analyzer. Return structured Markdown.",
             messages=[{"role": "user", "content": prompt}],
         )

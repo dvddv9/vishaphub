@@ -1,4 +1,4 @@
-﻿# Vishap Claude (Bundle)
+# Vishap Claude (Bundle)
 
 Security analysis for engineering materials (code, spec, logs, config) via Claude API (Anthropic SDK).
 
@@ -44,8 +44,12 @@ Output: High — `../etc/passwd` reads arbitrary files. Fix: `os.path.realpath` 
 
 ## Privacy
 
-This plugin sends the material you provide to the Anthropic API for analysis.
-No data is stored by the plugin itself.
+- **What leaves your machine:** the material you submit is sent to the Anthropic API (Claude) for analysis.
+- **Whose key:** **your** `ANTHROPIC_API_KEY`, entered via Claude Code settings (`userConfig`). It is stored in Claude Code config (sensitive), never in the plugin repo.
+- **What is stored:** no material is stored by the plugin itself. Responses are returned to Claude Code only.
+- **Third parties:** Anthropic API (Claude). No other services.
+- **Retention:** none on the plugin side; Anthropic API retention follows Anthropic policies (see https://www.anthropic.com/legal/privacy).
+- **Background actions:** none. The plugin only runs when you call `vishap_analyze`.
 
 ## License
 
