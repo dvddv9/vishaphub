@@ -23,43 +23,23 @@
 
 > ⚠️ Free tier: first request may take 30–50 s (cold start).
 
-## 🎉 What's new in v7.3.17
+## 🎉 What's new in v7.4.0
 
-- **Anthropic (Claude) provider** — `anthropic` in the LLM Settings dropdown + auto-fill (`https://api.anthropic.com/v1/`, `claude-sonnet-4-20250514`). Key: `sk-ant-api03-...` from console.anthropic.com/settings/keys.
-- **Android (Gemini) provider** — `android` in the dropdown + auto-fill (`https://generativelanguage.googleapis.com/v1beta/openai/`, `gemini-2.0-flash`). Key: `AIza...` from aistudio.google.com/apikey.
-- **Runtime config from `settings.json`** — `custom_client.py` reads `CUSTOM_LLM_*` from `settings.json` (runtime) over `.env` (defaults). UI changes apply on the fly.
-- **Fix `NameError: _cfg`** — `_cfg` defined at module level (fix `5ecbed3`).
+**Logs as material** — LOG_PATTERNS (19): db_password, jwt_secret, aws_key, aws_secret, stripe_key, pii_email, pii_phone (E.164+`\b`), pii_passport_ru, credit_card, jwt_token, ssh_key, sqlmap, sqli_pattern, cmd_injection, imdsv1, cors_wildcard, csp_wildcard, cookie_insecure, xff_trust (CWE-348).
 
-- **reasoning_content fallback** — `custom_client.py` falls back to `message.reasoning_content` when `content` is empty (DeepSeek flash / V4).
-- **Truncated JSON recovery** — `parse_json_response` recovers JSON truncated at `max_tokens` (closes unclosed `{` / `[`, cuts at last valid object).
-- **Version sync** — single source of truth in `src/version.py`; CI checks `pyproject.toml` / `package.json` / `README.md`.
+**scan_log + is_log_material** — deterministic log analysis; `detect_language('.log')` -> `'log'`.
 
-### Previous: v7.3.1
+**detect_exploitability(log)** — `reachable=True, blast=high` (log = incident by itself); `compute_reproducer(log)` -> `None + "log: use log analysis / DLP scan"`.
 
-- **JavaScript / TypeScript support**: `detect_language` (.js/.jsx/.mjs/.cjs/.ts/.tsx), `js_parser.scan_js_patterns` (XSS, SQLi, RCE, path traversal, command injection), LLM hints in `build_prompt`.
+**Drift fixes** — `PII -> CWE-359` (`orchestrator.py:326`); `CWE-359 -> GDPR Art. 32` (`patterns.py:148`); `CWE-732` в `CWE_TO_OWASP` (S3 public-read -> Broken Access Control); `ASan -> sqlfluff + semgrep` в `RUNBOOKS["CWE-89"]`; `aws_key {16} -> {16,}`; `pii_phone -> \+\d[\d\-]{8,14}\d`; `patch-logs cleanup (4 -> 1)`.
 
-### Audit evidence (#1–#8)
-- **#1 `context_thread`** — wires metrics / cwe / evidence → activates #3 / #5 / #6
-- **#2 `compute_critique_verdict`** — `NEEDS_VERIFICATION` / `REQUIRES_REVIEW` / `SAFE`; critical `risk_nodes` / `security` → `REQUIRES_REVIEW`
-- **#3 `fidelity_index`** — 0.0–1.0; bias passed when in `[0.3, 0.95]`
-- **#4 `negative_evidence`** — checked-but-not-found CWEs with reason
-- **#5 `reproducer`** — runnable `python -c` + verified via `sys.executable`
-- **#6 `bias_check`** — critical_ratio, FI-range, RCE-without-critical
-- **#7 `CWE_MAPPING`** — 15 keys
-- **#8 `report_date` / `valid_until`** — ISO + 90 days
+**detect_language fix** — `ext` before `if` (UnboundLocalError).
 
-### UI (`ui-next/`)
-- **LLMSettings**: 7 providers (`custom` / `openai` / `groq` / `ollama` / `anthropic` / `android`)
-- **Report v7.2 block**: Fidelity / Bias check / Reproducer / Negative evidence / Report date / valid_until
-- **CORS fix**: `app.add_middleware(CORSMiddleware, ...)` — Settings form works in browser
-- **mojibake fix**: em-dash `—`, ellipsis `…`, emoji 🐉
+**SECURITY.md v7.4.0** — SAST IMPLEMENTED (было NOT), `material_hash = sha256(material)` (было context+material), + Log Analysis, + Drift fixes, GDPR Art.32, L6.
 
-### Backend
-- **`async_chat`** — respects `VISHAP_LLM_PROVIDER=custom`
-- **Docker**: bind `0.0.0.0` — `-p 5001:5001` smoke-test passes
-- **CI**: ruff F401 cleanup; `services.postgres` fix
-- **Version sync**: 7.2.2 (`pyproject.toml`, `version.py`, `package.json`, `main.py`, `layout.tsx`)
+**Version sync** — single source of truth in `src/version.py` (7.4.0); CI checks `pyproject.toml` / `package.json` / `README.md`.
 
+Previous: [v7.3.17](#previous-v7317)
 
 ## 🛠️ Features
 
@@ -103,7 +83,7 @@
 ### Python (pip)
 
 ```bash
-pip install vishap-analyzer==7.3.17
+pip install vishap-analyzer==7.4.0
 ```
 
 ```python
@@ -112,7 +92,7 @@ result = analyze(material="def get_user(name): ...", filename="sqli.py")
 print(result["audit"]["critique_verdict"])
 ```
 
-> **Version pin:** `==7.3.15` — the version documented here. See [PyPI](https://pypi.org/project/vishap-analyzer/) for the latest.
+> **Version pin:** `==7.4.0` — the version documented here. See [PyPI](https://pypi.org/project/vishap-analyzer/) for the latest.
 
 ### Backend (Docker)
 ```bash
