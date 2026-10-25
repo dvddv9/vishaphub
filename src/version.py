@@ -1,4 +1,4 @@
-"""Single source of truth for Vishap version (v7.3.4)."""
+"""Single source of truth for Vishap version (v7.4.0)."""
 
-__version__ = "7.3.18"
+__version__ = "7.4.0"
 VERSION = __version__
