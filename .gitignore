@@ -131,3 +131,10 @@ remove-*.ps1
 fix-*.ps1
 finish-*.ps1
 patch-*.ps1
+
+add-*.ps1
+find-*.ps1
+bandit.json
+fix-*.ps1
+finish-*.ps1
+patch-*.ps1
