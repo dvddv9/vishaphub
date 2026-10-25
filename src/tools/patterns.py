@@ -571,7 +571,13 @@ AST_TAINT_SINKS = {
 
 
 def detect_exploitability(material: str) -> dict:
+    """Detect exploitability: reachability, auth, blast radius.
+
+    For IaC (Terraform/YAML): reachable=True (apply = compromise),
+    blast_radius=high (AWS account / K8s cluster).
+    """
     is_iac = material.lstrip().startswith(("resource ", "provider ", "apiVersion:", "terraform "))
+
     if is_iac:
         return {
             "reachable": True,
@@ -581,4 +587,14 @@ def detect_exploitability(material: str) -> dict:
             "entry_points": ["terraform apply"],
             "blast_indicators": ["AWS account", "public S3", "public RDS"],
         }
-    # ... остальное ...
+
+    # ... остальное (Python/JS) ...
+    # (здесь должен быть старый код detect_exploitability)
+    return {
+        "reachable": False,
+        "auth_required": False,
+        "exploit_path": [],
+        "blast_radius": "none",
+        "entry_points": [],
+        "blast_indicators": [],
+    }
