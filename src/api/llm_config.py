@@ -27,10 +27,10 @@ def read_config():
 
 @router.post("/config")
 def write_config(cfg: LLMConfig):
-    if cfg.provider not in ("custom", "anthropic", "android"):
-        raise HTTPException(400, "provider must be custom")
+    if cfg.provider not in ("custom", "anthropic", "android", "openai", "groq", "ollama", "mistral", "deepseek"):
+        raise HTTPException(400, f"Unsupported provider: {cfg.provider}")
     patch = {"LLM_PROVIDER": cfg.provider}
-    if cfg.provider in ("custom", "anthropic", "android"):
+    if cfg.provider in ("custom", "anthropic", "android", "openai", "groq", "ollama", "mistral", "deepseek"):
         if not cfg.custom_url:
             raise HTTPException(400, "custom_url required for custom/anthropic provider")
         if not cfg.custom_model:
