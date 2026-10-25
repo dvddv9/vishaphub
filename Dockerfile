@@ -64,4 +64,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 # (`HARNESS_URL`, `HARNESS_TOKEN`). Running the harness on the host and pointing
 # the container at `host.docker.internal:3080` is the supported setup — see
 # docker-compose.yml.
-CMD ["python", "-m", "src.main"]
+CMD ["sh", "-c", "alembic upgrade head && python -m src.main"]
