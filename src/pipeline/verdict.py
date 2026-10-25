@@ -130,19 +130,8 @@ def compute_critique_verdict(context_thread: dict | None,
         return "REQUIRES_REVIEW"
 
     ct = context_thread or {}
-    evidence = ct.get("evidence") or {}# Python fallback: если material выглядит как Python — генерируем python -c
-    if material and ("def " in material or "import " in material or "class " in material):
-        try:
-            _esc = material.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n")
-            return {
-                "reproducer": f'python -c "{_esc}"',
-                "reproducer_verified": False,
-                "reproducer_note": "provided (python -c, not verified)",
-            }
-        except Exception:
-            pass
-
-    'python_run = bool(evidence.get("python_run"))
+    evidence = ct.get("evidence") or {}
+    python_run = bool(evidence.get("python_run"))
     if not python_run:
         return "NEEDS_VERIFICATION"
     if pii or compliance or cwe_ids:
@@ -197,19 +186,8 @@ def compute_fidelity_index(context_thread: dict | None,
     Returns None if not computable (no findings, no context).
     """
     ct = context_thread or {}
-    evidence = ct.get("evidence") or {}# Python fallback: если material выглядит как Python — генерируем python -c
-    if material and ("def " in material or "import " in material or "class " in material):
-        try:
-            _esc = material.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n")
-            return {
-                "reproducer": f'python -c "{_esc}"',
-                "reproducer_verified": False,
-                "reproducer_note": "provided (python -c, not verified)",
-            }
-        except Exception:
-            pass
-
-    'python_run = bool(evidence.get("python_run"))
+    evidence = ct.get("evidence") or {}
+    python_run = bool(evidence.get("python_run"))
 
     findings = list(ct.get("cwe_found") or [])
     if stage2_result and isinstance(stage2_result, dict):
@@ -258,19 +236,8 @@ def compute_bias_check(context_thread: dict | None,
       - FI < 0.3  -> flag (too bad, no Python?)
     """
     ct = context_thread or {}
-    evidence = ct.get("evidence") or {}# Python fallback: если material выглядит как Python — генерируем python -c
-    if material and ("def " in material or "import " in material or "class " in material):
-        try:
-            _esc = material.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n")
-            return {
-                "reproducer": f'python -c "{_esc}"',
-                "reproducer_verified": False,
-                "reproducer_note": "provided (python -c, not verified)",
-            }
-        except Exception:
-            pass
-
-    'python_run = bool(evidence.get("python_run"))
+    evidence = ct.get("evidence") or {}
+    python_run = bool(evidence.get("python_run"))
     if not python_run:
         return {"bias_check": "not computed (no Python)", "flags": []}
 
@@ -319,7 +286,9 @@ def compute_reproducer(context_thread: dict | None,
     - else -> build runnable snippet, run with sys.executable, check AssertionError
     """
     ct = context_thread or {}
-    evidence = ct.get("evidence") or {}# Python fallback: если material выглядит как Python — генерируем python -c
+    evidence = ct.get("evidence") or {}
+
+    # Python fallback: если material выглядит как Python — генерируем python -c
     if material and ("def " in material or "import " in material or "class " in material):
         try:
             _esc = material.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n")
@@ -331,7 +300,7 @@ def compute_reproducer(context_thread: dict | None,
         except Exception:
             pass
 
-    'python_run = bool(evidence.get("python_run"))
+    python_run = bool(evidence.get("python_run"))
     if not python_run:
         return {
             "reproducer": None,
