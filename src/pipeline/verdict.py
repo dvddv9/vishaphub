@@ -282,14 +282,28 @@ def compute_reproducer(context_thread: dict | None,
                        material: str = "") -> dict:
     """Return {"reproducer": str|None, "reproducer_verified": bool, "reproducer_note": str}.
 
-    - no python_run / no findings / no mid -> reproducer=None
-    - else -> build runnable snippet, run with sys.executable, check AssertionError
+    Skip for IaC (.tf/.yaml) and TypeScript (.ts/.tsx) — python -c is meaningless.
     """
     ct = context_thread or {}
     evidence = ct.get("evidence") or {}
 
-    # Python fallback: если material выглядит как Python — генерируем python -c
-    if material and ("def " in material or "import " in material or "class " in material) and not material.lstrip().startswith(("resource ", "provider ", "apiVersion:")):
+    # Skip non-Python material
+    stripped = material.lstrip()
+    if stripped.startswith(("resource ", "provider ", "apiVersion:", "terraform ")):
+        return {
+            "reproducer": None,
+            "reproducer_verified": False,
+            "reproducer_note": "not provided (IaC: use terraform plan / checkov)",
+        }
+    if stripped.startswith(("import ", "const ", "function ", "export ", "interface ", "type ")):
+        return {
+            "reproducer": None,
+            "reproducer_verified": False,
+            "reproducer_note": "not provided (TypeScript/JS: use npm test / eslint)",
+        }
+
+    # Python fallback
+    if material and ("def " in material or "import " in material or "class " in material):
         try:
             _esc = material.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n")
             return {
@@ -308,55 +322,8 @@ def compute_reproducer(context_thread: dict | None,
             "reproducer_note": "not provided (VERIFY: no Python run)",
         }
 
-    findings = list(ct.get("cwe_found") or [])
-    if stage2_result and isinstance(stage2_result, dict):
-        findings.extend([f for f in (stage2_result.get("risk_nodes") or []) if isinstance(f, dict)])
-    if not findings:
-        return {
-            "reproducer": None,
-            "reproducer_verified": False,
-            "reproducer_note": "not provided (no findings)",
-        }
-
-    # We only know how to build a reproducer for the queue_demo fixture.
-    if "DemoQueue" not in (material or "") and "queue_demo" not in (material or "").lower():
-        return {
-            "reproducer": None,
-            "reproducer_verified": False,
-            "reproducer_note": "not provided (unknown fixture)",
-        }
-
-    try:
-        import sys as _sys
-        from pathlib import Path as _Path
-        from subprocess import run as _run
-        _root = _Path(__file__).resolve().parents[2]
-        code = (
-            "import sys\n"
-            f"sys.path.insert(0, r'{_root}')\n"
-            "from tests.fixtures.queue_demo import DemoQueue\n"
-            "q = DemoQueue()\n"
-            "q.put('m1', 'p')\n"
-            "h1 = q.receive().handle\n"
-            "q.redrive('m1')\n"
-            "h2 = q.receive().handle\n"
-            "assert h1 != h2, f'duplicate handle: {h1}'\n"
-        )
-        r = _run(
-            [_sys.executable, "-c", code],
-            capture_output=True, text=True,
-            encoding="utf-8", errors="replace",
-            timeout=30,
-        )
-        ok = "AssertionError" in (r.stderr or "")
-        return {
-            "reproducer": code,
-            "reproducer_verified": ok,
-            "reproducer_note": "verified: yes" if ok else f"verified: no (rc={r.returncode})",
-        }
-    except Exception as e:
-        return {
-            "reproducer": None,
-            "reproducer_verified": False,
-            "reproducer_note": f"error: {e}",
-        }
+    return {
+        "reproducer": None,
+        "reproducer_verified": False,
+        "reproducer_note": "not provided (no queue_demo fixture)",
+    }
