@@ -12,7 +12,7 @@ LOG_PATTERNS = {
     "aws_secret":      re.compile(r"AWS_SECRET_ACCESS_KEY\s*=\s*\S+"),
     "stripe_key":      re.compile(r"\b(sk|rk)_(live|test)_[A-Za-z0-9]+"),
     "pii_email":       re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+"),
-    "pii_phone":       re.compile(r"\+?\d[\d\s\-]{8,}\d"),
+    "pii_phone":       re.compile(r"\+\d[\d\-]{8,14}\d"),
     "pii_passport_ru": re.compile(r"Passport RU:\s*\d{4}\s*\d{6}"),
     "credit_card":     re.compile(r"\b(?:\d[ -]*?){13,16}\b"),
     "jwt_token":       re.compile(r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*"),

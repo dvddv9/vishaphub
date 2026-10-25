@@ -76,6 +76,7 @@ CWE_TO_OWASP = {
 
     # Broken Access Control
     "CWE-22":   {"2021": "A01:2021 Broken Access Control", "2025": "A01:2025 Broken Access Control", "name": "Path Traversal"},
+    "CWE-732":  {"2021": "A01:2021 Broken Access Control", "2025": "A01:2025 Broken Access Control", "name": "Incorrect Permission Assignment"},
     "CWE-352":  {"2021": "A01:2021 Broken Access Control", "2025": "A01:2025 Broken Access Control", "name": "CSRF"},
     "CWE-639":  {"2021": "A01:2021 Broken Access Control", "2025": "A01:2025 Broken Access Control", "name": "IDOR"},
     "CWE-284":  {"2021": "A01:2021 Broken Access Control", "2025": "A01:2025 Broken Access Control", "name": "Improper Access Control"},
@@ -180,7 +181,7 @@ RUNBOOKS = {
         ],
         "short_term": [
             "Replace string concatenation with parameterized queries.",
-            "Run SQL linter + ASan on test corpus.",
+            "Run sqlfluff + semgrep on test corpus.",
             "Deploy fix to canary (1% traffic).",
         ],
         "long_term": [
