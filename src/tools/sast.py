@@ -1,5 +1,56 @@
+
+
+
 # -*- coding: utf-8 -*-
 import re
+
+# === LOG_PATTERNS (patch-logs) ===
+LOG_PATTERNS = {
+    "db_password":     re.compile(r"(postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis)://[^:\s]+:[^@\s]+@"),
+    "jwt_secret":      re.compile(r"JWT_SECRET\s*=\s*\S+"),
+    "aws_key":         re.compile(r"\bAKIA[0-9A-Z]{16,}\b"),
+    "aws_secret":      re.compile(r"AWS_SECRET_ACCESS_KEY\s*=\s*\S+"),
+    "stripe_key":      re.compile(r"\b(sk|rk)_(live|test)_[A-Za-z0-9]+"),
+    "pii_email":       re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+"),
+    "pii_phone":       re.compile(r"\+?\d[\d\s\-]{8,}\d"),
+    "pii_passport_ru": re.compile(r"Passport RU:\s*\d{4}\s*\d{6}"),
+    "credit_card":     re.compile(r"\b(?:\d[ -]*?){13,16}\b"),
+    "jwt_token":       re.compile(r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*"),
+    "ssh_key":         re.compile(r"-----BEGIN (?:OPENSSH|RSA|EC|DSA) PRIVATE KEY-----"),
+    "sqlmap":          re.compile(r"sqlmap/"),
+    "sqli_pattern":    re.compile(r"' OR '1'='1"),
+    "cmd_injection":   re.compile(r"ping\s+-c\s+1\s+\S+;\s*cat\s+/etc/passwd"),
+    "imdsv1":          re.compile(r"169\.254\.169\.254"),
+    "cors_wildcard":   re.compile(r"Access-Control-Allow-Origin:\s*\*"),
+    "csp_wildcard":    re.compile(r"Content-Security-Policy:\s*\*"),
+    "cookie_insecure": re.compile(r"HttpOnly=false|Secure=false"),
+    "xff_trust":       re.compile(r"X-Forwarded-For:\s*127\.0\.0\.1"),
+}
+LOG_CWE_MAP = {
+    "db_password":"CWE-798","jwt_secret":"CWE-798","aws_key":"CWE-798","aws_secret":"CWE-798",
+    "stripe_key":"CWE-798","jwt_token":"CWE-522","ssh_key":"CWE-798","pii_email":"CWE-359",
+    "pii_phone":"CWE-359","pii_passport_ru":"CWE-359","credit_card":"CWE-359","sqlmap":"CWE-200",
+    "sqli_pattern":"CWE-89","cmd_injection":"CWE-78","imdsv1":"CWE-918","cors_wildcard":"CWE-942",
+    "csp_wildcard":"CWE-1021","cookie_insecure":"CWE-1004","xff_trust":"CWE-348",
+}
+def is_log_material(material: str) -> bool:
+    """Эвристика: материал — лог, если начинается с timestamp."""
+    return material.lstrip().startswith(("2026-","2025-","2024-"))
+
+def scan_log(material: str) -> list:
+    """Сканирует лог LOG_PATTERNS, возвращает findings."""
+    findings = []
+    for name, pat in LOG_PATTERNS.items():
+        for m in pat.finditer(material):
+            findings.append({
+                "type": name,
+                "cwe": LOG_CWE_MAP.get(name),
+                "match": m.group(0)[:80],
+                "line": material[:m.start()].count("\n")+1,
+            })
+    return findings
+# === /LOG_PATTERNS ===
+
 
 # ============ IaC patterns (FI > 0.25) ============
 TF_PATTERNS = {
@@ -23,6 +74,8 @@ K8S_PATTERNS = {
 
 
 def detect_language(filename: str, code: str = "") -> str:
+    if ext in ("log", "txt"): return "log"
+
     """Detect language by filename extension + content heuristics."""
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     if ext in ("py", "pyw"): return "python"

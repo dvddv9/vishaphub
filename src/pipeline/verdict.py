@@ -131,6 +131,13 @@ def compute_critique_verdict(context_thread: dict | None,
 
     ct = context_thread or {}
     evidence = ct.get("evidence") or {}
+    # Логи: reproducer не применим (patch-logs)
+    if stripped.startswith(("2026-", "2025-", "2024-")):
+        return {
+            "reproducer": None,
+            "reproducer_verified": False,
+            "reproducer_note": "not provided (log: use log analysis / DLP scan)",
+        }
     python_run = bool(evidence.get("python_run"))
     if not python_run:
         return "NEEDS_VERIFICATION"
@@ -187,6 +194,13 @@ def compute_fidelity_index(context_thread: dict | None,
     """
     ct = context_thread or {}
     evidence = ct.get("evidence") or {}
+    # Логи: reproducer не применим (patch-logs)
+    if stripped.startswith(("2026-", "2025-", "2024-")):
+        return {
+            "reproducer": None,
+            "reproducer_verified": False,
+            "reproducer_note": "not provided (log: use log analysis / DLP scan)",
+        }
     python_run = bool(evidence.get("python_run"))
 
     findings = list(ct.get("cwe_found") or [])
@@ -237,6 +251,13 @@ def compute_bias_check(context_thread: dict | None,
     """
     ct = context_thread or {}
     evidence = ct.get("evidence") or {}
+    # Логи: reproducer не применим (patch-logs)
+    if stripped.startswith(("2026-", "2025-", "2024-")):
+        return {
+            "reproducer": None,
+            "reproducer_verified": False,
+            "reproducer_note": "not provided (log: use log analysis / DLP scan)",
+        }
     python_run = bool(evidence.get("python_run"))
     if not python_run:
         return {"bias_check": "not computed (no Python)", "flags": []}
@@ -314,6 +335,13 @@ def compute_reproducer(context_thread: dict | None,
         except Exception:
             pass
 
+    # Логи: reproducer не применим (patch-logs)
+    if stripped.startswith(("2026-", "2025-", "2024-")):
+        return {
+            "reproducer": None,
+            "reproducer_verified": False,
+            "reproducer_note": "not provided (log: use log analysis / DLP scan)",
+        }
     python_run = bool(evidence.get("python_run"))
     if not python_run:
         return {
@@ -325,5 +353,5 @@ def compute_reproducer(context_thread: dict | None,
     return {
         "reproducer": None,
         "reproducer_verified": False,
-        "reproducer_note": "not provided (no queue_demo fixture)",
+        "reproducer_note": "not provided (log: use log analysis / DLP scan)",
     }
