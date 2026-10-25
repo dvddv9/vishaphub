@@ -61,6 +61,11 @@ log = get_logger(__name__)
 setup_tracing()
 
 
+# Fail-closed: без CONVEYOR_API_KEY — не стартуем (кроме тестов)
+import os as _os
+if not _os.getenv("CONVEYOR_API_KEY") and _os.getenv("VISHAP_ALLOW_NO_KEY") != "1":
+    raise RuntimeError("CONVEYOR_API_KEY is required (fail-closed). Set it in .env or use VISHAP_ALLOW_NO_KEY=1 for tests.")
+
 app = FastAPI(
     title=f"{APP_NAME} API",
     description="Vishap — 6-стадийный LLM-конвейер для анализа материалов",
@@ -140,6 +145,7 @@ class AnalyzeRequest(BaseModel):
 class AnalyzeResponse(BaseModel):
     session_id: str
     filename: str
+    version: str = __version__
     level: str | None = None
     route: list | None = None
     final_markdown: str
@@ -211,6 +217,13 @@ class InvoiceRequest(BaseModel):
 
 
 # === Endpoints ===
+
+@app.get("/version")
+async def get_version():
+    """Return current Vishap version."""
+    from src.version import __version__
+    return {"version": __version__}
+
 
 @app.get("/")
 async def root():
@@ -354,6 +367,7 @@ async def analyze(req: AnalyzeRequest, x_llm_api_key: str | None = Header(None, 
             return AnalyzeResponse(
                 session_id=cached.get("session_id", cached_session),
                 filename=cached.get("filename", req.filename),
+                version=cached.get("version", __version__),
                 level=stage0c.get("level"),
                 route=stage0c.get("route"),
                 final_markdown=cached.get("final_markdown", ""),
@@ -405,6 +419,7 @@ async def analyze(req: AnalyzeRequest, x_llm_api_key: str | None = Header(None, 
     return AnalyzeResponse(
         session_id=result["session_id"],
         filename=result["filename"],
+        version=__version__,
         level=stage0.get("level"),
         route=stage0.get("route"),
         final_markdown=result["final_markdown"],

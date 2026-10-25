@@ -1,3 +1,4 @@
+import uuid
 # -*- coding: utf-8 -*-
 """
 Vishap V6.0.1 — главный pipeline.
@@ -467,7 +468,7 @@ def run_pipeline(material: str, filename: str, verbose: bool = True, api_key: st
     truncated = False
     llm_error = ""
     original_size = len(material)
-    session_id = f"sess-{datetime.now(UTC).strftime('%Y-%m-%d-%H%M%S')}{session_suffix}"
+    session_id = f"sess-{datetime.now(UTC).strftime('%Y-%m-%d-%H%M%S')}-{uuid.uuid4().hex[:8]}{session_suffix}"
     _pipeline_start = time.time()
     material_hash_full = compute_hash(material, context=f"{filename}:{session_id}")
     if original_size > MAX_CHARS:
@@ -972,7 +973,7 @@ async def run_pipeline_async(material: str, filename: str, verbose: bool = False
     """Async pipeline."""
     truncated = False
     original_size = len(material)
-    session_id = f"sess-{datetime.now(UTC).strftime('%Y-%m-%d-%H%M%S')}{session_suffix}"
+    session_id = f"sess-{datetime.now(UTC).strftime('%Y-%m-%d-%H%M%S')}-{uuid.uuid4().hex[:8]}{session_suffix}"
     material_hash_full = compute_hash(material, context=f"{filename}:{session_id}")
     # v7.2: #1 context_thread (async)
     context_thread = {

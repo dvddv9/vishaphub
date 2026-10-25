@@ -1,3 +1,4 @@
+import hmac
 # -*- coding: utf-8 -*-
 """API-key authentication (dogfood P0 fix).
 
@@ -47,7 +48,7 @@ async def verify_api_key(x_api_key: str = Header(default="")) -> None:
        127.0.0.1;
     4. otherwise reject.
     """
-    if x_api_key and API_KEY and x_api_key == API_KEY:
+    if x_api_key and API_KEY and hmac.compare_digest(x_api_key, API_KEY):
         return
 
     if _tenant_keys_enabled():
@@ -58,7 +59,7 @@ async def verify_api_key(x_api_key: str = Header(default="")) -> None:
         return
 
     if not API_KEY:
-        return
+        raise RuntimeError("CONVEYOR_API_KEY/API_KEY is required (fail-closed)")
 
     if not x_api_key:
         raise HTTPException(
