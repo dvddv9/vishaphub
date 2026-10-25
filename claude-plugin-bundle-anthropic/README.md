@@ -7,6 +7,12 @@ Security analysis for engineering materials (code, spec, logs, config) via Claud
 Detects SQL injection (CWE-89), XSS (CWE-79), RCE (CWE-78), TOCTOU (CWE-367), path traversal (CWE-22), command injection (CWE-78).
 Returns a structured Markdown report with CWE, STRIDE threat model, and recommendations.
 
+## Install
+
+```bash
+pip install -r requirements.txt
+```
+
 ## Usage
 
 1. Install the plugin in Claude Desktop.
