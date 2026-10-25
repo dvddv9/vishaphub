@@ -60,3 +60,9 @@ Output: High — `../etc/passwd` reads arbitrary files. Fix: `os.path.realpath` 
 ## License
 
 AGPL-3.0-or-later. See [LICENSE](LICENSE).
+
+## Install
+
+```bash
+/plugin install vishap-security-bundle --marketplace dvddv9/vishap
+```
