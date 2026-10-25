@@ -25,10 +25,10 @@
 
 ## 🎉 What's new in v7.3.17
 
-- **Anthropic (Claude) provider** — `anthropic` в dropdown LLM Settings + auto-fill (`https://api.anthropic.com/v1/`, `claude-sonnet-4-20250514`). Ключ: `sk-ant-api03-...` из console.anthropic.com/settings/keys.
-- **Android (Gemini) provider** — `android` в dropdown + auto-fill (`https://generativelanguage.googleapis.com/v1beta/openai/`, `gemini-2.0-flash`). Ключ: `AIza...` из aistudio.google.com/apikey.
-- **Runtime config из `settings.json`** — `custom_client.py` читает `CUSTOM_LLM_*` из `settings.json` (runtime) поверх `.env` (defaults). Изменения в UI применяются «на лету».
-- **Fix `NameError: _cfg`** — `_cfg` определена на уровне модуля (фикс `5ecbed3`).
+- **Anthropic (Claude) provider** — `anthropic` in the LLM Settings dropdown + auto-fill (`https://api.anthropic.com/v1/`, `claude-sonnet-4-20250514`). Key: `sk-ant-api03-...` from console.anthropic.com/settings/keys.
+- **Android (Gemini) provider** — `android` in the dropdown + auto-fill (`https://generativelanguage.googleapis.com/v1beta/openai/`, `gemini-2.0-flash`). Key: `AIza...` from aistudio.google.com/apikey.
+- **Runtime config from `settings.json`** — `custom_client.py` reads `CUSTOM_LLM_*` from `settings.json` (runtime) over `.env` (defaults). UI changes apply on the fly.
+- **Fix `NameError: _cfg`** — `_cfg` defined at module level (fix `5ecbed3`).
 
 - **reasoning_content fallback** — `custom_client.py` falls back to `message.reasoning_content` when `content` is empty (DeepSeek flash / V4).
 - **Truncated JSON recovery** — `parse_json_response` recovers JSON truncated at `max_tokens` (closes unclosed `{` / `[`, cuts at last valid object).
