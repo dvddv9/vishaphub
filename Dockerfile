@@ -17,6 +17,8 @@ RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 COPY pyproject.toml README.md LICENSE ./
 COPY src/ ./src/
 COPY vishap/ ./vishap/
+COPY alembic.ini ./
+COPY alembic/ ./alembic/
 RUN pip install --no-cache-dir --no-deps --prefix=/install .
 
 # ---------- runtime ----------
