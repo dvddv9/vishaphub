@@ -36,6 +36,10 @@ export default function UploadForm({ onSubmitted }: { onSubmitted: (jobId: strin
   const [filename, setFilename] = useState("pasted.txt");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [llmKey, setLlmKey] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("llmApiKey") ?? "";
+  });
 
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -78,7 +82,7 @@ export default function UploadForm({ onSubmitted }: { onSubmitted: (jobId: strin
 
     try {
       const safeName = filename.trim() || "pasted.txt";
-      const created = await submitAnalysis(material, safeName);
+      const created = await submitAnalysis(material, safeName, llmKey || undefined);
       rememberJob({
         job_id: created.job_id,
         status: created.status,

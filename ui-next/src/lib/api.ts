@@ -73,7 +73,7 @@ async function apiViaTauri<T>(path: string, options: RequestInit): Promise<T> {
 }
 
 /** Thin fetch wrapper: JSON in/out, `X-API-Key`, readable errors. */
-export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+export async function apiFetch<T>(path: string, options: RequestInit & { llmApiKey?: string } = {}): Promise<T> {
   const headers = new Headers(options.headers);
   headers.set("Accept", "application/json");
   if (options.body && !headers.has("Content-Type")) {
@@ -81,6 +81,11 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   }
   if (API_KEY) {
     headers.set("X-API-Key", API_KEY);
+  if ((options as { llmApiKey?: string }).llmApiKey) {
+    headers.set("X-LLM-Api-Key", (options as { llmApiKey?: string }).llmApiKey!);
+  }
+  if ((options as { llmApiKey?: string }).llmApiKey) {
+  }
   }
 
   const canUseTauri =
@@ -127,9 +132,10 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   return body as T;
 }
 
-export function submitAnalysis(material: string, filename: string): Promise<AnalyzeResponse> {
+export function submitAnalysis(material: string, filename: string, llmApiKey?: string): Promise<AnalyzeResponse> {
   return apiFetch<AnalyzeResponse>("/analyze/async", {
     method: "POST",
+    llmApiKey,
     body: JSON.stringify({ material, filename })});
 }
 
@@ -218,9 +224,6 @@ export function rememberJob(job: Job): void {
 export function forgetJob(jobId: string): void {
   saveLocalJobs(listLocalJobs().filter((item) => item.job_id !== jobId));
 }
-
-
-
 
 
 
