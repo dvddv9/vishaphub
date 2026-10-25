@@ -289,7 +289,7 @@ def compute_reproducer(context_thread: dict | None,
     evidence = ct.get("evidence") or {}
 
     # Python fallback: если material выглядит как Python — генерируем python -c
-    if material and ("def " in material or "import " in material or "class " in material):
+    if material and ("def " in material or "import " in material or "class " in material) and not material.lstrip().startswith(("resource ", "provider ", "apiVersion:")):
         try:
             _esc = material.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n")
             return {

@@ -327,3 +327,17 @@ DO NOT mention ASan / valgrind / clang for Python. Use bandit / ruff / sqlfluff 
 DO NOT mention ile:// for axios in Node. axios does not read ile://.
 Real SSRF vectors: 169.254.169.254 (AWS metadata), 127.0.0.1 (internal services),
 redirects (302 Location), DNS rebinding.
+## IMPORTANT — IaC specifics
+
+IMDSv1 does NOT leak cloud credentials unless iam_instance_profile is set.
+If no role attached: IMDSv1 leaks user_data via http://169.254.169.254/latest/user-data.
+
+DO NOT claim "nothing blocks apply" for Terraform without checking:
+- fake AMI IDs (mi-12345678) → plan fails
+- cl on ws_s3_bucket → removed in provider v5 → validate fails
+
+For S3 cl = "public-read": this grants anonymous ListBucket (object names), not object data.
+
+For RDS publicly_accessible = true without pc_security_group_ids: default SG has no
+0.0.0.0/0 ingress on 5432. Public IP assigned, port closed. Risk becomes active only
+when an open SG is attached.
