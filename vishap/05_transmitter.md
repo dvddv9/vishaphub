@@ -322,3 +322,8 @@ DO NOT give effort estimates unless they are computed from material.
 Write "estimate: NOT SET" instead of "0.5–1 day" or "1–2 days".
 
 DO NOT mention ASan / valgrind / clang for Python. Use bandit / ruff / sqlfluff / semgrep.
+## IMPORTANT — SSRF specifics
+
+DO NOT mention ile:// for axios in Node. axios does not read ile://.
+Real SSRF vectors: 169.254.169.254 (AWS metadata), 127.0.0.1 (internal services),
+redirects (302 Location), DNS rebinding.

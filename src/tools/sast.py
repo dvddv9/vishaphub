@@ -182,3 +182,11 @@ def run_sast(file_path: str, language: str = "") -> dict:
     result["total_findings"] = total
     result["high_priority"] = high
     return result
+
+JS_PATTERNS = {
+    "rce_exec": re.compile(r"exec\s*\(|execSync\s*\(|child_process"),
+    "jwt_none": re.compile(r"algorithms\s*:\s*\[.*['\"]none['\"]"),
+    "ssrf_axios": re.compile(r"axios\.(get|post|request)\s*\(\s*(req|url|query)"),
+    "xss_innerHTML": re.compile(r"\.innerHTML\s*=|res\.send\s*\(.*\$\{"),
+    "proto_pollution": re.compile(r"merge\s*\(|__proto__|constructor\s*\["),
+}

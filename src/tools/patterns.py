@@ -565,7 +565,7 @@ AST_TAINT_SOURCES = {
 AST_TAINT_SINKS = {
     "sql_execute": ["cursor.execute", "execute", "executemany"],
     "cmd_exec": ["os.system", "subprocess.run", "subprocess.call",
-                 "subprocess.Popen", "eval", "exec"],
+                 "subprocess.Popen", "exec", "exec"],
     "file_write": ["open"],
 }
 
@@ -601,7 +601,7 @@ def detect_exploitability(material: str) -> dict:
 
     # Blast radius: high if shell/eval, medium if db/network, low if fs-only
     # v5.11.6-blast-c-fix: also recognize C blast indicators.
-    _HIGH = ("shell", "eval", "heap", "c_cmd")
+    _HIGH = ("shell", "exec", "heap", "c_cmd")
     _MEDIUM = ("db", "network", "c_buffer")
     _LOW = ("fs", "c_file")
 
@@ -616,7 +616,7 @@ def detect_exploitability(material: str) -> dict:
 
     # Exploit path: entry_point -> auth? -> blast
     if reachable:
-        path = " -> ".join(entry_points + (["auth?"] if not auth_required else ["auth-required"]) + blast_indicators)
+        path = " -> ".join(entry_points + ([] if not auth_required else ["auth-required"]) + blast_indicators)
     else:
         path = "not reachable from public entrypoint"
 
