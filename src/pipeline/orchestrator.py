@@ -161,8 +161,6 @@ def detect_material_complete(material: str, final_markdown: str = "") -> bool:
 def compute_hash(material: str, context: str = "") -> str:
     """Compute SHA-256 hash of material."""
     payload = material
-    if context:
-        payload = f"{context}\n---\n{material}"
     h = hashlib.sha256(payload.encode("utf-8", errors="replace"))
     return f"sha256:{h.hexdigest()}"
 
