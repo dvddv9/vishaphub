@@ -1,10 +1,33 @@
 # -*- coding: utf-8 -*-
 import re
 
+# ============ IaC patterns (FI > 0.25) ============
+TF_PATTERNS = {
+    "public_s3": re.compile(r"acl\s*=\s*['\"]public-read['\"]"),
+    "open_sg": re.compile(r"cidr_blocks\s*=\s*\[['\"]0\.0\.0\.0/0['\"]\]"),
+    "hardcoded_password": re.compile(r"password\s*=\s*['\"][^'\"]+['\"]"),
+    "public_rds": re.compile(r"publicly_accessible\s*=\s*true"),
+    "admin_iam": re.compile(r"Action\s*=\s*['\"]\*['\"]"),
+    "curl_bash": re.compile(r"curl\s+.*\|\s*bash"),
+    "imdsv1": re.compile(r"http_tokens\s*=\s*['\"]optional['\"]"),
+}
+
+K8S_PATTERNS = {
+    "privileged": re.compile(r"privileged:\s*true"),
+    "run_as_root": re.compile(r"runAsUser:\s*0"),
+    "docker_sock": re.compile(r"/var/run/docker\.sock"),
+    "host_path_root": re.compile(r"hostPath:\s*\n\s*path:\s*/"),
+    "cluster_admin": re.compile(r"cluster-admin"),
+    "latest_tag": re.compile(r"image:\s*.*:latest"),
+}
+
+
 def detect_language(filename: str, code: str = "") -> str:
     """Detect language by filename extension + content heuristics."""
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     if ext in ("py", "pyw"): return "python"
+    if ext in ("tf", "tfvars"): return "terraform"
+    if ext in ("yaml", "yml"): return "yaml"
     if ext == "java": return "java"
     if ext in ("c", "h"): return "c"
     if ext in ("js", "jsx", "mjs", "cjs", "ts", "tsx"): return "javascript"
@@ -130,63 +153,34 @@ def run_semgrep(file_path: str, timeout: int = 60) -> dict:
 
 
 def run_sast(file_path: str, language: str = "") -> dict:
-    if not language:
-        try:
-            with open(file_path, encoding="utf-8", errors="replace") as _f:
-                _code = _f.read()
-            language = detect_language(file_path, _code)
-        except Exception:
-            pass
     """Static SAST. Auto-detect language if not given."""
-    if not language:
-        try:
-            with open(file_path, encoding="utf-8", errors="replace") as _f:
-                _code = _f.read()
-            language = detect_language(file_path, _code)
-        except Exception:
-            pass
-    """Static SAST scan. Language auto-detected if not given."""
     try:
         with open(file_path, encoding="utf-8", errors="replace") as _f:
             _code = _f.read()
     except Exception:
         _code = ""
+
     if not language:
         language = detect_language(file_path, _code)
-    # ... остальное тело функции
-    """Run all available SAST tools for given file.
 
-    Returns combined dict:
-    {
-        "bandit": {...},
-        "semgrep": {...},
-        "total_findings": int,
-        "high_priority": int,
-    }
-    """
-    result = {"bandit": None, "semgrep": None}
+    findings = []
 
-    if language == "python":
-        result["bandit"] = run_bandit(file_path)
+    if language == "terraform":
+        for name, pat in TF_PATTERNS.items():
+            for m in pat.finditer(_code):
+                findings.append({"pattern": name, "line": _code[:m.start()].count("\n") + 1, "match": m.group()[:80]})
+    elif language == "yaml":
+        for name, pat in K8S_PATTERNS.items():
+            for m in pat.finditer(_code):
+                findings.append({"pattern": name, "line": _code[:m.start()].count("\n") + 1, "match": m.group()[:80]})
+    elif language == "python":
+        for name, pat in CRITICAL_RISK_PATTERNS.items():
+            for m in pat.finditer(_code):
+                findings.append({"pattern": name, "line": _code[:m.start()].count("\n") + 1, "match": m.group()[:80]})
+    elif language == "javascript":
+        for name, pat in JS_PATTERNS.items():
+            for m in pat.finditer(_code):
+                findings.append({"pattern": name, "line": _code[:m.start()].count("\n") + 1, "match": m.group()[:80]})
 
-    result["semgrep"] = run_semgrep(file_path)
+    return {"language": language, "findings": findings, "count": len(findings)}
 
-    total = 0
-    high = 0
-    for tool in ("bandit", "semgrep"):
-        t = result.get(tool)
-        if t and t.get("available"):
-            total += t.get("summary", {}).get("total", 0)
-            high += t.get("summary", {}).get("high", 0)
-
-    result["total_findings"] = total
-    result["high_priority"] = high
-    return result
-
-JS_PATTERNS = {
-    "rce_exec": re.compile(r"exec\s*\(|execSync\s*\(|child_process"),
-    "jwt_none": re.compile(r"algorithms\s*:\s*\[.*['\"]none['\"]"),
-    "ssrf_axios": re.compile(r"axios\.(get|post|request)\s*\(\s*(req|url|query)"),
-    "xss_innerHTML": re.compile(r"\.innerHTML\s*=|res\.send\s*\(.*\$\{"),
-    "proto_pollution": re.compile(r"merge\s*\(|__proto__|constructor\s*\["),
-}
