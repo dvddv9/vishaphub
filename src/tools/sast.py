@@ -1,4 +1,18 @@
 # -*- coding: utf-8 -*-
+import re
+
+def detect_language(filename: str, code: str = "") -> str:
+    """Detect language by filename extension + content heuristics."""
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext in ("py", "pyw"): return "python"
+    if ext == "java": return "java"
+    if ext in ("c", "h"): return "c"
+    if ext in ("js", "jsx", "mjs", "cjs", "ts", "tsx"): return "javascript"
+    if re.search(r"^\s*(def|import|from|class)\s+", code, re.M): return "python"
+    if re.search(r"\bpublic\s+(class|interface)\b", code): return "java"
+    if re.search(r"#include\s*<", code): return "c"
+    return "unknown"
+
 """SAST integration — deterministic static analysis.
 
 Dogfood P1 fix: LLM may miss issues. SAST is deterministic.
@@ -115,7 +129,24 @@ def run_semgrep(file_path: str, timeout: int = 60) -> dict:
     return {"tool": "semgrep", "available": True, "findings": findings, "summary": summary}
 
 
-def run_sast(file_path: str, language: str = "python") -> dict:
+def run_sast(file_path: str, language: str = "") -> dict:
+    """Static SAST. Auto-detect language if not given."""
+    if not language:
+        try:
+            with open(file_path, encoding="utf-8", errors="replace") as _f:
+                _code = _f.read()
+            language = detect_language(file_path, _code)
+        except Exception:
+            pass
+    """Static SAST scan. Language auto-detected if not given."""
+    try:
+        with open(file_path, encoding="utf-8", errors="replace") as _f:
+            _code = _f.read()
+    except Exception:
+        _code = ""
+    if not language:
+        language = detect_language(file_path, _code)
+    # ... остальное тело функции
     """Run all available SAST tools for given file.
 
     Returns combined dict:
