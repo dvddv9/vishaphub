@@ -8,6 +8,7 @@ same error contract.
 import asyncio
 
 from src.llm._observe import observe_llm_result
+from src.llm._scrub import scrub
 
 
 async def async_chat(system: str, user: str,
@@ -37,7 +38,7 @@ async def async_chat(system: str, user: str,
         return observe_llm_result(result)
     except Exception as e:
         return observe_llm_result({
-            "text": f"[LLM error] custom provider failed ({e})",
+            "text": f"[LLM error] custom provider failed ({scrub(e, user_key)})",
             "tokens_in": 0, "tokens_out": 0,
             "model": "none", "mode": "error",
         }, status="error")

@@ -387,3 +387,26 @@ def test_output_cap_parser():
     assert _parse_output_cap("the valid range of max_tokens is [1, 8192]") == 8192
     assert _parse_output_cap("max_tokens must be at most 4096") == 4096
     assert _parse_output_cap("something unrelated") is None
+
+
+# --- keys never leak into error text ---------------------------------------------
+def test_scrub_removes_the_key_and_key_shaped_strings():
+    from src.llm._scrub import scrub
+    key = "sk-ant-usr-abcdefghijklmnopqrstuvwxyz0123456789"
+    out = scrub(f"401 Incorrect API key provided: {key}; Bearer abcdefghijklmnopqrstu", key)
+    assert key not in out and "abcdefghijklmnopqrstu" not in out and "[key hidden]" in out
+    assert scrub("plain error", "k") == "plain error"          # too short to treat as a secret
+
+
+def test_provider_error_that_echoes_the_key_is_scrubbed(monkeypatch):
+    from src.llm import custom_client
+    key = "gsk_SECRETSECRETSECRET1234"
+    body = '{"error":{"message":"Invalid API Key: %s"}}' % key
+    monkeypatch.setattr(custom_client.requests, "post", lambda *a, **k: _fake_response(401, body))
+    c = custom_client.CustomClient(base_url="https://q.invalid/v1", api_key=key, model="m")
+    try:
+        c.chat("u", "s")
+    except custom_client.CustomError as e:
+        assert key not in str(e) and "[key hidden]" in str(e)
+    else:
+        raise AssertionError("expected CustomError")

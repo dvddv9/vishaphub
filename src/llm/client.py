@@ -11,6 +11,7 @@ from __future__ import annotations
 from contextvars import ContextVar
 
 from src.llm._observe import observe_llm_result
+from src.llm._scrub import scrub
 
 
 _api_key_var: ContextVar[str | None] = ContextVar("llm_api_key", default=None)
@@ -107,7 +108,7 @@ def _chat_custom(system: str, user: str, temperature: float, max_tokens: int,
         return observe_llm_result(result)
     except Exception as e:
         return observe_llm_result({
-            "text": f"{NO_CUSTOM_TEXT} ({e})",
+            "text": f"{NO_CUSTOM_TEXT} ({scrub(e, api_key)})",
             "tokens_in": 0, "tokens_out": 0,
             "model": "none", "mode": "error",
         }, status="error")

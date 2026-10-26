@@ -38,6 +38,9 @@ def _parse_output_cap(text: str) -> int | None:
     return None
 
 
+from src.llm._scrub import scrub  # noqa: E402  (keeps keys out of error text)
+
+
 _RETRY_STATUS = {429, 500, 502, 503, 529}
 _MAX_RETRIES = int(os.getenv("CUSTOM_LLM_MAX_RETRIES", "2"))
 
@@ -153,9 +156,9 @@ class CustomClient:
                 payload = retry
                 r = _post(payload)
         except requests.RequestException as e:
-            raise CustomError(f"custom request failed: {e}") from e
+            raise CustomError(f"custom request failed: {scrub(e, self.api_key)}") from None
         if r.status_code != 200:
-            raise CustomError(f"custom HTTP {r.status_code}: {r.text[:300]}")
+            raise CustomError(f"custom HTTP {r.status_code}: {scrub(r.text[:300], self.api_key)}")
         data = r.json()
         try:
             msg = data["choices"][0]["message"]
