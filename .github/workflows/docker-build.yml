@@ -27,6 +27,22 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: vishap
+          POSTGRES_PASSWORD: vishap_dev
+          POSTGRES_DB: vishap
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 1s
+          --health-timeout 5s
+          --health-retries 30
+
     steps:
       - uses: actions/checkout@v4
 
@@ -40,12 +56,18 @@ jobs:
 
       - name: Smoke-test the container
         run: |
-          docker run -d --name vishap-ci -e VISHAP_DEV=true -p 5001:5001 vishap-analyzer:ci
+          docker run -d --name vishap-ci \
+            --network host \
+            -e VISHAP_DEV=true \
+            -e DATABASE_URL=postgresql+asyncpg://vishap:vishap_dev@127.0.0.1:5432/vishap \
+            -p 5001:5001 \
+            vishap-analyzer:ci
           for i in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:5001/health; then
               echo "health ok"
               exit 0
             fi
+            echo "attempt $i/30: not ready"
             sleep 2
           done
           docker logs vishap-ci
