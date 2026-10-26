@@ -480,7 +480,7 @@ def test_daily_limit_is_per_ip_and_defaults_to_seven(monkeypatch):
     asyncio.run(rate_limit.rate_limit_daily(b))  # another visitor is unaffected
 
 
-def test_daily_global_ceiling_is_optional(monkeypatch):
+def test_daily_global_ceiling_applies_to_everybody(monkeypatch):
     import asyncio
     monkeypatch.setenv("VISHAP_DAILY_LIMIT_GLOBAL", "2")
     importlib.reload(rate_limit)
@@ -491,3 +491,16 @@ def test_daily_global_ceiling_is_optional(monkeypatch):
         asyncio.run(rate_limit.rate_limit_daily(_request(host="10.0.0.3")))
     monkeypatch.delenv("VISHAP_DAILY_LIMIT_GLOBAL")
     importlib.reload(rate_limit)
+
+
+def test_daily_global_ceiling_defaults_to_thirty(monkeypatch):
+    import asyncio
+    monkeypatch.delenv("VISHAP_DAILY_LIMIT", raising=False)
+    monkeypatch.delenv("VISHAP_DAILY_LIMIT_GLOBAL", raising=False)
+    importlib.reload(rate_limit)
+    rate_limit._DAY_COUNTS.clear()
+    for i in range(30):  # 30 different visitors, one analysis each
+        asyncio.run(rate_limit.rate_limit_daily(_request(host=f"10.1.0.{i}")))
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(rate_limit.rate_limit_daily(_request(host="10.1.1.1")))
+    assert exc.value.status_code == 429

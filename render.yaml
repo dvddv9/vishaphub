@@ -15,8 +15,11 @@ services:
       # capped per IP per day. No X-API-Key and no user LLM key required.
       - key: VISHAP_PUBLIC_DEMO
         value: "1"
+      # 7 analyses per visitor (IP) per day, and 30 per day for everybody together.
       - key: VISHAP_DAILY_LIMIT
         value: "7"
+      - key: VISHAP_DAILY_LIMIT_GLOBAL
+        value: "30"
       - key: VISHAP_SERVER_KEY_ONLY
         value: "1"
       - key: VISHAP_TRUSTED_PROXY_HOPS
