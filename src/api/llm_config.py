@@ -1,10 +1,27 @@
 # src/api/llm_config.py
 import os
-from fastapi import APIRouter, HTTPException
+from urllib.parse import urlparse
+
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+
+from src.api.auth import verify_api_key
 from src.storage.settings import get_settings, update_settings
 
-router = APIRouter(prefix="/llm", tags=["llm"])
+# Every route needs the API key (this router used to be open to anyone).
+router = APIRouter(prefix="/llm", tags=["llm"], dependencies=[Depends(verify_api_key)])
+
+
+def config_locked() -> bool:
+    """True when the operator owns the LLM settings (public / demo deployments).
+
+    Writing the server's LLM URL/key from the web would let any visitor redirect
+    the operator's key to a host of their choosing, so in this mode callers use
+    their own key per request instead (X-LLM-Api-Key + X-LLM-Provider).
+    """
+    from src.llm.client import require_user_key
+    flag = os.getenv("VISHAP_LLM_CONFIG_LOCKED", "").strip().lower() in ("1", "true", "yes", "on")
+    return flag or require_user_key()
 
 
 class LLMConfig(BaseModel):
@@ -16,8 +33,17 @@ class LLMConfig(BaseModel):
 
 @router.get("/config")
 def read_config():
+    if config_locked():
+        return {
+            "locked": True,
+            "provider": "",
+            "custom_url": "",
+            "custom_model": "",
+            "has_custom_key": False,
+        }
     s = get_settings()
     return {
+        "locked": False,
         "provider": s.get("LLM_PROVIDER", os.getenv("LLM_PROVIDER", "custom")),
         "custom_url": s.get("CUSTOM_LLM_URL", os.getenv("CUSTOM_LLM_URL", "")),
         "custom_model": s.get("CUSTOM_LLM_MODEL", os.getenv("CUSTOM_LLM_MODEL", "")),
@@ -27,6 +53,12 @@ def read_config():
 
 @router.post("/config")
 def write_config(cfg: LLMConfig):
+    if config_locked():
+        raise HTTPException(
+            403,
+            "Server LLM settings are managed by the operator. "
+            "Enter your own key and provider in the form instead.",
+        )
     if cfg.provider not in ("custom", "anthropic", "android", "openai", "groq", "ollama", "mistral", "deepseek"):
         raise HTTPException(400, f"Unsupported provider: {cfg.provider}")
     patch = {"LLM_PROVIDER": cfg.provider}
@@ -35,6 +67,8 @@ def write_config(cfg: LLMConfig):
             raise HTTPException(400, "custom_url required for custom/anthropic provider")
         if not cfg.custom_model:
             raise HTTPException(400, "custom_model required for custom/anthropic provider")
+        if urlparse(cfg.custom_url).scheme not in ("http", "https"):
+            raise HTTPException(400, "custom_url must start with http:// or https://")
         patch["CUSTOM_LLM_URL"] = cfg.custom_url
         patch["CUSTOM_LLM_MODEL"] = cfg.custom_model
         if cfg.custom_key:

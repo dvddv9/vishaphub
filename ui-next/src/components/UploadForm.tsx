@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { FileUp, LoaderCircle, Sparkles, TriangleAlert } from "lucide-react";
 import { rememberJob, submitAnalysis, getProviders, type LlmProvider } from "@/lib/api";
+import { LLM_CHANGED, readLlmChoice, writeLlmChoice } from "@/lib/llmChoice";
 
 const ACCEPTED_EXTENSIONS = [".py", ".java", ".c", ".txt", ".md"];
 const ACCEPT_ATTR = ACCEPTED_EXTENSIONS.join(",");
@@ -36,19 +37,10 @@ export default function UploadForm({ onSubmitted }: { onSubmitted: (jobId: strin
   const [filename, setFilename] = useState("pasted.txt");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [llmKey, setLlmKey] = useState<string>(() => {
-    if (typeof window === "undefined") return "";
-    return localStorage.getItem("llmApiKey") ?? "";
-  });
+  const [llmKey, setLlmKey] = useState<string>(() => readLlmChoice().key);
   const [providers, setProviders] = useState<LlmProvider[]>([]);
-  const [llmProvider, setLlmProvider] = useState<string>(() => {
-    if (typeof window === "undefined") return "";
-    return localStorage.getItem("llmProvider") ?? "";
-  });
-  const [llmModel, setLlmModel] = useState<string>(() => {
-    if (typeof window === "undefined") return "";
-    return localStorage.getItem("llmModel") ?? "";
-  });
+  const [llmProvider, setLlmProvider] = useState<string>(() => readLlmChoice().provider);
+  const [llmModel, setLlmModel] = useState<string>(() => readLlmChoice().model);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,14 +56,17 @@ export default function UploadForm({ onSubmitted }: { onSubmitted: (jobId: strin
     };
   }, []);
 
-  function remember(name: string, value: string) {
-    try {
-      if (value) localStorage.setItem(name, value);
-      else localStorage.removeItem(name);
-    } catch {
-      /* storage unavailable: kept in memory only */
+  // The settings panel edits the same browser-side choice; stay in sync with it.
+  useEffect(() => {
+    function sync() {
+      const choice = readLlmChoice();
+      setLlmKey(choice.key);
+      setLlmProvider(choice.provider);
+      setLlmModel(choice.model);
     }
-  }
+    window.addEventListener(LLM_CHANGED, sync);
+    return () => window.removeEventListener(LLM_CHANGED, sync);
+  }, []);
 
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -209,7 +204,7 @@ export default function UploadForm({ onSubmitted }: { onSubmitted: (jobId: strin
                 value={llmProvider}
                 onChange={(event) => {
                   setLlmProvider(event.target.value);
-                  remember("llmProvider", event.target.value);
+                  writeLlmChoice({ provider: event.target.value });
                 }}
                 disabled={submitting}
                 className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 outline-none focus:border-sky-600"
@@ -233,7 +228,7 @@ export default function UploadForm({ onSubmitted }: { onSubmitted: (jobId: strin
                 onChange={(event) => {
                   const value = event.target.value.trim();
                   setLlmModel(value);
-                  remember("llmModel", value);
+                  writeLlmChoice({ model: value });
                 }}
                 disabled={submitting}
                 placeholder={
@@ -255,12 +250,7 @@ export default function UploadForm({ onSubmitted }: { onSubmitted: (jobId: strin
           onChange={(event) => {
             const value = event.target.value.trim();
             setLlmKey(value);
-            try {
-              if (value) localStorage.setItem("llmApiKey", value);
-              else localStorage.removeItem("llmApiKey");
-            } catch {
-              /* storage unavailable: the key lives only in memory */
-            }
+            writeLlmChoice({ key: value });
           }}
           disabled={submitting}
           placeholder="sk-…"

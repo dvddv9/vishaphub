@@ -16,6 +16,12 @@ All notable changes to Vishap. Format based on [Keep a Changelog](https://keepac
 
 - **Choose an LLM provider** (DeepSeek, Anthropic, OpenAI, Groq, OpenRouter) with your own key: `X-LLM-Provider` / `X-LLM-Model` headers, `GET /providers`, a selector in the upload form. The base URL comes only from a server-side allow-list (`src/llm/providers.py`, narrowed with `VISHAP_ALLOWED_PROVIDERS`); a request can never supply a URL. A chosen provider always requires the caller's key, so the operator's key is never sent to another provider.
 
+### Security
+- **`/llm/config` required no authentication** and let anyone rewrite the server's LLM URL/model/key (the operator's key could be redirected to any host). The router now needs the API key; with `VISHAP_REQUIRE_USER_LLM_KEY=1` (or `VISHAP_LLM_CONFIG_LOCKED=1`) `POST /llm/config` answers 403 and `GET` returns `locked: true`. `custom_url` must be http(s).
+
+### Changed
+- The "LLM Provider" panel: on a locked server it stores the visitor's own provider / model / key in the browser (shared with the upload form); on a local/desktop install it still edits the backend settings, now through the authenticated client. Heading was white-on-white; the Anthropic preset uses `claude-sonnet-5-5`.
+
 ### Fixed
 - `/analyze/async` (what the UI calls) ignored `X-LLM-Api-Key`; the key also did not reach worker threads (`run_in_executor`, batch pool). CORS did not allow the `X-LLM-Api-Key` header. `ui-next/src/lib/api.ts` only sent it when `NEXT_PUBLIC_API_KEY` was set; the upload form had no key field.
 

@@ -220,3 +220,28 @@ def test_chosen_provider_and_user_key_reach_the_client(monkeypatch):
         client.set_api_key(None)
         client.set_llm_target(None)
     assert seen == {"url": "https://api.anthropic.com/v1", "key": "user-key", "model": "claude-sonnet-5-5"}
+
+
+# --- /llm/config -------------------------------------------------------------
+def test_llm_config_cannot_be_rewritten_in_user_key_mode(monkeypatch):
+    import os
+    from fastapi.testclient import TestClient
+    from src.main import app
+    monkeypatch.setenv("VISHAP_REQUIRE_USER_LLM_KEY", "1")
+    before = os.environ.get("CUSTOM_LLM_URL")
+    c = TestClient(app)
+    r = c.post("/llm/config", json={
+        "provider": "custom", "custom_url": "https://evil.example/v1",
+        "custom_model": "m", "custom_key": "k",
+    })
+    assert r.status_code in (401, 403), r.text
+    assert os.environ.get("CUSTOM_LLM_URL") == before
+    g = c.get("/llm/config")
+    if g.status_code == 200:
+        assert g.json()["locked"] is True and g.json()["has_custom_key"] is False
+
+
+def test_llm_config_router_requires_the_api_key():
+    from src.api import llm_config
+    deps = [d.dependency.__name__ for d in llm_config.router.dependencies]
+    assert "verify_api_key" in deps
