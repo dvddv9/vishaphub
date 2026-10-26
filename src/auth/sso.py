@@ -14,6 +14,13 @@ from fastapi import HTTPException
 SSO_UNAVAILABLE_DETAIL = "SSO requires Clerk Enterprise plan"
 
 
+def sso_enabled() -> bool:
+    """Whether a real SAML flow is wired up. Flip only together with a real
+    implementation of ``saml_callback`` and ``saml_guard.validate_saml_assertion``.
+    """
+    return False
+
+
 def _not_implemented() -> None:
     raise HTTPException(status_code=501, detail=SSO_UNAVAILABLE_DETAIL)
 

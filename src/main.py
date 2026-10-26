@@ -332,10 +332,13 @@ async def sso_login(tenant: str = Query(..., description="Tenant/org id requesti
 
 @app.post("/auth/sso/callback")
 async def sso_callback(payload: dict):
-    # SEC-6: validate SAML assertion (CWE-347)
+    # SSO not wired up yet: say so (501) instead of pretending to validate.
+    from src.auth.sso import SSO_UNAVAILABLE_DETAIL, sso_enabled
+    if not sso_enabled():
+        raise HTTPException(status_code=501, detail=SSO_UNAVAILABLE_DETAIL)
+    # SEC-6: validate SAML assertion (CWE-347) -- fail-closed
     from src.auth.saml_guard import validate_saml_assertion
     if not validate_saml_assertion(payload):
-        from fastapi import HTTPException
         raise HTTPException(status_code=401, detail="invalid SAML assertion")
     return await saml_callback(payload)
 
