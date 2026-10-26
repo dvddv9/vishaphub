@@ -7,7 +7,7 @@
   "plugins": [
     {
       "name": "vishap-security-bundle",
-      "source": ".",
+      "source": "./claude-plugin-bundle-anthropic",
       "description": "Security analysis for engineering materials (code, spec, logs, config) via the Claude API.",
       "license": "AGPL-3.0-or-later",
       "homepage": "https://github.com/dvddv9/vishap"

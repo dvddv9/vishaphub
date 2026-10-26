@@ -15,10 +15,9 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "scripts" / "analyze.py"
-MANIFEST = ROOT / ".claude-plugin" / "plugin.json"
-PLUGIN_FILES = [SCRIPT, MANIFEST, ROOT / ".claude-plugin" / "marketplace.json", ROOT / "requirements-plugin.txt"]
+BUNDLE = Path(__file__).resolve().parents[1] / "claude-plugin-bundle-anthropic"
+SCRIPT = BUNDLE / "scripts" / "analyze.py"
+MANIFEST = BUNDLE / ".claude-plugin" / "plugin.json"
 KEY_RE = re.compile(r"sk-ant-[A-Za-z0-9_-]{16,}")
 
 
@@ -76,9 +75,10 @@ def test_manifest_requires_user_supplied_secret_key():
     assert not any("ANTHROPIC_API_KEY" in k for k in env)
 
 
-def test_no_key_like_strings_in_plugin_files():
-    for f in PLUGIN_FILES:
-        assert not KEY_RE.search(f.read_text(encoding="utf-8", errors="replace")), f"key-like string in {f}"
+def test_no_key_like_strings_in_bundle():
+    for f in BUNDLE.rglob("*"):
+        if f.is_file() and f.suffix in {".py", ".json", ".md", ".txt"}:
+            assert not KEY_RE.search(f.read_text(encoding="utf-8", errors="replace")), f"key-like string in {f}"
 
 
 def test_server_reads_only_plugin_scoped_env():

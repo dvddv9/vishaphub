@@ -85,31 +85,6 @@ Previous: [v7.3.17](#previous-v7317)
 
 > **Bottom line:** Vishap **complements** SonarQube / Snyk. Run SonarQube for code, Snyk for deps, Vishap for **spec / logs / config + audit trail + runbook**.
 
-## 🔌 Claude plugin
-
-This repository is also a Claude plugin (`vishap-security-bundle`). It adds one read-only tool, `vishap_analyze`, that sends code, specs, logs or config text to the Claude API and returns a structured security report (CWE, STRIDE, fixes).
-
-### Install
-
-```text
-/plugin marketplace add dvddv9/vishap
-/plugin install vishap-security-bundle@vishap
-```
-
-The plugin server needs Python 3.10+ and its own dependencies: `pip install -r requirements-plugin.txt`.
-When prompted, enter **Anthropic API Key** (and optionally the model, default `claude-sonnet-5-5`).
-
-Ask Claude: *Use vishap-analyze to analyze: `db.execute(f"SELECT * FROM users WHERE name = '{name}'")`*
-
-### Privacy
-
-- **What leaves your machine:** the material you submit is sent to the Anthropic API (Claude) for analysis.
-- **Whose key:** **your** Anthropic API key, entered in the plugin settings (`userConfig`) and passed to the server as `VISHAP_API_KEY`. The plugin does not read any credential from your environment and never uses the publisher's key. The key is stored in Claude Code config (sensitive), never in this repository.
-- **What is stored:** no material is stored by the plugin itself. Responses are returned to Claude Code only.
-- **Third parties:** Anthropic API (Claude). No other services.
-- **Retention:** none on the plugin side; Anthropic API retention follows Anthropic policies (see https://www.anthropic.com/legal/privacy).
-- **Background actions:** none. The plugin only runs when you call `vishap_analyze`.
-
 ## 📦 Quick Start
 
 ### Python (pip)
