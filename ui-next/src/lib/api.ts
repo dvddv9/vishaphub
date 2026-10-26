@@ -108,15 +108,31 @@ export async function apiFetch<T>(
   const canUseTauri =
     IS_DESKTOP && typeof window !== "undefined" && Boolean(window.__TAURI__?.core?.invoke);
 
-  let response: Response;
-  try {
-    response = await fetch(`${API_URL}${path}`, { ...options, headers, cache: "no-store" });
-  } catch {
+  // Reads are safe to repeat. The free hosting tier puts the backend to sleep and the
+  // first request(s) fail until it wakes (~1 min), so retry those with a growing pause.
+  const isRead = !options.method || options.method.toUpperCase() === "GET";
+  const pauses = isRead && !canUseTauri ? [1500, 4000, 9000] : [];
+
+  let response: Response | undefined;
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      response = await fetch(`${API_URL}${path}`, { ...options, headers, cache: "no-store" });
+      // a sleeping proxy answers 502/503/504 without CORS headers: treat like a network failure
+      if (![502, 503, 504].includes(response.status) || attempt >= pauses.length) break;
+    } catch {
+      if (attempt >= pauses.length) break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, pauses[attempt]));
+  }
+  if (!response) {
     // On the desktop shell, fall back to the Rust IPC bridge before giving up.
     if (canUseTauri) {
       return await apiViaTauri<T>(path, options);
     }
-    throw new ApiError(`Cannot reach the Vishap API at ${API_URL}. Is the backend running?`, 0);
+    throw new ApiError(
+      `Cannot reach the Vishap API at ${API_URL}. The server may be waking up (free hosting sleeps when idle) — wait a minute and try again.`,
+      0,
+    );
   }
 
   // WebView2 can surface a CORS/PNA block as a `Response` with `status: 0` (or an

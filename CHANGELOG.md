@@ -6,6 +6,15 @@ All notable changes to Vishap. Format based on [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+### Fixed (site usability sweep)
+- Hydration error #418: the upload form no longer reads browser storage during the first render; the navbar fallback no longer renders text that differs from the real navbar.
+- Report/history timestamps are timezone-aware UTC; the UI treats offset-less legacy stamps as UTC, so dates are no longer shifted.
+- Dashboard: a job the server forgot (404 after restart) is marked failed instead of being polled forever.
+- API client retries reads (GET) on network failure / 502-504 with backoff and explains that the free-tier server may be waking up.
+- Reports are cached in the browser, so "View" still works after the backend restarts; the report page stops retrying on 404.
+- Delete button hover colour is readable.
+
+
 ### Added (demo that works for everyone)
 - **Built-in rule engine** (`src/tools/static_scan.py`): ~50 pattern rules with CWE, OWASP category and a fix (SQL/command/code injection, unsafe deserialization, path traversal, XSS sinks, weak crypto, disabled TLS verification, hard-coded secrets, C memory errors, Terraform/Kubernetes/Docker misconfiguration, attack patterns in logs) plus the Python AST taint flow. It scans the submitted **text** (secrets are masked in every snippet), needs no LLM and no external binaries, and feeds the audit, the report and SARIF (`vishap_rules`).
 - **No key, still a result**: with `VISHAP_REQUIRE_USER_LLM_KEY=1` a visitor without a key used to get HTTP 401. Now `/analyze` and `/analyze/async` answer with the rules-only report (`mode: "static"`, `audit.analysis_mode: "static"`); the LLM is never called and the operator's key is never used. `/analyze/batch` still needs a key. `GET /providers` returns `requires_user_key`; the UI labels the option "No key — built-in rules only", the button "Analyze (no LLM)" and the report carries a banner.

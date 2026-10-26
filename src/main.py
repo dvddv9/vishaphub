@@ -254,7 +254,7 @@ async def root():
 async def health():
     return {
         "status": "ok",
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 

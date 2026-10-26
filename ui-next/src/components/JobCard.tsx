@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { CircleCheckBig, CircleX, Clock, LoaderCircle, Trash2, TriangleAlert } from "lucide-react";
 import type { Job, JobStatus } from "@/lib/types";
+import { formatDateTime } from "@/lib/time";
 
 const STATUS_META: Record<
   JobStatus,
@@ -14,13 +15,6 @@ const STATUS_META: Record<
   done: { label: "Done", emoji: "🟢", badge: "badge badge-done", icon: CircleCheckBig },
   failed: { label: "Failed", emoji: "🔴", badge: "badge badge-failed", icon: CircleX },
 };
-
-function formatTimestamp(value?: string | null): string {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
-}
 
 export default function JobCard({
   job,
@@ -61,8 +55,8 @@ export default function JobCard({
           </h3>
         </div>
         <p className="mt-1.5 text-xs text-slate-500">
-          Created {formatTimestamp(job.created_at)}
-          {job.finished_at ? ` · finished ${formatTimestamp(job.finished_at)}` : ""}
+          Created {formatDateTime(job.created_at)}
+          {job.finished_at ? ` · finished ${formatDateTime(job.finished_at)}` : ""}
         </p>
         {job.status === "failed" && job.error ? (
           <p className="mt-1.5 flex items-start gap-1.5 text-xs text-red-600">
@@ -101,7 +95,7 @@ export default function JobCard({
             disabled={deleting}
             title="Delete this job"
             aria-label={`Delete ${job.filename}`}
-            className="rounded-md border border-slate-200 p-1.5 text-slate-500 transition-colors hover:border-red-300 hover:text-red-300 disabled:opacity-50"
+            className="rounded-md border border-slate-200 p-1.5 text-slate-500 transition-colors hover:border-red-300 hover:text-red-700 disabled:opacity-50"
           >
             {deleting ? (
               <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />

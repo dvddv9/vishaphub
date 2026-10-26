@@ -423,8 +423,9 @@ def run_audit(material: str, session_id: str, model: str = "custom",
         stage2_result=stage2_result,
     )
     # v7.2: #8 report_date / valid_until
-    audit["report_date"] = datetime.now().isoformat()
-    audit["valid_until"] = (datetime.now() + timedelta(days=90)).isoformat()
+    # timezone-aware (UTC): a naive timestamp is shown shifted by the viewer's UTC offset
+    audit["report_date"] = datetime.now(UTC).isoformat()
+    audit["valid_until"] = (datetime.now(UTC) + timedelta(days=90)).isoformat()
     audit["report_date_source"] = "system clock"
 
     # v7.2: #3 fidelity_index

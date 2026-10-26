@@ -4,7 +4,7 @@
 """
 import json
 import threading
-from datetime import datetime
+from datetime import UTC, datetime
 
 from src.api.job_store import DEFAULT_TENANT, get_tenant
 from src.config import DATA_DIR
@@ -60,7 +60,7 @@ def add_entry(entry: dict, tenant_id: str | None = None) -> dict:
     with _HISTORY_LOCK:
         history = load_history()
         entry["tenant_id"] = tenant_id or get_tenant() or DEFAULT_TENANT
-        entry["timestamp"] = datetime.now().isoformat()
+        entry["timestamp"] = datetime.now(UTC).isoformat()
         history.append(entry)
         save_history(history)
         return entry

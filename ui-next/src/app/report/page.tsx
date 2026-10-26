@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { ApiError, deleteJob, downloadAudit, forgetJob, getReport } from "@/lib/api";
 import type { Report } from "@/lib/types";
+import { formatDate, formatDateTime } from "@/lib/time";
+import { cacheReport, readCachedReport } from "@/lib/reportCache";
 
 const BUTTON =
   "inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-800 transition-colors hover:border-sky-500 hover:text-sky-700 disabled:cursor-not-allowed disabled:opacity-50";
@@ -31,11 +33,25 @@ function ReportInner() {
 
   const { data: report, error } = useSWR<Report>(
     jobId ? ["report", jobId] : null,
-    () => getReport(jobId),
+    async () => {
+      try {
+        const fresh = await getReport(jobId);
+        cacheReport(jobId, fresh);
+        return fresh;
+      } catch (cause) {
+        // The server forgot the job (restart), but this browser kept a copy of the report.
+        if (cause instanceof ApiError && cause.status === 404) {
+          const saved = readCachedReport(jobId);
+          if (saved) return saved;
+        }
+        throw cause;
+      }
+    },
     {
       // `GET /report/{id}` answers 409 until the job is done — keep retrying.
       refreshInterval: (latest) => (latest ? 0 : 3000),
-      shouldRetryOnError: true,
+      // 409 = still running (keep polling); 404 = gone (stop, it will not come back)
+      shouldRetryOnError: (cause: unknown) => !(cause instanceof ApiError && cause.status === 404),
       errorRetryInterval: 3000,
       revalidateOnFocus: false,
     },
@@ -208,6 +224,15 @@ function ReportInner() {
         </header>
       ) : null}
 
+      {report && report.__fromBrowserCache ? (
+        <p className="mb-6 flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>
+            Saved copy from this browser — the server no longer has this job (it restarted).
+          </span>
+        </p>
+      ) : null}
+
       {report && rulesOnly ? (
         <p className="mb-6 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
@@ -272,10 +297,10 @@ function ReportInner() {
           <div className="rounded-xl border border-slate-200 bg-white p-3">
             <div className="text-xs uppercase tracking-wide text-slate-500">Report date</div>
             <div className="text-xs font-mono text-slate-900">
-              {audit.report_date ? new Date(audit.report_date).toLocaleString() : "n/a"}
+              {audit.report_date ? formatDateTime(audit.report_date) : "n/a"}
             </div>
             <div className="text-xs text-slate-500">
-              valid until {audit.valid_until ? new Date(audit.valid_until).toLocaleDateString() : "n/a"}
+              valid until {audit.valid_until ? formatDate(audit.valid_until) : "n/a"}
             </div>
           </div>
         </section>

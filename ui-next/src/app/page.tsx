@@ -19,6 +19,7 @@ import Hero from "@/components/Hero";
 import FeatureGrid from "@/components/FeatureGrid";
 import EmptyState from "@/components/EmptyState";
 import {
+  ApiError,
   clearHistory,
   deleteJob,
   downloadAudit,
@@ -46,7 +47,16 @@ async function refreshJobs(): Promise<Job[]> {
       if (isTerminal(job.status)) return job;
       try {
         return await getJob(job.job_id);
-      } catch {
+      } catch (cause) {
+        // 404 = the server restarted and forgot this job; it will never finish, so stop polling it
+        if (cause instanceof ApiError && cause.status === 404) {
+          return {
+            ...job,
+            status: "failed" as const,
+            error: "The server restarted and lost this job. Run the analysis again.",
+            finished_at: job.finished_at ?? new Date().toISOString(),
+          };
+        }
         return job;
       }
     }),

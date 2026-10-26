@@ -95,7 +95,7 @@ export default function Navbar() {
   if (IS_DESKTOP) return <NavbarInner auth="local" />;
 
   return (
-    <Suspense fallback={<nav className="p-4">Loading...</nav>}>
+    <Suspense fallback={<nav className="p-4" aria-hidden="true" />}>
       <WebNavbar />
     </Suspense>
   );

@@ -54,10 +54,12 @@ export default function UploadForm({
   const [filename, setFilename] = useState(initial?.filename ?? "pasted.txt");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [llmKey, setLlmKey] = useState<string>(() => readLlmChoice().key);
+  // Browser-only values start empty (same markup as the server render) and are filled in
+  // after mount; reading storage during the first render caused hydration error #418.
+  const [llmKey, setLlmKey] = useState<string>("");
   const [providers, setProviders] = useState<LlmProvider[]>([]);
-  const [llmProvider, setLlmProvider] = useState<string>(() => readLlmChoice().provider);
-  const [llmModel, setLlmModel] = useState<string>(() => readLlmChoice().model);
+  const [llmProvider, setLlmProvider] = useState<string>("");
+  const [llmModel, setLlmModel] = useState<string>("");
   const [requiresUserKey, setRequiresUserKey] = useState(false);
   const rulesOnly = requiresUserKey && !llmKey;
 
@@ -93,6 +95,7 @@ export default function UploadForm({
       setLlmProvider(choice.provider);
       setLlmModel(choice.model);
     }
+    sync();
     window.addEventListener(LLM_CHANGED, sync);
     return () => window.removeEventListener(LLM_CHANGED, sync);
   }, []);
