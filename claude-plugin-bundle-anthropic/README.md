@@ -64,5 +64,6 @@ AGPL-3.0-or-later. See [LICENSE](LICENSE).
 ## Install
 
 ```bash
-/plugin install vishap-security-bundle --marketplace dvddv9/vishap
+/plugin marketplace add dvddv9/vishap
+/plugin install vishap-security-bundle@vishap
 ```

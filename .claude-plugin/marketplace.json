@@ -1,0 +1,16 @@
+{
+  "name": "vishap",
+  "owner": {
+    "name": "dvddv9",
+    "email": "hndav9@yahoo.com"
+  },
+  "plugins": [
+    {
+      "name": "vishap-security-bundle",
+      "source": "./claude-plugin-bundle-anthropic",
+      "description": "Security analysis for engineering materials (code, spec, logs, config) via the Claude API.",
+      "license": "AGPL-3.0-or-later",
+      "homepage": "https://github.com/dvddv9/vishap"
+    }
+  ]
+}
