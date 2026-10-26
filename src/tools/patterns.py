@@ -566,7 +566,7 @@ AST_TAINT_SOURCES = {
 AST_TAINT_SINKS = {
     "sql_execute": ["cursor.execute", "execute", "executemany"],
     "cmd_exec": ["os.system", "subprocess.run", "subprocess.call",
-                 "subprocess.Popen", "exec", "exec"],
+                 "subprocess.Popen", "exec", "eval"],
     "file_write": ["open"],
 }
 
@@ -597,6 +597,29 @@ def detect_exploitability(material: str) -> dict:
             "blast_radius": "high",
             "entry_points": ["terraform apply"],
             "blast_indicators": ["AWS account", "public S3", "public RDS"],
+        }
+
+    # C (regression guard: the v7.4 exploitability rework dropped this branch —
+    # system() is a cmd-injection sink, strcpy-class is a buffer overflow, fopen
+    # a file primitive; main is the entry point).
+    if any(p in stripped for p in ("#include", "int main(", "void main(",
+                                   "system(", "popen(", "strcpy(", "strcat(",
+                                   "sprintf(", "gets(", "fopen(")):
+        blast = "low"
+        entry_points = []
+        if any(p in stripped for p in ("system(", "popen(", "execvp(", "execve(")):
+            blast = "high"
+        elif any(p in stripped for p in ("strcpy(", "strcat(", "sprintf(", "gets(", "memcpy(")):
+            blast = "medium"
+        if "int main(" in stripped or "void main(" in stripped:
+            entry_points.append("c_main")
+        return {
+            "reachable": False,
+            "auth_required": False,
+            "exploit_path": [],
+            "blast_radius": blast,
+            "entry_points": entry_points,
+            "blast_indicators": ["CWE-78", "CWE-121", "CWE-120", "CWE-134"],
         }
 
     # JS/Express

@@ -59,6 +59,10 @@ async def verify_api_key(x_api_key: str = Header(default="")) -> None:
         return
 
     if not API_KEY:
+        # Same documented test switch as the import-time gate in src/main.py:
+        # VISHAP_ALLOW_NO_KEY=1 means "trusted loopback-only test environment".
+        if os.getenv("VISHAP_ALLOW_NO_KEY", "").strip().lower() in _TRUE_VALUES:
+            return
         raise RuntimeError("CONVEYOR_API_KEY/API_KEY is required (fail-closed)")
 
     if not x_api_key:

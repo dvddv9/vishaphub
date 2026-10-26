@@ -17,7 +17,9 @@ WORKFLOW = ROOT / ".github" / "workflows" / "docker-build.yml"
 
 def test_image_runs_the_api_only():
     text = DOCKERFILE.read_text(encoding="utf-8")
-    assert 'CMD ["python", "-m", "src.main"]' in text
+    # The CMD runs migrations first, then the API; pin the API part, not the
+    # exact CMD spelling (which changed when alembic was added).
+    assert "uvicorn src.main:app" in text
     assert "EXPOSE 5001" in text
     assert "8501" not in text, "the Streamlit UI was removed in v7"
     assert "streamlit" not in text.lower()

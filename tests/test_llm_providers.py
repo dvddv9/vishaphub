@@ -35,8 +35,9 @@ def test_env_example_documents_custom_vars():
 
 
 def test_mode_is_custom_only():
-    """v7.3.5: only custom (endpoint) is a valid mode."""
+    """custom stays the default; the provider list is pinned so adding or
+    removing a provider without updating the docs/tests fails loudly."""
     from src.storage.mode import DEFAULT_MODE, VALID_MODES
     assert DEFAULT_MODE == "custom"
-    assert VALID_MODES == ("custom",)
+    assert VALID_MODES == ("custom", "openai", "groq", "ollama", "anthropic", "android")
 
