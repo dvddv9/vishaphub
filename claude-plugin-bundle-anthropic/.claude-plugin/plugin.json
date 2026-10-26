@@ -1,7 +1,7 @@
 {
   "name": "vishap-security-bundle",
   "displayName": "Vishap Claude (Bundle)",
-  "version": "7.4.4",
+  "version": "7.4.5",
   "description": "Security analysis for engineering materials via Claude API (Anthropic SDK).",
   "author": {
     "name": "dvddv9",
@@ -20,13 +20,13 @@
         "${CLAUDE_PLUGIN_ROOT}/scripts/analyze.py"
       ],
       "env": {
-        "ANTHROPIC_API_KEY": "${user_config.ANTHROPIC_API_KEY}",
-        "ANTHROPIC_MODEL": "${user_config.ANTHROPIC_MODEL}"
+        "VISHAP_API_KEY": "${user_config.API_KEY}",
+        "VISHAP_MODEL": "${user_config.ANTHROPIC_MODEL}"
       }
     }
   },
   "userConfig": {
-    "ANTHROPIC_API_KEY": {
+    "API_KEY": {
       "type": "string",
       "title": "Anthropic API Key",
       "description": "sk-ant-... from console.anthropic.com/settings/keys",

@@ -17,7 +17,7 @@ pip install -r requirements.txt
 
 1. Install the plugin in Claude Desktop.
 2. Configure:
-   - **ANTHROPIC_API_KEY** = `sk-ant-...` (from https://console.anthropic.com/settings/keys)
+   - **Anthropic API Key** = `sk-ant-...` (from https://console.anthropic.com/settings/keys)
    - **ANTHROPIC_MODEL** = `claude-sonnet-5-5` (or another model)
 3. Ask Claude:
    > Use vishap-analyze to analyze: `db.execute(f"SELECT * FROM users WHERE name = '{name}'")`
@@ -51,7 +51,7 @@ Output: High — `../etc/passwd` reads arbitrary files. Fix: `os.path.realpath` 
 ## Privacy
 
 - **What leaves your machine:** the material you submit is sent to the Anthropic API (Claude) for analysis.
-- **Whose key:** **your** `ANTHROPIC_API_KEY`, entered via Claude Code settings (`userConfig`). It is stored in Claude Code config (sensitive), never in the plugin repo.
+- **Whose key:** **your** Anthropic API key, entered in the plugin settings (`userConfig`) and passed to the server as `VISHAP_API_KEY`. The plugin does not read any credential from your environment. The key is stored in Claude Code config (sensitive), never in the plugin repo.
 - **What is stored:** no material is stored by the plugin itself. Responses are returned to Claude Code only.
 - **Third parties:** Anthropic API (Claude). No other services.
 - **Retention:** none on the plugin side; Anthropic API retention follows Anthropic policies (see https://www.anthropic.com/legal/privacy).
