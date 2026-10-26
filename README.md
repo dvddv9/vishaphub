@@ -6,7 +6,7 @@
 [![PyPI](https://img.shields.io/pypi/v/vishap-analyzer.svg)](https://pypi.org/project/vishap-analyzer/)
 [![CI](https://github.com/dvddv9/vishap/actions/workflows/ci.yml/badge.svg)](https://github.com/dvddv9/vishap/actions/workflows/ci.yml)
 [![Docs](https://github.com/dvddv9/vishap/actions/workflows/docs.yml/badge.svg)](https://dvddv9.github.io/vishap/)
-[![Version](https://img.shields.io/badge/version-7.4.4-blue)](https://github.com/dvddv9/vishap/releases)
+[![Version](https://img.shields.io/badge/version-7.4.6-blue)](https://github.com/dvddv9/vishap/releases)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
 > 🐉 **Vishap** — 6-stage LLM pipeline for analyzing engineering materials (code, spec, logs, config, data).
@@ -23,7 +23,14 @@
 
 > ⚠️ Free tier: first request may take 30–50 s (cold start).
 
-## 🎉 What's new in v7.4.4
+## 🎉 What's new in v7.4.6
+
+- **Claude plugin (`vishap-security-bundle`)** — credentials are scoped: the plugin uses only the API key you enter in its settings (`VISHAP_API_KEY`), never the publisher's key or an ambient `ANTHROPIC_API_KEY`. Added a 200 KB input limit, an untrusted-data delimiter around the analysed material, a truncation warning and `openWorldHint`. Install with `/plugin marketplace add dvddv9/vishap` and `/plugin install vishap-security-bundle@vishap` (needs `pip install -r claude-plugin-bundle-anthropic/requirements.txt`). Privacy details: [plugin README](claude-plugin-bundle-anthropic/README.md#privacy).
+- **`/analyze` is None-safe again** — a stage that returns `None` no longer causes an HTTP 500 (the guard was reverted by mistake and is restored).
+- **CI** — stale Stripe tests removed, Docker smoke test fixed, UTF-8 BOM stripped from sources.
+- **Repository** — scratch scripts untracked, versions synced (`scripts/check_version.py`), DeepSeek Harness plugin (`dsh-plugin/`) ships with the repo.
+
+### v7.4.4
 
 - **D0 fast path** — empty, trivial or unparseable material is classified D0 and skips the LLM.
 - **`/analyze` is None-safe** — a stage that returns `None` no longer causes an HTTP 500.

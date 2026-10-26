@@ -4,6 +4,36 @@ All notable changes to Vishap. Format based on [Keep a Changelog](https://keepac
 
 ---
 
+## [7.4.6] - 2026-10-26
+
+### Added
+- **Claude plugin `vishap-security-bundle`** (`claude-plugin-bundle-anthropic/`): `vishap_analyze` tool with `title`, `readOnlyHint`, `destructiveHint`, `openWorldHint`; README with Privacy section; `requirements.txt`.
+- Root `.claude-plugin/marketplace.json` — `/plugin marketplace add dvddv9/vishap`, `/plugin install vishap-security-bundle@vishap`.
+- `tests/test_plugin_bundle_key_safety.py` — guard: the plugin never uses the publisher's API key.
+- `dsh-plugin/` — DeepSeek Harness tool ships with the repo.
+
+### Changed
+- Plugin reads only plugin-scoped `VISHAP_API_KEY` / `VISHAP_MODEL` (from user settings); no ambient credentials.
+- Plugin input limit 200 KB; analysed material wrapped in a unique data delimiter; warning when the model output is truncated at `max_tokens`.
+- Versions synced to 7.4.6 (`src/version.py`, `pyproject.toml`, `ui-next`, README badge).
+- README: "What's new" and LLM backend description match the code (OpenAI-compatible endpoint via `CUSTOM_LLM_URL`).
+
+### Fixed
+- `/analyze`: a stage returning `None` no longer raises `AttributeError` (HTTP 500); defaults for `filename` / `timestamp` restored.
+- CI: stale Stripe tests removed, Docker smoke-test env, UTF-8 BOM stripped from `src`.
+
+### Removed
+- Scratch scripts (`_test_*.py`, `fix-plugin.py`, `patch-logs.py`) are no longer tracked.
+
+## [7.4.0 – 7.4.4] - 2026-10-26 … 2026-10-26
+
+Summary (see the git tags v7.4.0 … v7.4.4 for details):
+- **7.4.0** — logs as material (`LOG_PATTERNS`, `scan_log`), drift fixes (CWE-359 / GDPR Art. 32), SECURITY.md update.
+- **7.4.1** — `detect_language` extension-order fix, `run_tests` sync.
+- **7.4.2** — `/version` endpoint, fail-closed startup (`CONVEYOR_API_KEY`), `hmac.compare_digest`, `uuid4` session ids.
+- **7.4.3** — default host `127.0.0.1` (override with `VISHAP_HOST`), version sync.
+- **7.4.4** — D0 fast path (empty / trivial / unparseable material skips the LLM).
+
 ## [7.3.16] - 2026-10-24
 
 ### Added
