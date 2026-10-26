@@ -222,7 +222,8 @@ function ReportInner() {
       ) : null}
 
       {/* v7.2 audit metadata */}
-      {report && audit ? (
+      {/* these cards are computed from the LLM stages; a rules-only report has none */}
+      {report && audit && !rulesOnly ? (
         <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div className="rounded-xl border border-slate-200 bg-white p-3">
             <div className="text-xs uppercase tracking-wide text-slate-500">Fidelity</div>
