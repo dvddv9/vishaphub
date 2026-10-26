@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """Cost tracking for LLM calls (USD per 1M tokens).
 
 Since v7.3.5 every call goes through the custom endpoint (OpenAI-compatible), which does not report

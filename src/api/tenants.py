@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """Tenant lifecycle and manual-billing API keys (v6.5).
 
 Two responsibilities live here:

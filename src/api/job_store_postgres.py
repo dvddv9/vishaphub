@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """PostgreSQL JobStore implementation (v6.1) via SQLAlchemy 2.0 async.
 
 Multi-tenant isolation (v6.3) is delegated to PostgreSQL row-level security:
