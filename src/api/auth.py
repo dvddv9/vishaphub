@@ -65,6 +65,11 @@ async def verify_api_key(x_api_key: str = Header(default="")) -> None:
             return
         raise RuntimeError("CONVEYOR_API_KEY/API_KEY is required (fail-closed)")
 
+    if os.getenv("VISHAP_PUBLIC_DEMO", "").strip().lower() in _TRUE_VALUES:
+        # Open demo: the server's own model pays for the call, so the caller needs
+        # no key. The daily limiter on /analyze is what bounds the spend.
+        return
+
     if not x_api_key:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

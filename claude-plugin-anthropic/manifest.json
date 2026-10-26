@@ -2,7 +2,7 @@
   "manifest_version": "0.2",
   "name": "vishap-claude",
   "display_name": "Vishap Claude (Anthropic API)",
-  "version": "7.3.17",
+  "version": "7.4.8",
   "description": "Security analysis for engineering materials via Claude API (Anthropic SDK).",
   "author": {
     "name": "dvddv9",
@@ -49,9 +49,9 @@
     "ANTHROPIC_MODEL": {
       "type": "string",
       "title": "Anthropic Model",
-      "description": "Model name (e.g. claude-sonnet-4-20250514, claude-3-5-sonnet-20241022)",
+      "description": "Model ID (e.g. claude-sonnet-5-5, claude-opus-5-5, claude-haiku-5-5)",
       "required": true,
-      "default": "claude-sonnet-4-20250514"
+      "default": "claude-sonnet-5-5"
     }
   }
 }

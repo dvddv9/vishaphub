@@ -143,3 +143,5 @@ patch-*.ps1
 /fix-plugin.py
 /patch-logs.py
 
+# withdrawn directory submission; kept locally for a personal MCP setup
+/claude-plugin-bundle-anthropic/
