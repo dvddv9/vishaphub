@@ -138,3 +138,8 @@ bandit.json
 fix-*.ps1
 finish-*.ps1
 patch-*.ps1
+
+# scratch / one-off patch scripts and editor backups
+/_test_*.py
+/fix-plugin.py
+/patch-logs.py
