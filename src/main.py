@@ -1,3 +1,4 @@
+
 # -*- coding: utf-8 -*-
 """
 Vishap — FastAPI приложение.
@@ -269,7 +270,7 @@ async def github_webhook(request: Request):
     _secret = os.getenv("GITHUB_WEBHOOK_SECRET", "")
     _sig = request.headers.get("X-Hub-Signature-256", "")
     if not _secret or not _sig or not verify_webhook_signature(await request.body(), _sig, _secret):
-        from fastapi import Header, HTTPException
+        from fastapi import HTTPException
         raise HTTPException(status_code=401, detail="invalid GitHub signature")
     return await handle_webhook(request)
 
@@ -325,7 +326,7 @@ async def sso_callback(payload: dict):
     # SEC-6: validate SAML assertion (CWE-347)
     from src.auth.saml_guard import validate_saml_assertion
     if not validate_saml_assertion(payload):
-        from fastapi import Header, HTTPException
+        from fastapi import HTTPException
         raise HTTPException(status_code=401, detail="invalid SAML assertion")
     return await saml_callback(payload)
 
@@ -359,11 +360,11 @@ async def analyze(req: AnalyzeRequest, x_llm_api_key: str | None = Header(None, 
         result_file = DATA_DIR / f"result_{cached_session}.json"
         if result_file.exists():
             cached = json.loads(result_file.read_text(encoding="utf-8"))
-            stage0c = cached.get("stage0") or {}
-            stage1c = cached.get("stage1") or {}
-            stage2c = cached.get("stage2") or {}
-            tokens_in_c = sum((s or {}).get("_meta", {}).get("tokens_in", 0) for s in [stage0c, stage1c, stage2c])
-            tokens_out_c = sum((s or {}).get("_meta", {}).get("tokens_out", 0) for s in [stage0c, stage1c, stage2c])
+            stage0c = cached.get("stage0", {})
+            stage1c = cached.get("stage1", {})
+            stage2c = cached.get("stage2", {})
+            tokens_in_c = sum(s.get("_meta", {}).get("tokens_in", 0) for s in [stage0c, stage1c, stage2c])
+            tokens_out_c = sum(s.get("_meta", {}).get("tokens_out", 0) for s in [stage0c, stage1c, stage2c])
             return AnalyzeResponse(
                 session_id=cached.get("session_id", cached_session),
                 filename=cached.get("filename", req.filename),
@@ -398,16 +399,16 @@ async def analyze(req: AnalyzeRequest, x_llm_api_key: str | None = Header(None, 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Pipeline error: {str(e)}")
 
-    stage0 = result.get("stage0") or {}
-    stage1 = result.get("stage1") or {}
-    stage2 = result.get("stage2") or {}
+    stage0 = result.get("stage0", {})
+    stage1 = result.get("stage1", {})
+    stage2 = result.get("stage2", {})
 
     tokens_in = sum(
-        (s or {}).get("_meta", {}).get("tokens_in", 0)
+        s.get("_meta", {}).get("tokens_in", 0)
         for s in [stage0, stage1, stage2]
     )
     tokens_out = sum(
-        (s or {}).get("_meta", {}).get("tokens_out", 0)
+        s.get("_meta", {}).get("tokens_out", 0)
         for s in [stage0, stage1, stage2]
     )
     from src.pipeline.cost import sum_stage_costs
@@ -418,12 +419,12 @@ async def analyze(req: AnalyzeRequest, x_llm_api_key: str | None = Header(None, 
     _audit = result.get("audit", {}) or {}
     return AnalyzeResponse(
         session_id=result["session_id"],
-        filename=result.get("filename", req.filename),
+        filename=result["filename"],
         version=__version__,
         level=stage0.get("level"),
         route=stage0.get("route"),
         final_markdown=result["final_markdown"],
-        timestamp=result.get("timestamp", datetime.now(UTC).isoformat()),
+        timestamp=result["timestamp"],
         tokens_in=tokens_in,
         tokens_out=tokens_out,
         cost_usd=cost_usd,
