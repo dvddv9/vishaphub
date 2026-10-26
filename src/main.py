@@ -29,7 +29,7 @@ from src.observability.tracing import setup_tracing, traced
 from src.pipeline.batch import run_batch
 from src.storage.history import load_history
 from src.api.auth import verify_api_key, is_auth_enabled
-from src.api.rate_limit import rate_limit_analyze, rate_limit_read
+from src.api.rate_limit import rate_limit_analyze, rate_limit_read, rate_limit_daily
 from src.api.jobs import (
     create_job_async, get_job_async, update_job_async, delete_job_async,
 )
@@ -429,7 +429,7 @@ async def llm_providers():
     return {"providers": providers.list_providers(), "requires_user_key": require_user_key()}
 
 
-@app.post("/analyze", response_model=AnalyzeResponse, dependencies=[Depends(verify_api_key), Depends(rate_limit_analyze)])
+@app.post("/analyze", response_model=AnalyzeResponse, dependencies=[Depends(verify_api_key), Depends(rate_limit_analyze), Depends(rate_limit_daily)])
 @traced("analyze")
 async def analyze(req: AnalyzeRequest,
                   x_llm_api_key: str | None = Header(None, alias="X-LLM-Api-Key"),

@@ -75,3 +75,34 @@ async def rate_limit_analyze(request: Request) -> None:
 
 async def rate_limit_read(request: Request) -> None:
     _check("read:" + client_ip(request), LIMIT_READ)
+
+
+# ---------------------------------------------------------------- daily cap --
+# The public demo runs on the server's own model key, so the day cap — not the
+# minute cap — is what bounds the bill. Per client IP, reset by calendar date.
+LIMIT_DAILY = int(os.getenv("VISHAP_DAILY_LIMIT", "30"))
+_DAY_COUNTS: dict[tuple[str, str], int] = {}
+
+
+def _today() -> str:
+    return time.strftime("%Y-%m-%d", time.gmtime())
+
+
+def _check_daily(key: str, limit: int) -> None:
+    today = _today()
+    # Cheap sweep: a day change is the only thing that can invalidate entries.
+    if any(day != today for _k, day in _DAY_COUNTS):
+        for old in [k for k in _DAY_COUNTS if k[1] != today]:
+            del _DAY_COUNTS[old]
+    entry = (key, today)
+    used = _DAY_COUNTS.get(entry, 0)
+    if used >= limit:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Daily limit reached: {limit} analyses per day. Try again tomorrow (UTC).",
+        )
+    _DAY_COUNTS[entry] = used + 1
+
+
+async def rate_limit_daily(request: Request) -> None:
+    _check_daily("daily:" + client_ip(request), LIMIT_DAILY)
