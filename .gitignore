@@ -144,3 +144,4 @@ patch-*.ps1
 /fix-plugin.py
 /patch-logs.py
 
+dsh-plugin/
