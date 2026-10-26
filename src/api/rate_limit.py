@@ -105,4 +105,6 @@ def _check_daily(key: str, limit: int) -> None:
 
 
 async def rate_limit_daily(request: Request) -> None:
-    _check_daily("daily:" + client_ip(request), LIMIT_DAILY)
+    # One shared pot for everybody: the operator pays for every call, so the cap
+    # is global rather than per visitor. The per-IP minute limit still stands.
+    _check_daily("daily:global", LIMIT_DAILY)
