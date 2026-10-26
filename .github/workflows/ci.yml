@@ -70,6 +70,9 @@ jobs:
           TEST_POSTGRES_URL: postgresql+asyncpg://vishap:vishap_dev@localhost:5432/vishap
           VISHAP_DATA_DIR: ${{ github.workspace }}/data
           OTEL_SDK_DISABLED: "true"
+          # src/main.py is fail-closed at import without CONVEYOR_API_KEY;
+          # tests that import the app do not exercise the API-key gate.
+          VISHAP_ALLOW_NO_KEY: "1"
 
       - name: Check syntax (ast.parse)
         run: |
