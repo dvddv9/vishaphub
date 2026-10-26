@@ -19,9 +19,6 @@ services:
         value: "deepseek-chat"
       - key: CUSTOM_LLM_KEY
         sync: false
-      # Only the built-in DeepSeek key is used; callers cannot pick other LLMs.
-      - key: VISHAP_SERVER_KEY_ONLY
-        value: "true"
       - key: VISHAP_DATA_DIR
         value: /tmp/data
       - key: OTEL_SDK_DISABLED
