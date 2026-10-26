@@ -1,74 +1,122 @@
 import Link from "next/link";
-import { Shield, Zap, FileJson, ArrowRight } from "lucide-react";
+import { Shield, Zap, FileJson, ArrowRight, Terminal } from "lucide-react";
+
+const SAMPLE = [
+  "$ vishap analyze handlers/query.py",
+  "  stage 1  ingest        ok",
+  "  stage 2  taint         ok",
+  "  stage 3  dataflow      ok",
+  "  stage 4  risk          CRITICAL  CWE-89  line 42",
+  "  stage 5  verdict       REQUIRES_REVIEW",
+  "  stage 6  report        sarif 2.1.0 · sha256 ✓",
+];
 
 export default function Hero({ canAnalyze }: { canAnalyze: boolean }) {
   return (
-    <section className="relative overflow-hidden">
-      {/* gradient background */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-sky-100 via-transparent to-emerald-100" />
-      <div className="pointer-events-none absolute -top-40 -right-40 h-96 w-96 rounded-full bg-sky-200/50 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-emerald-200/50 blur-3xl" />
+    <section className="relative isolate overflow-hidden bg-slate-950 text-slate-100">
+      {/* grid + glow */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.18]"
+        style={{
+          backgroundImage:
+            "linear-gradient(to right, rgb(148 163 184 / 0.35) 1px, transparent 1px), linear-gradient(to bottom, rgb(148 163 184 / 0.35) 1px, transparent 1px)",
+          backgroundSize: "56px 56px",
+          maskImage: "radial-gradient(ellipse 70% 60% at 50% 0%, black 40%, transparent 100%)",
+        }}
+      />
+      <div className="pointer-events-none absolute -top-32 left-1/2 h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-emerald-500/20 blur-[120px]" />
 
-      <div className="relative mx-auto w-full max-w-6xl px-4 py-16 sm:py-20">
-        <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-xs text-slate-600 shadow-sm backdrop-blur">
-          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-          Six-stage LLM pipeline · deterministic SAST/SCA
-        </div>
+      <div className="relative mx-auto grid w-full max-w-6xl gap-12 px-5 py-20 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:py-28">
+        <div>
+          <p className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.16em] text-emerald-300">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+            deterministic SAST · six-stage LLM
+          </p>
 
-        <h1 className="mt-6 max-w-3xl text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-          Security analysis for{" "}
-          <span className="bg-gradient-to-r from-sky-400 via-cyan-300 to-emerald-400 bg-clip-text text-transparent">
-            engineering materials
-          </span>
-        </h1>
+          <h1 className="mt-7 text-[2.75rem] font-semibold leading-[1.03] tracking-tight sm:text-6xl">
+            Find the bug
+            <br />
+            <span className="text-emerald-400">before</span> it ships.
+          </h1>
 
-        <p className="mt-4 max-w-2xl text-lg text-slate-600">
-          Upload code, specs, logs, configs, or data. Get risks, STRIDE threat model,
-          audit trail with SHA-256 provenance, and SARIF 2.1.0 export — in one report.
-        </p>
+          <p className="mt-6 max-w-xl text-[15px] leading-relaxed text-slate-400">
+            Code, specs, logs, IaC. Pattern rules catch injection before the model
+            speaks, then six stages turn findings into a verdict, a STRIDE model and
+            a SARIF report with SHA-256 provenance.
+          </p>
 
-        <div className="mt-8 flex flex-wrap items-center gap-3">
-          {canAnalyze ? (
-            <>
-              <Link
-                href="/analyze"
-                className="group inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-cyan-500 px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-sky-500/20 transition-all hover:shadow-xl hover:shadow-sky-500/30"
-              >
-                Analyze code
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-              </Link>
-              <Link
-                href="/analyze?example=sqli"
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-400 hover:bg-slate-50"
-              >
-                Try example (SQLi)
-              </Link>
-            </>
-          ) : (
+          <div className="mt-9 flex flex-wrap items-center gap-3">
             <Link
               href="/analyze"
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-cyan-500 px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-sky-500/20"
+              className="group inline-flex items-center gap-2 rounded-lg bg-emerald-400 px-6 py-3 text-sm font-semibold text-slate-950 transition-colors hover:bg-emerald-300"
             >
-              Sign in to analyze
+              {canAnalyze ? "Run an analysis" : "Analyse a file"}
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
             </Link>
-          )}
+            <Link
+              href="/analyze?example=sqli"
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-700 px-6 py-3 text-sm font-medium text-slate-300 transition-colors hover:border-slate-500 hover:text-white"
+            >
+              Load the SQLi example
+            </Link>
+            <span className="font-mono text-[11px] text-slate-500">30 free runs a day · no key needed</span>
+          </div>
+
+          <dl className="mt-12 grid gap-3 sm:grid-cols-3">
+            <Stat icon={<Shield className="h-4 w-4" />} label="SAST / SCA" value="rules first" />
+            <Stat icon={<Zap className="h-4 w-4" />} label="STRIDE" value="per finding" />
+            <Stat icon={<FileJson className="h-4 w-4" />} label="SARIF" value="2.1.0 export" />
+          </dl>
         </div>
 
-        <div className="mt-12 grid gap-4 sm:grid-cols-3">
-          <Bullet icon={<Shield className="h-4 w-4" />} label="Deterministic SAST/SCA" />
-          <Bullet icon={<Zap className="h-4 w-4" />} label="STRIDE threat model" />
-          <Bullet icon={<FileJson className="h-4 w-4" />} label="SARIF 2.1.0 export" />
+        {/* terminal card */}
+        <div className="relative">
+          <div className="absolute -inset-4 rounded-3xl bg-gradient-to-br from-emerald-500/10 to-sky-500/10 blur-2xl" />
+          <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/80 shadow-2xl backdrop-blur">
+            <div className="flex items-center gap-2 border-b border-slate-800 px-4 py-3">
+              <Terminal className="h-3.5 w-3.5 text-slate-500" />
+              <span className="font-mono text-[11px] text-slate-500">vishap · pipeline</span>
+              <span className="ml-auto font-mono text-[10px] text-emerald-400">live</span>
+            </div>
+            <pre className="overflow-x-auto px-4 py-4 font-mono text-[12px] leading-6 text-slate-400">
+              {SAMPLE.map((line) => {
+                const critical = line.includes("CRITICAL");
+                return (
+                  <div key={line} className={critical ? "text-rose-400" : undefined}>
+                    {line}
+                  </div>
+                );
+              })}
+            </pre>
+            <div className="grid grid-cols-3 divide-x divide-slate-800 border-t border-slate-800 text-center">
+              <Cell k="verdict" v="review" />
+              <Cell k="findings" v="2" />
+              <Cell k="audit" v="sha-256" />
+            </div>
+          </div>
         </div>
       </div>
     </section>
   );
 }
 
-function Bullet({ icon, label }: { icon: React.ReactNode; label: string }) {
+function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-700 shadow-sm backdrop-blur">
-      <span className="text-sky-600">{icon}</span>
-      <span>{label}</span>
+    <div className="rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-3">
+      <dt className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-slate-500">
+        <span className="text-emerald-400">{icon}</span>
+        {label}
+      </dt>
+      <dd className="mt-1 text-sm text-slate-200">{value}</dd>
+    </div>
+  );
+}
+
+function Cell({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="px-2 py-3">
+      <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-slate-600">{k}</div>
+      <div className="mt-0.5 text-sm text-slate-300">{v}</div>
     </div>
   );
 }
