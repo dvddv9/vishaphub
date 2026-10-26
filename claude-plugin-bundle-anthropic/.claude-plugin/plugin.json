@@ -1,7 +1,7 @@
 {
   "name": "vishap-security-bundle",
   "displayName": "Vishap Security Analysis",
-  "version": "7.4.9",
+  "version": "7.5.0",
   "description": "Security analysis for code, specs, logs and configs: CWE-tagged findings, STRIDE threat model and fixes, via your own Anthropic API key.",
   "author": {
     "name": "dvddv9",
@@ -24,11 +24,8 @@
   ],
   "mcpServers": {
     "vishap-analyze": {
-      "command": "uv",
+      "command": "python3",
       "args": [
-        "run",
-        "--quiet",
-        "--script",
         "${CLAUDE_PLUGIN_ROOT}/scripts/analyze.py"
       ],
       "env": {

@@ -14,8 +14,8 @@ SQL injection (CWE-89), XSS (CWE-79), command injection / RCE (CWE-78), path tra
 
 ## Requirements
 
-- [`uv`](https://docs.astral.sh/uv/) on your PATH (the server installs its own Python
-  dependencies on first run — nothing to `pip install`).
+- Python 3.10+ available as `python3` on your PATH. The server uses only the standard library:
+  nothing to install.
 - An Anthropic API key from <https://console.anthropic.com/settings/keys>.
 
 ## Install
@@ -48,6 +48,7 @@ limit is flagged in the report.
 - **What leaves your machine:** only the material you pass to `vishap_analyze`, sent to the Anthropic API.
 - **Whose key:** yours — entered in the plugin settings and passed to the server as `VISHAP_API_KEY`. The plugin reads no other credential from your environment and ships no key.
 - **What is stored:** nothing. No files are written; the report is returned to the chat only.
+- **Network:** one HTTPS endpoint, `https://api.anthropic.com/v1/messages`. The URL is fixed in the code.
 - **Third parties:** the Anthropic API only. See <https://www.anthropic.com/legal/privacy>.
 - **Background activity:** none. The server runs only while Claude is open and does nothing until you call the tool.
 - **Safety:** the tool is read-only. Submitted material is treated as data, not instructions.
