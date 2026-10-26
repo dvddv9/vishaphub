@@ -306,6 +306,20 @@ def sanitize_session_id(text: str, real_session_id: str) -> str:
     return text
 
 
+
+def _is_d0(material: str) -> tuple[bool, str]:
+    if not material or not material.strip():
+        return True, 'empty'
+    if len(material.strip()) < 10:
+        return True, 'trivial'
+    try:
+        import ast as _ast
+        if material.lstrip().startswith(('def ', 'import ', 'class ', 'from ')):
+            _ast.parse(material)
+    except SyntaxError:
+        return True, 'parse_error'
+    return False, ''
+
 def run_audit(material: str, session_id: str, model: str = "custom",
               truncated: bool = False, original_size: int = 0,
               material_hash_full: str = None,
@@ -971,6 +985,33 @@ async def run_pipeline_async(material: str, filename: str, verbose: bool = False
                               baseline_path: str = None,
                               save_baseline_path: str = None) -> dict:
     """Async pipeline."""
+    # D0 fast path (v7.4.4) -- async
+    _d0, _d0_reason = _is_d0(material)
+    if _d0:
+        _d0_sid = f"sess-{datetime.now(UTC).strftime('%Y-%m-%d-%H%M%S')}-{uuid.uuid4().hex[:8]}{session_suffix}"
+        return {
+            'session_id': _d0_sid,
+            'final_markdown': f'[ECHO] Material: {_d0_reason} (D0, no LLM)',
+            'audit': {
+                'material_hash': compute_hash(material),
+                'material_hash_full': compute_hash(material),
+                'pii_detected': False,
+                'compliance_flags': [],
+                'compliance_controls': {},
+                'compliance_standards': [],
+                'critique_verdict': 'SAFE',
+                'risk_verdict': 'SAFE',
+                'cwe_ids': [],
+                'owasp_categories': [],
+                'exploitability': {'reachable': False, 'auth_required': False, 'blast_radius': 'none', 'exploit_path': []},
+                'level': 'D0',
+                'd0_reason': _d0_reason,
+                'session_id': _d0_sid,
+            },
+            'stage0': {'level': 'D0', 'reason': _d0_reason},
+            'stage1': None, 'stage2': None, 'stage3': None, 'stage4': None,
+        }
+
     truncated = False
     original_size = len(material)
     session_id = f"sess-{datetime.now(UTC).strftime('%Y-%m-%d-%H%M%S')}-{uuid.uuid4().hex[:8]}{session_suffix}"
