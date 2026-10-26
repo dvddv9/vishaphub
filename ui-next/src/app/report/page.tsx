@@ -117,6 +117,7 @@ function ReportInner() {
     | undefined;
 
   const verdict = report?.audit?.risk_verdict ?? report?.critique_verdict ?? null;
+  const rulesOnly = report?.mode === "static";
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-10">
@@ -207,6 +208,19 @@ function ReportInner() {
         </header>
       ) : null}
 
+      {report && rulesOnly ? (
+        <p className="mb-6 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>
+            Built-in rules only — no LLM was used. Findings below are pattern-based.{" "}
+            <Link href="/analyze" className="font-medium underline">
+              Run again with your own key
+            </Link>{" "}
+            for the full six-stage analysis.
+          </span>
+        </p>
+      ) : null}
+
       {/* v7.2 audit metadata */}
       {report && audit ? (
         <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -225,7 +239,7 @@ function ReportInner() {
               {audit.bias_check?.bias_check ?? "n/a"}
             </div>
             {audit.bias_check?.flags && audit.bias_check.flags.length > 0 ? (
-              <div className="text-xs text-amber-300">{audit.bias_check.flags.join(", ")}</div>
+              <div className="text-xs text-amber-700">{audit.bias_check.flags.join(", ")}</div>
             ) : null}
           </div>
           <div className="rounded-xl border border-slate-200 bg-white p-3">

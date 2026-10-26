@@ -6,6 +6,18 @@ All notable changes to Vishap. Format based on [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+### Added (demo that works for everyone)
+- **Built-in rule engine** (`src/tools/static_scan.py`): ~50 pattern rules with CWE, OWASP category and a fix (SQL/command/code injection, unsafe deserialization, path traversal, XSS sinks, weak crypto, disabled TLS verification, hard-coded secrets, C memory errors, Terraform/Kubernetes/Docker misconfiguration, attack patterns in logs) plus the Python AST taint flow. It scans the submitted **text** (secrets are masked in every snippet), needs no LLM and no external binaries, and feeds the audit, the report and SARIF (`vishap_rules`).
+- **No key, still a result**: with `VISHAP_REQUIRE_USER_LLM_KEY=1` a visitor without a key used to get HTTP 401. Now `/analyze` and `/analyze/async` answer with the rules-only report (`mode: "static"`, `audit.analysis_mode: "static"`); the LLM is never called and the operator's key is never used. `/analyze/batch` still needs a key. `GET /providers` returns `requires_user_key`; the UI labels the option "No key — built-in rules only", the button "Analyze (no LLM)" and the report carries a banner.
+- With a key, the rule-engine findings are appended to the LLM report (and survive an LLM outage instead of leaving an empty "analysis failed" page).
+
+### Fixed (demo cycle)
+- **The "deterministic SAST" step never found anything on the web path**: `run_sast(filename)` opens a file by name on the server, which does not exist for an upload, and the async pipeline did not call it at all.
+- **`/analyze/sarif` crashed** (HTTP 500) since the LLM headers were added: it called `analyze()` without them, so FastAPI's `Header(None)` default object reached `.strip()`. The headers are now passed through and sanitized.
+- **Providers with a smaller output ceiling** (e.g. `deepseek-chat`: 8192, the pipeline asks for 16000) failed with HTTP 400 on the synthesizer stage. The ceiling is parsed from the error, the request is retried and the limit is remembered per endpoint+model.
+- **Rate limits (HTTP 429) and transient 5xx** from a provider are retried with back-off (`Retry-After` honoured, max 20 s, `CUSTOM_LLM_MAX_RETRIES`, default 2).
+- Upload form: accepted types now include JS/TS/Go/PHP/C++/Terraform/YAML/JSON/SQL/shell/logs; the limit is the API's real 200,000 characters (a 2 MB file used to end in an unreadable 422); a provider chosen without a key is explained before submitting; validation errors are shown as text.
+
 ### Removed
 - The Claude plugin (`claude-plugin-bundle-anthropic/`, `.claude-plugin/marketplace.json`, `tests/test_plugin_bundle_key_safety.py`) is no longer part of the repository: the directory submission was withdrawn. The folder stays on disk, untracked, for a local MCP setup.
 

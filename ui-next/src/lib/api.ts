@@ -33,7 +33,19 @@ export class ApiError extends Error {
 function detailFrom(body: unknown, fallback: string): string {
   if (body && typeof body === "object" && "detail" in body) {
     const detail = (body as { detail: unknown }).detail;
-    return typeof detail === "string" ? detail : JSON.stringify(detail);
+    if (typeof detail === "string") return detail;
+    // FastAPI validation errors (422): [{loc: [...], msg: "..."}] -> readable text
+    if (Array.isArray(detail)) {
+      const parts = detail
+        .map((item) =>
+          item && typeof item === "object" && "msg" in item
+            ? String((item as { msg: unknown }).msg)
+            : "",
+        )
+        .filter(Boolean);
+      if (parts.length) return parts.join("; ");
+    }
+    return JSON.stringify(detail);
   }
   return fallback;
 }
@@ -143,10 +155,19 @@ export interface LlmProvider {
   default_model: string;
 }
 
+export interface ProviderList {
+  providers: LlmProvider[];
+  /** True on public demos: the server has no LLM key of its own. Without the
+   *  visitor's key the analysis falls back to the built-in rules (no LLM). */
+  requiresUserKey: boolean;
+}
+
 /** Providers the server allows for bring-your-own-key requests. */
-export async function getProviders(): Promise<LlmProvider[]> {
-  const data = await apiFetch<{ providers: LlmProvider[] }>("/providers");
-  return data.providers;
+export async function getProviders(): Promise<ProviderList> {
+  const data = await apiFetch<{ providers: LlmProvider[]; requires_user_key?: boolean }>(
+    "/providers",
+  );
+  return { providers: data.providers, requiresUserKey: Boolean(data.requires_user_key) };
 }
 
 export function submitAnalysis(

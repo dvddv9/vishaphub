@@ -6,9 +6,13 @@ import { FileUp, LoaderCircle, Sparkles, TriangleAlert } from "lucide-react";
 import { rememberJob, submitAnalysis, getProviders, type LlmProvider } from "@/lib/api";
 import { LLM_CHANGED, readLlmChoice, writeLlmChoice } from "@/lib/llmChoice";
 
-const ACCEPTED_EXTENSIONS = [".py", ".java", ".c", ".txt", ".md"];
+const ACCEPTED_EXTENSIONS = [
+  ".py", ".js", ".jsx", ".ts", ".tsx", ".java", ".c", ".h", ".cpp", ".go", ".php",
+  ".tf", ".yaml", ".yml", ".json", ".sql", ".sh", ".log", ".txt", ".md",
+];
 const ACCEPT_ATTR = ACCEPTED_EXTENSIONS.join(",");
-const MAX_BYTES = 2 * 1024 * 1024;
+/** The API rejects anything over 200,000 characters (HTTP 422), so stop it here. */
+const MAX_CHARS = 200_000;
 
 /**
  * A deliberately insecure snippet: it exercises the taint path (request.args →
@@ -53,12 +57,16 @@ export default function UploadForm({
   const [providers, setProviders] = useState<LlmProvider[]>([]);
   const [llmProvider, setLlmProvider] = useState<string>(() => readLlmChoice().provider);
   const [llmModel, setLlmModel] = useState<string>(() => readLlmChoice().model);
+  const [requiresUserKey, setRequiresUserKey] = useState(false);
+  const rulesOnly = requiresUserKey && !llmKey;
 
   useEffect(() => {
     let cancelled = false;
     getProviders()
       .then((list) => {
-        if (!cancelled) setProviders(list);
+        if (cancelled) return;
+        setProviders(list.providers);
+        setRequiresUserKey(list.requiresUserKey);
       })
       .catch(() => {
         /* older server without /providers: the server default is used */
@@ -94,21 +102,31 @@ export default function UploadForm({
 
     setError(null);
 
-    if (file.size > MAX_BYTES) {
-      setError(`File is larger than ${MAX_BYTES / (1024 * 1024)} MB.`);
+    // generous byte pre-check (UTF-8 can be 4 bytes/char); the exact limit is in characters
+    if (file.size > MAX_CHARS * 4) {
+      setError(`File is too large. Limit: ${MAX_CHARS.toLocaleString()} characters.`);
       event.target.value = "";
       return;
     }
 
     const lower = file.name.toLowerCase();
-    if (!ACCEPTED_EXTENSIONS.some((extension) => lower.endsWith(extension))) {
+    const isDockerfile = lower === "dockerfile" || lower.startsWith("dockerfile.");
+    if (!isDockerfile && !ACCEPTED_EXTENSIONS.some((extension) => lower.endsWith(extension))) {
       setError(`Unsupported file type. Accepted: ${ACCEPTED_EXTENSIONS.join(", ")}`);
       event.target.value = "";
       return;
     }
 
     try {
-      setMaterial(await file.text());
+      const text = await file.text();
+      if (text.length > MAX_CHARS) {
+        setError(
+          `File has ${text.length.toLocaleString()} characters; the limit is ${MAX_CHARS.toLocaleString()}. Split it into smaller parts.`,
+        );
+        event.target.value = "";
+        return;
+      }
+      setMaterial(text);
       setFilename(file.name);
     } catch {
       setError("Could not read the selected file.");
@@ -121,6 +139,16 @@ export default function UploadForm({
 
     if (!material.trim()) {
       setError("Paste some material or choose a file first.");
+      return;
+    }
+    if (material.length > MAX_CHARS) {
+      setError(
+        `Material has ${material.length.toLocaleString()} characters; the limit is ${MAX_CHARS.toLocaleString()}.`,
+      );
+      return;
+    }
+    if (llmProvider && !llmKey) {
+      setError("You picked an LLM provider but entered no key. Add the key, or set the provider back to the no-key option.");
       return;
     }
 
@@ -173,7 +201,7 @@ export default function UploadForm({
             className="block w-full max-w-sm cursor-pointer rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-700 file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:text-slate-800 hover:file:bg-slate-200"
           />
           <span className="text-xs text-slate-500">
-            {ACCEPTED_EXTENSIONS.join(" · ")} · max 2 MB
+            code, configs, IaC and logs · max {MAX_CHARS.toLocaleString()} characters
           </span>
         </div>
       </div>
@@ -229,7 +257,9 @@ export default function UploadForm({
                 disabled={submitting}
                 className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-sky-600"
               >
-                <option value="">Server default</option>
+                <option value="">
+                  {requiresUserKey ? "No key — built-in rules only" : "Server default"}
+                </option>
                 {providers.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.label}
@@ -280,6 +310,13 @@ export default function UploadForm({
           Sent over HTTPS to this Vishap server, which forwards it only to the provider you
           picked, for your analysis. Stored in this browser only; clear the field to remove it.
         </p>
+        {rulesOnly ? (
+          <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            No key entered: Vishap will run its built-in rule engine only (no LLM) — fast, free,
+            and it catches injection, secrets, unsafe deserialization and more. Pick a provider
+            and add your key for the full six-stage LLM analysis.
+          </p>
+        ) : null}
       </div>
 
       {error ? (
@@ -300,7 +337,7 @@ export default function UploadForm({
           ) : (
             <FileUp className="h-4 w-4" aria-hidden="true" />
           )}
-          {submitting ? "Submitting…" : "Analyze"}
+          {submitting ? "Submitting…" : rulesOnly ? "Analyze (no LLM)" : "Analyze"}
         </button>
         <button
           type="button"

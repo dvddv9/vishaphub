@@ -52,6 +52,8 @@ export interface Report {
   critique_verdict?: string;
   material_size?: number;
   cost_usd?: number;
+  /** "static" = built-in rules only (no LLM key was supplied); "llm" = full pipeline. */
+  mode?: "static" | "llm";
   audit?: AuditSummary;
   [key: string]: unknown;
 }

@@ -14,6 +14,32 @@ SEND_TEMPERATURE = os.getenv("CUSTOM_LLM_SEND_TEMPERATURE", "true").lower() == "
 # this is learned at runtime instead of hard-coded.
 _NO_TEMPERATURE: set[tuple[str, str]] = set()
 _USE_MAX_COMPLETION_TOKENS: set[tuple[str, str]] = set()
+# Output-token ceilings learned from "max_tokens must be <= N" 400s (e.g. deepseek-chat: 8192).
+_MAX_OUT_CAP: dict[tuple[str, str], int] = {}
+
+import re as _re
+import time as _time
+
+_CAP_RES = (
+    _re.compile(r"\[\s*1\s*,\s*(\d{3,7})\s*\]"),
+    _re.compile(r"(?:at most|maximum(?: value)?(?: is)?|less than or equal to|<=|up to|not exceed)\D{0,12}(\d{3,7})", _re.I),
+    _re.compile(r"(?:max_tokens|max_completion_tokens)[^0-9]{0,60}?(\d{3,7})", _re.I),
+)
+
+
+def _parse_output_cap(text: str) -> int | None:
+    """Pull the provider's output-token ceiling out of a 400 error body."""
+    for rx in _CAP_RES:
+        m = rx.search(text or "")
+        if m:
+            n = int(m.group(1))
+            if 256 <= n <= 1_000_000:
+                return n
+    return None
+
+
+_RETRY_STATUS = {429, 500, 502, 503, 529}
+_MAX_RETRIES = int(os.getenv("CUSTOM_LLM_MAX_RETRIES", "2"))
 
 import requests
 from dotenv import load_dotenv
@@ -71,36 +97,61 @@ class CustomClient:
             **({"temperature": temperature} if SEND_TEMPERATURE and route not in _NO_TEMPERATURE else {}),
             "stream": False,
         }
+        max_tokens = min(max_tokens, _MAX_OUT_CAP.get(route, max_tokens))
         payload["max_completion_tokens" if route in _USE_MAX_COMPLETION_TOKENS else "max_tokens"] = max_tokens
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
         def _post(body: dict):
-            return requests.post(
-                f"{self.base_url}/chat/completions",
-                headers={**headers, "Content-Type": "application/json; charset=utf-8"},
-                data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
-                timeout=self.timeout,
-            )
+            """POST with a short back-off on rate limits / transient 5xx."""
+            for attempt in range(_MAX_RETRIES + 1):
+                resp = requests.post(
+                    f"{self.base_url}/chat/completions",
+                    headers={**headers, "Content-Type": "application/json; charset=utf-8"},
+                    data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
+                    timeout=self.timeout,
+                )
+                if resp.status_code not in _RETRY_STATUS or attempt == _MAX_RETRIES:
+                    return resp
+                try:
+                    wait = float(resp.headers.get("retry-after", ""))
+                except ValueError:
+                    wait = 2.0 * (attempt + 1)
+                _time.sleep(min(max(wait, 1.0), 20.0))
+            return resp  # pragma: no cover
 
         try:
             r = _post(payload)
             # Some models reject parameters other models require
-            # ("`temperature` is deprecated for this model", "use max_completion_tokens").
-            # Retry once without/with the offending parameter and remember it.
-            if r.status_code == 400:
+            # ("`temperature` is deprecated for this model", "use max_completion_tokens",
+            # "max_tokens must be <= 8192"). Fix the request, retry, and remember it.
+            for _ in range(3):
+                if r.status_code != 400:
+                    break
                 low = r.text.lower()
                 retry = dict(payload)
+                changed = False
                 if "temperature" in low and "temperature" in retry:
                     retry.pop("temperature")
                     _NO_TEMPERATURE.add(route)
-                    r = _post(retry)
-                    low = r.text.lower() if r.status_code == 400 else ""
-                if r.status_code == 400 and "max_completion_tokens" in low and "max_tokens" in retry:
+                    changed = True
+                elif "max_completion_tokens" in low and "max_tokens" in retry:
                     retry["max_completion_tokens"] = retry.pop("max_tokens")
                     _USE_MAX_COMPLETION_TOKENS.add(route)
-                    r = _post(retry)
+                    changed = True
+                else:
+                    key = "max_completion_tokens" if "max_completion_tokens" in retry else "max_tokens"
+                    cap = _parse_output_cap(r.text) if ("max_tokens" in low or "max_completion_tokens" in low
+                                                         or "output" in low) else None
+                    if cap and cap < retry.get(key, 0):
+                        retry[key] = cap
+                        _MAX_OUT_CAP[route] = cap
+                        changed = True
+                if not changed:
+                    break
+                payload = retry
+                r = _post(payload)
         except requests.RequestException as e:
             raise CustomError(f"custom request failed: {e}") from e
         if r.status_code != 200:

@@ -164,6 +164,7 @@ class AnalyzeResponse(BaseModel):
     tokens_out: int = 0
     cost_usd: float = 0.0
     cached: bool = False
+    mode: str = "llm"
     audit_id: str = ""
     material_hash: str = ""
     material_hash_full: str = ""
@@ -353,25 +354,42 @@ def verify_webhook_signature(payload: bytes, signature: str, secret: str, algo: 
     return hmac.compare_digest(expected, signature.replace("sha256=", "").replace("sha1=", ""))
 
 
-def _need_user_llm_key(x_llm_api_key: str | None) -> None:
-    """401 when the operator runs in user-key-only mode and no key was sent."""
+def _clean_header(value) -> str | None:
+    """Header value as a plain str; FastAPI's ``Header(None)`` default (a FieldInfo)
+    shows up when an endpoint function is called directly instead of via HTTP."""
+    return value if isinstance(value, str) else None
+
+
+def _is_static_only(x_llm_api_key: str | None) -> bool:
+    """True when the server never spends its own LLM key and the caller sent none:
+    the request is answered by the built-in rule engine (no LLM) instead of a 401."""
     from src.llm.client import require_user_key
-    if require_user_key() and not (x_llm_api_key or "").strip():
+    return require_user_key() and not (_clean_header(x_llm_api_key) or "").strip()
+
+
+def _need_user_llm_key(x_llm_api_key: str | None) -> None:
+    """401 for endpoints that cannot run without an LLM (batch) in user-key-only mode."""
+    if _is_static_only(x_llm_api_key):
         raise HTTPException(
             status_code=401,
             detail="This server does not use its own LLM key. Send yours in the X-LLM-Api-Key header.",
         )
 
 
-def _apply_llm_request(key: str | None, provider: str | None, model: str | None):
+def _apply_llm_request(key: str | None, provider: str | None, model: str | None,
+                       allow_static: bool = True):
     """Validate the caller's LLM choice and bind it to this request's context.
 
     Returns (key, target). ``target`` is (base_url, model) from the server-side
     provider allow-list or None (use the server's configured endpoint).
+    With ``allow_static`` a missing key in user-key-only mode is not an error: the
+    caller gets the LLM-free static report (see ``_is_static_only``).
     """
     from src.llm import providers
     from src.llm.client import set_api_key, set_llm_target
-    _need_user_llm_key(key)
+    key, provider, model = _clean_header(key), _clean_header(provider), _clean_header(model)
+    if not allow_static:
+        _need_user_llm_key(key)
     key = (key or "").strip() or None
     try:
         target = providers.resolve(provider, model)
@@ -391,7 +409,8 @@ def _apply_llm_request(key: str | None, provider: str | None, model: str | None)
 async def llm_providers():
     """LLM providers a caller may pick (bring-your-own-key)."""
     from src.llm import providers
-    return {"providers": providers.list_providers()}
+    from src.llm.client import require_user_key
+    return {"providers": providers.list_providers(), "requires_user_key": require_user_key()}
 
 
 @app.post("/analyze", response_model=AnalyzeResponse, dependencies=[Depends(verify_api_key), Depends(rate_limit_analyze)])
@@ -404,11 +423,12 @@ async def analyze(req: AnalyzeRequest,
         raise HTTPException(status_code=400, detail="material must not be empty")
 
     _apply_llm_request(x_llm_api_key, x_llm_provider, x_llm_model)
+    static_only = _is_static_only(x_llm_api_key)
     from src.pipeline.orchestrator import compute_hash
     from src.storage.history import find_done_by_hash
 
     material_hash = compute_hash(req.material)
-    existing = None if getattr(req, 'force', False) else find_done_by_hash(material_hash)
+    existing = None if (getattr(req, 'force', False) or static_only) else find_done_by_hash(material_hash)
 
     if existing:
         cached_session = existing.get("session_id", "")
@@ -450,6 +470,7 @@ async def analyze(req: AnalyzeRequest,
             material=req.material,
             filename=req.filename,
             verbose=False,
+            static_only=static_only,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Pipeline error: {str(e)}")
@@ -483,6 +504,7 @@ async def analyze(req: AnalyzeRequest,
         tokens_in=tokens_in,
         tokens_out=tokens_out,
         cost_usd=cost_usd,
+        mode=result.get("mode", "llm"),
         audit_id=_audit.get("audit_id", ""),
         material_hash=_audit.get("material_hash", ""),
         verdict=_audit.get("critique_verdict", ""),
@@ -516,7 +538,7 @@ async def analyze_batch(req: BatchRequest,
                 detail=f"items[{i}].material must not be empty",
             )
 
-    _apply_llm_request(x_llm_api_key, x_llm_provider, x_llm_model)
+    _apply_llm_request(x_llm_api_key, x_llm_provider, x_llm_model, allow_static=False)
 
     materials = [(item.material, item.filename) for item in req.items]
 
@@ -559,8 +581,11 @@ async def analyze_batch(req: BatchRequest,
 
 
 @app.post("/analyze/sarif", dependencies=[Depends(verify_api_key), Depends(rate_limit_analyze)])
-async def analyze_sarif(req: AnalyzeRequest):
-    result = await analyze(req)
+async def analyze_sarif(req: AnalyzeRequest,
+                        x_llm_api_key: str | None = Header(None, alias="X-LLM-Api-Key"),
+                        x_llm_provider: str | None = Header(None, alias="X-LLM-Provider"),
+                        x_llm_model: str | None = Header(None, alias="X-LLM-Model")):
+    result = await analyze(req, x_llm_api_key, x_llm_provider, x_llm_model)
 
     audit = result.audit.model_dump() if hasattr(result, "audit") else {}
 
@@ -568,7 +593,17 @@ async def analyze_sarif(req: AnalyzeRequest):
     sca_result = None
     if isinstance(audit, dict):
         sast_tools = audit.get("sast_tools", {})
-        if sast_tools:
+        if audit.get("sast_engine") == "vishap-static":   # built-in rule engine findings
+            _fs = audit.get("static_findings") or []
+            sast_result = {
+                "total_findings": audit.get("sast_findings", 0),
+                "high_priority": audit.get("sast_high_priority", 0),
+                "vishap_rules": {"available": True, "findings": [
+                    {"test_id": f.get("id"), "msg": f"{f.get('title')} ({f.get('cwe')})",
+                     "severity": f.get("severity"), "line": f.get("line"), "confidence": "medium"}
+                    for f in _fs]},
+            }
+        elif sast_tools:
             sast_result = {
                 "total_findings": audit.get("sast_findings", 0),
                 "high_priority": audit.get("sast_high_priority", 0),
@@ -633,7 +668,7 @@ async def audit_export(
 
 
 async def _run_job_async(job_id: str, req: "AnalyzeRequest", tenant: str, llm_key: str | None = None,
-                         llm_target: tuple[str, str] | None = None):
+                         llm_target: tuple[str, str] | None = None, static_only: bool = False):
     from src.llm.client import set_api_key, set_llm_target
     from src.pipeline.orchestrator import run_pipeline_async
     set_api_key(llm_key)  # per-job; never persisted or logged
@@ -647,6 +682,7 @@ async def _run_job_async(job_id: str, req: "AnalyzeRequest", tenant: str, llm_ke
                 material=req.material,
                 filename=req.filename or "unknown",
                 verbose=False,
+                static_only=static_only,
             )
             await update_job_async(
                 job_id,
@@ -679,6 +715,7 @@ async def analyze_async(req: "AnalyzeRequest", background: BackgroundTasks,
                         x_llm_provider: str | None = Header(None, alias="X-LLM-Provider"),
                         x_llm_model: str | None = Header(None, alias="X-LLM-Model")):
     llm_key, llm_target = _apply_llm_request(x_llm_api_key, x_llm_provider, x_llm_model)
+    static_only = llm_key is None and _is_static_only(None)
     with tenant_scope(tenant):
         job_id = await create_job_async(
             filename=req.filename or "unknown", tenant_id=tenant
@@ -692,14 +729,14 @@ async def analyze_async(req: "AnalyzeRequest", background: BackgroundTasks,
                 "status": "queued",
             },
         )
-        if llm_key is None and broker_available():
+        if llm_key is None and not static_only and broker_available():
             run_analysis_task.delay(job_id, req.material, req.filename or "unknown", tenant)
         else:
             # A caller-supplied key stays in this process: it is never put on the
             # Celery broker / result backend.
-            if llm_key is None:
+            if llm_key is None and not static_only:
                 log.warning("celery_broker_unavailable", job_id=job_id)
-            background.add_task(_run_job_async, job_id, req, tenant, llm_key, llm_target)
+            background.add_task(_run_job_async, job_id, req, tenant, llm_key, llm_target, static_only)
         return {"job_id": job_id, "status": "queued"}
 
 

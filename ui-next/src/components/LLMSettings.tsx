@@ -32,7 +32,7 @@ function UserKeySettings() {
     setModel(choice.model);
     setKey(choice.key);
     getProviders()
-      .then(setProviders)
+      .then((list) => setProviders(list.providers))
       .catch((e: unknown) =>
         setMsg(`Could not load providers: ${e instanceof Error ? e.message : String(e)}`),
       );
@@ -71,7 +71,8 @@ function UserKeySettings() {
       <h2 className="text-lg font-semibold text-slate-900 mb-1">LLM provider</h2>
       <p className="mb-4 text-sm text-slate-600">
         This server does not use its own LLM key. Pick a provider and enter your key; it is
-        stored in this browser only and sent with each analysis.
+        stored in this browser only and sent with each analysis. Without a key Vishap still
+        runs its built-in rules (no LLM), so you always get a report.
       </p>
 
       <label className="block text-sm text-slate-700 mb-1" htmlFor="user-llm-provider">

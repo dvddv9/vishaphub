@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 # -*- coding: utf-8 -*-
 """
@@ -31,6 +32,7 @@ from src.tools.fallback_check import REQUIRED as REQUIRED_BLOCKS, LOSS_THRESHOLD
 from src.pipeline.cost import sum_stage_costs
 from src.tools.redact import redact_pii  # dogfood P0: pre-LLM PII redaction
 from src.tools.sast import run_sast  # dogfood P1: deterministic SAST
+from src.tools.static_scan import scan_material, render_markdown as render_static_md  # built-in rules, no LLM
 from src.tools.provenance import get_provenance  # dogfood P2: source tracking
 from src.tools.sca import run_sca  # dogfood P1: dependency audit
 from src.tools.patterns import PII_PATTERNS, COMPLIANCE_TRIGGERS
@@ -333,12 +335,15 @@ def run_audit(material: str, session_id: str, model: str = "custom",
               stage2_result: dict = None,
               final_markdown: str = "",
               llm_error: str = "",
-              context_thread: dict | None = None) -> dict:
+              context_thread: dict | None = None,
+              analysis_mode: str = "llm") -> dict:
     """Собирает audit-запись."""
     pii = detect_pii(material)
     compliance = detect_compliance(material, pii)
     cwe_ids = detect_cwe(material)
     cwe_ids = cwe_ids + [c for c in collect_findings_cwe(stage2_result) if c not in cwe_ids]
+    # CWEs found by the built-in rule engine (src.tools.static_scan) count as evidence too
+    cwe_ids += [c for c in ((sast_result or {}).get("cwe_ids") or []) if c not in cwe_ids]
     # PII -> CWE-359 (patch-drift): если pii_detected, CWE-359 обязателен
     if pii and "CWE-359" not in cwe_ids:
         cwe_ids.append("CWE-359")
@@ -395,6 +400,9 @@ def run_audit(material: str, session_id: str, model: str = "custom",
         **enrich_runbook(cwe_ids),
         "redaction_applied": bool(redaction_map),
         "redaction_map": redaction_map or {},
+        "analysis_mode": analysis_mode,
+        "sast_engine": (sast_result or {}).get("engine", ""),
+        "static_findings": ((sast_result or {}).get("findings") or [])[:200] if (sast_result or {}).get("engine") else [],
         "sast_findings": (sast_result or {}).get("total_findings", 0),
         "sast_high_priority": (sast_result or {}).get("high_priority", 0),
         "sast_tools": {
@@ -983,8 +991,13 @@ def run_pipeline(material: str, filename: str, verbose: bool = True, api_key: st
 async def run_pipeline_async(material: str, filename: str, verbose: bool = False, api_key: str | None = None,
                               session_suffix: str = "",
                               baseline_path: str = None,
-                              save_baseline_path: str = None) -> dict:
-    """Async pipeline."""
+                              save_baseline_path: str = None,
+                              static_only: bool = False) -> dict:
+    """Async pipeline.
+
+    ``static_only``: skip every LLM stage and report what the built-in rule engine
+    (src.tools.static_scan) found. Used when the visitor brought no LLM key.
+    """
     # D0 fast path (v7.4.4) -- async
     _d0, _d0_reason = _is_d0(material)
     if _d0:
@@ -1014,6 +1027,7 @@ async def run_pipeline_async(material: str, filename: str, verbose: bool = False
 
     truncated = False
     original_size = len(material)
+    _full_material = material   # the static scan sees the whole upload, the LLM only MAX_CHARS
     session_id = f"sess-{datetime.now(UTC).strftime('%Y-%m-%d-%H%M%S')}-{uuid.uuid4().hex[:8]}{session_suffix}"
     material_hash_full = compute_hash(material, context=f"{filename}:{session_id}")
     # v7.2: #1 context_thread (async)
@@ -1046,35 +1060,53 @@ async def run_pipeline_async(material: str, filename: str, verbose: bool = False
         original_audit_pii = {}
         original_audit_compliance = []
 
-    stage0 = await async_stage0_orchestrator(material, filename)
-    if isinstance(stage0, dict):
-        stage0["session_id"] = session_id
-    route = stage0.get("route", [])
-    level = stage0.get("level", "D3")
-    research_first = stage0.get("research_first", False)
-    stage1 = await async_stage1_scanner(material, {"stage0": stage0})
-    # v7.2: #1 context_thread (async, after stage1)
-    context_thread["metrics"] = stage1.get("metrics", {}) if isinstance(stage1, dict) else {}
-    context_thread["evidence"]["python_run"] = True
-    context_thread["evidence"]["ast_parsed"] = True
-    stage2 = await async_stage2_analyst(material, {"stage0": stage0, "stage1": stage1})
-    # v7.3.11: self-adversarial red team (async)
-    _stage2_5 = {"stage0": stage0, "stage1": stage1, "stage2": stage2}
-    stage2_5 = _stage2_5  # placeholder (async red team optional; skip to keep cost low)
-    stage3 = None
-    if research_first:
-        stage3 = await async_stage3_researcher(
-            material, {"stage0": stage0, "stage1": stage1, "stage2": stage2})
-    context_4 = {"stage0": stage0, "stage1": stage1, "stage2": stage2, "stage2_5": stage2_5 if "stage2_5" in locals() else {}}
-    if stage3:
-        context_4["stage3"] = stage3
-    stage4 = await async_stage4_synthesizer(material, context_4)
-    context_5 = {"stage0": stage0, "stage1": stage1, "stage2": stage2, "stage4": stage4}
-    if stage3:
-        context_5["stage3"] = stage3
-    final_markdown = await async_stage5_transmitter(material, context_5)
-    final_markdown = strip_llm_audit_blocks(final_markdown)
-    final_markdown = sanitize_session_id(final_markdown, session_id)
+    # Built-in rule engine: deterministic, no LLM, scans the submitted text itself.
+    _sast_result = await asyncio.get_running_loop().run_in_executor(
+        None, scan_material, _full_material, filename)
+    _sca_result = None
+    if static_only:
+        level = "STATIC"
+        route = ["static"]
+        research_first = False
+        stage0 = {"level": level, "route": route, "mode": "static", "session_id": session_id}
+        stage1, stage2, stage3, stage4 = {}, {}, None, {}
+        final_markdown = render_static_md(
+            _sast_result, filename,
+            note=("No LLM key was supplied, so only the built-in rule engine ran. "
+                  "Choose a provider and add your key for the full six-stage LLM analysis."))
+    else:
+        stage0 = await async_stage0_orchestrator(material, filename)
+        if isinstance(stage0, dict):
+            stage0["session_id"] = session_id
+        route = stage0.get("route", [])
+        level = stage0.get("level", "D3")
+        research_first = stage0.get("research_first", False)
+        stage1 = await async_stage1_scanner(material, {"stage0": stage0})
+        # v7.2: #1 context_thread (async, after stage1)
+        context_thread["metrics"] = stage1.get("metrics", {}) if isinstance(stage1, dict) else {}
+        context_thread["evidence"]["python_run"] = True
+        context_thread["evidence"]["ast_parsed"] = True
+        stage2 = await async_stage2_analyst(material, {"stage0": stage0, "stage1": stage1})
+        # v7.3.11: self-adversarial red team (async)
+        _stage2_5 = {"stage0": stage0, "stage1": stage1, "stage2": stage2}
+        stage2_5 = _stage2_5  # placeholder (async red team optional; skip to keep cost low)
+        stage3 = None
+        if research_first:
+            stage3 = await async_stage3_researcher(
+                material, {"stage0": stage0, "stage1": stage1, "stage2": stage2})
+        context_4 = {"stage0": stage0, "stage1": stage1, "stage2": stage2, "stage2_5": stage2_5 if "stage2_5" in locals() else {}}
+        if stage3:
+            context_4["stage3"] = stage3
+        stage4 = await async_stage4_synthesizer(material, context_4)
+        context_5 = {"stage0": stage0, "stage1": stage1, "stage2": stage2, "stage4": stage4}
+        if stage3:
+            context_5["stage3"] = stage3
+        final_markdown = await async_stage5_transmitter(material, context_5)
+        final_markdown = strip_llm_audit_blocks(final_markdown)
+        final_markdown = sanitize_session_id(final_markdown, session_id)
+        if _sast_result.get("total_findings"):
+            final_markdown += "\n\n" + render_static_md(
+                _sast_result, filename, heading="Static analysis (built-in rules, no LLM)")
     llm_error = (
         llm_error_of(stage0) or llm_error_of(stage2) or llm_error_of(stage4)
         or llm_error_of(final_markdown) or ""
@@ -1084,7 +1116,7 @@ async def run_pipeline_async(material: str, filename: str, verbose: bool = False
     force_emergency = bool(stage0.get('force_emergency', False))
     _escalation = _safe_escalation_note(stage4)
 
-    audit = run_audit(material_original, session_id, truncated=truncated, original_size=original_size, material_hash_full=material_hash_full, force_emergency=force_emergency, context=f"{filename}:{session_id}", redaction_map=redaction_map, sast_result=_sast_result if "_sast_result" in dir() else None, sca_result=_sca_result if "_sca_result" in dir() else None, web_search_queries=(stage2.get("_web_search", {}) or {}).get("queries", []) if "stage2" in dir() else [], escalation_level=_safe_escalation_note(stage4) if "stage4" in dir() else "", stage2_result=stage2 if "stage2" in dir() else None, final_markdown=final_markdown, llm_error=llm_error, context_thread=context_thread)
+    audit = run_audit(material_original, session_id, truncated=truncated, original_size=original_size, material_hash_full=material_hash_full, force_emergency=force_emergency, context=f"{filename}:{session_id}", redaction_map=redaction_map, sast_result=_sast_result if "_sast_result" in dir() else None, sca_result=_sca_result if "_sca_result" in dir() else None, web_search_queries=(stage2.get("_web_search", {}) or {}).get("queries", []) if "stage2" in dir() else [], escalation_level=_safe_escalation_note(stage4) if "stage4" in dir() else "", stage2_result=stage2 if "stage2" in dir() else None, final_markdown=final_markdown, llm_error=llm_error, context_thread=context_thread, analysis_mode="static" if static_only else "llm")
     final_markdown += (
         "\n\n[AUDIT_TRAIL]\n"
         f"generator: Vishap {__version__}\n"
@@ -1131,16 +1163,18 @@ async def run_pipeline_async(material: str, filename: str, verbose: bool = False
     )
     final_markdown += format_runbook_md(audit)
     result = {"session_id": session_id, "timestamp": datetime.now(UTC).isoformat(),
+              "mode": "static" if static_only else "llm",
               "filename": filename, "material_size": len(material), "stage0": stage0,
               "stage1": stage1, "stage2": stage2, "stage3": stage3, "stage4": stage4,
               "stage4_5": stage4_5 if "stage4_5" in locals() else {},
               "audit": audit, "completeness": completeness,
               "cost_usd": sum_stage_costs([stage0, stage1, stage2, stage3, stage4]),
               "final_markdown": final_markdown}
-    add_entry({"session_id": session_id, "filename": filename, "level": level,
-               "route": route, "material_size": len(material),
-               "verdict": audit["critique_verdict"], "pii_detected": audit["pii_detected"],
-               "material_hash": audit["material_hash"]})
+    if not static_only:   # a rules-only result must never be served later as the cached LLM answer
+        add_entry({"session_id": session_id, "filename": filename, "level": level,
+                   "route": route, "material_size": len(material),
+                   "verdict": audit["critique_verdict"], "pii_detected": audit["pii_detected"],
+                   "material_hash": audit["material_hash"]})
     apply_baseline(
         result,
         baseline_path=baseline_path,

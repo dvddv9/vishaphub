@@ -134,18 +134,57 @@ def test_async_chat_passes_the_callers_key_into_the_worker_thread(monkeypatch):
     assert got["target"] == ("https://api.anthropic.com/v1", "claude-sonnet-5-5")
 
 
-def test_analyze_endpoints_demand_a_key_in_user_key_mode(monkeypatch):
+def _auth_headers():
+    from src.config import CONVEYOR_API_KEY
+    return {"X-API-Key": CONVEYOR_API_KEY} if CONVEYOR_API_KEY else {}
+
+
+def test_batch_still_demands_a_key_in_user_key_mode(monkeypatch):
+    """Batch has no rules-only mode: without the caller's key it is refused."""
     from fastapi.testclient import TestClient
     from src.main import app
     monkeypatch.setenv("VISHAP_REQUIRE_USER_LLM_KEY", "1")
+    r = TestClient(app).post("/analyze/batch", headers=_auth_headers(),
+                             json={"items": [{"material": "x = 1", "filename": "a.py"}]})
+    assert r.status_code in (401, 403), (r.status_code, r.text)
+
+
+def test_keyless_visitor_gets_the_rules_only_report(monkeypatch):
+    """No key in user-key mode -> built-in rules, never a 401 and never the server's key."""
+    from fastapi.testclient import TestClient
+    from src.main import app
+    monkeypatch.setenv("VISHAP_REQUIRE_USER_LLM_KEY", "1")
+    called = []
+    import src.pipeline.async_stages as stages
+    monkeypatch.setattr(stages, "async_chat", lambda *a, **k: called.append(1))
     c = TestClient(app)
-    for path, body in [
-        ("/analyze", {"material": "x = 1", "filename": "a.py"}),
-        ("/analyze/async", {"material": "x = 1", "filename": "a.py"}),
-        ("/analyze/batch", {"items": [{"material": "x = 1", "filename": "a.py"}]}),
-    ]:
-        r = c.post(path, json=body)
-        assert r.status_code in (401, 403), (path, r.status_code, r.text)
+    body = {"material": 'import os\nos.system("rm -rf " + name)\ncur.execute("SELECT * FROM t WHERE a=\'" + a + "\'")\n',
+            "filename": "vuln.py"}
+
+    r = c.post("/analyze/async", headers=_auth_headers(), json=body)
+    assert r.status_code == 200, r.text
+    job = r.json()["job_id"]
+    rep = c.get(f"/report/{job}", headers=_auth_headers())
+    assert rep.status_code == 200, rep.text
+    data = rep.json()
+    assert data["mode"] == "static"
+    assert "CWE-89" in data["audit"]["cwe_ids"]
+    assert "Static analysis" in data["final_markdown"]
+    assert not called, "the LLM must not be called without the caller's key"
+
+    r = c.post("/analyze", headers=_auth_headers(), json=body)
+    assert r.status_code == 200, r.text
+    assert r.json()["mode"] == "static"
+
+
+def test_providers_endpoint_reports_user_key_mode(monkeypatch):
+    from fastapi.testclient import TestClient
+    from src.main import app
+    monkeypatch.setenv("VISHAP_REQUIRE_USER_LLM_KEY", "1")
+    r = TestClient(app).get("/providers", headers=_auth_headers())
+    assert r.status_code == 200 and r.json()["requires_user_key"] is True
+    monkeypatch.delenv("VISHAP_REQUIRE_USER_LLM_KEY")
+    assert TestClient(app).get("/providers", headers=_auth_headers()).json()["requires_user_key"] is False
 
 
 # --- provider allow-list -------------------------------------------------------
@@ -297,3 +336,54 @@ def test_custom_client_switches_to_max_completion_tokens(monkeypatch):
     c = custom_client.CustomClient(base_url="https://y.invalid/v1", api_key="k", model="m2")
     assert c.chat("u", "s")["text"] == "yo"
     custom_client._USE_MAX_COMPLETION_TOKENS.clear()
+
+
+# --- output-token ceiling / rate limits ------------------------------------------
+def test_custom_client_clamps_max_tokens_to_the_providers_ceiling(monkeypatch):
+    from src.llm import custom_client
+    custom_client._MAX_OUT_CAP.clear()
+    sent = []
+    ok = '{"choices":[{"message":{"content":"ok"}}],"usage":{}}'
+    bad = '{"error":{"message":"Invalid max_tokens value, the valid range of max_tokens is [1, 8192]"}}'
+
+    def fake_post(url, headers=None, data=None, timeout=None):
+        import json
+        body = json.loads(data.decode("utf-8"))
+        sent.append(body["max_tokens"])
+        return _fake_response(400, bad) if body["max_tokens"] > 8192 else _fake_response(200, ok)
+
+    monkeypatch.setattr(custom_client.requests, "post", fake_post)
+    c = custom_client.CustomClient(base_url="https://z.invalid/v1", api_key="k", model="deepseek-chat")
+    assert c.chat("u", "s", max_tokens=16000)["text"] == "ok"
+    assert sent == [16000, 8192]
+    sent.clear()
+    assert c.chat("u", "s", max_tokens=16000)["text"] == "ok"
+    assert sent == [8192], "the learned ceiling is applied up front"
+    custom_client._MAX_OUT_CAP.clear()
+
+
+def test_custom_client_retries_a_rate_limit_then_succeeds(monkeypatch):
+    from src.llm import custom_client
+    monkeypatch.setattr(custom_client._time, "sleep", lambda s: None)
+    calls = []
+    ok = '{"choices":[{"message":{"content":"fine"}}],"usage":{}}'
+
+    class Limited:
+        status_code = 429
+        text = "rate limited"
+        headers = {"retry-after": "1"}
+
+    def fake_post(url, headers=None, data=None, timeout=None):
+        calls.append(1)
+        return Limited() if len(calls) == 1 else _fake_response(200, ok)
+
+    monkeypatch.setattr(custom_client.requests, "post", fake_post)
+    c = custom_client.CustomClient(base_url="https://r.invalid/v1", api_key="k", model="m3")
+    assert c.chat("u", "s")["text"] == "fine" and len(calls) == 2
+
+
+def test_output_cap_parser():
+    from src.llm.custom_client import _parse_output_cap
+    assert _parse_output_cap("the valid range of max_tokens is [1, 8192]") == 8192
+    assert _parse_output_cap("max_tokens must be at most 4096") == 4096
+    assert _parse_output_cap("something unrelated") is None

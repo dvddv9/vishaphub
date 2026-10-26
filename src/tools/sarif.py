@@ -42,7 +42,7 @@ def to_sarif(audit: dict, sast_result: dict = None, sca_result: dict = None,
 
     # === SAST findings (Bandit, Semgrep) ===
     if sast_result:
-        for tool_name in ("bandit", "semgrep"):
+        for tool_name in ("bandit", "semgrep", "vishap_rules"):
             tool_result = sast_result.get(tool_name)
             if not tool_result or not tool_result.get("available"):
                 continue
