@@ -14,6 +14,8 @@ All notable changes to Vishap. Format based on [Keep a Changelog](https://keepac
 ### Added
 - **Bring-your-own LLM key**: the key a user enters in the UI (`X-LLM-Api-Key`) is now actually used by `/analyze`, `/analyze/async` and `/analyze/batch`. With `VISHAP_REQUIRE_USER_LLM_KEY=1` the server's own `CUSTOM_LLM_KEY` is never used (requests without a key get 401). A caller key stays in-process and is never put on the Celery broker.
 
+- **Choose an LLM provider** (DeepSeek, Anthropic, OpenAI, Groq, OpenRouter) with your own key: `X-LLM-Provider` / `X-LLM-Model` headers, `GET /providers`, a selector in the upload form. The base URL comes only from a server-side allow-list (`src/llm/providers.py`, narrowed with `VISHAP_ALLOWED_PROVIDERS`); a request can never supply a URL. A chosen provider always requires the caller's key, so the operator's key is never sent to another provider.
+
 ### Fixed
 - `/analyze/async` (what the UI calls) ignored `X-LLM-Api-Key`; the key also did not reach worker threads (`run_in_executor`, batch pool). CORS did not allow the `X-LLM-Api-Key` header. `ui-next/src/lib/api.ts` only sent it when `NEXT_PUBLIC_API_KEY` was set; the upload form had no key field.
 

@@ -73,7 +73,10 @@ async function apiViaTauri<T>(path: string, options: RequestInit): Promise<T> {
 }
 
 /** Thin fetch wrapper: JSON in/out, `X-API-Key`, readable errors. */
-export async function apiFetch<T>(path: string, options: RequestInit & { llmApiKey?: string } = {}): Promise<T> {
+export async function apiFetch<T>(
+  path: string,
+  options: RequestInit & { llmApiKey?: string; llmProvider?: string; llmModel?: string } = {},
+): Promise<T> {
   const headers = new Headers(options.headers);
   headers.set("Accept", "application/json");
   if (options.body && !headers.has("Content-Type")) {
@@ -85,6 +88,9 @@ export async function apiFetch<T>(path: string, options: RequestInit & { llmApiK
   const llmApiKey = options.llmApiKey;
   if (llmApiKey) {
     headers.set("X-LLM-Api-Key", llmApiKey);
+    // provider/model only make sense together with the caller's own key
+    if (options.llmProvider) headers.set("X-LLM-Provider", options.llmProvider);
+    if (options.llmModel) headers.set("X-LLM-Model", options.llmModel);
   }
 
   const canUseTauri =
@@ -131,11 +137,32 @@ export async function apiFetch<T>(path: string, options: RequestInit & { llmApiK
   return body as T;
 }
 
-export function submitAnalysis(material: string, filename: string, llmApiKey?: string): Promise<AnalyzeResponse> {
+export interface LlmProvider {
+  id: string;
+  label: string;
+  default_model: string;
+}
+
+/** Providers the server allows for bring-your-own-key requests. */
+export async function getProviders(): Promise<LlmProvider[]> {
+  const data = await apiFetch<{ providers: LlmProvider[] }>("/providers");
+  return data.providers;
+}
+
+export function submitAnalysis(
+  material: string,
+  filename: string,
+  llmApiKey?: string,
+  llmProvider?: string,
+  llmModel?: string,
+): Promise<AnalyzeResponse> {
   return apiFetch<AnalyzeResponse>("/analyze/async", {
     method: "POST",
     llmApiKey,
-    body: JSON.stringify({ material, filename })});
+    llmProvider,
+    llmModel,
+    body: JSON.stringify({ material, filename }),
+  });
 }
 
 export function getJob(jobId: string): Promise<Job> {

@@ -142,3 +142,77 @@ def test_analyze_endpoints_demand_a_key_in_user_key_mode(monkeypatch):
     ]:
         r = c.post(path, json=body)
         assert r.status_code in (401, 403), (path, r.status_code, r.text)
+
+
+# --- provider allow-list -------------------------------------------------------
+def test_provider_resolves_only_from_the_server_table(monkeypatch):
+    from src.llm import providers
+    monkeypatch.delenv("VISHAP_ALLOWED_PROVIDERS", raising=False)
+    assert providers.resolve(None, None) is None
+    assert providers.resolve("", "x") is None
+    assert providers.resolve("Anthropic", None) == ("https://api.anthropic.com/v1", "claude-sonnet-5-5")
+    assert providers.resolve("deepseek", "deepseek-reasoner") == ("https://api.deepseek.com/v1", "deepseek-reasoner")
+
+
+@pytest.mark.parametrize("bad", [
+    "https://evil.example/v1", "evil", "http://127.0.0.1:8000", "../x", "deepseek@evil.com",
+])
+def test_provider_rejects_urls_and_unknown_ids(bad):
+    from src.llm import providers
+    with pytest.raises(providers.ProviderError):
+        providers.resolve(bad, None)
+
+
+@pytest.mark.parametrize("bad_model", ["a b", "x;rm", "", "../..", "m" * 200, "m\nx"])
+def test_provider_rejects_malformed_models(bad_model):
+    from src.llm import providers
+    if bad_model == "":
+        assert providers.resolve("openai", bad_model)[1] == "gpt-4o-mini"  # empty -> default
+        return
+    with pytest.raises(providers.ProviderError):
+        providers.resolve("openai", bad_model)
+
+
+def test_allowed_providers_env_narrows_the_list(monkeypatch):
+    from src.llm import providers
+    monkeypatch.setenv("VISHAP_ALLOWED_PROVIDERS", "deepseek, anthropic")
+    assert [p["id"] for p in providers.list_providers()] == ["deepseek", "anthropic"]
+    with pytest.raises(providers.ProviderError):
+        providers.resolve("openai", None)
+
+
+def test_operator_key_is_never_sent_to_a_caller_chosen_provider(monkeypatch):
+    from src.llm import client
+    monkeypatch.setenv("CUSTOM_LLM_URL", "https://api.deepseek.com/v1")
+    monkeypatch.setenv("CUSTOM_LLM_KEY", "operator-secret")
+    client.set_api_key(None)
+    client.set_llm_target(("https://api.openai.com/v1", "gpt-4o-mini"))
+    try:
+        out = client.chat("s", "u")
+    finally:
+        client.set_llm_target(None)
+    assert out["mode"] == "error"
+    assert "operator-secret" not in str(out)
+
+
+def test_chosen_provider_and_user_key_reach_the_client(monkeypatch):
+    from src.llm import client, custom_client
+    seen = {}
+
+    class Fake:
+        def __init__(self, base_url=None, api_key=None, model=None, **kw):
+            seen.update(url=base_url, key=api_key, model=model)
+        def chat(self, *a, **kw):
+            return {"text": "ok", "tokens_in": 1, "tokens_out": 1, "model": "m", "mode": "custom"}
+        def close(self):
+            pass
+
+    monkeypatch.setattr(custom_client, "CustomClient", Fake)
+    client.set_api_key("user-key")
+    client.set_llm_target(("https://api.anthropic.com/v1", "claude-sonnet-5-5"))
+    try:
+        assert client.chat("s", "u")["text"] == "ok"
+    finally:
+        client.set_api_key(None)
+        client.set_llm_target(None)
+    assert seen == {"url": "https://api.anthropic.com/v1", "key": "user-key", "model": "claude-sonnet-5-5"}

@@ -1,9 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { FileUp, LoaderCircle, Sparkles, TriangleAlert } from "lucide-react";
-import { rememberJob, submitAnalysis } from "@/lib/api";
+import { rememberJob, submitAnalysis, getProviders, type LlmProvider } from "@/lib/api";
 
 const ACCEPTED_EXTENSIONS = [".py", ".java", ".c", ".txt", ".md"];
 const ACCEPT_ATTR = ACCEPTED_EXTENSIONS.join(",");
@@ -40,6 +40,38 @@ export default function UploadForm({ onSubmitted }: { onSubmitted: (jobId: strin
     if (typeof window === "undefined") return "";
     return localStorage.getItem("llmApiKey") ?? "";
   });
+  const [providers, setProviders] = useState<LlmProvider[]>([]);
+  const [llmProvider, setLlmProvider] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("llmProvider") ?? "";
+  });
+  const [llmModel, setLlmModel] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("llmModel") ?? "";
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    getProviders()
+      .then((list) => {
+        if (!cancelled) setProviders(list);
+      })
+      .catch(() => {
+        /* older server without /providers: the server default is used */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function remember(name: string, value: string) {
+    try {
+      if (value) localStorage.setItem(name, value);
+      else localStorage.removeItem(name);
+    } catch {
+      /* storage unavailable: kept in memory only */
+    }
+  }
 
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -82,7 +114,13 @@ export default function UploadForm({ onSubmitted }: { onSubmitted: (jobId: strin
 
     try {
       const safeName = filename.trim() || "pasted.txt";
-      const created = await submitAnalysis(material, safeName, llmKey || undefined);
+      const created = await submitAnalysis(
+        material,
+        safeName,
+        llmKey || undefined,
+        llmKey ? llmProvider || undefined : undefined,
+        llmKey ? llmModel || undefined : undefined,
+      );
       rememberJob({
         job_id: created.job_id,
         status: created.status,
@@ -160,6 +198,52 @@ export default function UploadForm({ onSubmitted }: { onSubmitted: (jobId: strin
       </div>
 
       <div className="flex flex-col gap-2">
+        {providers.length > 0 ? (
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="llm-provider" className="text-sm font-medium text-slate-300">
+                LLM provider
+              </label>
+              <select
+                id="llm-provider"
+                value={llmProvider}
+                onChange={(event) => {
+                  setLlmProvider(event.target.value);
+                  remember("llmProvider", event.target.value);
+                }}
+                disabled={submitting}
+                className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 outline-none focus:border-sky-600"
+              >
+                <option value="">Server default</option>
+                {providers.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="llm-model" className="text-sm font-medium text-slate-300">
+                Model (optional)
+              </label>
+              <input
+                id="llm-model"
+                type="text"
+                value={llmModel}
+                onChange={(event) => {
+                  const value = event.target.value.trim();
+                  setLlmModel(value);
+                  remember("llmModel", value);
+                }}
+                disabled={submitting}
+                placeholder={
+                  providers.find((p) => p.id === llmProvider)?.default_model ?? "provider default"
+                }
+                className="w-64 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 font-mono text-sm text-slate-200 outline-none focus:border-sky-600"
+              />
+            </div>
+          </div>
+        ) : null}
         <label htmlFor="llm-key" className="text-sm font-medium text-slate-300">
           Your LLM API key
         </label>
@@ -183,8 +267,8 @@ export default function UploadForm({ onSubmitted }: { onSubmitted: (jobId: strin
           className="w-full max-w-sm rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 font-mono text-sm text-slate-200 outline-none focus:border-sky-600"
         />
         <p className="text-xs text-slate-500">
-          Sent only to this Vishap server with your request and used for your analysis.
-          Stored in this browser only; clear the field to remove it.
+          Sent over HTTPS to this Vishap server, which forwards it only to the provider you
+          picked, for your analysis. Stored in this browser only; clear the field to remove it.
         </p>
       </div>
 

@@ -24,6 +24,18 @@ def get_api_key() -> str | None:
     return _api_key_var.get()
 
 
+# (base_url, model) chosen by the caller from the server's provider allow-list
+_target_var: ContextVar[tuple[str, str] | None] = ContextVar("llm_target", default=None)
+
+
+def set_llm_target(target: tuple[str, str] | None) -> None:
+    _target_var.set(target)
+
+
+def get_llm_target() -> tuple[str, str] | None:
+    return _target_var.get()
+
+
 def require_user_key() -> bool:
     """True when the operator forbids falling back to the server's own LLM key.
 
@@ -58,10 +70,26 @@ def _resolve_provider() -> str:
     return "custom"
 
 
-def _chat_custom(system: str, user: str, temperature: float, max_tokens: int, api_key: str | None = None) -> dict:
+PROVIDER_NEEDS_KEY_TEXT = (
+    "[LLM error] a chosen LLM provider needs your own key (X-LLM-Api-Key); "
+    "the server's key is never sent to another provider."
+)
+
+
+def _chat_custom(system: str, user: str, temperature: float, max_tokens: int,
+                 api_key: str | None = None,
+                 target: tuple[str, str] | None = None) -> dict:
     try:
         from src.llm.custom_client import CustomClient
         api_key = api_key or get_api_key()
+        target = target or get_llm_target()
+        if target and not api_key:
+            # operator key must never travel to a caller-chosen provider
+            return observe_llm_result({
+                "text": PROVIDER_NEEDS_KEY_TEXT,
+                "tokens_in": 0, "tokens_out": 0,
+                "model": "none", "mode": "error",
+            }, status="error")
         if require_user_key() and not api_key:
             # never fall back to CUSTOM_LLM_KEY from the environment
             return observe_llm_result({
@@ -69,7 +97,9 @@ def _chat_custom(system: str, user: str, temperature: float, max_tokens: int, ap
                 "tokens_in": 0, "tokens_out": 0,
                 "model": "none", "mode": "error",
             }, status="error")
-        c = CustomClient(api_key=api_key)
+        c = CustomClient(base_url=target[0] if target else None,
+                         api_key=api_key,
+                         model=target[1] if target else None)
         try:
             result = c.chat(user, system, temperature=temperature, max_tokens=max_tokens)
         finally:

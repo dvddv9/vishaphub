@@ -104,7 +104,7 @@ app.add_middleware(
     ),
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE"],
-    allow_headers=["Content-Type", "X-API-Key", "X-LLM-Api-Key", "Authorization", "X-Requested-With"],
+    allow_headers=["Content-Type", "X-API-Key", "X-LLM-Api-Key", "X-LLM-Provider", "X-LLM-Model", "Authorization", "X-Requested-With"],
     expose_headers=["X-Request-Id"],
     allow_private_network=True,
 )
@@ -360,15 +360,47 @@ def _need_user_llm_key(x_llm_api_key: str | None) -> None:
         )
 
 
+def _apply_llm_request(key: str | None, provider: str | None, model: str | None):
+    """Validate the caller's LLM choice and bind it to this request's context.
+
+    Returns (key, target). ``target`` is (base_url, model) from the server-side
+    provider allow-list or None (use the server's configured endpoint).
+    """
+    from src.llm import providers
+    from src.llm.client import set_api_key, set_llm_target
+    _need_user_llm_key(key)
+    key = (key or "").strip() or None
+    try:
+        target = providers.resolve(provider, model)
+    except providers.ProviderError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if target and not key:
+        raise HTTPException(
+            status_code=400,
+            detail="Choosing an LLM provider requires your own key (X-LLM-Api-Key).",
+        )
+    set_api_key(key)
+    set_llm_target(target)
+    return key, target
+
+
+@app.get("/providers", dependencies=[Depends(verify_api_key)])
+async def llm_providers():
+    """LLM providers a caller may pick (bring-your-own-key)."""
+    from src.llm import providers
+    return {"providers": providers.list_providers()}
+
+
 @app.post("/analyze", response_model=AnalyzeResponse, dependencies=[Depends(verify_api_key), Depends(rate_limit_analyze)])
 @traced("analyze")
-async def analyze(req: AnalyzeRequest, x_llm_api_key: str | None = Header(None, alias="X-LLM-Api-Key")):
+async def analyze(req: AnalyzeRequest,
+                  x_llm_api_key: str | None = Header(None, alias="X-LLM-Api-Key"),
+                  x_llm_provider: str | None = Header(None, alias="X-LLM-Provider"),
+                  x_llm_model: str | None = Header(None, alias="X-LLM-Model")):
     if not req.material.strip():
         raise HTTPException(status_code=400, detail="material must not be empty")
 
-    _need_user_llm_key(x_llm_api_key)
-    from src.llm.client import set_api_key
-    set_api_key(x_llm_api_key)
+    _apply_llm_request(x_llm_api_key, x_llm_provider, x_llm_model)
     from src.pipeline.orchestrator import compute_hash
     from src.storage.history import find_done_by_hash
 
@@ -464,11 +496,14 @@ async def analyze(req: AnalyzeRequest, x_llm_api_key: str | None = Header(None, 
 @app.post("/analyze/secure", dependencies=[Depends(current_user)])
 async def analyze_secure(req: AnalyzeRequest, user: dict = Depends(current_user)):
     with tenant_scope(user["tenant_id"]):
-        return await analyze(req, x_llm_api_key=None)
+        return await analyze(req, x_llm_api_key=None, x_llm_provider=None, x_llm_model=None)
 
 
 @app.post("/analyze/batch", response_model=BatchResponse, dependencies=[Depends(verify_api_key), Depends(rate_limit_analyze)])
-async def analyze_batch(req: BatchRequest, x_llm_api_key: str | None = Header(None, alias="X-LLM-Api-Key")):
+async def analyze_batch(req: BatchRequest,
+                        x_llm_api_key: str | None = Header(None, alias="X-LLM-Api-Key"),
+                        x_llm_provider: str | None = Header(None, alias="X-LLM-Provider"),
+                        x_llm_model: str | None = Header(None, alias="X-LLM-Model")):
     if not req.items:
         raise HTTPException(status_code=400, detail="items must not be empty")
     for i, item in enumerate(req.items):
@@ -478,9 +513,7 @@ async def analyze_batch(req: BatchRequest, x_llm_api_key: str | None = Header(No
                 detail=f"items[{i}].material must not be empty",
             )
 
-    _need_user_llm_key(x_llm_api_key)
-    from src.llm.client import set_api_key
-    set_api_key(x_llm_api_key)
+    _apply_llm_request(x_llm_api_key, x_llm_provider, x_llm_model)
 
     materials = [(item.material, item.filename) for item in req.items]
 
@@ -596,10 +629,12 @@ async def audit_export(
         )
 
 
-async def _run_job_async(job_id: str, req: "AnalyzeRequest", tenant: str, llm_key: str | None = None):
-    from src.llm.client import set_api_key
+async def _run_job_async(job_id: str, req: "AnalyzeRequest", tenant: str, llm_key: str | None = None,
+                         llm_target: tuple[str, str] | None = None):
+    from src.llm.client import set_api_key, set_llm_target
     from src.pipeline.orchestrator import run_pipeline_async
     set_api_key(llm_key)  # per-job; never persisted or logged
+    set_llm_target(llm_target)
     with tenant_scope(tenant):
         await update_job_async(
             job_id, status="running", started_at=datetime.now(UTC).isoformat()
@@ -637,9 +672,10 @@ async def _run_job_async(job_id: str, req: "AnalyzeRequest", tenant: str, llm_ke
 @traced("analyze_async")
 async def analyze_async(req: "AnalyzeRequest", background: BackgroundTasks,
                         tenant: str = Depends(current_tenant),
-                        x_llm_api_key: str | None = Header(None, alias="X-LLM-Api-Key")):
-    _need_user_llm_key(x_llm_api_key)
-    llm_key = (x_llm_api_key or "").strip() or None
+                        x_llm_api_key: str | None = Header(None, alias="X-LLM-Api-Key"),
+                        x_llm_provider: str | None = Header(None, alias="X-LLM-Provider"),
+                        x_llm_model: str | None = Header(None, alias="X-LLM-Model")):
+    llm_key, llm_target = _apply_llm_request(x_llm_api_key, x_llm_provider, x_llm_model)
     with tenant_scope(tenant):
         job_id = await create_job_async(
             filename=req.filename or "unknown", tenant_id=tenant
@@ -660,7 +696,7 @@ async def analyze_async(req: "AnalyzeRequest", background: BackgroundTasks,
             # Celery broker / result backend.
             if llm_key is None:
                 log.warning("celery_broker_unavailable", job_id=job_id)
-            background.add_task(_run_job_async, job_id, req, tenant, llm_key)
+            background.add_task(_run_job_async, job_id, req, tenant, llm_key, llm_target)
         return {"job_id": job_id, "status": "queued"}
 
 
