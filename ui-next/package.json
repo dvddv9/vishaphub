@@ -1,6 +1,6 @@
 {
   "name": "ui-next",
-  "version": "7.3.17",
+  "version": "7.4.4",
   "private": true,
   "scripts": {
     "dev": "next dev",

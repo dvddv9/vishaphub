@@ -6,7 +6,7 @@
 [![PyPI](https://img.shields.io/pypi/v/vishap-analyzer.svg)](https://pypi.org/project/vishap-analyzer/)
 [![CI](https://github.com/dvddv9/vishap/actions/workflows/ci.yml/badge.svg)](https://github.com/dvddv9/vishap/actions/workflows/ci.yml)
 [![Docs](https://github.com/dvddv9/vishap/actions/workflows/docs.yml/badge.svg)](https://dvddv9.github.io/vishap/)
-[![Version](https://img.shields.io/badge/version-7.3.16-blue)](https://github.com/dvddv9/vishap/releases/tag/v7.3.16)
+[![Version](https://img.shields.io/badge/version-7.4.4-blue)](https://github.com/dvddv9/vishap/releases)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
 > 🐉 **Vishap** — 6-stage LLM pipeline for analyzing engineering materials (code, spec, logs, config, data).
@@ -23,7 +23,14 @@
 
 > ⚠️ Free tier: first request may take 30–50 s (cold start).
 
-## 🎉 What's new in v7.4.0
+## 🎉 What's new in v7.4.4
+
+- **D0 fast path** — empty, trivial or unparseable material is classified D0 and skips the LLM.
+- **`/analyze` is None-safe** — a stage that returns `None` no longer causes an HTTP 500.
+- **Safer startup (v7.4.2)** — `/version` endpoint, fail-closed when `CONVEYOR_API_KEY` is not set, constant-time key comparison (`hmac.compare_digest`), `uuid4` session ids, default host `127.0.0.1` (override with `VISHAP_HOST`).
+- **Claude plugin** — bundle renamed to `vishap-security-bundle`, tool annotations added, API key taken from plugin settings only.
+
+### v7.4.0
 
 **Logs as material** — LOG_PATTERNS (19): db_password, jwt_secret, aws_key, aws_secret, stripe_key, pii_email, pii_phone (E.164+`\b`), pii_passport_ru, credit_card, jwt_token, ssh_key, sqlmap, sqli_pattern, cmd_injection, imdsv1, cors_wildcard, csp_wildcard, cookie_insecure, xff_trust (CWE-348).
 
@@ -45,7 +52,7 @@ Previous: [v7.3.17](#previous-v7317)
 
 - **6-stage pipeline:** Ingestion → Taint Analysis → Dataflow → Risk Assessment → Verdict → Report.
 - **Multi-language:** Python, Java, C, **JavaScript / TypeScript** (AST + taint patterns).
-- **Multi-provider LLM:** DeepSeek (custom), Anthropic (Claude), Android (Gemini), any OpenAI-compatible endpoint (Groq, OpenAI, Mistral, OpenRouter, Together).
+- **LLM backend:** any OpenAI-compatible endpoint via `CUSTOM_LLM_URL` / `CUSTOM_LLM_KEY` / `CUSTOM_LLM_MODEL` (DeepSeek by default; `.env.example` has OpenAI, Groq and Ollama examples).
 - **Async API:** FastAPI + Celery workers (optional in-process fallback).
 - **Security:** HMAC-SHA256 for API keys (with pepper), Fernet for secrets.
 - **Observability:** Structlog (JSON), Prometheus `/metrics`, OpenTelemetry traces.
@@ -83,7 +90,7 @@ Previous: [v7.3.17](#previous-v7317)
 ### Python (pip)
 
 ```bash
-pip install vishap-analyzer==7.4.0
+pip install vishap-analyzer
 ```
 
 ```python
@@ -92,7 +99,7 @@ result = analyze(material="def get_user(name): ...", filename="sqli.py")
 print(result["audit"]["critique_verdict"])
 ```
 
-> **Version pin:** `==7.4.0` — the version documented here. See [PyPI](https://pypi.org/project/vishap-analyzer/) for the latest.
+> **Versions:** pin with `==X.Y.Z` for reproducible installs. See [PyPI](https://pypi.org/project/vishap-analyzer/) for available releases.
 
 ### Backend (Docker)
 ```bash
