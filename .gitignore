@@ -93,7 +93,6 @@ report_*.md
 venv/
 .stage4/
 harness_out.txt
-dsh_output.log
 claude-plugin/*.mcpb
 # pip / build (python -m build)
 build-env-*/
@@ -144,4 +143,3 @@ patch-*.ps1
 /fix-plugin.py
 /patch-logs.py
 
-dsh-plugin/

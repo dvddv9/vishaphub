@@ -77,7 +77,6 @@ All notable changes to Vishap. Format based on [Keep a Changelog](https://keepac
 - **Claude plugin `vishap-security-bundle`** (`claude-plugin-bundle-anthropic/`): `vishap_analyze` tool with `title`, `readOnlyHint`, `destructiveHint`, `openWorldHint`; README with Privacy section; `requirements.txt`.
 - Root `.claude-plugin/marketplace.json` — `/plugin marketplace add dvddv9/vishap`, `/plugin install vishap-security-bundle@vishap`.
 - `tests/test_plugin_bundle_key_safety.py` — guard: the plugin never uses the publisher's API key.
-- `dsh-plugin/` — DeepSeek Harness tool ships with the repo.
 
 ### Changed
 - Plugin reads only plugin-scoped `VISHAP_API_KEY` / `VISHAP_MODEL` (from user settings); no ambient credentials.

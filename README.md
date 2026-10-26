@@ -27,7 +27,7 @@
 
 - **`/analyze` is None-safe again** — a stage that returns `None` no longer causes an HTTP 500 (the guard was reverted by mistake and is restored).
 - **CI** — stale Stripe tests removed, Docker smoke test fixed, UTF-8 BOM stripped from sources.
-- **Repository** — scratch scripts untracked, versions synced (`scripts/check_version.py`), DeepSeek Harness plugin (`dsh-plugin/`) ships with the repo.
+- **Repository** — scratch scripts untracked, versions synced (`scripts/check_version.py`).
 
 ### v7.4.4
 
