@@ -55,7 +55,7 @@ EXPOSE 5001
 STOPSIGNAL SIGTERM
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-    CMD curl -fsS http://127.0.0.1:5001/health || exit 1
+    CMD curl -fsS http://0.0.0.0:${PORT:-10000}/health || exit 1
 
 # NB: without CONVEYOR_API_KEY the app binds 127.0.0.1 (see src/main.py) and is
 # therefore unreachable from outside the container. Set it in production — the
@@ -66,4 +66,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 # (`HARNESS_URL`, `HARNESS_TOKEN`). Running the harness on the host and pointing
 # the container at `host.docker.internal:3080` is the supported setup — see
 # docker-compose.yml.
-CMD ["sh", "-c", "alembic upgrade head && python -m src.main"]
+CMD ["sh", "-c", "alembic upgrade head && uvicorn src.main:app --host 0.0.0.0 --port ${PORT:-10000}"]
