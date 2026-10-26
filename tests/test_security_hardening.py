@@ -117,17 +117,21 @@ def test_async_chat_passes_the_callers_key_into_the_worker_thread(monkeypatch):
     from src.llm import client, async_client
     got = {}
 
-    def fake(system, user, temperature, max_tokens, api_key=None):
+    def fake(system, user, temperature, max_tokens, api_key=None, target=None):
         got["key"] = api_key
+        got["target"] = target
         return {"text": "ok"}
 
     monkeypatch.setattr(client, "_chat_custom", fake)
     client.set_api_key("user-key")
     try:
+        client.set_llm_target(("https://api.anthropic.com/v1", "claude-sonnet-5-5"))
         asyncio.run(async_client.async_chat("s", "u"))
     finally:
         client.set_api_key(None)
+        client.set_llm_target(None)
     assert got["key"] == "user-key"
+    assert got["target"] == ("https://api.anthropic.com/v1", "claude-sonnet-5-5")
 
 
 def test_analyze_endpoints_demand_a_key_in_user_key_mode(monkeypatch):
