@@ -76,3 +76,69 @@ def test_limit_and_sweep():
     assert e.value.status_code == 429
     rate_limit._sweep(10**12)  # everything is older than the window
     assert not rate_limit._BUCKETS
+
+
+# --- user-supplied LLM key ---------------------------------------------------
+def test_require_user_key_blocks_server_key_fallback(monkeypatch):
+    from src.llm import client
+    monkeypatch.setenv("VISHAP_REQUIRE_USER_LLM_KEY", "1")
+    monkeypatch.setenv("CUSTOM_LLM_URL", "https://llm.invalid/v1")
+    monkeypatch.setenv("CUSTOM_LLM_KEY", "operator-secret")
+    client.set_api_key(None)
+    out = client.chat("sys", "user")
+    assert out["mode"] == "error" and "X-LLM-Api-Key" in out["text"]
+    assert "operator-secret" not in str(out)
+
+
+def test_user_key_is_used_when_provided(monkeypatch):
+    from src.llm import client, custom_client
+    seen = {}
+
+    class Fake:
+        def __init__(self, api_key=None, **kw):
+            seen["key"] = api_key
+        def chat(self, *a, **kw):
+            return {"text": "ok", "tokens_in": 1, "tokens_out": 1, "model": "m", "mode": "custom"}
+        def close(self):
+            pass
+
+    monkeypatch.setattr(custom_client, "CustomClient", Fake)
+    monkeypatch.setenv("VISHAP_REQUIRE_USER_LLM_KEY", "1")
+    client.set_api_key("user-key")
+    try:
+        assert client.chat("s", "u")["text"] == "ok"
+    finally:
+        client.set_api_key(None)
+    assert seen["key"] == "user-key"
+
+
+def test_async_chat_passes_the_callers_key_into_the_worker_thread(monkeypatch):
+    import asyncio
+    from src.llm import client, async_client
+    got = {}
+
+    def fake(system, user, temperature, max_tokens, api_key=None):
+        got["key"] = api_key
+        return {"text": "ok"}
+
+    monkeypatch.setattr(client, "_chat_custom", fake)
+    client.set_api_key("user-key")
+    try:
+        asyncio.run(async_client.async_chat("s", "u"))
+    finally:
+        client.set_api_key(None)
+    assert got["key"] == "user-key"
+
+
+def test_analyze_endpoints_demand_a_key_in_user_key_mode(monkeypatch):
+    from fastapi.testclient import TestClient
+    from src.main import app
+    monkeypatch.setenv("VISHAP_REQUIRE_USER_LLM_KEY", "1")
+    c = TestClient(app)
+    for path, body in [
+        ("/analyze", {"material": "x = 1", "filename": "a.py"}),
+        ("/analyze/async", {"material": "x = 1", "filename": "a.py"}),
+        ("/analyze/batch", {"items": [{"material": "x = 1", "filename": "a.py"}]}),
+    ]:
+        r = c.post(path, json=body)
+        assert r.status_code in (401, 403), (path, r.status_code, r.text)

@@ -81,11 +81,10 @@ export async function apiFetch<T>(path: string, options: RequestInit & { llmApiK
   }
   if (API_KEY) {
     headers.set("X-API-Key", API_KEY);
-  if ((options as { llmApiKey?: string }).llmApiKey) {
-    headers.set("X-LLM-Api-Key", (options as { llmApiKey?: string }).llmApiKey!);
   }
-  if ((options as { llmApiKey?: string }).llmApiKey) {
-  }
+  const llmApiKey = options.llmApiKey;
+  if (llmApiKey) {
+    headers.set("X-LLM-Api-Key", llmApiKey);
   }
 
   const canUseTauri =

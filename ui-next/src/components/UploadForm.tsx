@@ -159,6 +159,35 @@ export default function UploadForm({ onSubmitted }: { onSubmitted: (jobId: strin
         />
       </div>
 
+      <div className="flex flex-col gap-2">
+        <label htmlFor="llm-key" className="text-sm font-medium text-slate-300">
+          Your LLM API key
+        </label>
+        <input
+          id="llm-key"
+          type="password"
+          autoComplete="off"
+          value={llmKey}
+          onChange={(event) => {
+            const value = event.target.value.trim();
+            setLlmKey(value);
+            try {
+              if (value) localStorage.setItem("llmApiKey", value);
+              else localStorage.removeItem("llmApiKey");
+            } catch {
+              /* storage unavailable: the key lives only in memory */
+            }
+          }}
+          disabled={submitting}
+          placeholder="sk-…"
+          className="w-full max-w-sm rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 font-mono text-sm text-slate-200 outline-none focus:border-sky-600"
+        />
+        <p className="text-xs text-slate-500">
+          Sent only to this Vishap server with your request and used for your analysis.
+          Stored in this browser only; clear the field to remove it.
+        </p>
+      </div>
+
       {error ? (
         <p className="flex items-start gap-2 rounded-lg border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-200">
           <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />

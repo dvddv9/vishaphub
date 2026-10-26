@@ -104,7 +104,7 @@ app.add_middleware(
     ),
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE"],
-    allow_headers=["Content-Type", "X-API-Key", "Authorization", "X-Requested-With"],
+    allow_headers=["Content-Type", "X-API-Key", "X-LLM-Api-Key", "Authorization", "X-Requested-With"],
     expose_headers=["X-Request-Id"],
     allow_private_network=True,
 )
@@ -350,12 +350,23 @@ def verify_webhook_signature(payload: bytes, signature: str, secret: str, algo: 
     return hmac.compare_digest(expected, signature.replace("sha256=", "").replace("sha1=", ""))
 
 
+def _need_user_llm_key(x_llm_api_key: str | None) -> None:
+    """401 when the operator runs in user-key-only mode and no key was sent."""
+    from src.llm.client import require_user_key
+    if require_user_key() and not (x_llm_api_key or "").strip():
+        raise HTTPException(
+            status_code=401,
+            detail="This server does not use its own LLM key. Send yours in the X-LLM-Api-Key header.",
+        )
+
+
 @app.post("/analyze", response_model=AnalyzeResponse, dependencies=[Depends(verify_api_key), Depends(rate_limit_analyze)])
 @traced("analyze")
 async def analyze(req: AnalyzeRequest, x_llm_api_key: str | None = Header(None, alias="X-LLM-Api-Key")):
     if not req.material.strip():
         raise HTTPException(status_code=400, detail="material must not be empty")
 
+    _need_user_llm_key(x_llm_api_key)
     from src.llm.client import set_api_key
     set_api_key(x_llm_api_key)
     from src.pipeline.orchestrator import compute_hash
@@ -457,7 +468,7 @@ async def analyze_secure(req: AnalyzeRequest, user: dict = Depends(current_user)
 
 
 @app.post("/analyze/batch", response_model=BatchResponse, dependencies=[Depends(verify_api_key), Depends(rate_limit_analyze)])
-async def analyze_batch(req: BatchRequest):
+async def analyze_batch(req: BatchRequest, x_llm_api_key: str | None = Header(None, alias="X-LLM-Api-Key")):
     if not req.items:
         raise HTTPException(status_code=400, detail="items must not be empty")
     for i, item in enumerate(req.items):
@@ -466,6 +477,10 @@ async def analyze_batch(req: BatchRequest):
                 status_code=400,
                 detail=f"items[{i}].material must not be empty",
             )
+
+    _need_user_llm_key(x_llm_api_key)
+    from src.llm.client import set_api_key
+    set_api_key(x_llm_api_key)
 
     materials = [(item.material, item.filename) for item in req.items]
 
@@ -581,8 +596,10 @@ async def audit_export(
         )
 
 
-async def _run_job_async(job_id: str, req: "AnalyzeRequest", tenant: str):
+async def _run_job_async(job_id: str, req: "AnalyzeRequest", tenant: str, llm_key: str | None = None):
+    from src.llm.client import set_api_key
     from src.pipeline.orchestrator import run_pipeline_async
+    set_api_key(llm_key)  # per-job; never persisted or logged
     with tenant_scope(tenant):
         await update_job_async(
             job_id, status="running", started_at=datetime.now(UTC).isoformat()
@@ -619,7 +636,10 @@ async def _run_job_async(job_id: str, req: "AnalyzeRequest", tenant: str):
 @app.post("/analyze/async", dependencies=[Depends(verify_api_key), Depends(rate_limit_analyze)])
 @traced("analyze_async")
 async def analyze_async(req: "AnalyzeRequest", background: BackgroundTasks,
-                        tenant: str = Depends(current_tenant)):
+                        tenant: str = Depends(current_tenant),
+                        x_llm_api_key: str | None = Header(None, alias="X-LLM-Api-Key")):
+    _need_user_llm_key(x_llm_api_key)
+    llm_key = (x_llm_api_key or "").strip() or None
     with tenant_scope(tenant):
         job_id = await create_job_async(
             filename=req.filename or "unknown", tenant_id=tenant
@@ -633,11 +653,14 @@ async def analyze_async(req: "AnalyzeRequest", background: BackgroundTasks,
                 "status": "queued",
             },
         )
-        if broker_available():
+        if llm_key is None and broker_available():
             run_analysis_task.delay(job_id, req.material, req.filename or "unknown", tenant)
         else:
-            log.warning("celery_broker_unavailable", job_id=job_id)
-            background.add_task(_run_job_async, job_id, req, tenant)
+            # A caller-supplied key stays in this process: it is never put on the
+            # Celery broker / result backend.
+            if llm_key is None:
+                log.warning("celery_broker_unavailable", job_id=job_id)
+            background.add_task(_run_job_async, job_id, req, tenant, llm_key)
         return {"job_id": job_id, "status": "queued"}
 
 

@@ -12,6 +12,7 @@ Batch-обработка: параллельный запуск pipeline для 
         ("def bar(): pass", "b.py"),
     ], max_concurrent=3)
 """
+import contextvars
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from src.pipeline.orchestrator import run_pipeline
@@ -41,7 +42,7 @@ def run_batch(materials: list[tuple[str, str]],
 
     with ThreadPoolExecutor(max_workers=max_concurrent) as ex:
         futures = {
-            ex.submit(run_pipeline, material, filename, verbose, f"-{i:02d}"): i
+            ex.submit(contextvars.copy_context().run, run_pipeline, material, filename, verbose, f"-{i:02d}"): i
             for i, (material, filename) in enumerate(materials)
         }
 

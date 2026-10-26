@@ -42,6 +42,8 @@ def _deepseek_key() -> str:
     deepseek_key = os.getenv("DEEPSEEK_API_KEY", "").strip()
     if deepseek_key:
         return deepseek_key
+    if os.getenv("VISHAP_REQUIRE_USER_LLM_KEY", "").strip().lower() in ("1", "true", "yes", "on"):
+        return ""  # user-key-only mode: never spend the operator's LLM key
     llm_url = os.getenv("CUSTOM_LLM_URL", "").strip().lower()
     if "deepseek.com" in llm_url and CUSTOM_LLM_KEY:
         return CUSTOM_LLM_KEY

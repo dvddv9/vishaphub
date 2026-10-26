@@ -24,6 +24,22 @@ def get_api_key() -> str | None:
     return _api_key_var.get()
 
 
+def require_user_key() -> bool:
+    """True when the operator forbids falling back to the server's own LLM key.
+
+    VISHAP_REQUIRE_USER_LLM_KEY=1 (public/demo deploys): every analysis must carry
+    the caller's own key (``X-LLM-Api-Key``), so the operator's key is never spent.
+    """
+    import os
+    return os.getenv("VISHAP_REQUIRE_USER_LLM_KEY", "").strip().lower() in ("1", "true", "yes", "on")
+
+
+USER_KEY_REQUIRED_TEXT = (
+    "[LLM error] this server does not use its own LLM key: send yours in the "
+    "X-LLM-Api-Key header (or enter it in the UI)."
+)
+
+
 NO_CUSTOM_TEXT = (
     "[LLM error] custom provider failed: set CUSTOM_LLM_URL / CUSTOM_LLM_KEY / CUSTOM_LLM_MODEL."
 )
@@ -46,6 +62,13 @@ def _chat_custom(system: str, user: str, temperature: float, max_tokens: int, ap
     try:
         from src.llm.custom_client import CustomClient
         api_key = api_key or get_api_key()
+        if require_user_key() and not api_key:
+            # never fall back to CUSTOM_LLM_KEY from the environment
+            return observe_llm_result({
+                "text": USER_KEY_REQUIRED_TEXT,
+                "tokens_in": 0, "tokens_out": 0,
+                "model": "none", "mode": "error",
+            }, status="error")
         c = CustomClient(api_key=api_key)
         try:
             result = c.chat(user, system, temperature=temperature, max_tokens=max_tokens)

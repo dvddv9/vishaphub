@@ -11,6 +11,12 @@ All notable changes to Vishap. Format based on [Keep a Changelog](https://keepac
 - **CORS**: removed the `*.vercel.app` / `*.onrender.com` / `*.fly.dev` wildcards (anyone can register a subdomain there). Loopback and the desktop shell stay allowed; list your own deployed UI in `VISHAP_CORS_ORIGINS` (comma-separated exact origins). **Deployments with a hosted UI must set it.**
 - **Rate limiter**: client IP honours `X-Forwarded-For` only when `VISHAP_TRUSTED_PROXY_HOPS` is set (Render: `1`), counted from the right so a spoofed leftmost value is ignored; expired buckets are swept so memory no longer grows.
 
+### Added
+- **Bring-your-own LLM key**: the key a user enters in the UI (`X-LLM-Api-Key`) is now actually used by `/analyze`, `/analyze/async` and `/analyze/batch`. With `VISHAP_REQUIRE_USER_LLM_KEY=1` the server's own `CUSTOM_LLM_KEY` is never used (requests without a key get 401). A caller key stays in-process and is never put on the Celery broker.
+
+### Fixed
+- `/analyze/async` (what the UI calls) ignored `X-LLM-Api-Key`; the key also did not reach worker threads (`run_in_executor`, batch pool). CORS did not allow the `X-LLM-Api-Key` header. `ui-next/src/lib/api.ts` only sent it when `NEXT_PUBLIC_API_KEY` was set; the upload form had no key field.
+
 ### CI
 - `pip-audit` (informational) and `pytest --cov=src` coverage report.
 

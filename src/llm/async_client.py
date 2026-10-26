@@ -18,13 +18,16 @@ async def async_chat(system: str, user: str,
     Mirrors `src.llm.client.chat`: provider is resolved via
     `_resolve_provider()` (always custom in v7.3.5).
     """
-    from src.llm.client import _resolve_provider, _chat_custom
+    from src.llm.client import _resolve_provider, _chat_custom, get_api_key
     provider = _resolve_provider()
     loop = asyncio.get_event_loop()
+    # run_in_executor does NOT copy contextvars into the worker thread, so read the
+    # caller's key here and pass it explicitly (otherwise the server key would be used).
+    user_key = get_api_key()
 
     if provider == "custom":
         return await loop.run_in_executor(
-            None, lambda: _chat_custom(system, user, temperature, max_tokens),
+            None, lambda: _chat_custom(system, user, temperature, max_tokens, api_key=user_key),
         )
 
     try:
