@@ -31,10 +31,22 @@ def user():
     return {"user": row}
 `;
 
-export default function UploadForm({ onSubmitted }: { onSubmitted: (jobId: string) => void }) {
+export interface UploadDraft {
+  material: string;
+  filename: string;
+}
+
+export default function UploadForm({
+  onSubmitted,
+  initial,
+}: {
+  onSubmitted: (jobId: string, draft: UploadDraft) => void;
+  /** Prefill (used to retry after the server lost a job). */
+  initial?: UploadDraft | null;
+}) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [material, setMaterial] = useState("");
-  const [filename, setFilename] = useState("pasted.txt");
+  const [material, setMaterial] = useState(initial?.material ?? "");
+  const [filename, setFilename] = useState(initial?.filename ?? "pasted.txt");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [llmKey, setLlmKey] = useState<string>(() => readLlmChoice().key);
@@ -133,7 +145,7 @@ export default function UploadForm({ onSubmitted }: { onSubmitted: (jobId: strin
         finished_at: null,
         error: null,
       });
-      onSubmitted(created.job_id);
+      onSubmitted(created.job_id, { material, filename: safeName });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unexpected error while submitting.");
     } finally {

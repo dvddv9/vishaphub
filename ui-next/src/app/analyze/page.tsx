@@ -12,8 +12,8 @@ import {
   LoaderCircle,
   TriangleAlert,
 } from "lucide-react";
-import UploadForm from "@/components/UploadForm";
-import { getJob, rememberJob } from "@/lib/api";
+import UploadForm, { type UploadDraft } from "@/components/UploadForm";
+import { ApiError, forgetJob, getJob, rememberJob } from "@/lib/api";
 import { isTerminal, type Job, type JobStatus } from "@/lib/types";
 
 const STEPS: { status: JobStatus; label: string }[] = [
@@ -35,15 +35,29 @@ function stepState(current: JobStatus, step: JobStatus): "done" | "active" | "pe
 export default function AnalyzePage() {
   const router = useRouter();
   const [jobId, setJobId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<UploadDraft | null>(null);
+  // 404 = the server no longer knows the job (it restarted: jobs live in memory).
+  const [lost, setLost] = useState(false);
 
   const { data: job, error } = useSWR<Job>(
     jobId ? ["job", jobId] : null,
     () => getJob(jobId as string),
     {
-      refreshInterval: (latest) => (latest && isTerminal(latest.status) ? 0 : 2000),
+      refreshInterval: (latest) => (lost || (latest && isTerminal(latest.status)) ? 0 : 2000),
       revalidateOnFocus: false,
+      shouldRetryOnError: false,
+      onError: (cause) => {
+        if (cause instanceof ApiError && cause.status === 404) setLost(true);
+      },
     },
   );
+
+  function startOver(keepDraft: boolean) {
+    if (jobId) forgetJob(jobId);
+    setLost(false);
+    setJobId(null);
+    if (!keepDraft) setDraft(null);
+  }
 
   useEffect(() => {
     if (!job) return;
@@ -71,7 +85,14 @@ export default function AnalyzePage() {
 
       {!jobId ? (
         <section className="mt-8">
-          <UploadForm onSubmitted={(id) => setJobId(id)} />
+          <UploadForm
+            initial={draft}
+            onSubmitted={(id, submitted) => {
+              setLost(false);
+              setDraft(submitted);
+              setJobId(id);
+            }}
+          />
         </section>
       ) : (
         <section className="mt-8 rounded-xl border border-slate-200 bg-white p-6">
@@ -82,7 +103,7 @@ export default function AnalyzePage() {
             </div>
             <button
               type="button"
-              onClick={() => setJobId(null)}
+              onClick={() => startOver(false)}
               className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 transition-colors hover:border-slate-400 hover:text-slate-900"
             >
               Start another
@@ -134,7 +155,25 @@ export default function AnalyzePage() {
             </p>
           ) : null}
 
-          {error ? (
+          {lost ? (
+            <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900">
+              <p className="flex items-start gap-2">
+                <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                <span>
+                  The server no longer knows this job. It most likely restarted (a new deploy or a
+                  free-tier restart) while the analysis was running. Your text is kept; run it
+                  again.
+                </span>
+              </p>
+              <button
+                type="button"
+                onClick={() => startOver(true)}
+                className="mt-3 rounded-lg bg-sky-500 px-3 py-1.5 text-sm font-semibold text-slate-950 transition-colors hover:bg-sky-400"
+              >
+                Try again
+              </button>
+            </div>
+          ) : error ? (
             <p className="mt-5 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
               <span>{error instanceof Error ? error.message : "Could not read the job status."}</span>

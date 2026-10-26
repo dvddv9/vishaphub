@@ -6,6 +6,9 @@ All notable changes to Vishap. Format based on [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+### UI (job lost)
+- When the server answers 404 for a running job (it restarted; jobs are in memory), the analyze page stops polling, explains what happened and offers "Try again" with the text still in the form (it used to spin on a raw "job not found").
+
 ### Fixed (LLM)
 - Models that answer HTTP 400 "`temperature` is deprecated for this model" (e.g. Claude 5.x) or want `max_completion_tokens` no longer break the whole analysis: the client retries once without/with the parameter and remembers it per endpoint+model.
 - `/auth/sso/callback` answers 501 while SSO is not wired up (the fail-closed guard turned it into 401).
