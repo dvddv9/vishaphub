@@ -67,6 +67,14 @@ import os as _os
 if not _os.getenv("CONVEYOR_API_KEY") and _os.getenv("VISHAP_ALLOW_NO_KEY") != "1":
     raise RuntimeError("CONVEYOR_API_KEY is required (fail-closed). Set it in .env or use VISHAP_ALLOW_NO_KEY=1 for tests.")
 
+# Exact extra origins for a deployed UI, e.g.
+#   VISHAP_CORS_ORIGINS=https://vishap.vercel.app,https://app.example.com
+_CORS_EXTRA_ORIGINS = [
+    o.strip().rstrip("/")
+    for o in _os.getenv("VISHAP_CORS_ORIGINS", "").split(",")
+    if o.strip() and o.strip() != "*"
+]
+
 app = FastAPI(
     title=f"{APP_NAME} API",
     description="Vishap — 6-стадийный LLM-конвейер для анализа материалов",
@@ -85,12 +93,13 @@ app.add_middleware(
         "tauri://localhost",
         "http://tauri.localhost",
         "https://tauri.localhost",
+        *_CORS_EXTRA_ORIGINS,
     ],
+    # Loopback + the desktop shell only. Shared hosting domains (*.vercel.app,
+    # *.onrender.com, *.fly.dev) are NOT wildcarded: anyone can register a
+    # subdomain there. List your own deployed UI in VISHAP_CORS_ORIGINS.
     allow_origin_regex=(
         r"^(https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?"
-        r"|https?://[a-z0-9-]+\.vercel\.app"
-        r"|https?://[a-z0-9-]+\.onrender\.com"
-        r"|https?://[a-z0-9-]+\.fly\.dev"
         r"|tauri://localhost|https?://tauri\.localhost)$"
     ),
     allow_credentials=True,

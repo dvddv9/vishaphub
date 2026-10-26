@@ -4,6 +4,19 @@ All notable changes to Vishap. Format based on [Keep a Changelog](https://keepac
 
 ---
 
+## [Unreleased]
+
+### Security
+- **SAML guard is fail-closed**: `validate_saml_assertion` rejects every assertion until real signature/audience/issuer verification exists (it used to return `True`).
+- **CORS**: removed the `*.vercel.app` / `*.onrender.com` / `*.fly.dev` wildcards (anyone can register a subdomain there). Loopback and the desktop shell stay allowed; list your own deployed UI in `VISHAP_CORS_ORIGINS` (comma-separated exact origins). **Deployments with a hosted UI must set it.**
+- **Rate limiter**: client IP honours `X-Forwarded-For` only when `VISHAP_TRUSTED_PROXY_HOPS` is set (Render: `1`), counted from the right so a spoofed leftmost value is ignored; expired buckets are swept so memory no longer grows.
+
+### CI
+- `pip-audit` (informational) and `pytest --cov=src` coverage report.
+
+### Tests
+- `tests/test_security_hardening.py`.
+
 ## [7.4.6] - 2026-10-26
 
 ### Added

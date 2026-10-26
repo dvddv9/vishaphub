@@ -44,10 +44,14 @@ jobs:
           pip install -r requirements.txt
 
       - name: Install dev tools
-        run: pip install ruff pytest-asyncio
+        run: pip install ruff pytest-asyncio pytest-cov pip-audit
 
       - name: "Lint (ruff: F + E9)"
         run: ruff check src/ --config pyproject.toml
+
+      - name: "Dependency audit (pip-audit, informational)"
+        run: pip-audit -r requirements.txt --progress-spinner off
+        continue-on-error: true
 
       - name: Wait for Postgres
         run: |
@@ -65,7 +69,7 @@ jobs:
           TEST_POSTGRES_URL: postgresql+asyncpg://vishap:vishap_dev@localhost:5432/vishap
 
       - name: Run tests (sans e2e)
-        run: python -m pytest tests/ --ignore=tests/test_e2e.py -q
+        run: python -m pytest tests/ --ignore=tests/test_e2e.py -q --cov=src --cov-report=term:skip-covered
         env:
           TEST_POSTGRES_URL: postgresql+asyncpg://vishap:vishap_dev@localhost:5432/vishap
           VISHAP_DATA_DIR: ${{ github.workspace }}/data
