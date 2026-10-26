@@ -79,8 +79,17 @@ async def rate_limit_read(request: Request) -> None:
 
 # ---------------------------------------------------------------- daily cap --
 # The public demo runs on the server's own model key, so the day cap — not the
-# minute cap — is what bounds the bill. Per client IP, reset by calendar date.
-LIMIT_DAILY = int(os.getenv("VISHAP_DAILY_LIMIT", "30"))
+# minute cap — is what bounds the bill. Per client IP, reset at 00:00 UTC.
+# VISHAP_DAILY_LIMIT           analyses per IP per day (default 7)
+# VISHAP_DAILY_LIMIT_GLOBAL    optional ceiling for ALL visitors together (0 = off)
+def _env_int(name: str, default: int) -> int:
+    try:
+        return max(0, int(os.getenv(name, str(default))))
+    except ValueError:
+        return default
+
+
+LIMIT_DAILY = _env_int("VISHAP_DAILY_LIMIT", 7)
 _DAY_COUNTS: dict[tuple[str, str], int] = {}
 
 
@@ -88,7 +97,7 @@ def _today() -> str:
     return time.strftime("%Y-%m-%d", time.gmtime())
 
 
-def _check_daily(key: str, limit: int) -> None:
+def _check_daily(key: str, limit: int, peek_only: bool = False) -> None:
     today = _today()
     # Cheap sweep: a day change is the only thing that can invalidate entries.
     if any(day != today for _k, day in _DAY_COUNTS):
@@ -101,10 +110,16 @@ def _check_daily(key: str, limit: int) -> None:
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=f"Daily limit reached: {limit} analyses per day. Try again tomorrow (UTC).",
         )
-    _DAY_COUNTS[entry] = used + 1
+    if not peek_only:
+        _DAY_COUNTS[entry] = used + 1
 
 
 async def rate_limit_daily(request: Request) -> None:
-    # One shared pot for everybody: the operator pays for every call, so the cap
-    # is global rather than per visitor. The per-IP minute limit still stands.
-    _check_daily("daily:global", LIMIT_DAILY)
+    """Per-visitor day cap (by client IP), plus an optional global ceiling."""
+    global_cap = _env_int("VISHAP_DAILY_LIMIT_GLOBAL", 0)
+    if global_cap:
+        _check_daily("daily:global", global_cap, peek_only=True)
+    if LIMIT_DAILY:
+        _check_daily("daily:" + client_ip(request), LIMIT_DAILY)
+    if global_cap:
+        _check_daily("daily:global", global_cap)

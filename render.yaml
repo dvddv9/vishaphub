@@ -16,7 +16,7 @@ services:
       - key: VISHAP_PUBLIC_DEMO
         value: "1"
       - key: VISHAP_DAILY_LIMIT
-        value: "30"
+        value: "7"
       - key: VISHAP_SERVER_KEY_ONLY
         value: "1"
       - key: VISHAP_TRUSTED_PROXY_HOPS

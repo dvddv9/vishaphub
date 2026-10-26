@@ -540,7 +540,7 @@ async def analyze_secure(req: AnalyzeRequest, user: dict = Depends(current_user)
         return await analyze(req, x_llm_api_key=None, x_llm_provider=None, x_llm_model=None)
 
 
-@app.post("/analyze/batch", response_model=BatchResponse, dependencies=[Depends(verify_api_key), Depends(rate_limit_analyze)])
+@app.post("/analyze/batch", response_model=BatchResponse, dependencies=[Depends(verify_api_key), Depends(rate_limit_analyze), Depends(rate_limit_daily)])
 async def analyze_batch(req: BatchRequest,
                         x_llm_api_key: str | None = Header(None, alias="X-LLM-Api-Key"),
                         x_llm_provider: str | None = Header(None, alias="X-LLM-Provider"),
@@ -596,7 +596,7 @@ async def analyze_batch(req: BatchRequest,
     )
 
 
-@app.post("/analyze/sarif", dependencies=[Depends(verify_api_key), Depends(rate_limit_analyze)])
+@app.post("/analyze/sarif", dependencies=[Depends(verify_api_key), Depends(rate_limit_analyze), Depends(rate_limit_daily)])
 async def analyze_sarif(req: AnalyzeRequest,
                         x_llm_api_key: str | None = Header(None, alias="X-LLM-Api-Key"),
                         x_llm_provider: str | None = Header(None, alias="X-LLM-Provider"),
@@ -723,7 +723,7 @@ async def _run_job_async(job_id: str, req: "AnalyzeRequest", tenant: str, llm_ke
             )
 
 
-@app.post("/analyze/async", dependencies=[Depends(verify_api_key), Depends(rate_limit_analyze)])
+@app.post("/analyze/async", dependencies=[Depends(verify_api_key), Depends(rate_limit_analyze), Depends(rate_limit_daily)])
 @traced("analyze_async")
 async def analyze_async(req: "AnalyzeRequest", background: BackgroundTasks,
                         tenant: str = Depends(current_tenant),

@@ -461,3 +461,33 @@ def test_server_key_only_without_a_server_key_falls_back_to_rules(monkeypatch):
     assert _is_static_only(None) is True
     monkeypatch.setenv("CUSTOM_LLM_KEY", "k")
     assert _is_static_only(None) is False
+
+
+# --- daily cap: per visitor (IP), default 7 -----------------------------------------
+def test_daily_limit_is_per_ip_and_defaults_to_seven(monkeypatch):
+    import asyncio
+    monkeypatch.delenv("VISHAP_DAILY_LIMIT", raising=False)
+    monkeypatch.delenv("VISHAP_DAILY_LIMIT_GLOBAL", raising=False)
+    importlib.reload(rate_limit)
+    assert rate_limit.LIMIT_DAILY == 7
+    rate_limit._DAY_COUNTS.clear()
+    a, b = _request(host="10.0.0.1"), _request(host="10.0.0.2")
+    for _ in range(7):
+        asyncio.run(rate_limit.rate_limit_daily(a))
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(rate_limit.rate_limit_daily(a))
+    assert exc.value.status_code == 429 and "7 analyses" in exc.value.detail
+    asyncio.run(rate_limit.rate_limit_daily(b))  # another visitor is unaffected
+
+
+def test_daily_global_ceiling_is_optional(monkeypatch):
+    import asyncio
+    monkeypatch.setenv("VISHAP_DAILY_LIMIT_GLOBAL", "2")
+    importlib.reload(rate_limit)
+    rate_limit._DAY_COUNTS.clear()
+    for host in ("10.0.0.1", "10.0.0.2"):
+        asyncio.run(rate_limit.rate_limit_daily(_request(host=host)))
+    with pytest.raises(HTTPException):
+        asyncio.run(rate_limit.rate_limit_daily(_request(host="10.0.0.3")))
+    monkeypatch.delenv("VISHAP_DAILY_LIMIT_GLOBAL")
+    importlib.reload(rate_limit)
