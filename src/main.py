@@ -359,9 +359,9 @@ async def analyze(req: AnalyzeRequest, x_llm_api_key: str | None = Header(None, 
         result_file = DATA_DIR / f"result_{cached_session}.json"
         if result_file.exists():
             cached = json.loads(result_file.read_text(encoding="utf-8"))
-            stage0c = cached.get("stage0", {})
-            stage1c = cached.get("stage1", {})
-            stage2c = cached.get("stage2", {})
+            stage0c = cached.get("stage0") or {}
+            stage1c = cached.get("stage1") or {}
+            stage2c = cached.get("stage2") or {}
             tokens_in_c = sum((s or {}).get("_meta", {}).get("tokens_in", 0) for s in [stage0c, stage1c, stage2c])
             tokens_out_c = sum((s or {}).get("_meta", {}).get("tokens_out", 0) for s in [stage0c, stage1c, stage2c])
             return AnalyzeResponse(
@@ -398,9 +398,9 @@ async def analyze(req: AnalyzeRequest, x_llm_api_key: str | None = Header(None, 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Pipeline error: {str(e)}")
 
-    stage0 = result.get("stage0", {})
-    stage1 = result.get("stage1", {})
-    stage2 = result.get("stage2", {})
+    stage0 = result.get("stage0") or {}
+    stage1 = result.get("stage1") or {}
+    stage2 = result.get("stage2") or {}
 
     tokens_in = sum(
         (s or {}).get("_meta", {}).get("tokens_in", 0)
