@@ -78,8 +78,6 @@ Local scripts (Windows)
 
 Script What it does
 install.bat Installs Python, Node.js, PostgreSQL, and dependencies
-start_all.ps1 Starts the API (:8080), UI (:3000), and DSH (if needed)
-create_shortcut.ps1 Creates a desktop shortcut with the Vishap icon
 apply_custom_llm.py Adds the OpenAI-compatible provider to an existing checkout
 
 ```

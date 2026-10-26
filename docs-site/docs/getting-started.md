@@ -26,10 +26,6 @@ Copy .env.example to .env and fill in your keys. For local development without S
 
 Quick start
 
-Windows (one-click)
-
-Double-click start_all.ps1 (or the Vishap desktop shortcut). It starts the API on :8080, the UI on :3000, and (if needed) the DSH harness, then opens the browser.
-
 CLI
 
 ```bash
