@@ -1,7 +1,7 @@
 {
   "name": "vishap-security-bundle",
   "displayName": "Vishap Claude (Bundle)",
-  "version": "7.4.3",
+  "version": "7.4.4",
   "description": "Security analysis for engineering materials via Claude API (Anthropic SDK).",
   "author": {
     "name": "dvddv9",
