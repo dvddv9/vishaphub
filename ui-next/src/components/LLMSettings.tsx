@@ -184,8 +184,8 @@ function ServerSettings({ initial }: { initial: Config }) {
       next.custom_model = "llama3.1";
     }
     if (v === "custom") {
-      next.custom_url = "https://api.deepseek.com/v1";
-      next.custom_model = "deepseek-chat";
+      next.custom_url = "https://api.anthropic.com/v1";
+      next.custom_model = "claude-haiku-5-5";
     }
     setCfg(next);
   }
@@ -196,7 +196,7 @@ function ServerSettings({ initial }: { initial: Config }) {
 
       <label className="block text-sm text-slate-700 mb-1">Provider</label>
       <select className={FIELD} value={cfg.provider} onChange={(e) => pick(e.target.value)}>
-        <option value="custom">custom (DeepSeek)</option>
+        <option value="custom">custom (Claude)</option>
         <option value="openai">OpenAI</option>
         <option value="groq">Groq</option>
         <option value="ollama">Ollama (local)</option>
@@ -265,7 +265,7 @@ export default function LLMSettings() {
       <div className="rounded-xl border border-slate-300 bg-white p-6 mt-8">
         <h2 className="text-lg font-semibold text-slate-900 mb-1">LLM</h2>
         <p className="text-sm text-slate-600">
-          This server analyses with its built-in DeepSeek model. No provider or API key is needed.
+          This server analyses with its built-in Claude model. No provider or API key is needed.
         </p>
       </div>
     );

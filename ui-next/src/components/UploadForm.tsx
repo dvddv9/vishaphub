@@ -61,7 +61,7 @@ export default function UploadForm({
   const [llmProvider, setLlmProvider] = useState<string>("");
   const [llmModel, setLlmModel] = useState<string>("");
   const [requiresUserKey, setRequiresUserKey] = useState(false);
-  // Only the server's built-in DeepSeek key is used: no provider / model / key fields.
+  // Only the server's built-in Claude key is used: no provider / model / key fields.
   const [serverKeyOnly, setServerKeyOnly] = useState(false);
   const rulesOnly = !serverKeyOnly && requiresUserKey && !llmKey;
 
@@ -249,7 +249,7 @@ export default function UploadForm({
 
       {serverKeyOnly ? (
         <p className="text-xs text-slate-500">
-          Analysis runs on this server&apos;s built-in DeepSeek model — no API key needed.
+          Analysis runs on this server&apos;s built-in Claude model — no API key needed.
         </p>
       ) : (
       <div className="flex flex-col gap-2">
