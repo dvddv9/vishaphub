@@ -65,13 +65,13 @@ export default function JobCard({
           {job.finished_at ? ` · finished ${formatTimestamp(job.finished_at)}` : ""}
         </p>
         {job.status === "failed" && job.error ? (
-          <p className="mt-1.5 flex items-start gap-1.5 text-xs text-red-300">
+          <p className="mt-1.5 flex items-start gap-1.5 text-xs text-red-600">
             <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <span className="break-words">{job.error}</span>
           </p>
         ) : null}
         {error ? (
-          <p className="mt-1.5 flex items-start gap-1.5 text-xs text-red-300">
+          <p className="mt-1.5 flex items-start gap-1.5 text-xs text-red-600">
             <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <span className="break-words">{error}</span>
           </p>
@@ -82,7 +82,7 @@ export default function JobCard({
         {job.status === "done" ? (
           <Link
             href={`/report?id=${encodeURIComponent(job.job_id)}`}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-800 transition-colors hover:border-sky-500 hover:text-sky-300"
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-800 transition-colors hover:border-sky-500 hover:text-sky-700"
           >
             View
           </Link>
@@ -101,7 +101,7 @@ export default function JobCard({
             disabled={deleting}
             title="Delete this job"
             aria-label={`Delete ${job.filename}`}
-            className="rounded-md border border-slate-200 p-1.5 text-slate-500 transition-colors hover:border-red-800 hover:text-red-300 disabled:opacity-50"
+            className="rounded-md border border-slate-200 p-1.5 text-slate-500 transition-colors hover:border-red-300 hover:text-red-300 disabled:opacity-50"
           >
             {deleting ? (
               <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />

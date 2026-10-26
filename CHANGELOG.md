@@ -22,6 +22,12 @@ All notable changes to Vishap. Format based on [Keep a Changelog](https://keepac
 ### Changed
 - The "LLM Provider" panel: on a locked server it stores the visitor's own provider / model / key in the browser (shared with the upload form); on a local/desktop install it still edits the backend settings, now through the authenticated client. Heading was white-on-white; the Anthropic preset uses `claude-sonnet-5-5`.
 
+### UI
+- **Readable pages**: `/analyze`, the report page, the upload form and job cards used a dark-theme palette (`text-slate-100`, `bg-slate-900/60`, ...) on the light page, so headings, labels and fields were nearly invisible. Moved to the light palette used by the rest of the app; markdown blockquotes got readable colours too.
+- **"Try example (SQLi)"** links to `/analyze?example=sqli`, but nothing read the parameter; the form is now prefilled.
+- Footer shows the real version (it was hard-coded `7.3.16`; now read from `package.json`).
+- LLM settings moved out of the "Recent analyses" list into their own section; removed an empty block.
+
 ### Fixed
 - `/analyze/async` (what the UI calls) ignored `X-LLM-Api-Key`; the key also did not reach worker threads (`run_in_executor`, batch pool). CORS did not allow the `X-LLM-Api-Key` header. `ui-next/src/lib/api.ts` only sent it when `NEXT_PUBLIC_API_KEY` was set; the upload form had no key field.
 

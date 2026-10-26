@@ -56,6 +56,14 @@ export default function UploadForm({ onSubmitted }: { onSubmitted: (jobId: strin
     };
   }, []);
 
+  // "Try example (SQLi)" links here with ?example=sqli: prefill the form once.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("example") === "sqli") {
+      setMaterial((current) => current || EXAMPLE_MATERIAL);
+      setFilename((current) => (current === "pasted.txt" ? EXAMPLE_FILENAME : current));
+    }
+  }, []);
+
   // The settings panel edits the same browser-side choice; stay in sync with it.
   useEffect(() => {
     function sync() {
@@ -138,7 +146,7 @@ export default function UploadForm({ onSubmitted }: { onSubmitted: (jobId: strin
       <div className="flex flex-col gap-2">
         <label
           htmlFor="material-file"
-          className="text-sm font-medium text-slate-300"
+          className="text-sm font-medium text-slate-700"
         >
           Upload a file
         </label>
@@ -150,7 +158,7 @@ export default function UploadForm({ onSubmitted }: { onSubmitted: (jobId: strin
             accept={ACCEPT_ATTR}
             onChange={handleFileChange}
             disabled={submitting}
-            className="block w-full max-w-sm cursor-pointer rounded-lg border border-slate-700 bg-slate-900/60 p-2 text-sm text-slate-300 file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-700 file:px-3 file:py-1.5 file:text-sm file:text-slate-100 hover:file:bg-slate-600"
+            className="block w-full max-w-sm cursor-pointer rounded-lg border border-slate-300 bg-white p-2 text-sm text-slate-700 file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:text-slate-800 hover:file:bg-slate-200"
           />
           <span className="text-xs text-slate-500">
             {ACCEPTED_EXTENSIONS.join(" · ")} · max 2 MB
@@ -160,7 +168,7 @@ export default function UploadForm({ onSubmitted }: { onSubmitted: (jobId: strin
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <label htmlFor="material-text" className="text-sm font-medium text-slate-300">
+          <label htmlFor="material-text" className="text-sm font-medium text-slate-700">
             …or paste the material
           </label>
           <span className="font-mono text-xs text-slate-500">
@@ -179,7 +187,7 @@ export default function UploadForm({ onSubmitted }: { onSubmitted: (jobId: strin
       </div>
 
       <div className="flex flex-col gap-2">
-        <label htmlFor="material-name" className="text-sm font-medium text-slate-300">
+        <label htmlFor="material-name" className="text-sm font-medium text-slate-700">
           Filename (used as analysis context)
         </label>
         <input
@@ -188,7 +196,7 @@ export default function UploadForm({ onSubmitted }: { onSubmitted: (jobId: strin
           value={filename}
           onChange={(event) => setFilename(event.target.value)}
           disabled={submitting}
-          className="w-full max-w-sm rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 font-mono text-sm text-slate-200 outline-none focus:border-sky-600"
+          className="w-full max-w-sm rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-800 outline-none focus:border-sky-600"
         />
       </div>
 
@@ -196,7 +204,7 @@ export default function UploadForm({ onSubmitted }: { onSubmitted: (jobId: strin
         {providers.length > 0 ? (
           <div className="flex flex-wrap items-end gap-3">
             <div className="flex flex-col gap-1">
-              <label htmlFor="llm-provider" className="text-sm font-medium text-slate-300">
+              <label htmlFor="llm-provider" className="text-sm font-medium text-slate-700">
                 LLM provider
               </label>
               <select
@@ -207,7 +215,7 @@ export default function UploadForm({ onSubmitted }: { onSubmitted: (jobId: strin
                   writeLlmChoice({ provider: event.target.value });
                 }}
                 disabled={submitting}
-                className="rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 outline-none focus:border-sky-600"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-sky-600"
               >
                 <option value="">Server default</option>
                 {providers.map((p) => (
@@ -218,7 +226,7 @@ export default function UploadForm({ onSubmitted }: { onSubmitted: (jobId: strin
               </select>
             </div>
             <div className="flex flex-col gap-1">
-              <label htmlFor="llm-model" className="text-sm font-medium text-slate-300">
+              <label htmlFor="llm-model" className="text-sm font-medium text-slate-700">
                 Model (optional)
               </label>
               <input
@@ -234,12 +242,12 @@ export default function UploadForm({ onSubmitted }: { onSubmitted: (jobId: strin
                 placeholder={
                   providers.find((p) => p.id === llmProvider)?.default_model ?? "provider default"
                 }
-                className="w-64 rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 font-mono text-sm text-slate-200 outline-none focus:border-sky-600"
+                className="w-64 rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-800 outline-none focus:border-sky-600"
               />
             </div>
           </div>
         ) : null}
-        <label htmlFor="llm-key" className="text-sm font-medium text-slate-300">
+        <label htmlFor="llm-key" className="text-sm font-medium text-slate-700">
           Your LLM API key
         </label>
         <input
@@ -254,7 +262,7 @@ export default function UploadForm({ onSubmitted }: { onSubmitted: (jobId: strin
           }}
           disabled={submitting}
           placeholder="sk-…"
-          className="w-full max-w-sm rounded-lg border border-slate-700 bg-slate-900/60 px-3 py-2 font-mono text-sm text-slate-200 outline-none focus:border-sky-600"
+          className="w-full max-w-sm rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-800 outline-none focus:border-sky-600"
         />
         <p className="text-xs text-slate-500">
           Sent over HTTPS to this Vishap server, which forwards it only to the provider you
@@ -263,7 +271,7 @@ export default function UploadForm({ onSubmitted }: { onSubmitted: (jobId: strin
       </div>
 
       {error ? (
-        <p className="flex items-start gap-2 rounded-lg border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+        <p className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>{error}</span>
         </p>
@@ -291,7 +299,7 @@ export default function UploadForm({ onSubmitted }: { onSubmitted: (jobId: strin
             if (fileInputRef.current) fileInputRef.current.value = "";
           }}
           disabled={submitting}
-          className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 transition-colors hover:border-slate-600 hover:text-slate-100 disabled:opacity-50"
+          className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition-colors hover:border-slate-400 hover:text-slate-900 disabled:opacity-50"
         >
           Clear
         </button>
@@ -305,7 +313,7 @@ export default function UploadForm({ onSubmitted }: { onSubmitted: (jobId: strin
           }}
           disabled={submitting}
           title="Fill the form with a small vulnerable Python snippet"
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 transition-colors hover:border-sky-600 hover:text-sky-300 disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 transition-colors hover:border-sky-600 hover:text-sky-700 disabled:opacity-50"
         >
           <Sparkles className="h-4 w-4" aria-hidden="true" />
           Load example

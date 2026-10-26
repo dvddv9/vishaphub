@@ -20,9 +20,9 @@ import { ApiError, deleteJob, downloadAudit, forgetJob, getReport } from "@/lib/
 import type { Report } from "@/lib/types";
 
 const BUTTON =
-  "inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-slate-200 transition-colors hover:border-sky-500 hover:text-sky-300 disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-800 transition-colors hover:border-sky-500 hover:text-sky-700 disabled:cursor-not-allowed disabled:opacity-50";
 const DANGER =
-  "inline-flex items-center gap-1.5 rounded-lg border border-red-900/70 px-3 py-1.5 text-sm text-red-200 transition-colors hover:border-red-700 hover:text-red-100 disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-sm text-red-700 transition-colors hover:border-red-300 hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-50";
 
 function ReportInner() {
   const searchParams = useSearchParams();
@@ -123,7 +123,7 @@ function ReportInner() {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 text-sm text-slate-400 transition-colors hover:text-slate-200"
+          className="inline-flex items-center gap-1.5 text-sm text-slate-600 transition-colors hover:text-slate-900"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Back to dashboard
@@ -134,7 +134,7 @@ function ReportInner() {
             <>
               <button type="button" onClick={handleCopy} className={BUTTON}>
                 {copied ? (
-                  <Check className="h-4 w-4 text-emerald-400" aria-hidden="true" />
+                  <Check className="h-4 w-4 text-emerald-600" aria-hidden="true" />
                 ) : (
                   <Copy className="h-4 w-4" aria-hidden="true" />
                 )}
@@ -182,7 +182,7 @@ function ReportInner() {
       </div>
 
       {actionError ? (
-        <p className="mb-4 flex items-start gap-2 rounded-xl border border-red-900/60 bg-red-950/40 px-4 py-3 text-sm text-red-200">
+        <p className="mb-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>{actionError}</span>
         </p>
@@ -190,7 +190,7 @@ function ReportInner() {
 
       {report ? (
         <header className="mb-6">
-          <h1 className="truncate font-mono text-xl text-slate-100" title={report.filename}>
+          <h1 className="truncate font-mono text-xl text-slate-900" title={report.filename}>
             {report.filename}
           </h1>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
@@ -210,42 +210,42 @@ function ReportInner() {
       {/* v7.2 audit metadata */}
       {report && audit ? (
         <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
+          <div className="rounded-xl border border-slate-200 bg-white p-3">
             <div className="text-xs uppercase tracking-wide text-slate-500">Fidelity</div>
-            <div className="text-lg font-mono text-slate-100">
+            <div className="text-lg font-mono text-slate-900">
               {audit.fidelity_index != null ? audit.fidelity_index.toFixed(2) : "n/a"}
             </div>
             {audit.fidelity_index_note ? (
               <div className="text-xs text-slate-500">{audit.fidelity_index_note}</div>
             ) : null}
           </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
+          <div className="rounded-xl border border-slate-200 bg-white p-3">
             <div className="text-xs uppercase tracking-wide text-slate-500">Bias check</div>
-            <div className="text-sm font-mono text-slate-100">
+            <div className="text-sm font-mono text-slate-900">
               {audit.bias_check?.bias_check ?? "n/a"}
             </div>
             {audit.bias_check?.flags && audit.bias_check.flags.length > 0 ? (
               <div className="text-xs text-amber-300">{audit.bias_check.flags.join(", ")}</div>
             ) : null}
           </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
+          <div className="rounded-xl border border-slate-200 bg-white p-3">
             <div className="text-xs uppercase tracking-wide text-slate-500">Reproducer</div>
-            <div className="text-sm font-mono text-slate-100">
+            <div className="text-sm font-mono text-slate-900">
               {audit.reproducer_verified ? "verified" : "not verified"}
             </div>
             {audit.reproducer_note ? (
               <div className="text-xs text-slate-500">{audit.reproducer_note}</div>
             ) : null}
           </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-3 sm:col-span-2">
+          <div className="rounded-xl border border-slate-200 bg-white p-3 sm:col-span-2">
             <div className="text-xs uppercase tracking-wide text-slate-500">Negative evidence</div>
-            <div className="text-xs text-slate-300">
+            <div className="text-xs text-slate-700">
               {audit.negative_evidence && audit.negative_evidence.length > 0
                 ? `${audit.negative_evidence.length} checked-but-not-found CWEs`
                 : "n/a"}
             </div>
             {audit.negative_evidence && audit.negative_evidence.length > 0 ? (
-              <ul className="mt-1 list-disc pl-4 text-xs text-slate-400">
+              <ul className="mt-1 list-disc pl-4 text-xs text-slate-600">
                 {audit.negative_evidence.slice(0, 5).map((e) => (
                   <li key={e.cwe}>
                     <span className="font-mono">{e.cwe}</span> — {e.reason}
@@ -254,9 +254,9 @@ function ReportInner() {
               </ul>
             ) : null}
           </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-3">
+          <div className="rounded-xl border border-slate-200 bg-white p-3">
             <div className="text-xs uppercase tracking-wide text-slate-500">Report date</div>
-            <div className="text-xs font-mono text-slate-100">
+            <div className="text-xs font-mono text-slate-900">
               {audit.report_date ? new Date(audit.report_date).toLocaleString() : "n/a"}
             </div>
             <div className="text-xs text-slate-500">
@@ -267,20 +267,20 @@ function ReportInner() {
       ) : null}
 
       {!report && isStillRunning ? (
-        <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/50 px-4 py-6 text-sm text-slate-400">
+        <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-6 text-sm text-slate-600">
           <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
           The analysis is still running — this page updates automatically.
         </div>
       ) : null}
 
       {!report && isMissing ? (
-        <p className="rounded-xl border border-red-900/60 bg-red-950/40 px-4 py-3 text-sm text-red-200">
+        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           Job <span className="font-mono">{jobId}</span> was not found.
         </p>
       ) : null}
 
       {!report && error && !isStillRunning && !isMissing ? (
-        <p className="flex items-start gap-2 rounded-xl border border-red-900/60 bg-red-950/40 px-4 py-3 text-sm text-red-200">
+        <p className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>{error instanceof Error ? error.message : "Could not load the report."}</span>
         </p>
@@ -294,7 +294,7 @@ function ReportInner() {
       ) : null}
 
       {report ? (
-        <article className="rounded-xl border border-slate-800 bg-slate-900/40 p-6">
+        <article className="rounded-xl border border-slate-200 bg-white p-6">
           <div className="markdown-body">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{report.final_markdown}</ReactMarkdown>
           </div>

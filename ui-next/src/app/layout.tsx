@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Navbar from "@/components/Navbar";
 import { IS_DESKTOP } from "@/lib/desktop";
+import pkg from "../../package.json";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,8 +15,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-/** Keep in sync with `pyproject.toml` / `src/version.py`. */
-const VISHAP_VERSION = "7.3.16";
+/** Single source of truth: ui-next/package.json (kept equal to pyproject.toml by scripts/check_version.py). */
+const VISHAP_VERSION: string = pkg.version;
 const GITHUB_URL = "https://github.com/dvddv9/vishap";
 
 export const metadata: Metadata = {

@@ -170,9 +170,6 @@ function Dashboard({ auth }: { auth: AuthState }) {
             Analyses are tied to your account. Sign in with Clerk to upload material and read the
             generated report.
           </p>
-          <div className="mt-4">
-            
-          </div>
         </section>
       )}
 
@@ -209,9 +206,11 @@ function Dashboard({ auth }: { auth: AuthState }) {
                     {jobs?.map((job) => (
             <JobCard key={job.job_id} job={job} onDelete={handleDeleteJob} />
           ))}
-
-          <LLMSettings />
         </div>
+      </section>
+
+      <section className="mt-10" aria-label="LLM provider settings">
+        <LLMSettings />
       </section>
     </div>
   );

@@ -57,14 +57,14 @@ export default function AnalyzePage() {
     <div className="mx-auto w-full max-w-4xl px-4 py-10">
       <Link
         href="/"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm text-slate-400 transition-colors hover:text-slate-200"
+        className="mb-6 inline-flex items-center gap-1.5 text-sm text-slate-600 transition-colors hover:text-slate-900"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         Back to dashboard
       </Link>
 
-      <h1 className="text-2xl font-semibold tracking-tight text-slate-100">New analysis</h1>
-      <p className="mt-1 text-sm text-slate-400">
+      <h1 className="text-2xl font-semibold tracking-tight text-slate-900">New analysis</h1>
+      <p className="mt-1 text-sm text-slate-600">
         Upload a file or paste material. Vishap runs the six-stage pipeline asynchronously and
         redirects you to the report when it is ready.
       </p>
@@ -74,16 +74,16 @@ export default function AnalyzePage() {
           <UploadForm onSubmitted={(id) => setJobId(id)} />
         </section>
       ) : (
-        <section className="mt-8 rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+        <section className="mt-8 rounded-xl border border-slate-200 bg-white p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xs uppercase tracking-wide text-slate-500">Job</p>
-              <p className="font-mono text-sm text-slate-200">{jobId}</p>
+              <p className="font-mono text-sm text-slate-800">{jobId}</p>
             </div>
             <button
               type="button"
               onClick={() => setJobId(null)}
-              className="rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-slate-300 transition-colors hover:border-slate-600 hover:text-slate-100"
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 transition-colors hover:border-slate-400 hover:text-slate-900"
             >
               Start another
             </button>
@@ -97,12 +97,12 @@ export default function AnalyzePage() {
                   <span
                     className={`flex h-7 w-7 items-center justify-center rounded-full border ${
                       state === "done"
-                        ? "border-emerald-700 bg-emerald-900/40 text-emerald-300"
+                        ? "border-emerald-300 bg-emerald-50 text-emerald-700"
                         : state === "active"
-                          ? "border-sky-600 bg-sky-900/40 text-sky-300"
+                          ? "border-sky-300 bg-sky-50 text-sky-700"
                           : state === "failed"
-                            ? "border-red-800 bg-red-950/40 text-red-300"
-                            : "border-slate-700 text-slate-500"
+                            ? "border-red-300 bg-red-50 text-red-600"
+                            : "border-slate-300 text-slate-500"
                     }`}
                   >
                     {state === "done" ? (
@@ -117,7 +117,7 @@ export default function AnalyzePage() {
                   </span>
                   <span
                     className={
-                      state === "pending" ? "text-sm text-slate-500" : "text-sm text-slate-200"
+                      state === "pending" ? "text-sm text-slate-500" : "text-sm text-slate-800"
                     }
                   >
                     {step.label}
@@ -128,14 +128,14 @@ export default function AnalyzePage() {
           </ol>
 
           {job?.status === "failed" ? (
-            <p className="mt-5 flex items-start gap-2 rounded-lg border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+            <p className="mt-5 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
               <span>{job.error ?? "The pipeline failed."}</span>
             </p>
           ) : null}
 
           {error ? (
-            <p className="mt-5 flex items-start gap-2 rounded-lg border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-200">
+            <p className="mt-5 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
               <span>{error instanceof Error ? error.message : "Could not read the job status."}</span>
             </p>
