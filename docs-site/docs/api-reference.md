@@ -95,7 +95,7 @@ curl -X POST http://localhost:8080/analyze/async \
 {"job_id": "job-abc123def456", "status": "queued"}
 ```
 
-GET /status/{job_id}
+GET /status/`{job_id}`
 
 ```
 curl http://localhost:8080/status/job-abc123def456
@@ -115,7 +115,7 @@ curl http://localhost:8080/status/job-abc123def456
 
 Errors: 404 job not found.
 
-GET /report/{job_id}
+GET /report/`{job_id}`
 
 ```
 curl http://localhost:8080/report/job-abc123def456
