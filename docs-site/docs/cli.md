@@ -8,12 +8,13 @@ The `vishap` entry point (defined in `pyproject.toml` → `src.cli:main`) wraps 
 vishap analyze <file> [--gate] [--sarif out.sarif] [--sbom out.json] [--diff REF] [--context-root DIR]
 ```
 
-Flag Meaning
---gate quality gate: exit 1 when the verdict is REQUIRES_REVIEW, 0 when SAFE
---sarif <out> write SARIF 2.1.0 (GitHub Code Scanning)
---sbom <out> write a CycloneDX SBOM
---diff <ref> analyze only files changed vs. ref
---context-root <dir> pull in related files (inter-file analysis)
+| Flag | Meaning |
+|---|---|
+| `--gate` | quality gate: exit 1 when the verdict is REQUIRES_REVIEW, 0 when SAFE |
+| `--sarif <out>` | write SARIF 2.1.0 (GitHub Code Scanning) |
+| `--sbom <out>` | write a CycloneDX SBOM |
+| `--diff <ref>` | analyze only files changed vs. ref |
+| `--context-root <dir>` | pull in related files (inter-file analysis) |
 
 Exit codes
 

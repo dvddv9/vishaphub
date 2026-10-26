@@ -131,7 +131,7 @@ POST /analyze/secure
 
 Clerk-authenticated variant of /analyze (multi-tenant).
 
-Auth: Authorization: Bearer <clerk-jwt>
+Auth: `Authorization: Bearer <clerk-jwt>`
 
 ```
 curl -X POST http://localhost:8080/analyze/secure \
