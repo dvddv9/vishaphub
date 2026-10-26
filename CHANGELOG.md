@@ -6,6 +6,11 @@ All notable changes to Vishap. Format based on [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+### Fixed (LLM)
+- Models that answer HTTP 400 "`temperature` is deprecated for this model" (e.g. Claude 5.x) or want `max_completion_tokens` no longer break the whole analysis: the client retries once without/with the parameter and remembers it per endpoint+model.
+- `/auth/sso/callback` answers 501 while SSO is not wired up (the fail-closed guard turned it into 401).
+- The LLM error text no longer tells you to set `CUSTOM_LLM_*` when the real problem is an HTTP error from the provider.
+
 ### Security
 - **SAML guard is fail-closed**: `validate_saml_assertion` rejects every assertion until real signature/audience/issuer verification exists (it used to return `True`).
 - **CORS**: removed the `*.vercel.app` / `*.onrender.com` / `*.fly.dev` wildcards (anyone can register a subdomain there). Loopback and the desktop shell stay allowed; list your own deployed UI in `VISHAP_CORS_ORIGINS` (comma-separated exact origins). **Deployments with a hosted UI must set it.**

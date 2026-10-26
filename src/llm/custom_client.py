@@ -9,6 +9,12 @@ import json  # noqa: F401  # (if needed)
 # Set CUSTOM_LLM_SEND_TEMPERATURE=false for Claude 5.x.
 SEND_TEMPERATURE = os.getenv("CUSTOM_LLM_SEND_TEMPERATURE", "true").lower() == "true"
 
+# Endpoint+model pairs that rejected a parameter (HTTP 400): remembered so the
+# next call does not pay for a failed round trip. Providers differ per model, so
+# this is learned at runtime instead of hard-coded.
+_NO_TEMPERATURE: set[tuple[str, str]] = set()
+_USE_MAX_COMPLETION_TOKENS: set[tuple[str, str]] = set()
+
 import requests
 from dotenv import load_dotenv
 
@@ -57,25 +63,44 @@ class CustomClient:
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": user})
+        route = (self.base_url, self.model)
         payload = {
             "model": self.model,
             "messages": messages,
             # v7.3.1: skip temperature if CUSTOM_LLM_SEND_TEMPERATURE=false
-            **({"temperature": temperature} if SEND_TEMPERATURE else {}),
-            "max_tokens": max_tokens,
+            **({"temperature": temperature} if SEND_TEMPERATURE and route not in _NO_TEMPERATURE else {}),
             "stream": False,
         }
+        payload["max_completion_tokens" if route in _USE_MAX_COMPLETION_TOKENS else "max_tokens"] = max_tokens
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
-        try:
-            r = requests.post(
+        def _post(body: dict):
+            return requests.post(
                 f"{self.base_url}/chat/completions",
                 headers={**headers, "Content-Type": "application/json; charset=utf-8"},
-                data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+                data=json.dumps(body, ensure_ascii=False).encode("utf-8"),
                 timeout=self.timeout,
             )
+
+        try:
+            r = _post(payload)
+            # Some models reject parameters other models require
+            # ("`temperature` is deprecated for this model", "use max_completion_tokens").
+            # Retry once without/with the offending parameter and remember it.
+            if r.status_code == 400:
+                low = r.text.lower()
+                retry = dict(payload)
+                if "temperature" in low and "temperature" in retry:
+                    retry.pop("temperature")
+                    _NO_TEMPERATURE.add(route)
+                    r = _post(retry)
+                    low = r.text.lower() if r.status_code == 400 else ""
+                if r.status_code == 400 and "max_completion_tokens" in low and "max_tokens" in retry:
+                    retry["max_completion_tokens"] = retry.pop("max_tokens")
+                    _USE_MAX_COMPLETION_TOKENS.add(route)
+                    r = _post(retry)
         except requests.RequestException as e:
             raise CustomError(f"custom request failed: {e}") from e
         if r.status_code != 200:

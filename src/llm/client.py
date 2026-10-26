@@ -53,7 +53,7 @@ USER_KEY_REQUIRED_TEXT = (
 
 
 NO_CUSTOM_TEXT = (
-    "[LLM error] custom provider failed: set CUSTOM_LLM_URL / CUSTOM_LLM_KEY / CUSTOM_LLM_MODEL."
+    "[LLM error] custom provider failed: check the provider, model and API key."
 )
 
 

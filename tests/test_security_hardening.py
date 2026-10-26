@@ -245,3 +245,55 @@ def test_llm_config_router_requires_the_api_key():
     from src.api import llm_config
     deps = [d.dependency.__name__ for d in llm_config.router.dependencies]
     assert "verify_api_key" in deps
+
+
+# --- providers that reject `temperature` / `max_tokens` -----------------------
+def _fake_response(status, body):
+    class R:
+        status_code = status
+        text = body
+        def json(self):
+            import json
+            return json.loads(body)
+    return R()
+
+
+def test_custom_client_retries_without_temperature(monkeypatch):
+    from src.llm import custom_client
+    custom_client._NO_TEMPERATURE.clear()
+    sent = []
+    ok = '{"choices":[{"message":{"content":"hi"}}],"usage":{}}'
+    bad = '{"error":{"message":"`temperature` is deprecated for this model."}}'
+
+    def fake_post(url, headers=None, data=None, timeout=None):
+        import json
+        body = json.loads(data.decode("utf-8"))
+        sent.append(body)
+        return _fake_response(400 if "temperature" in body else 200, bad if "temperature" in body else ok)
+
+    monkeypatch.setattr(custom_client.requests, "post", fake_post)
+    c = custom_client.CustomClient(base_url="https://x.invalid/v1", api_key="k", model="m1")
+    assert c.chat("u", "s", temperature=0.2)["text"] == "hi"
+    assert "temperature" in sent[0] and "temperature" not in sent[1]
+    # remembered: the next call does not send it at all
+    sent.clear()
+    assert c.chat("u", "s", temperature=0.2)["text"] == "hi"
+    assert len(sent) == 1 and "temperature" not in sent[0]
+    custom_client._NO_TEMPERATURE.clear()
+
+
+def test_custom_client_switches_to_max_completion_tokens(monkeypatch):
+    from src.llm import custom_client
+    custom_client._USE_MAX_COMPLETION_TOKENS.clear()
+    ok = '{"choices":[{"message":{"content":"yo"}}],"usage":{}}'
+    bad = '{"error":{"message":"Unsupported parameter: use max_completion_tokens instead."}}'
+
+    def fake_post(url, headers=None, data=None, timeout=None):
+        import json
+        body = json.loads(data.decode("utf-8"))
+        return _fake_response(400, bad) if "max_tokens" in body else _fake_response(200, ok)
+
+    monkeypatch.setattr(custom_client.requests, "post", fake_post)
+    c = custom_client.CustomClient(base_url="https://y.invalid/v1", api_key="k", model="m2")
+    assert c.chat("u", "s")["text"] == "yo"
+    custom_client._USE_MAX_COMPLETION_TOKENS.clear()
