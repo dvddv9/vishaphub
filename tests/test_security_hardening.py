@@ -410,3 +410,54 @@ def test_provider_error_that_echoes_the_key_is_scrubbed(monkeypatch):
         assert key not in str(e) and "[key hidden]" in str(e)
     else:
         raise AssertionError("expected CustomError")
+
+
+# --- server-key-only mode (built-in DeepSeek key, no other LLMs) -------------------
+def test_server_key_only_ignores_caller_llm_choices(monkeypatch):
+    from src.llm import client
+    from src.main import _apply_llm_request
+    monkeypatch.setenv("VISHAP_SERVER_KEY_ONLY", "1")
+    monkeypatch.setenv("VISHAP_REQUIRE_USER_LLM_KEY", "1")  # overridden
+    assert client.require_user_key() is False
+    assert _apply_llm_request("user-key", "openai", "gpt-4o-mini") == (None, None)
+    assert client.get_api_key() is None and client.get_llm_target() is None
+    # an unknown provider is ignored too, not a 400
+    assert _apply_llm_request("k", "evil", None) == (None, None)
+
+
+def test_server_key_only_providers_endpoint(monkeypatch):
+    from fastapi.testclient import TestClient
+    from src.main import app
+    monkeypatch.setenv("VISHAP_SERVER_KEY_ONLY", "1")
+    data = TestClient(app).get("/providers", headers=_auth_headers()).json()
+    assert data["server_key_only"] is True and data["providers"] == []
+    assert data["requires_user_key"] is False
+
+
+def test_server_key_only_uses_the_servers_key(monkeypatch):
+    from src.llm import client, custom_client
+    seen = {}
+
+    class Fake:
+        def __init__(self, api_key=None, base_url=None, model=None, **kw):
+            seen.update(key=api_key, url=base_url)
+        def chat(self, *a, **kw):
+            return {"text": "ok", "tokens_in": 1, "tokens_out": 1, "model": "m", "mode": "custom"}
+        def close(self):
+            pass
+
+    monkeypatch.setattr(custom_client, "CustomClient", Fake)
+    monkeypatch.setenv("VISHAP_SERVER_KEY_ONLY", "1")
+    client.set_api_key(None)
+    client.set_llm_target(None)
+    assert client.chat("s", "u")["text"] == "ok"
+    assert seen == {"key": None, "url": None}  # CustomClient falls back to CUSTOM_LLM_*
+
+
+def test_server_key_only_without_a_server_key_falls_back_to_rules(monkeypatch):
+    from src.main import _is_static_only
+    monkeypatch.setenv("VISHAP_SERVER_KEY_ONLY", "1")
+    monkeypatch.delenv("CUSTOM_LLM_KEY", raising=False)
+    assert _is_static_only(None) is True
+    monkeypatch.setenv("CUSTOM_LLM_KEY", "k")
+    assert _is_static_only(None) is False

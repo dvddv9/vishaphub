@@ -37,6 +37,22 @@ def get_llm_target() -> tuple[str, str] | None:
     return _target_var.get()
 
 
+def server_key_only() -> bool:
+    """True when the server's own key (DeepSeek by default) is the ONLY LLM source.
+
+    VISHAP_SERVER_KEY_ONLY=1: callers cannot choose another provider/model or send
+    their own key -- any X-LLM-* headers are ignored. Takes precedence over
+    VISHAP_REQUIRE_USER_LLM_KEY.
+    """
+    import os
+    return os.getenv("VISHAP_SERVER_KEY_ONLY", "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def server_has_key() -> bool:
+    import os
+    return bool(os.getenv("CUSTOM_LLM_KEY", "").strip())
+
+
 def require_user_key() -> bool:
     """True when the operator forbids falling back to the server's own LLM key.
 
@@ -44,6 +60,8 @@ def require_user_key() -> bool:
     the caller's own key (``X-LLM-Api-Key``), so the operator's key is never spent.
     """
     import os
+    if server_key_only():
+        return False
     return os.getenv("VISHAP_REQUIRE_USER_LLM_KEY", "").strip().lower() in ("1", "true", "yes", "on")
 
 

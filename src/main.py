@@ -363,7 +363,10 @@ def _clean_header(value) -> str | None:
 def _is_static_only(x_llm_api_key: str | None) -> bool:
     """True when the server never spends its own LLM key and the caller sent none:
     the request is answered by the built-in rule engine (no LLM) instead of a 401."""
-    from src.llm.client import require_user_key
+    from src.llm.client import require_user_key, server_has_key, server_key_only
+    if server_key_only():
+        # the server's own key is used; without one configured there is nothing to call
+        return not server_has_key()
     return require_user_key() and not (_clean_header(x_llm_api_key) or "").strip()
 
 
@@ -386,7 +389,12 @@ def _apply_llm_request(key: str | None, provider: str | None, model: str | None,
     caller gets the LLM-free static report (see ``_is_static_only``).
     """
     from src.llm import providers
-    from src.llm.client import set_api_key, set_llm_target
+    from src.llm.client import server_key_only, set_api_key, set_llm_target
+    if server_key_only():
+        # only the server's built-in key/provider; caller-supplied choices are ignored
+        set_api_key(None)
+        set_llm_target(None)
+        return None, None
     key, provider, model = _clean_header(key), _clean_header(provider), _clean_header(model)
     if not allow_static:
         _need_user_llm_key(key)
@@ -409,7 +417,15 @@ def _apply_llm_request(key: str | None, provider: str | None, model: str | None,
 async def llm_providers():
     """LLM providers a caller may pick (bring-your-own-key)."""
     from src.llm import providers
-    from src.llm.client import require_user_key
+    from src.llm.client import require_user_key, server_key_only
+    if server_key_only():
+        import os
+        return {
+            "providers": [],
+            "requires_user_key": False,
+            "server_key_only": True,
+            "server_model": os.getenv("CUSTOM_LLM_MODEL", "").strip(),
+        }
     return {"providers": providers.list_providers(), "requires_user_key": require_user_key()}
 
 

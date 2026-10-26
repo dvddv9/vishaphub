@@ -61,7 +61,9 @@ export default function UploadForm({
   const [llmProvider, setLlmProvider] = useState<string>("");
   const [llmModel, setLlmModel] = useState<string>("");
   const [requiresUserKey, setRequiresUserKey] = useState(false);
-  const rulesOnly = requiresUserKey && !llmKey;
+  // Only the server's built-in DeepSeek key is used: no provider / model / key fields.
+  const [serverKeyOnly, setServerKeyOnly] = useState(false);
+  const rulesOnly = !serverKeyOnly && requiresUserKey && !llmKey;
 
   useEffect(() => {
     let cancelled = false;
@@ -70,6 +72,7 @@ export default function UploadForm({
         if (cancelled) return;
         setProviders(list.providers);
         setRequiresUserKey(list.requiresUserKey);
+        setServerKeyOnly(list.serverKeyOnly);
       })
       .catch(() => {
         /* older server without /providers: the server default is used */
@@ -151,7 +154,7 @@ export default function UploadForm({
       );
       return;
     }
-    if (llmProvider && !llmKey) {
+    if (!serverKeyOnly && llmProvider && !llmKey) {
       setError("You picked an LLM provider but entered no key. Add the key, or set the provider back to the no-key option.");
       return;
     }
@@ -164,9 +167,9 @@ export default function UploadForm({
       const created = await submitAnalysis(
         material,
         safeName,
-        llmKey || undefined,
-        llmKey ? llmProvider || undefined : undefined,
-        llmKey ? llmModel || undefined : undefined,
+        serverKeyOnly ? undefined : llmKey || undefined,
+        !serverKeyOnly && llmKey ? llmProvider || undefined : undefined,
+        !serverKeyOnly && llmKey ? llmModel || undefined : undefined,
       );
       rememberJob({
         job_id: created.job_id,
@@ -244,6 +247,11 @@ export default function UploadForm({
         />
       </div>
 
+      {serverKeyOnly ? (
+        <p className="text-xs text-slate-500">
+          Analysis runs on this server&apos;s built-in DeepSeek model — no API key needed.
+        </p>
+      ) : (
       <div className="flex flex-col gap-2">
         {providers.length > 0 ? (
           <div className="flex flex-wrap items-end gap-3">
@@ -317,6 +325,7 @@ export default function UploadForm({
           </p>
         ) : null}
       </div>
+      )}
 
       {error ? (
         <p className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

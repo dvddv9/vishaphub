@@ -7,6 +7,7 @@ import LlmKeyField from "@/components/LlmKeyField";
 
 type Config = {
   locked?: boolean;
+  server_key_only?: boolean;
   provider: string;
   custom_url: string;
   custom_model: string;
@@ -259,5 +260,15 @@ export default function LLMSettings() {
 
   if (error) return <div className="mt-8 text-sm text-red-700">LLM settings: {error}</div>;
   if (!cfg) return <div className="text-slate-600">Loading LLM settings...</div>;
+  if (cfg.server_key_only) {
+    return (
+      <div className="rounded-xl border border-slate-300 bg-white p-6 mt-8">
+        <h2 className="text-lg font-semibold text-slate-900 mb-1">LLM</h2>
+        <p className="text-sm text-slate-600">
+          This server analyses with its built-in DeepSeek model. No provider or API key is needed.
+        </p>
+      </div>
+    );
+  }
   return cfg.locked ? <UserKeySettings /> : <ServerSettings initial={cfg} />;
 }

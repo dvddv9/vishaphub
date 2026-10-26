@@ -176,14 +176,25 @@ export interface ProviderList {
   /** True on public demos: the server has no LLM key of its own. Without the
    *  visitor's key the analysis falls back to the built-in rules (no LLM). */
   requiresUserKey: boolean;
+  /** True when only the server's built-in key is used: the UI shows no provider/key fields. */
+  serverKeyOnly: boolean;
+  serverModel: string;
 }
 
 /** Providers the server allows for bring-your-own-key requests. */
 export async function getProviders(): Promise<ProviderList> {
-  const data = await apiFetch<{ providers: LlmProvider[]; requires_user_key?: boolean }>(
-    "/providers",
-  );
-  return { providers: data.providers, requiresUserKey: Boolean(data.requires_user_key) };
+  const data = await apiFetch<{
+    providers: LlmProvider[];
+    requires_user_key?: boolean;
+    server_key_only?: boolean;
+    server_model?: string;
+  }>("/providers");
+  return {
+    providers: data.providers,
+    requiresUserKey: Boolean(data.requires_user_key),
+    serverKeyOnly: Boolean(data.server_key_only),
+    serverModel: data.server_model ?? "",
+  };
 }
 
 export function submitAnalysis(

@@ -19,7 +19,9 @@ def config_locked() -> bool:
     the operator's key to a host of their choosing, so in this mode callers use
     their own key per request instead (X-LLM-Api-Key + X-LLM-Provider).
     """
-    from src.llm.client import require_user_key
+    from src.llm.client import require_user_key, server_key_only
+    if server_key_only():
+        return True
     flag = os.getenv("VISHAP_LLM_CONFIG_LOCKED", "").strip().lower() in ("1", "true", "yes", "on")
     return flag or require_user_key()
 
@@ -34,7 +36,9 @@ class LLMConfig(BaseModel):
 @router.get("/config")
 def read_config():
     if config_locked():
+        from src.llm.client import server_key_only
         return {
+            "server_key_only": server_key_only(),
             "locked": True,
             "provider": "",
             "custom_url": "",
