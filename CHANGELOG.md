@@ -6,6 +6,9 @@ All notable changes to Vishap. Format based on [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+### Removed
+- The Claude plugin (`claude-plugin-bundle-anthropic/`, `.claude-plugin/marketplace.json`, `tests/test_plugin_bundle_key_safety.py`) is no longer part of the repository: the directory submission was withdrawn. The folder stays on disk, untracked, for a local MCP setup.
+
 ### UI (job lost)
 - When the server answers 404 for a running job (it restarted; jobs are in memory), the analyze page stops polling, explains what happened and offers "Try again" with the text still in the form (it used to spin on a raw "job not found").
 

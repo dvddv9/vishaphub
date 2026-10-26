@@ -25,7 +25,6 @@
 
 ## 🎉 What's new in v7.4.6
 
-- **Claude plugin (`vishap-security-bundle`)** — credentials are scoped: the plugin uses only the API key you enter in its settings (`VISHAP_API_KEY`), never the publisher's key or an ambient `ANTHROPIC_API_KEY`. Added a 200 KB input limit, an untrusted-data delimiter around the analysed material, a truncation warning and `openWorldHint`. Install with `/plugin marketplace add dvddv9/vishap` and `/plugin install vishap-security-bundle@vishap` (needs `pip install -r claude-plugin-bundle-anthropic/requirements.txt`). Privacy details: [plugin README](claude-plugin-bundle-anthropic/README.md#privacy).
 - **`/analyze` is None-safe again** — a stage that returns `None` no longer causes an HTTP 500 (the guard was reverted by mistake and is restored).
 - **CI** — stale Stripe tests removed, Docker smoke test fixed, UTF-8 BOM stripped from sources.
 - **Repository** — scratch scripts untracked, versions synced (`scripts/check_version.py`), DeepSeek Harness plugin (`dsh-plugin/`) ships with the repo.
@@ -35,7 +34,6 @@
 - **D0 fast path** — empty, trivial or unparseable material is classified D0 and skips the LLM.
 - **`/analyze` is None-safe** — a stage that returns `None` no longer causes an HTTP 500.
 - **Safer startup (v7.4.2)** — `/version` endpoint, fail-closed when `CONVEYOR_API_KEY` is not set, constant-time key comparison (`hmac.compare_digest`), `uuid4` session ids, default host `127.0.0.1` (override with `VISHAP_HOST`).
-- **Claude plugin** — bundle renamed to `vishap-security-bundle`, tool annotations added, API key taken from plugin settings only.
 
 ### v7.4.0
 
