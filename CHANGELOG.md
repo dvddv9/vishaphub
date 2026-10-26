@@ -12,6 +12,8 @@ All notable changes to Vishap. Format based on [Keep a Changelog](https://keepac
 - With a key, the rule-engine findings are appended to the LLM report (and survive an LLM outage instead of leaving an empty "analysis failed" page).
 
 ### Fixed (demo cycle)
+- **The API key no longer sits on screen**: once set, the field collapses to a masked chip (`••••••••ab12`, Replace / Remove) and the stored value is never put back into an input. By default the key lives in `sessionStorage` (dropped when the tab closes); "Remember on this device" is an opt-in that keeps it in `localStorage`. Keys saved by older versions stay remembered until you untick it.
+- Provider error text is scrubbed of the caller's key and anything key-shaped (`sk-…`, `gsk_…`, `AIza…`, `Bearer …`) before it reaches a report, a job record or a log.
 - **The "deterministic SAST" step never found anything on the web path**: `run_sast(filename)` opens a file by name on the server, which does not exist for an upload, and the async pipeline did not call it at all.
 - **`/analyze/sarif` crashed** (HTTP 500) since the LLM headers were added: it called `analyze()` without them, so FastAPI's `Header(None)` default object reached `.strip()`. The headers are now passed through and sanitized.
 - **Providers with a smaller output ceiling** (e.g. `deepseek-chat`: 8192, the pipeline asks for 16000) failed with HTTP 400 on the synthesizer stage. The ceiling is parsed from the error, the request is retried and the limit is remembered per endpoint+model.

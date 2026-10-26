@@ -5,6 +5,7 @@ import type { ChangeEvent, FormEvent } from "react";
 import { FileUp, LoaderCircle, Sparkles, TriangleAlert } from "lucide-react";
 import { rememberJob, submitAnalysis, getProviders, type LlmProvider } from "@/lib/api";
 import { LLM_CHANGED, readLlmChoice, writeLlmChoice } from "@/lib/llmChoice";
+import LlmKeyField from "@/components/LlmKeyField";
 
 const ACCEPTED_EXTENSIONS = [
   ".py", ".js", ".jsx", ".ts", ".tsx", ".java", ".c", ".h", ".cpp", ".go", ".php",
@@ -292,23 +293,18 @@ export default function UploadForm({
         <label htmlFor="llm-key" className="text-sm font-medium text-slate-700">
           Your LLM API key
         </label>
-        <input
+        <LlmKeyField
           id="llm-key"
-          type="password"
-          autoComplete="off"
           value={llmKey}
-          onChange={(event) => {
-            const value = event.target.value.trim();
+          disabled={submitting}
+          onChange={(value) => {
             setLlmKey(value);
             writeLlmChoice({ key: value });
           }}
-          disabled={submitting}
-          placeholder="sk-…"
-          className="w-full max-w-sm rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-800 outline-none focus:border-sky-600"
         />
         <p className="text-xs text-slate-500">
           Sent over HTTPS to this Vishap server, which forwards it only to the provider you
-          picked, for your analysis. Stored in this browser only; clear the field to remove it.
+          picked, for your analysis. It is kept in this browser only and is not shown again.
         </p>
         {rulesOnly ? (
           <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">

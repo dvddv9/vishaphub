@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { apiFetch, getProviders, type LlmProvider } from "@/lib/api";
 import { LLM_CHANGED, readLlmChoice, writeLlmChoice } from "@/lib/llmChoice";
+import LlmKeyField from "@/components/LlmKeyField";
 
 type Config = {
   locked?: boolean;
@@ -56,7 +57,7 @@ function UserKeySettings() {
       return;
     }
     writeLlmChoice({ provider, model: model.trim(), key: key.trim() });
-    setMsg("Saved in this browser. Your next analysis uses this provider and key.");
+    setMsg("Saved. Your next analysis uses this provider and key.");
   }
 
   function clear() {
@@ -106,15 +107,9 @@ function UserKeySettings() {
       <label className="block text-sm text-slate-700 mb-1" htmlFor="user-llm-key">
         API key
       </label>
-      <input
-        id="user-llm-key"
-        type="password"
-        autoComplete="off"
-        className={FIELD}
-        value={key}
-        onChange={(e) => setKey(e.target.value)}
-        placeholder="sk-…"
-      />
+      <div className="mb-3">
+        <LlmKeyField id="user-llm-key" value={key} onChange={setKey} className={FIELD} />
+      </div>
 
       <div className="mt-2 flex gap-3">
         <button
