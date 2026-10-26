@@ -1,7 +1,7 @@
 {
   "name": "vishap-security-bundle",
   "displayName": "Vishap Claude (Bundle)",
-  "version": "7.4.5",
+  "version": "7.4.6",
   "description": "Security analysis for engineering materials via Claude API (Anthropic SDK).",
   "author": {
     "name": "dvddv9",
@@ -10,7 +10,7 @@
   "homepage": "https://github.com/dvddv9/vishap",
   "repository": "https://github.com/dvddv9/vishap",
   "license": "AGPL-3.0-or-later",
-  "privacyPolicyUrl": "https://github.com/dvddv9/vishap/blob/main/claude-plugin-bundle-anthropic/README.md#privacy",
+  "privacyPolicyUrl": "https://github.com/dvddv9/vishap/blob/main/README.md#privacy",
   "icon": "./assets/icon.png",
   "keywords": ["security", "sast", "claude", "anthropic", "audit"],
   "mcpServers": {
