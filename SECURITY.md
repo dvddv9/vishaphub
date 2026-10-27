@@ -12,14 +12,14 @@ Vishap is a security-analysis tool. Its own security is documented here.
 |-------|----------|--------|
 | Material (code, spec, logs) | User -> API -> LLM | May contain PII, secrets, prompt injection |
 | API (:5001) | External -> FastAPI | Unauthenticated access, DoS |
-| LLM (local DSH harness) | Vishap -> DSH (127.0.0.1:3080) | Model may leak material outside the machine |
-| API key (HARNESS_TOKEN) | .env -> process | Leak via git, logs |
+| LLM provider (Claude by default; any OpenAI-compatible endpoint) | Vishap -> `CUSTOM_LLM_URL` | Material is sent to the provider; it leaves the machine unless the endpoint is local (Ollama, DSH) |
+| API key (`CUSTOM_LLM_KEY`) | .env -> process | Leak via git, logs |
 | Audit trail (data/*.json) | Pipeline -> disk | Hash collisions, PII in logs |
 
 ### Trust boundaries
 
 - **TB-1:** User -> API (:5001) — protected by X-API-Key
-- **TB-2:** API -> LLM (local DSH harness) — protected by PII redaction
+- **TB-2:** API -> LLM provider (`CUSTOM_LLM_URL`) — protected by PII redaction
 - **TB-3:** Material -> Pipeline — partial (SUBST_MAX_ATTEMPTS=2)
 - **TB-4:** Pipeline -> disk — SHA-256 audit trail (64-hex)
 - **TB-5:** Material -> Local FS — --context-root capped at 10 files / 10 KB
@@ -41,7 +41,7 @@ Vishap is a security-analysis tool. Its own security is documented here.
 **Location:** `src/main.py` — CORS allows only `localhost:8501` / `127.0.0.1:8501`.
 
 ### 5. LLM timeout + retry
-**Location:** `src/llm/harness_client.py` — HTTP timeout: 30s per call; reply polling up to 600s. Auth: `HARNESS_TOKEN`. Failure mode: clear `[LLM error]` result, not exception.
+**Location:** `src/llm/client.py`, `src/llm/custom_client.py` — HTTP timeout `CUSTOM_LLM_TIMEOUT` (120s default). Auth: `CUSTOM_LLM_KEY` or the caller's `X-LLM-Api-Key`. Failure mode: clear `[LLM error]` result, not exception.
 
 ### 6. EMERGENCY-downgrade protection
 **Location:** `src/pipeline/orchestrator.py` — `EMERGENCY_INTERRUPT` is NOT downgraded if: Secrets/PII found, OR `CRITICAL_RISK_PATTERNS` match (RCE, SQLi, path traversal, XXE, SSTI, LDAPi).
@@ -91,7 +91,7 @@ Vishap is a security-analysis tool. Its own security is documented here.
 
 ## What is NOT implemented (honest boundaries)
 
-1. **Material sandbox** — NOT implemented. Vishap does not execute material. Material is redacted, then sent only to a local DSH harness (127.0.0.1 by default) — there is no third-party LLM API call. Point `HARNESS_URL` at another host only if you trust that host; that is the one place where material can leave the machine.
+1. **Material sandbox** — NOT implemented. Vishap does not execute material. Material is redacted, then sent to the configured LLM endpoint (`CUSTOM_LLM_URL`; Claude at api.anthropic.com by default, or a provider the caller picks from the server allow-list). Material stays on the machine only with a local endpoint such as Ollama. Point `CUSTOM_LLM_URL` at a host only if you trust it.
 2. **Prompt injection detection** — PARTIAL. `SUBST_MAX_ATTEMPTS=2` threshold. No semantic detection.
 3. **Pre-commit hook for secrets** — NOT implemented. Redaction at analysis time, not commit time. Use gitleaks/TruffleHog separately.
 4. **Dependency CVE scanning** — NOT implemented. `requirements.txt` uses `>=` without pinning. Use `pip-audit` separately.
@@ -99,7 +99,7 @@ Vishap is a security-analysis tool. Its own security is documented here.
 ## Known Limitations (formal)
 
 - **L1:** `redact_pii` is regex-based; novel PII formats may bypass. Mitigation: `LOG_PATTERNS` (19) + custom regex via `.env`.
-- **L2:** the harness model may rephrase PII despite redaction; audit trail records `redaction_applied`. Material never leaves the machine unless that harness is configured to use a remote model.
+- **L2:** the model may rephrase PII despite redaction; audit trail records `redaction_applied`. Redacted material is sent to the configured LLM provider; it stays on the machine only with a local endpoint.
 - **L3:** `data/audit_*.json` contains `redaction_map` (re-identification risk). Mitigation: `data/` gitignored; restrict FS access.
 - **L4:** No SBOM signature; supply chain trust depends on PyPI.
 - **L5:** `--context-root` reads arbitrary files under root; user must restrict scope.
@@ -120,7 +120,7 @@ Vishap is a security-analysis tool. Its own security is documented here.
 
 - [ ] `VISHAP_API_KEY` set (not empty)
 - [ ] `.env` NOT in git
-- [ ] `HARNESS_TOKEN` rotated if leaked
+- [ ] `CUSTOM_LLM_KEY` rotated if leaked
 - [ ] CORS restricted to your UI origin
 - [ ] Reverse proxy terminates TLS
 - [ ] `data/` backed up + access-controlled
@@ -136,8 +136,7 @@ Vishap is a security-analysis tool. Its own security is documented here.
 - Vishap pipeline (6 stages: orchestrator -> scanner -> analyst -> researcher -> synthesizer -> transmitter).
 - API (:5001), Next.js UI (`ui-next/`, desktop shell in `src-tauri/`), CLI (`vishap analyze`).
 - Material: code, config, spec, logs, data (.py, .go, .js, .ts, .java, .rs, .txt, .md, .json).
-- LLM: a local DSH harness only (`HARNESS_URL`, `HARNESS_TOKEN`). Vishap performs no direct DeepSeek / OpenAI / third-party API call вЂ” material stays on the machine it runs on.
-- Process start: when the harness is not answering and `HARNESS_AUTOSTART` is on (default), Vishap spawns `dsh web` detached from `HARNESS_CMD` (or the DSH install path). It never starts a harness for a non-loopback `HARNESS_URL`.
+- LLM: the endpoint set by the operator (`CUSTOM_LLM_URL` / `CUSTOM_LLM_KEY` / `CUSTOM_LLM_MODEL`; Claude by default), or a provider from the allow-list when the caller brings a key. Redacted material is sent to that provider; it stays on the machine only with a local endpoint (Ollama, DSH).
 - Storage: `data/*.json` (history, audit, result).
 
 **Out of scope:**
@@ -145,14 +144,14 @@ Vishap is a security-analysis tool. Its own security is documented here.
 - Physical security (AWS / on-prem infra).
 - Network layer (TLS termination, WAF, DDoS mitigation).
 - Operating system / container runtime.
-- DeepSeek Harness' own model, prompts and network behaviour (separate product).
+- The LLM provider's own model, prompts and network behaviour (separate service).
 
 ### 2. Assets
 
 | Asset | Type | Impact if compromised | Owner |
 |---|---|---|---|
 | Material (source code, logs) | Data | IP leak, PII exposure | User |
-| API key (HARNESS_TOKEN) | Credential | Unauthorized harness usage | User |
+| API key (`CUSTOM_LLM_KEY`) | Credential | Unauthorized LLM usage, cost | User |
 | VISHAP_API_KEY | Credential | Unauthorized API access | User |
 | Audit trail (data/*.json) | Data | Compliance violation, PII in logs | Vishap |
 | Redaction map | Data | Re-identification | Vishap |
@@ -163,7 +162,7 @@ Vishap is a security-analysis tool. Its own security is documented here.
 | ID | Boundary | Direction | Controls |
 |---|---|---|---|
 | TB-1 | User -> API | Inbound | X-API-Key, rate limit (10/min), CORS |
-| TB-2 | API -> LLM (local DSH harness) | Outbound | PII redaction (15 regex) before send; loopback-only URL |
+| TB-2 | API -> LLM provider | Outbound | PII redaction (15 regex) before send; provider chosen from a server allow-list, the base URL is never taken from a request |
 | TB-3 | Material -> Pipeline | Inbound | SUBST_MAX_ATTEMPTS=2, CRITICAL_RISK_PATTERNS downgrade guard |
 | TB-4 | Pipeline -> Disk | Outbound | SHA-256 audit trail (immutable), data/ gitignored |
 | TB-5 | Material -> Local FS | Read | --context-root capped at 10 files / 10 KB |
@@ -205,7 +204,7 @@ Each control maps to a test in `tests/` or a manual procedure:
 ### 7. Known Limitations (formal)
 
 - **L1:** `redact_pii` is regex-based; novel PII formats may bypass. Mitigation: allow custom regex via `.env`.
-- **L2:** the harness model may rephrase PII despite redaction; audit trail records `redaction_applied`. Material never leaves the machine unless that harness is configured to use a remote model.
+- **L2:** the model may rephrase PII despite redaction; audit trail records `redaction_applied`. Redacted material is sent to the configured LLM provider; it stays on the machine only with a local endpoint.
 - **L3:** `data/audit_*.json` contains `redaction_map` (re-identification risk). Mitigation: `data/` gitignored; restrict FS access.
 - **L4:** No SBOM signature; supply chain trust depends on PyPI.
 - **L5:** `--context-root` reads arbitrary files under root; user must restrict scope.

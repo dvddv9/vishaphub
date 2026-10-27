@@ -219,7 +219,7 @@ def test_provider_rejects_malformed_models(bad_model):
 def test_allowed_providers_env_narrows_the_list(monkeypatch):
     from src.llm import providers
     monkeypatch.setenv("VISHAP_ALLOWED_PROVIDERS", "deepseek, anthropic")
-    assert [p["id"] for p in providers.list_providers()] == ["deepseek", "anthropic"]
+    assert [p["id"] for p in providers.list_providers()] == ["anthropic", "deepseek"]
     with pytest.raises(providers.ProviderError):
         providers.resolve("openai", None)
 
@@ -299,6 +299,7 @@ def _fake_response(status, body):
 
 def test_custom_client_retries_without_temperature(monkeypatch):
     from src.llm import custom_client
+    monkeypatch.setattr(custom_client, "SEND_TEMPERATURE", True)  # independent of the local .env
     custom_client._NO_TEMPERATURE.clear()
     sent = []
     ok = '{"choices":[{"message":{"content":"hi"}}],"usage":{}}'

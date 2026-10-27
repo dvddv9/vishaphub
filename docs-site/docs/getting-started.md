@@ -7,10 +7,10 @@ Vishap is a 6-stage LLM pipeline that analyzes code, config, specs, logs, and da
 - Python 3.11 or 3.12
 - Node.js 18+ (for the UI)
 - PostgreSQL 16 (for history and audit trail)
-- One of the following LLM providers:
-  - **Custom (OpenAI-compatible)**: Groq, OpenAI, Mistral, OpenRouter, Together
-  - **Harness (DSH)**: local DeepSeek Harness
-  - **DeepSeek (direct)**: direct API calls
+- An LLM provider (OpenAI-compatible endpoint set via `CUSTOM_LLM_*`):
+  - **Claude** (default): api.anthropic.com
+  - **Groq**, **DeepSeek**, **OpenAI**, **OpenRouter**
+  - **Local model** (Ollama): no key needed
 
 ## Install
 
@@ -52,7 +52,7 @@ npm run dev
 # -> http://localhost:3000
 ```
 
-Scroll to the LLM Provider panel and choose Custom, Harness, or DeepSeek.
+Scroll to the LLM Provider panel and choose Claude, Groq, DeepSeek, OpenAI, OpenRouter or a local model.
 
 Async (Celery + Redis)
 

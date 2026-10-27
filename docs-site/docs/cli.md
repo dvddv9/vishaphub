@@ -58,18 +58,19 @@ Modes: static, security, metrics, deps, tests, calc, cost, migrate, concurrency,
 
 LLM providers
 
-In v7.2.0, Vishap supports three LLM providers (set LLM_PROVIDER in .env or via the UI):
+Vishap talks to any OpenAI-compatible endpoint. Set it in `.env` (or via the UI):
 
-Provider Env variables Notes
-deepseek DEEPSEEK_API_KEY Direct API calls to api.deepseek.com
-harness HARNESS_URL, HARNESS_TOKEN Local DeepSeek Harness (DSH)
-custom CUSTOM_LLM_URL, CUSTOM_LLM_KEY, CUSTOM_LLM_MODEL Any OpenAI-compatible endpoint (Groq, OpenAI, Mistral, OpenRouter, Together)
+Variable Notes
+CUSTOM_LLM_URL Endpoint base URL (Claude: https://api.anthropic.com/v1)
+CUSTOM_LLM_KEY API key
+CUSTOM_LLM_MODEL Model name (Claude: claude-sonnet-5-5)
+CUSTOM_LLM_SEND_TEMPERATURE Set to false for Claude 5.x
 
 ```env
-LLM_PROVIDER=custom
-CUSTOM_LLM_URL=https://api.groq.com/openai/v1
-CUSTOM_LLM_KEY=gsk_...
-CUSTOM_LLM_MODEL=llama-3.3-70b-versatile
+CUSTOM_LLM_URL=https://api.anthropic.com/v1
+CUSTOM_LLM_KEY=sk-ant-...
+CUSTOM_LLM_MODEL=claude-sonnet-5-5
+CUSTOM_LLM_SEND_TEMPERATURE=false
 ```
 
 ---

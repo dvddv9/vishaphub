@@ -4,7 +4,8 @@
 Providers: custom (OpenAI-compatible).
 Selection: always custom (endpoint-only, v7.3.5).
 
-DeepSeek is reachable via custom: CUSTOM_LLM_URL=https://api.deepseek.com/v1.
+Claude (https://api.anthropic.com/v1) and DeepSeek (https://api.deepseek.com/v1) are
+reachable via custom: set CUSTOM_LLM_URL.
 """
 from __future__ import annotations
 
@@ -38,7 +39,7 @@ def get_llm_target() -> tuple[str, str] | None:
 
 
 def server_key_only() -> bool:
-    """True when the server's own key (DeepSeek by default) is the ONLY LLM source.
+    """True when the server's own key (Claude by default) is the ONLY LLM source.
 
     VISHAP_SERVER_KEY_ONLY=1: callers cannot choose another provider/model or send
     their own key -- any X-LLM-* headers are ignored. Takes precedence over
@@ -77,7 +78,7 @@ NO_CUSTOM_TEXT = (
 
 
 def _resolve_provider() -> str:
-    """v7.3.16: provider selection (DeepSeek API is default)."""
+    """v7.3.16: provider selection (the endpoint comes from CUSTOM_LLM_*; Claude by default)."""
     import os
     mode = os.getenv("VISHAP_LLM_PROVIDER", "custom").strip().lower()
     if mode in ("custom", "openai", "groq", "ollama", "anthropic", "android"):

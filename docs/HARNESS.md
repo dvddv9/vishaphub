@@ -1,5 +1,8 @@
 # Harness (DSH) Integration
 
+> **Legacy.** Since v7.3.12 Vishap talks to any OpenAI-compatible endpoint (`CUSTOM_LLM_*`), Claude by default (see `.env.example`). DSH is optional and the `HARNESS_*` variables below are no longer read by the API. This page is kept for reference.
+
+
 Vishap uses **DeepSeek Harness (DSH)** as its only LLM provider. There is no
 direct DeepSeek API, no OpenAI-compatible endpoint and no Ollama — every stage
 talks to a local harness, and material does not leave the machine.

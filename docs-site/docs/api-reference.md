@@ -39,7 +39,7 @@ curl http://localhost:8080/llm/config
 
 POST /llm/config
 
-Change the LLM provider. Accepts provider (deepseek | harness | custom), and for custom — custom_url, custom_model, custom_key.
+Change the LLM provider. Accepts provider (custom | anthropic | openai | groq | ollama | deepseek), and for custom — custom_url, custom_model, custom_key.
 
 ```
 curl -X POST http://localhost:8080/llm/config \

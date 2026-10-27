@@ -28,7 +28,7 @@
 
 - **Backend:** Python 3.12, FastAPI, Uvicorn (порт 5001)
 - **Desktop:** Tauri 2 (Rust) + Next.js 16 (frontend)
-- **LLM:** custom (OpenAI-compatible) — default DeepSeek API
+- **LLM:** custom (OpenAI-compatible) — default DeepSeek API at v7.3.16; since v7.4.7 the deployment default is Claude (api.anthropic.com)
 - **Pipeline:** 6-stage (stage0 → stage5) + 4 optional loops
 - **Data:** VISHAP_DATA_DIR (по умолчанию C:\AI\conveyor_app\data)
 

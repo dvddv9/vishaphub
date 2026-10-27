@@ -22,10 +22,12 @@ Before running Vishap, install these tools. Download links are below.
 - **All platforms:** [nodejs.org/en/download](https://nodejs.org/en/download/)
 - **Recommended (nvm):** [github.com/nvm-sh/nvm](https://github.com/nvm-sh/nvm)
 
-### 3. DSH harness (required for analysis)
-- Vishap has no direct LLM API call: every stage goes through a local DeepSeek
-  Harness. Install DSH (desktop app or the `dsh` CLI) and start it.
-- Then set `HARNESS_URL=http://127.0.0.1:3080` and `HARNESS_TOKEN=<token DSH printed>`.
+### 3. LLM provider (required for analysis)
+- Every stage calls one OpenAI-compatible endpoint. Default: Claude. Get a key at
+  [console.anthropic.com](https://console.anthropic.com/settings/keys).
+- Then set `CUSTOM_LLM_URL=https://api.anthropic.com/v1`, `CUSTOM_LLM_MODEL=claude-sonnet-5-5`,
+  `CUSTOM_LLM_KEY=<your key>` and `CUSTOM_LLM_SEND_TEMPERATURE=false`.
+- Alternatives: DeepSeek, Groq, OpenAI, or a local model (Ollama, no key). See `.env.example`.
 
 ### 4. Postgres 16 (optional)
 - **All platforms:** [postgresql.org/download](https://www.postgresql.org/download/)
@@ -132,7 +134,7 @@ npm run dev
 | Error | Solution |
 |---|---|
 | `ModuleNotFoundError: No module named 'celery'` | `pip install -r requirements.txt` |
-| `ConnectionError` / `LLM error` | The DSH harness is not running or `HARNESS_TOKEN` is empty: start DSH, then set `HARNESS_URL` (default `http://127.0.0.1:3080`) and `HARNESS_TOKEN` |
+| `ConnectionError` / `LLM error` | The LLM endpoint is unreachable or the key is wrong: check `CUSTOM_LLM_URL`, `CUSTOM_LLM_MODEL` and `CUSTOM_LLM_KEY` (a Claude key starts with `sk-ant-`) |
 | `Port 5001 already in use` | `netstat -ano | findstr :5001` → `taskkill /PID <PID> /F` |
 | `401 Unauthorized` (UI) | Check Clerk keys in `.env.local` |
 | `403 Forbidden` (GitHub App) | Check `GITHUB_APP_ID`, `GITHUB_PRIVATE_KEY`, `GITHUB_WEBHOOK_SECRET` |

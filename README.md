@@ -57,7 +57,7 @@ Previous: [v7.3.17](#previous-v7317)
 
 - **6-stage pipeline:** Ingestion → Taint Analysis → Dataflow → Risk Assessment → Verdict → Report.
 - **Multi-language:** Python, Java, C, **JavaScript / TypeScript** (AST + taint patterns).
-- **LLM backend:** any OpenAI-compatible endpoint via `CUSTOM_LLM_URL` / `CUSTOM_LLM_KEY` / `CUSTOM_LLM_MODEL` (DeepSeek by default; `.env.example` has OpenAI, Groq and Ollama examples).
+- **LLM backend:** any OpenAI-compatible endpoint via `CUSTOM_LLM_URL` / `CUSTOM_LLM_KEY` / `CUSTOM_LLM_MODEL` (Claude by default; `.env.example` also has DeepSeek, OpenAI, Groq and Ollama examples).
 - **Async API:** FastAPI + Celery workers (optional in-process fallback).
 - **Security:** HMAC-SHA256 for API keys (with pepper), Fernet for secrets.
 - **Observability:** Structlog (JSON), Prometheus `/metrics`, OpenTelemetry traces.
@@ -112,7 +112,8 @@ docker build -t vishap .
 docker run --rm -p 5001:5001 \
   -e VISHAP_DEV=true \
   -e VISHAP_LLM_PROVIDER=custom \
-  -e CUSTOM_LLM_URL=https://api.deepseek.com/v1 \
-  -e CUSTOM_LLM_MODEL=deepseek-chat \
-  -e CUSTOM_LLM_KEY=sk-... \
+  -e CUSTOM_LLM_URL=https://api.anthropic.com/v1 \
+  -e CUSTOM_LLM_MODEL=claude-sonnet-5-5 \
+  -e CUSTOM_LLM_SEND_TEMPERATURE=false \
+  -e CUSTOM_LLM_KEY=sk-ant-... \
   vishap

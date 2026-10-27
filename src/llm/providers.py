@@ -6,7 +6,7 @@ SECURITY: the base URL is NEVER taken from a request. A caller picks a provider
 URL would let anyone make the server send their key (or, worse, the operator's
 key) to an arbitrary host (SSRF / key exfiltration).
 
-``VISHAP_ALLOWED_PROVIDERS=deepseek,anthropic`` narrows the list (default: all).
+``VISHAP_ALLOWED_PROVIDERS=anthropic,deepseek`` narrows the list (default: all).
 """
 from __future__ import annotations
 
@@ -15,8 +15,8 @@ import re
 
 # id -> (label, OpenAI-compatible base URL, default model)
 PRESETS: dict[str, tuple[str, str, str]] = {
-    "deepseek": ("DeepSeek", "https://api.deepseek.com/v1", "deepseek-chat"),
     "anthropic": ("Anthropic (Claude)", "https://api.anthropic.com/v1", "claude-sonnet-5-5"),
+    "deepseek": ("DeepSeek", "https://api.deepseek.com/v1", "deepseek-chat"),
     "openai": ("OpenAI", "https://api.openai.com/v1", "gpt-4o-mini"),
     "groq": ("Groq", "https://api.groq.com/openai/v1", "llama-3.3-70b-versatile"),
     "openrouter": ("OpenRouter", "https://openrouter.ai/api/v1", "deepseek/deepseek-chat"),
