@@ -171,6 +171,13 @@ class ConfigTests(unittest.TestCase):
         with self.assertRaises(LLMConfigError):
             config_from_env(dict(self.BASE, VISHAP_LLM_PROVIDER="deepseek"))
 
+    def test_empty_key_for_a_remote_url_is_a_config_error(self):
+        for key in ("", "   "):
+            with self.subTest(key=key):
+                with self.assertRaises(LLMConfigError) as cm:
+                    config_from_env(dict(self.BASE, CUSTOM_LLM_KEY=key))
+                self.assertIn("CUSTOM_LLM_KEY is not set", str(cm.exception))
+
     def test_key_may_be_empty(self):
         env = dict(self.BASE, CUSTOM_LLM_URL="http://localhost:11434/v1")
         del env["CUSTOM_LLM_KEY"]

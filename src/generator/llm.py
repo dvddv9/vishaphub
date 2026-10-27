@@ -5,7 +5,7 @@ Configuration comes from the environment, the same names as in Vishap:
   VISHAP_LLM_PROVIDER  must be "custom" (the default)
   CUSTOM_LLM_URL       base URL, e.g. https://api.example.com/v1  (required)
   CUSTOM_LLM_MODEL     model name                                  (required)
-  CUSTOM_LLM_KEY       API key; may be empty for a local server
+  CUSTOM_LLM_KEY       API key; required unless the URL is localhost
 
 There is no default URL: a forgotten variable must not send a spec to a
 provider nobody chose. Plain http is allowed only for localhost (Ollama
@@ -74,7 +74,10 @@ def config_from_env(env: dict | None = None) -> LLMConfig:
     model = env.get("CUSTOM_LLM_MODEL", "").strip()
     if not model:
         raise LLMConfigError("CUSTOM_LLM_MODEL is not set")
-    return LLMConfig(url=url, model=model, key=env.get("CUSTOM_LLM_KEY", "").strip())
+    key = env.get("CUSTOM_LLM_KEY", "").strip()
+    if not key and urllib.parse.urlsplit(url).hostname not in LOCAL_HOSTS:
+        raise LLMConfigError("CUSTOM_LLM_KEY is not set (only a localhost server may go without one)")
+    return LLMConfig(url=url, model=model, key=key)
 
 
 def _short(body: bytes, key: str) -> str:
