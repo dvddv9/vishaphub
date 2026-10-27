@@ -12,14 +12,16 @@ LOG_PATTERNS = {
     "aws_secret":      re.compile(r"AWS_SECRET_ACCESS_KEY\s*=\s*\S+"),
     "stripe_key":      re.compile(r"\b(sk|rk)_(live|test)_[A-Za-z0-9]+"),
     "pii_email":       re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+"),
-    "pii_phone":       re.compile(r"\+\d[\d\-]{8,14}\d"),
+    # v7.4.7 #2: RU formats (+7 900 123 45 67, +7 (900) 123-45-67, 89001234567) and
+    # "+"-prefixed international. Anchored: no match inside a longer digit run (epoch-ms ids).
+    "pii_phone":       re.compile(r"(?<!\w)(?:\+?[78]\s*\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}|\+\d[\d\-]{8,14}\d)(?!\d)"),
     "pii_passport_ru": re.compile(r"Passport RU:\s*\d{4}\s*\d{6}"),
     "credit_card":     re.compile(r"\b(?:\d[ -]*?){13,16}\b"),
     "jwt_token":       re.compile(r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*"),
     "ssh_key":         re.compile(r"-----BEGIN (?:OPENSSH|RSA|EC|DSA) PRIVATE KEY-----"),
     "sqlmap":          re.compile(r"sqlmap/"),
-    "sqli_pattern":    re.compile(r"' OR '1'='1"),
-    "cmd_injection":   re.compile(r"ping\s+-c\s+1\s+\S+;\s*cat\s+/etc/passwd"),
+    "sqli_pattern":    re.compile(r"'\s*OR\s*'1'\s*=\s*'1|UNION\s+SELECT|'\s*OR\s*1\s*=\s*1", re.IGNORECASE),
+    "cmd_injection":   re.compile(r"ping\s+-c\s+1\s+\S+;\s*cat|[;|]\s*cat\s+/etc/passwd"),
     "imdsv1":          re.compile(r"169\.254\.169\.254"),
     "cors_wildcard":   re.compile(r"Access-Control-Allow-Origin:\s*\*"),
     "csp_wildcard":    re.compile(r"Content-Security-Policy:\s*\*"),
@@ -37,11 +39,28 @@ def is_log_material(material: str) -> bool:
     """Эвристика: материал — лог, если начинается с timestamp."""
     return material.lstrip().startswith(("2026-","2025-","2024-"))
 
+def luhn_ok(s: str) -> bool:
+    """Luhn check for card-like numbers (13-19 digits); request ids and epoch-ms fail it."""
+    digits = [int(c) for c in s if c.isdigit()]
+    if not 13 <= len(digits) <= 19:
+        return False
+    total = 0
+    for i, d in enumerate(reversed(digits)):
+        if i % 2:
+            d *= 2
+            if d > 9:
+                d -= 9
+        total += d
+    return total % 10 == 0
+
+
 def scan_log(material: str) -> list:
     """Сканирует лог LOG_PATTERNS, возвращает findings."""
     findings = []
     for name, pat in LOG_PATTERNS.items():
         for m in pat.finditer(material):
+            if name == "credit_card" and not luhn_ok(m.group(0)):
+                continue
             findings.append({
                 "type": name,
                 "cwe": LOG_CWE_MAP.get(name),

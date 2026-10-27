@@ -8,6 +8,9 @@ import pytest
 from unittest.mock import patch, AsyncMock
 
 from fastapi.testclient import TestClient
+from src.config import CONVEYOR_API_KEY as _KEY
+
+_AUTH = {"X-API-Key": _KEY} if _KEY else {}
 
 from src.api.jobs import (
     create_job, get_job, update_job, delete_job, list_jobs, clear_jobs, job_count,
@@ -137,7 +140,7 @@ def test_analyze_async_creates_job(client):
 
 def test_status_returns_job_info(client):
     jid = create_job("test.py")
-    r = client.get(f"/status/{jid}")
+    r = client.get(f"/status/{jid}", headers=_AUTH)
     assert r.status_code == 200
     data = r.json()
     assert data["job_id"] == jid
@@ -145,21 +148,21 @@ def test_status_returns_job_info(client):
 
 
 def test_status_404_for_missing_job(client):
-    r = client.get("/status/job-nonexistent")
+    r = client.get("/status/job-nonexistent", headers=_AUTH)
     assert r.status_code == 404
 
 
 def test_report_409_when_not_done(client):
     jid = create_job("test.py")
     update_job(jid, status="running")
-    r = client.get(f"/report/{jid}")
+    r = client.get(f"/report/{jid}", headers=_AUTH)
     assert r.status_code == 409
 
 
 def test_report_returns_result_when_done(client):
     jid = create_job("test.py")
     update_job(jid, status="done", result={"ok": True, "audit_id": "abc"})
-    r = client.get(f"/report/{jid}")
+    r = client.get(f"/report/{jid}", headers=_AUTH)
     assert r.status_code == 200
     data = r.json()
     assert data["ok"] is True
@@ -167,14 +170,14 @@ def test_report_returns_result_when_done(client):
 
 
 def test_report_404_for_missing_job(client):
-    r = client.get("/report/job-nonexistent")
+    r = client.get("/report/job-nonexistent", headers=_AUTH)
     assert r.status_code == 404
 
 
 def test_report_409_when_failed(client):
     jid = create_job("test.py")
     update_job(jid, status="failed", error="boom")
-    r = client.get(f"/report/{jid}")
+    r = client.get(f"/report/{jid}", headers=_AUTH)
     assert r.status_code == 409
 
 
@@ -182,7 +185,7 @@ def test_job_lifecycle_done(client):
     jid = create_job("test.py")
     update_job(jid, status="running")
     update_job(jid, status="done", result={"ok": True})
-    status_r = client.get(f"/status/{jid}")
+    status_r = client.get(f"/status/{jid}", headers=_AUTH)
     assert status_r.json()["status"] == "done"
-    report_r = client.get(f"/report/{jid}")
+    report_r = client.get(f"/report/{jid}", headers=_AUTH)
     assert report_r.status_code == 200

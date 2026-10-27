@@ -114,14 +114,22 @@ def _check_daily(key: str, limit: int, peek_only: bool = False) -> None:
         _DAY_COUNTS[entry] = used + 1
 
 
+def _server_key_only() -> bool:
+    from src.llm.client import server_key_only
+    return server_key_only()
+
+
 async def rate_limit_daily(request: Request) -> None:
     """Per-visitor day cap (by client IP) AND a global ceiling for everybody.
 
     A caller who brings their own LLM key (``X-LLM-Api-Key``) pays for the call
     themselves, so the operator's caps do not apply to them — only the per-minute
     limiter above still does.
+
+    Not in server-key-only mode (VISHAP_SERVER_KEY_ONLY): there the header is ignored
+    and the call runs on the operator's key, so sending a junk key must not lift the caps.
     """
-    if (request.headers.get("x-llm-api-key") or "").strip():
+    if (request.headers.get("x-llm-api-key") or "").strip() and not _server_key_only():
         return
     global_cap = _env_int("VISHAP_DAILY_LIMIT_GLOBAL", 30)
     if global_cap:

@@ -571,20 +571,58 @@ AST_TAINT_SINKS = {
 }
 
 
+_LOG_BLAST_HIGH = (
+    # secrets
+    "db_password", "jwt_secret", "aws_key", "aws_secret", "stripe_key", "jwt_token", "ssh_key",
+    # PII
+    "pii_email", "pii_phone", "pii_passport_ru", "credit_card",
+    # attack traces
+    "sqlmap", "sqli_pattern", "cmd_injection", "imdsv1", "xff_trust",
+)
+_LOG_BLAST_MEDIUM = ("cors_wildcard", "csp_wildcard", "cookie_insecure")
+
+
+def _log_blast(material: str) -> tuple:
+    """v7.4.7 #3: blast radius of a log from what is actually in it.
+
+    Returns (blast, triggered_pattern_names): high = secrets / PII / attack traces,
+    medium = insecure-config traces only, none = nothing found. A card-like number
+    counts only if it passes Luhn (request ids and epoch-ms are 13 digits too).
+    """
+    from src.tools.sast import LOG_PATTERNS, luhn_ok
+    triggered = []
+    for name, pat in LOG_PATTERNS.items():
+        if name not in _LOG_BLAST_HIGH and name not in _LOG_BLAST_MEDIUM:
+            continue
+        for m in pat.finditer(material):
+            if name == "credit_card" and not luhn_ok(m.group(0)):
+                continue
+            triggered.append(name)
+            break
+    if any(n in _LOG_BLAST_HIGH for n in triggered):
+        return "high", triggered
+    if triggered:
+        return "medium", triggered
+    return "none", triggered
+
+
 def detect_exploitability(material: str) -> dict:
     """Detect exploitability: reachability, auth, blast radius.
 
     - IaC (Terraform/YAML): reachable=True (apply = compromise), blast=high.
     - JS/Express (app.get/post/router.get): reachable=True, blast=high.
     - Python (Flask/FastAPI): reachable=True, blast=high.
+    - Logs (start with a date): blast by content (_log_blast): high / medium / none.
     - Else: reachable=False, blast=none.
     """
     if re.match(r"^\d{4}-\d{2}-\d{2}[T ]", material.lstrip()):
-        return {"reachable": True, "auth_required": False,
-                "exploit_path": [{"type":"log","path":"log analysis"}],
-                "blast_radius": "high",
-                "entry_points": ["log file"],
-                "blast_indicators": ["PII","secrets","SQLi/RCE traces","IMDS","privileged pod"]}
+        blast, triggered = _log_blast(material)
+        reachable = blast != "none"
+        return {"reachable": reachable, "auth_required": False,
+                "exploit_path": [{"type": "log", "path": "log analysis"}] if reachable else [],
+                "blast_radius": blast,
+                "entry_points": ["log file"] if reachable else [],
+                "blast_indicators": triggered}
 
     stripped = material.lstrip()
 

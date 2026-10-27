@@ -59,11 +59,35 @@ def _has_critical_threat_model(stage2_result: dict | None) -> bool:
     return _has_critical_priority(tm.get("threats", []))
 
 
+# v7.4.7 #6: a SEC line is not critical just because a marker word is on it.
+# - declared low priority right after the id ("SEC-0003 (низкий)", "SEC-0003 low")
+# - negated marker ("injection не нужен", "no crash observed")
+_SEC_LOW_RE = re.compile(r"SEC-\d+\s*(?:[(:\-\u2013\u2014,]\s*)?(?:низк\w*|low)\b", re.IGNORECASE)
+_SEC_MARKERS = r"критично|critical|CVE-\d|crash|overflow|injection"
+_SEC_NEG_BEFORE_RE = re.compile(
+    r"\b(?:no|not|without|never|без|нет)\b\s+(?:[\w-]+\s+){0,2}?(?:" + _SEC_MARKERS + r")",
+    re.IGNORECASE,
+)
+_SEC_NEG_AFTER_RE = re.compile(
+    r"(?:" + _SEC_MARKERS + r")\s+(?:не\s+(?:нужен|нужна|нужно|нужны|требуется|обнаружен\w*|найден\w*|наблюда\w*)"
+    r"|(?:is\s+|are\s+)?not\s+(?:needed|required|observed|found|present))",
+    re.IGNORECASE,
+)
+
+
 def _has_critical_sec_in_text(final_markdown: str) -> bool:
     """Fallback: scan final_markdown text for critical SEC findings."""
     if not final_markdown:
         return False
-    return bool(_SEC_CRITICAL_RE.search(final_markdown))
+    for line in final_markdown.splitlines():
+        if "SEC-" not in line.upper():
+            continue
+        cleaned = _SEC_LOW_RE.sub(" ", line)
+        cleaned = _SEC_NEG_BEFORE_RE.sub(" ", cleaned)
+        cleaned = _SEC_NEG_AFTER_RE.sub(" ", cleaned)
+        if _SEC_CRITICAL_RE.search(cleaned):
+            return True
+    return False
 
 
 def compute_risk_verdict(

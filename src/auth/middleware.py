@@ -43,19 +43,28 @@ async def current_user(authorization: str | None = Header(None)) -> dict:
     return _claims_to_identity(claims)
 
 
-async def current_tenant(authorization: str | None = Header(None)) -> str:
-    """Best-effort tenant for endpoints that accept either API key or Clerk JWT.
+async def current_tenant(
+    authorization: str | None = Header(None),
+    x_api_key: str | None = Header(None),
+) -> str:
+    """Tenant for endpoints that accept either a Clerk JWT or an API key.
 
-    Unlike :func:`current_user` this never raises: endpoints such as
-    ``/analyze/async`` are also reachable with a plain ``X-API-Key``, which
-    carries no identity. Those requests share the default tenant.
+    * Bearer token present: it must verify, otherwise 401. A bad or expired token used
+      to fall back silently to the default tenant, i.e. it opened that tenant's data.
+    * No Bearer token: the request passes the same gate as the write endpoints
+      (:func:`src.api.auth.verify_api_key`: static key, tenant key, or an explicitly
+      open deployment such as VISHAP_PUBLIC_DEMO) and shares the default tenant, since
+      an API key carries no identity.
     """
     if authorization and authorization.startswith("Bearer "):
         try:
             claims = verify_jwt(authorization[7:])
-        except AuthError:
-            return _FALLBACK_TENANT
+        except AuthError as e:
+            raise HTTPException(status_code=401, detail=str(e))
         return claims.get("org_id") or claims.get("sub") or _FALLBACK_TENANT
+    from src.api.auth import verify_api_key
+
+    await verify_api_key(x_api_key or "")
     return _FALLBACK_TENANT
 
 

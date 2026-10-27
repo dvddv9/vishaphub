@@ -37,11 +37,14 @@ _DEACTIVATE_EVENTS = frozenset({
     "subscription_cancelled",
     "subscription_expired",
     "subscription_paused",
+    # A refund ends access too (docs/marketplace/pricing.md: prorated refunds exist).
+    "order_refunded",
+    "subscription_payment_refunded",
 })
 
 
 def _verify_signature(payload: bytes, signature: str) -> None:
-    secret = os.getenv("dvddvdvdvdvd", "")
+    secret = os.getenv("LEMONSQUEEZY_WEBHOOK_SECRET", "")
     if not secret:
         raise HTTPException(status_code=500, detail="LEMONSQUEEZY_WEBHOOK_SECRET not set")
     expected = hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()

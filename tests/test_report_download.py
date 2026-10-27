@@ -9,6 +9,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.api import reports
+from src.config import CONVEYOR_API_KEY as _KEY
+
+_AUTH = {"X-API-Key": _KEY} if _KEY else {}
 
 JOB_ID = "job-abc123def456"
 
@@ -40,7 +43,7 @@ def test_download_report(reports_root):
     (reports_root / f"{JOB_ID}.md").write_bytes(content.encode("utf-8"))
 
     with patch("src.main.get_job_async", AsyncMock(return_value=_job())):
-        response = TestClient(app).get(f"/report/{JOB_ID}/download")
+        response = TestClient(app).get(f"/report/{JOB_ID}/download", headers=_AUTH)
 
     assert response.status_code == 200
     assert response.text == content
@@ -55,7 +58,7 @@ def test_download_report_falls_back_to_job_result(reports_root):
     content = "# Report\n\nfrom the job result\n"
 
     with patch("src.main.get_job_async", AsyncMock(return_value=_job(content))):
-        response = TestClient(app).get(f"/report/{JOB_ID}/download")
+        response = TestClient(app).get(f"/report/{JOB_ID}/download", headers=_AUTH)
 
     assert response.status_code == 200
     assert response.text == content
@@ -69,7 +72,7 @@ def test_download_report_not_found(reports_root):
     from src.main import app
 
     with patch("src.main.get_job_async", AsyncMock(return_value=_job())):
-        response = TestClient(app).get(f"/report/{JOB_ID}/download")
+        response = TestClient(app).get(f"/report/{JOB_ID}/download", headers=_AUTH)
 
     assert response.status_code == 404
     assert response.json()["detail"] == "report not found"
@@ -79,7 +82,7 @@ def test_download_report_unknown_job(reports_root):
     from src.main import app
 
     with patch("src.main.get_job_async", AsyncMock(return_value=None)):
-        response = TestClient(app).get(f"/report/{JOB_ID}/download")
+        response = TestClient(app).get(f"/report/{JOB_ID}/download", headers=_AUTH)
 
     assert response.status_code == 404
     assert response.json()["detail"] == "job not found"

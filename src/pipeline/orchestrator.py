@@ -384,7 +384,9 @@ def run_audit(material: str, session_id: str, model: str = "custom",
         "audit_id": generate_audit_id(),
         "session_id": session_id,
         "timestamp": datetime.now(UTC).isoformat(),
-        "material_hash": compute_hash(material, context=context),
+        # v7.4.7 #4: stable hash of the bytes only (cache + audit trail). The per-run
+        # binding to filename:session_id lives in material_hash_full below.
+        "material_hash": compute_hash(material),
         "material_hash_full": material_hash_full or compute_hash(material, context=context),
         "material_size": {
             "lines": len(material.splitlines()),

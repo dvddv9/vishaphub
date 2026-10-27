@@ -546,7 +546,7 @@ async def analyze(req: AnalyzeRequest,
     )
 
 
-@app.post("/analyze/secure", dependencies=[Depends(current_user)])
+@app.post("/analyze/secure", dependencies=[Depends(current_user), Depends(rate_limit_analyze), Depends(rate_limit_daily)])
 async def analyze_secure(req: AnalyzeRequest, user: dict = Depends(current_user)):
     with tenant_scope(user["tenant_id"]):
         return await analyze(req, x_llm_api_key=None, x_llm_provider=None, x_llm_model=None)
