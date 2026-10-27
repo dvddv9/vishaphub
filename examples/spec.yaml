@@ -1,0 +1,33 @@
+# Пример спецификации. Формат — проект Generator, не финальный.
+version: 1
+updated: 2026-10-27
+
+text: |
+  GET /user returns one user by name from the app database.
+  Called by the public web app, without sign-in.
+
+target: python/flask
+kind: http-endpoint
+output: handlers/user.py
+
+inputs:
+  - name: name
+    in: query
+    rule: "1-64 letters and digits"
+
+outputs:
+  - status: 200
+    body: "json: id, name only"
+  - status: 404
+    when: "no such user"
+
+profile: owasp-asvs-2
+constraints: [include-tests, validate-inputs]
+
+must_never:
+  - id: sql-from-input
+    text: "SQL is never built from the input"
+  - id: log-raw-input
+    text: "Raw input is never logged"
+
+check: analyzer
