@@ -125,9 +125,30 @@ def chat(messages: list[dict], config: LLMConfig | None = None,
         raise LLMError("answer larger than 5 MB")
     try:
         data = json.loads(raw)
-        content = data["choices"][0]["message"]["content"]
-    except (ValueError, KeyError, IndexError, TypeError):
+        choice = data["choices"][0]
+        message = choice["message"]
+        content = message.get("content")
+    except (ValueError, KeyError, IndexError, TypeError, AttributeError):
         raise LLMError(f"answer is not a chat completion: {_short(raw, cfg.key)}") from None
     if not isinstance(content, str) or not content.strip():
-        raise LLMError("answer has no text")
+        raise LLMError("answer has no text (" + _why_empty(data, choice, message) + ")")
     return content
+
+
+def _why_empty(data: dict, choice: dict, message: dict) -> str:
+    """Facts that explain an empty answer, without any of its content."""
+    facts = [f"finish_reason={choice.get('finish_reason')}"]
+    usage = data.get("usage") or {}
+    if isinstance(usage, dict):
+        for k in ("prompt_tokens", "completion_tokens"):
+            if k in usage:
+                facts.append(f"{k}={usage[k]}")
+        details = usage.get("completion_tokens_details") or {}
+        if isinstance(details, dict) and "reasoning_tokens" in details:
+            facts.append(f"reasoning_tokens={details['reasoning_tokens']}")
+    reasoning = message.get("reasoning_content")
+    if isinstance(reasoning, str) and reasoning:
+        facts.append(f"reasoning_content of {len(reasoning)} chars")
+    if choice.get("finish_reason") == "length":
+        facts.append("the token limit ran out before the answer")
+    return ", ".join(facts)

@@ -112,6 +112,28 @@ class ChatTests(unittest.TestCase):
         with self.assertRaises(LLMError):
             chat([{"role": "user", "content": "x"}], self.cfg)
 
+    def test_empty_text_explains_why(self):
+        self.stub.body = json.dumps({
+            "choices": [{"finish_reason": "length",
+                         "message": {"content": "", "reasoning_content": "x" * 50}}],
+            "usage": {"prompt_tokens": 900, "completion_tokens": 8000},
+        }).encode()
+        with self.assertRaises(LLMError) as cm:
+            chat([{"role": "user", "content": "x"}], self.cfg)
+        msg = str(cm.exception)
+        self.assertIn("finish_reason=length", msg)
+        self.assertIn("completion_tokens=8000", msg)
+        self.assertIn("reasoning_content of 50 chars", msg)
+        self.assertIn("token limit ran out", msg)
+        self.assertNotIn("xxxxx", msg)
+
+    def test_null_content(self):
+        self.stub.body = json.dumps({"choices": [{"finish_reason": "stop",
+                                                  "message": {"content": None}}]}).encode()
+        with self.assertRaises(LLMError) as cm:
+            chat([{"role": "user", "content": "x"}], self.cfg)
+        self.assertIn("finish_reason=stop", str(cm.exception))
+
     def test_timeout(self):
         self.stub.delay = 1.0
         cfg = LLMConfig(url=self.stub.url, model="m1", key=KEY, timeout=0.2)
