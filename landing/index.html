@@ -1,277 +1,366 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="no-js">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vishap — Security analysis for engineering materials</title>
-  <meta name="description" content="Vishap is a 6-stage LLM pipeline that analyzes Python, Java, and C — finding taint flows, risk nodes, and security findings in seconds.">
-  <meta property="og:title" content="Vishap — Security analysis for engineering materials">
-  <meta property="og:description" content="6-stage LLM pipeline for taint flows, risk nodes, and security findings across Python, Java, and C.">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vishap: find the bug before it ships</title>
+  <meta name="description" content="Paste code, a config, an API spec or a log. Vishap runs built-in rules first, then a six-stage analysis, and returns a verdict, fix steps and an audit trail.">
+  <link rel="canonical" href="https://dvddv9.github.io/vishap/landing/">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0b1119" media="(prefers-color-scheme: dark)">
+  <meta property="og:title" content="Vishap: find the bug before it ships">
+  <meta property="og:description" content="Verdict, risks, fix steps and an audit trail for code, configs, API specs and logs.">
   <meta property="og:image" content="https://dvddv9.github.io/vishap/img/docusaurus-social-card.jpg">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://dvddv9.github.io/vishap/landing/">
   <link rel="icon" href="favicon.ico">
-  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="assets/style.css">
+  <script>document.documentElement.className = 'js';</script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Vishap",
+    "applicationCategory": "SecurityApplication",
+    "operatingSystem": "Any",
+    "description": "Security analysis for code, configs, API specs and logs, with a verdict, fix steps and an audit trail.",
+    "url": "https://dvddv9.github.io/vishap/landing/",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  }
+  </script>
 </head>
-<body class="bg-slate-950 text-slate-100 antialiased">
+<body>
+  <a class="skip" href="#main">Skip to content</a>
 
-  <header class="sticky top-0 z-50 bg-slate-950/90 backdrop-blur border-b border-slate-800">
-    <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16" aria-label="Main navigation">
-      <a href="#" class="flex items-center gap-2 font-bold text-lg" aria-label="Vishap home">
-        <span aria-hidden="true">🐉</span> Vishap
-      </a>
-      <div class="hidden md:flex items-center gap-6 text-sm">
-        <a href="#features" class="hover:text-emerald-400">Features</a>
-        <a href="#how" class="hover:text-emerald-400">How it works</a>
-        <a href="#pricing" class="hover:text-emerald-400">Pricing</a>
-        <a href="https://dvddv9.github.io/vishap/docs/getting-started" class="hover:text-emerald-400">Docs</a>
-        <a href="https://github.com/dvddv9/vishap" class="hover:text-emerald-400">GitHub</a>
-      </div>
-      <button id="menu-toggle" class="md:hidden p-2 rounded" aria-label="Toggle menu" aria-expanded="false" aria-controls="mobile-menu">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+  <header class="top">
+    <div class="wrap top-row">
+      <a class="brand" href="#top" aria-label="Vishap, back to top">
+        <svg class="brand-mark" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false">
+          <path d="M12 2.5 20 6v6c0 4.6-3.2 8.2-8 9.5C7.2 20.2 4 16.6 4 12V6l8-3.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+          <path d="m8.5 9.5 3.5 6 3.5-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
+        Vishap
+      </a>
+      <nav class="nav" aria-label="Main">
+        <a href="#report">What you get</a>
+        <a href="#engines">Engines</a>
+        <a href="#pricing">Pricing</a>
+        <a href="https://dvddv9.github.io/vishap/docs/getting-started">Docs</a>
+        <a href="https://github.com/dvddv9/vishap">GitHub</a>
+      </nav>
+      <a class="btn btn-small btn-primary top-cta" href="https://vishap-ui.onrender.com/analyze?example=sqli">Try the demo</a>
+      <button class="menu-btn" id="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu">
+        <span class="sr-only">Menu</span>
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       </button>
-    </nav>
-    <div id="mobile-menu" class="hidden md:hidden border-t border-slate-800 px-4 py-3 space-y-2 text-sm">
-      <a class="block py-1 hover:text-emerald-400" href="#features">Features</a>
-      <a class="block py-1 hover:text-emerald-400" href="#how">How it works</a>
-      <a class="block py-1 hover:text-emerald-400" href="#pricing">Pricing</a>
-      <a class="block py-1 hover:text-emerald-400" href="https://dvddv9.github.io/vishap/docs/getting-started">Docs</a>
-      <a class="block py-1 hover:text-emerald-400" href="https://github.com/dvddv9/vishap">GitHub</a>
     </div>
+    <nav class="mobile-menu" id="mobile-menu" aria-label="Main (mobile)" hidden>
+      <a href="#report">What you get</a>
+      <a href="#engines">Engines</a>
+      <a href="#pricing">Pricing</a>
+      <a href="https://dvddv9.github.io/vishap/docs/getting-started">Docs</a>
+      <a href="https://github.com/dvddv9/vishap">GitHub</a>
+      <a class="btn btn-primary" href="https://vishap-ui.onrender.com/analyze?example=sqli">Try the demo</a>
+    </nav>
   </header>
 
-  <main>
-    <!-- 1. Hero -->
-    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24" aria-labelledby="hero-title">
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-        <div>
-          <h1 id="hero-title" class="text-4xl md:text-5xl font-bold tracking-tight">
-            Security analysis for engineering materials
-          </h1>
-          <p class="mt-4 text-lg text-slate-300">
-            Vishap analyzes Python, Java, C — finds taint flows, risk nodes, and security findings in seconds.
+  <main id="main">
+    <!-- Hero: the product's own output is the first thing you see -->
+    <section class="hero" id="top" aria-labelledby="hero-title">
+      <div class="wrap hero-grid">
+        <div class="hero-copy">
+          <h1 id="hero-title">Find the bug before it ships.</h1>
+          <p class="lead">
+            Paste code, a config, an API spec or a log. Built-in rules catch the obvious problems
+            first, then a six-stage analysis writes the verdict, the fix steps and an audit trail.
           </p>
-          <div class="mt-8 flex flex-wrap gap-4">
-            <a href="https://dvddv9.github.io/vishap/docs/getting-started"
-               class="px-6 py-3 rounded-lg bg-emerald-500 text-slate-950 font-semibold hover:bg-emerald-400"
-               aria-label="Get started with Vishap">Get Started</a>
-            <a href="https://github.com/dvddv9/vishap"
-               class="px-6 py-3 rounded-lg border border-slate-700 font-semibold hover:border-emerald-400"
-               aria-label="Vishap on GitHub">GitHub</a>
+          <div class="actions">
+            <a class="btn btn-primary" href="https://vishap-ui.onrender.com/analyze?example=sqli">Try with an example</a>
+            <a class="btn btn-secondary" href="https://dvddv9.github.io/vishap/docs/getting-started">Install it</a>
           </div>
+          <p class="fine">Free demo, no key needed. A daily limit applies to each visitor and to the whole demo.</p>
         </div>
-        <div class="terminal" role="figure" aria-label="Example Vishap terminal output">
-          <div class="terminal-bar" aria-hidden="true"><span></span><span></span><span></span></div>
-          <pre><code><span class="text-slate-500">$</span> vishap analyze file.py
-<span class="text-emerald-400">[Stage 2] Analyst...</span>
-  risk nodes: 11
-  SEC-1 (critical): CWE-476 NULL-deref
-  SEC-2 (important): CWE-20 length check
-<span class="text-emerald-400">verdict: REQUIRES_REVIEW</span></code></pre>
+
+        <figure class="sheet" aria-labelledby="sheet-caption">
+          <div class="sheet-tabs" role="tablist" aria-label="Example material">
+            <button class="tab" role="tab" id="tab-py" aria-selected="true" aria-controls="panel-py" type="button">Python</button>
+            <button class="tab" role="tab" id="tab-tf" aria-selected="false" aria-controls="panel-tf" tabindex="-1" type="button">Terraform</button>
+            <button class="tab" role="tab" id="tab-log" aria-selected="false" aria-controls="panel-log" tabindex="-1" type="button">Log</button>
+          </div>
+
+          <div class="panels">
+            <!-- Python -->
+            <div class="panel is-active" role="tabpanel" id="panel-py" aria-labelledby="tab-py" tabindex="0">
+              <p class="file">handlers/query.py</p>
+<pre class="code"><code><span class="line"><span class="no" aria-hidden="true">1</span><span class="k">@app</span>.route(<span class="s">"/user"</span>)</span>
+<span class="line"><span class="no" aria-hidden="true">2</span><span class="k">def</span> user():</span>
+<span class="line"><span class="no" aria-hidden="true">3</span>    name = request.args[<span class="s">"name"</span>]</span>
+<span class="line"><span class="no" aria-hidden="true">4</span>    conn = sqlite3.connect(<span class="s">"app.db"</span>)</span>
+<span class="line"><span class="no" aria-hidden="true">5</span>    row = conn.execute(</span>
+<span class="line flag"><span class="no" aria-hidden="true">6</span>        <span class="s">f"SELECT * FROM users WHERE name = '{name}'"</span><span class="sr-only"> (flagged line)</span></span>
+<span class="line"><span class="no" aria-hidden="true">7</span>    ).fetchone()</span>
+<span class="line"><span class="no" aria-hidden="true">8</span>    <span class="k">return</span> {<span class="s">"user"</span>: row}</span></code></pre>
+              <div class="finding">
+                <p class="sev">Critical <span class="where">line 6</span></p>
+                <h2 class="finding-title">SQL injection <span class="cwe">CWE-89</span></h2>
+                <p>The query is built from request data, so a visitor can change what it asks the database.</p>
+                <h3 class="steps-title">First steps</h3>
+                <ul class="steps">
+                  <li>Block the endpoint with a feature flag or a WAF rule.</li>
+                  <li>Replace the formatted string with a parameterized query.</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- Terraform -->
+            <div class="panel" role="tabpanel" id="panel-tf" aria-labelledby="tab-tf" tabindex="0">
+              <p class="file">main.tf</p>
+<pre class="code"><code><span class="line"><span class="no" aria-hidden="true">1</span><span class="k">resource</span> <span class="s">"aws_security_group"</span> <span class="s">"web"</span> {</span>
+<span class="line"><span class="no" aria-hidden="true">2</span>  name = <span class="s">"web"</span></span>
+<span class="line"><span class="no" aria-hidden="true">3</span></span>
+<span class="line"><span class="no" aria-hidden="true">4</span>  <span class="k">ingress</span> {</span>
+<span class="line"><span class="no" aria-hidden="true">5</span>    from_port   = 22</span>
+<span class="line"><span class="no" aria-hidden="true">6</span>    to_port     = 22</span>
+<span class="line"><span class="no" aria-hidden="true">7</span>    protocol    = <span class="s">"tcp"</span></span>
+<span class="line flag"><span class="no" aria-hidden="true">8</span>    cidr_blocks = [<span class="s">"0.0.0.0/0"</span>]<span class="sr-only"> (flagged line)</span></span>
+<span class="line"><span class="no" aria-hidden="true">9</span>  }</span>
+<span class="line"><span class="no" aria-hidden="true">10</span>}</span></code></pre>
+              <div class="finding">
+                <p class="sev">High <span class="where">line 8</span></p>
+                <h2 class="finding-title">SSH open to the internet</h2>
+                <p>Port 22 accepts connections from every address, so anyone can try to log in.</p>
+                <h3 class="steps-title">First steps</h3>
+                <ul class="steps">
+                  <li>Limit <code>cidr_blocks</code> to your office or VPN range.</li>
+                  <li>Check the access log for logins from addresses you do not know.</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- Log -->
+            <div class="panel" role="tabpanel" id="panel-log" aria-labelledby="tab-log" tabindex="0">
+              <p class="file">app.log</p>
+<pre class="code"><code><span class="line"><span class="no" aria-hidden="true">1</span>09:14:07 INFO  api  login ok user=anna@example.com</span>
+<span class="line"><span class="no" aria-hidden="true">2</span>09:14:11 WARN  api  GET /items?id=1' OR '1'='1 200</span>
+<span class="line"><span class="no" aria-hidden="true">3</span>09:14:15 INFO  api  contact saved phone=+7 (916) 123-45-67</span>
+<span class="line flag"><span class="no" aria-hidden="true">4</span>09:14:19 ERROR db   retry db_password=Sup3rSecret! host=10.0.0.5<span class="sr-only"> (flagged line)</span></span>
+<span class="line"><span class="no" aria-hidden="true">5</span>09:14:23 INFO  api  GET /export 200 batch done</span></code></pre>
+              <div class="finding">
+                <p class="sev">High <span class="where">line 4</span></p>
+                <h2 class="finding-title">Password written to the log <span class="cwe">CWE-532</span></h2>
+                <p>Anyone who can read the logs can read the database password.</p>
+                <h3 class="steps-title">First steps</h3>
+                <ul class="steps">
+                  <li>Rotate the password now.</li>
+                  <li>Stop logging connection settings, and mask secrets before they reach the logger.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <figcaption class="sheet-foot" id="sheet-caption">
+            <span>Verdict <strong class="verdict">REQUIRES_REVIEW</strong></span>
+            <span class="sheet-note">Example output, shortened.</span>
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- What a report contains -->
+    <section class="block" id="report" aria-labelledby="report-title">
+      <div class="wrap split">
+        <div class="split-head">
+          <h2 id="report-title">What you get back</h2>
+          <p class="section-lead">One report per run. The verdict is on top, so you can read it in five seconds or hand it to a pipeline.</p>
+        </div>
+        <dl class="facts">
+          <div>
+            <dt>Verdict</dt>
+            <dd>SAFE or REQUIRES_REVIEW. With <code>vishap analyze --gate</code> the command exits with 1 when a review is needed.</dd>
+          </div>
+          <div>
+            <dt>Risks</dt>
+            <dd>Every finding with its CWE, a priority from critical to low, and a short note.</dd>
+          </div>
+          <div>
+            <dt>Runbook</dt>
+            <dd>Immediate, short-term and long-term steps for each weakness found, and who to escalate to.</dd>
+          </div>
+          <div>
+            <dt>Audit trail</dt>
+            <dd>A SHA-256 of the material, PII and compliance flags, and a valid-until date, so a report can be checked later.</dd>
+          </div>
+          <div>
+            <dt>Exports</dt>
+            <dd>SARIF 2.1.0 for GitHub Code Scanning, and a CycloneDX SBOM.</dd>
+          </div>
+          <div>
+            <dt>Where it runs</dt>
+            <dd>In the web app, the command line, the REST API (including async jobs) and a GitHub App for pull requests.</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+
+    <!-- Steps: a real sequence, so numbered -->
+    <section class="block" id="how" aria-labelledby="how-title">
+      <div class="wrap">
+        <h2 id="how-title">How a run goes</h2>
+        <ol class="steps-row">
+          <li>
+            <h3>Paste or upload</h3>
+            <p>Code, a config, an API spec, a log or plain data. Up to 200,000 characters.</p>
+          </li>
+          <li>
+            <h3>Run the analysis</h3>
+            <p>Rules run first, then the six LLM stages. A full run takes 30 to 90 seconds.</p>
+          </li>
+          <li>
+            <h3>Read the report</h3>
+            <p>Verdict first, then risks, runbook and audit trail.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- Engines and where the material goes -->
+    <section class="block" id="engines" aria-labelledby="engines-title">
+      <div class="wrap">
+        <h2 id="engines-title">Pick how it runs</h2>
+        <p class="section-lead">The model is your choice. What differs is the key you need and where your material goes.</p>
+        <div class="table-scroll" role="region" aria-labelledby="engines-title" tabindex="0">
+          <table class="engines">
+            <thead>
+              <tr><th scope="col">Engine</th><th scope="col">Key</th><th scope="col">Where your material goes</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Claude <span class="tag">default</span></th>
+                <td data-label="Key">Anthropic API key</td>
+                <td data-label="Where your material goes">To Anthropic, after PII redaction.</td>
+              </tr>
+              <tr>
+                <th scope="row">Groq, DeepSeek, OpenAI, OpenRouter</th>
+                <td data-label="Key">The provider&rsquo;s key</td>
+                <td data-label="Where your material goes">To the provider you pick, after PII redaction.</td>
+              </tr>
+              <tr>
+                <th scope="row">Local model (Ollama)</th>
+                <td data-label="Key">None</td>
+                <td data-label="Where your material goes">Stays on your machine. Available when you run Vishap yourself.</td>
+              </tr>
+              <tr>
+                <th scope="row">Analysis without LLM</th>
+                <td data-label="Key">None</td>
+                <td data-label="Where your material goes">Stays on the Vishap server. Built-in rules only, no model, instant.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="fine">The public demo uses the server&rsquo;s own Claude key. A self-hosted install uses whichever engine you configure.</p>
+      </div>
+    </section>
+
+    <!-- Pricing: plans and prices unchanged -->
+    <section class="block" id="pricing" aria-labelledby="pricing-title">
+      <div class="wrap">
+        <h2 id="pricing-title">Pricing</h2>
+        <p class="notice" role="status"><strong>Pro plan:</strong> Stripe Live payments coming soon. Contact us for early access.</p>
+        <div class="plans">
+          <article class="plan">
+            <h3>Free</h3>
+            <p class="price">$0<span>/mo</span></p>
+            <ul>
+              <li>10 analyses / month</li>
+              <li>Python only</li>
+              <li>Community support</li>
+            </ul>
+            <a class="btn btn-secondary" href="https://dvddv9.github.io/vishap/docs/getting-started" aria-label="Get started with the Free plan">Get started</a>
+          </article>
+          <article class="plan plan-main">
+            <h3>Pro <span class="tag">Popular</span></h3>
+            <p class="price">$29<span>/mo</span></p>
+            <ul>
+              <li>500 analyses / month</li>
+              <li>All languages</li>
+              <li>GitHub App</li>
+              <li>Email support</li>
+            </ul>
+            <a class="btn btn-primary" href="https://dvddv9.github.io/vishap/docs/getting-started" aria-label="Get started with the Pro plan">Get started</a>
+          </article>
+          <article class="plan">
+            <h3>Enterprise</h3>
+            <p class="price price-text">Contact us</p>
+            <ul>
+              <li>Unlimited analyses</li>
+              <li>SSO (Clerk)</li>
+              <li>SLA</li>
+              <li>Dedicated support</li>
+              <li><strong>Bank transfer (SWIFT)</strong></li>
+            </ul>
+            <a class="btn btn-secondary" href="mailto:support@vishap.dev?subject=Enterprise%20Inquiry" aria-label="Contact us for an Enterprise invoice">Contact for invoice</a>
+            <p class="fine">Pay by bank transfer. We will send an invoice.</p>
+          </article>
         </div>
       </div>
     </section>
 
-    <!-- 2. Features -->
-    <section id="features" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 border-t border-slate-800" aria-labelledby="features-title">
-      <h2 id="features-title" class="text-2xl md:text-3xl font-bold mb-10">Why Vishap</h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <article class="rounded-xl border border-slate-800 p-6 bg-slate-900/50">
-          <div class="text-2xl mb-3" aria-hidden="true">🧠</div>
-          <h3 class="font-semibold text-lg mb-2">6-stage LLM pipeline</h3>
-          <p class="text-slate-400 text-sm">Ingestion → taint → dataflow → risk → verdict → report. Every stage is auditable.</p>
-        </article>
-        <article class="rounded-xl border border-slate-800 p-6 bg-slate-900/50">
-          <div class="text-2xl mb-3" aria-hidden="true">🌍</div>
-          <h3 class="font-semibold text-lg mb-2">Multi-language</h3>
-          <p class="text-slate-400 text-sm">Python, Java and C — with taint sources/sinks and language-aware analysis.</p>
-        </article>
-        <article class="rounded-xl border border-slate-800 p-6 bg-slate-900/50">
-          <div class="text-2xl mb-3" aria-hidden="true">⚡</div>
-          <h3 class="font-semibold text-lg mb-2">Async API</h3>
-          <p class="text-slate-400 text-sm">Celery + Redis, job-based (<code>/analyze/async</code>) for long-running scans.</p>
-        </article>
-        <article class="rounded-xl border border-slate-800 p-6 bg-slate-900/50">
-          <div class="text-2xl mb-3" aria-hidden="true">🔗</div>
-          <h3 class="font-semibold text-lg mb-2">GitHub App</h3>
-          <p class="text-slate-400 text-sm">PR auto-analyze: webhooks + inline comments, right where the code review happens.</p>
-        </article>
-      </div>
-    </section>
-
-    <!-- 3. How it works -->
-    <section id="how" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 border-t border-slate-800" aria-labelledby="how-title">
-      <h2 id="how-title" class="text-2xl md:text-3xl font-bold mb-10">How it works</h2>
-      <ol class="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <li class="rounded-xl border border-slate-800 p-6 bg-slate-900/50">
-          <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-emerald-500 text-slate-950 font-bold mb-4" aria-hidden="true">1</span>
-          <h3 class="font-semibold text-lg mb-2">Upload or paste code</h3>
-          <p class="text-slate-400 text-sm">Drop a file, paste a snippet, or connect GitHub for automatic PR scans.</p>
-        </li>
-        <li class="rounded-xl border border-slate-800 p-6 bg-slate-900/50">
-          <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-emerald-500 text-slate-950 font-bold mb-4" aria-hidden="true">2</span>
-          <h3 class="font-semibold text-lg mb-2">Vishap analyzes</h3>
-          <p class="text-slate-400 text-sm">Taint tracking, dataflow, risk nodes and STRIDE — deterministic tools + LLM stages.</p>
-        </li>
-        <li class="rounded-xl border border-slate-800 p-6 bg-slate-900/50">
-          <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-emerald-500 text-slate-950 font-bold mb-4" aria-hidden="true">3</span>
-          <h3 class="font-semibold text-lg mb-2">Get the report</h3>
-          <p class="text-slate-400 text-sm">A structured Markdown report with SARIF, SBOM and a verdict you can act on.</p>
-        </li>
-      </ol>
-    </section>
-
-    <!-- 4. Pricing -->
-    <section id="pricing" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 border-t border-slate-800" aria-labelledby="pricing-title">
-      <h2 id="pricing-title" class="text-2xl md:text-3xl font-bold mb-6">Pricing</h2>
-      <div class="mb-8 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200"
-           role="status">
-        <p>🚀 <strong>Pro plan:</strong> Stripe Live payments coming soon. Contact us for early access.</p>
-      </div>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <article class="rounded-xl border border-slate-800 p-6 bg-slate-900/50 flex flex-col">
-          <h3 class="font-semibold text-lg">Free</h3>
-          <p class="mt-2 text-3xl font-bold">$0<span class="text-base font-normal text-slate-400">/mo</span></p>
-          <ul class="mt-4 space-y-2 text-sm text-slate-400 flex-1">
-            <li>10 analyses / month</li>
-            <li>Python only</li>
-            <li>Community support</li>
+    <!-- Self-host -->
+    <section class="block" id="run" aria-labelledby="run-title">
+      <div class="wrap split">
+        <div class="split-head">
+          <h2 id="run-title">Run it yourself</h2>
+          <p class="section-lead">Vishap is open source. You need these installed first:</p>
+          <ul class="needs">
+            <li><a href="https://www.python.org/downloads/" rel="noopener">Python 3.11 or newer</a></li>
+            <li><a href="https://nodejs.org/en/download/" rel="noopener">Node.js 18 or newer</a>, for the web app</li>
+            <li><a href="https://www.postgresql.org/download/" rel="noopener">PostgreSQL 16</a>, for history and the audit trail</li>
+            <li><a href="https://git-scm.com/downloads" rel="noopener">Git</a></li>
           </ul>
-          <a href="https://dvddv9.github.io/vishap/docs/getting-started"
-             class="mt-6 block text-center px-4 py-2 rounded-lg border border-slate-700 font-semibold hover:border-emerald-400"
-             aria-label="Get started with the Free plan">Get Started</a>
-        </article>
-        <article class="rounded-xl border-2 border-emerald-500 p-6 bg-slate-900 flex flex-col">
-          <h3 class="font-semibold text-lg">Pro <span class="text-emerald-400 text-xs align-top">POPULAR</span></h3>
-          <p class="mt-2 text-3xl font-bold">$29<span class="text-base font-normal text-slate-400">/mo</span></p>
-          <ul class="mt-4 space-y-2 text-sm text-slate-300 flex-1">
-            <li>500 analyses / month</li>
-            <li>All languages</li>
-            <li>GitHub App</li>
-            <li>Email support</li>
-          </ul>
-          <a href="https://dvddv9.github.io/vishap/docs/getting-started"
-             class="mt-6 block text-center px-4 py-2 rounded-lg bg-emerald-500 text-slate-950 font-semibold hover:bg-emerald-400"
-             aria-label="Get started with the Pro plan">Get Started</a>
-        </article>
-        <article class="rounded-xl border border-slate-800 p-6 bg-slate-900/50 flex flex-col">
-          <h3 class="font-semibold text-lg">Enterprise</h3>
-          <p class="mt-2 text-3xl font-bold">Contact us</p>
-          <ul class="mt-4 space-y-2 text-sm text-slate-400 flex-1">
-            <li>Unlimited analyses</li>
-            <li>SSO (Clerk)</li>
-            <li>SLA</li>
-            <li>Dedicated support</li>
-            <li><strong>Bank transfer (SWIFT)</strong></li>
-          </ul>
-          <a href="mailto:support@vishap.dev?subject=Enterprise%20Inquiry"
-             class="mt-6 block text-center px-4 py-2 rounded-lg border border-slate-700 font-semibold hover:border-emerald-400"
-             aria-label="Contact us for an Enterprise invoice">Contact for Invoice</a>
-          <p class="mt-3 text-xs text-slate-500">Pay by bank transfer. We'll send an invoice.</p>
-        </article>
-      </div>
-    </section>
-
-    <!-- 5. CTA -->
-    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 border-t border-slate-800" aria-labelledby="cta-title">
-      <div class="rounded-2xl bg-emerald-500/10 border border-emerald-500/30 p-10 text-center">
-        <h2 id="cta-title" class="text-2xl md:text-3xl font-bold">Ready to secure your code?</h2>
-        <p class="mt-3 text-slate-300">Start with the docs — it takes a minute.</p>
-        <a href="https://dvddv9.github.io/vishap/docs/getting-started"
-           class="mt-6 inline-block px-6 py-3 rounded-lg bg-emerald-500 text-slate-950 font-semibold hover:bg-emerald-400"
-           aria-label="Get started with Vishap">Get Started</a>
-      </div>
-    </section>
-
-    <!-- 6. Download Prerequisites (updated for v7.2.0) -->
-    <section id="download" class="py-16 bg-slate-900">
-      <div class="max-w-4xl mx-auto px-6 text-center">
-        <h2 class="text-3xl font-bold text-white mb-4">Download Prerequisites</h2>
-        <p class="text-slate-400 mb-8">Install these tools before running Vishap.</p>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <a href="https://www.python.org/downloads/" target="_blank" rel="noopener" class="block p-4 bg-slate-800 rounded-lg hover:bg-slate-700 transition">
-            <div class="text-2xl mb-2">🐍</div>
-            <div class="font-semibold text-white">Python 3.11+</div>
-            <div class="text-sm text-slate-400">python.org</div>
-          </a>
-          <a href="https://nodejs.org/en/download/" target="_blank" rel="noopener" class="block p-4 bg-slate-800 rounded-lg hover:bg-slate-700 transition">
-            <div class="text-2xl mb-2">🟢</div>
-            <div class="font-semibold text-white">Node.js 18+</div>
-            <div class="text-sm text-slate-400">nodejs.org</div>
-          </a>
-          <a href="https://www.postgresql.org/download/" target="_blank" rel="noopener" class="block p-4 bg-slate-800 rounded-lg hover:bg-slate-700 transition">
-            <div class="text-2xl mb-2">🐘</div>
-            <div class="font-semibold text-white">PostgreSQL 16</div>
-            <div class="text-sm text-slate-400">postgresql.org</div>
-          </a>
-          <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener" class="block p-4 bg-slate-800 rounded-lg hover:bg-slate-700 transition">
-            <div class="text-2xl mb-2">🧠</div>
-            <div class="font-semibold text-white">Claude API Key</div>
-            <div class="text-sm text-slate-400">console.anthropic.com</div>
-          </a>
-          <a href="https://console.groq.com/keys" target="_blank" rel="noopener" class="block p-4 bg-slate-800 rounded-lg hover:bg-slate-700 transition">
-            <div class="text-2xl mb-2">⚡</div>
-            <div class="font-semibold text-white">Groq API Key</div>
-            <div class="text-sm text-slate-400">console.groq.com</div>
-          </a>
-          <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener" class="block p-4 bg-slate-800 rounded-lg hover:bg-slate-700 transition">
-            <div class="text-2xl mb-2">🐋</div>
-            <div class="font-semibold text-white">DeepSeek API Key</div>
-            <div class="text-sm text-slate-400">platform.deepseek.com</div>
-          </a>
-          <a href="https://ollama.com/download" target="_blank" rel="noopener" class="block p-4 bg-slate-800 rounded-lg hover:bg-slate-700 transition">
-            <div class="text-2xl mb-2">💻</div>
-            <div class="font-semibold text-white">Local model (Ollama)</div>
-            <div class="text-sm text-slate-400">ollama.com, no key needed</div>
-          </a>
-          <a href="https://dvddv9.github.io/vishap/docs/getting-started" target="_blank" rel="noopener" class="block p-4 bg-slate-800 rounded-lg hover:bg-slate-700 transition">
-            <div class="text-2xl mb-2">🛡️</div>
-            <div class="font-semibold text-white">Analysis without LLM</div>
-            <div class="text-sm text-slate-400">built-in rules, no key needed</div>
-          </a>
-          <a href="https://git-scm.com/downloads" target="_blank" rel="noopener" class="block p-4 bg-slate-800 rounded-lg hover:bg-slate-700 transition">
-            <div class="text-2xl mb-2">📦</div>
-            <div class="font-semibold text-white">Git</div>
-            <div class="text-sm text-slate-400">git-scm.com</div>
-          </a>
+        </div>
+        <div class="install">
+<pre class="code code-plain"><code>git clone https://github.com/dvddv9/vishap
+cd vishap
+pip install -r requirements.txt
+cp .env.example .env    # add your LLM key, or set VISHAP_DEV=true
+python -m src.main</code></pre>
+          <p class="fine">The API starts on port 8080. The full steps are in the <a href="https://dvddv9.github.io/vishap/docs/getting-started">getting started guide</a>.</p>
         </div>
       </div>
     </section>
 
+    <section class="closer" aria-labelledby="cta-title">
+      <div class="wrap closer-row">
+        <h2 id="cta-title">Run your first analysis in a minute.</h2>
+        <a class="btn btn-primary" href="https://vishap-ui.onrender.com/analyze?example=sqli">Try with an example</a>
+      </div>
+    </section>
   </main>
 
-  <!-- 7. Footer -->
-  <footer class="border-t border-slate-800 mt-8">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-sm">
-        <div>
-          <p class="font-bold text-base mb-2"><span aria-hidden="true">🐉</span> Vishap</p>
-          <p class="text-slate-400">Security analysis for engineering materials.</p>
-        </div>
-        <nav aria-label="Footer navigation">
-          <ul class="space-y-2">
-            <li><a class="hover:text-emerald-400" href="https://dvddv9.github.io/vishap/docs/getting-started">Getting Started</a></li>
-            <li><a class="hover:text-emerald-400" href="https://dvddv9.github.io/vishap/docs/api-reference">API Reference</a></li>
-            <li><a class="hover:text-emerald-400" href="https://dvddv9.github.io/vishap/docs/cli">CLI</a></li>
-            <li><a class="hover:text-emerald-400" href="https://dvddv9.github.io/vishap/docs/architecture">Architecture</a></li>
-            <li><a class="hover:text-emerald-400" href="https://dvddv9.github.io/vishap/docs/case-studies">Case Studies</a></li>
-            <li><a class="hover:text-emerald-400" href="https://github.com/dvddv9/vishap">GitHub</a></li>
-            <li><a class="hover:text-emerald-400" href="#pricing">Pricing</a></li>
-            <li><a class="hover:text-emerald-400" href="https://dvddv9.github.io/vishap/docs/legal/terms">Terms of Service</a></li>
-            <li><a class="hover:text-emerald-400" href="https://dvddv9.github.io/vishap/docs/legal/privacy">Privacy Policy</a></li>
-          </ul>
-        </nav>
-        <div class="text-slate-400">
-          <p>Copyright © 2026 Vishap.</p>
-          <p class="mt-2">Built with Vishap (dogfood).</p>
-        </div>
+  <footer class="foot">
+    <div class="wrap foot-grid">
+      <div>
+        <p class="foot-brand">Vishap</p>
+        <p class="foot-text">Security analysis for code, configs, API specs and logs.</p>
+        <p class="foot-text">Copyright &copy; 2026 Vishap. Built with Vishap (dogfood).</p>
       </div>
+      <nav aria-label="Footer">
+        <ul class="foot-links">
+          <li><a href="https://dvddv9.github.io/vishap/docs/getting-started">Getting started</a></li>
+          <li><a href="https://dvddv9.github.io/vishap/docs/api-reference">API reference</a></li>
+          <li><a href="https://dvddv9.github.io/vishap/docs/cli">CLI</a></li>
+          <li><a href="https://dvddv9.github.io/vishap/docs/architecture">Architecture</a></li>
+          <li><a href="https://dvddv9.github.io/vishap/docs/case-studies">Case studies</a></li>
+          <li><a href="https://github.com/dvddv9/vishap">GitHub</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+          <li><a href="https://dvddv9.github.io/vishap/docs/legal/terms">Terms of service</a></li>
+          <li><a href="https://dvddv9.github.io/vishap/docs/legal/privacy">Privacy policy</a></li>
+        </ul>
+      </nav>
     </div>
   </footer>
 
-  <script src="assets/script.js"></script>
+  <script src="assets/script.js" defer></script>
 </body>
-  </html>
+</html>
