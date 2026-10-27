@@ -356,8 +356,20 @@ def verify_webhook_signature(payload: bytes, signature: str, secret: str, algo: 
 
 def _clean_header(value) -> str | None:
     """Header value as a plain str; FastAPI's ``Header(None)`` default (a FieldInfo)
-    shows up when an endpoint function is called directly instead of via HTTP."""
-    return value if isinstance(value, str) else None
+    shows up when an endpoint function is called directly instead of via HTTP.
+
+    CR/LF inside a value is rejected outright: a key with a trailing newline used to
+    reach httpx and fail as "Invalid leading whitespace ... in header value", and a
+    value the caller controls must never be able to split the request headers.
+    """
+    if not isinstance(value, str):
+        return None
+    if "\n" in value or "\r" in value:
+        raise HTTPException(
+            status_code=400,
+            detail="Header value contains a newline (\\n or \\r is not allowed).",
+        )
+    return value
 
 
 def _is_static_only(x_llm_api_key: str | None) -> bool:
