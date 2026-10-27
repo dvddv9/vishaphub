@@ -145,3 +145,5 @@ patch-*.ps1
 
 # withdrawn directory submission; kept locally for a personal MCP setup
 /claude-plugin-bundle-anthropic/
+_bump_*.py
+diag_*.py
