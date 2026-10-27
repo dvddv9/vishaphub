@@ -10,13 +10,15 @@
 - `updated` — ISO-дата (`YYYY-MM-DD`). Datetime и строки в другом формате отвергаются.
 - Неизвестные ключи верхнего уровня и внутри элементов — ошибка с номером строки (ловит опечатки вроде `mustnever`).
 - Повторяющиеся ключи верхнего уровня — ошибка.
+- `caller` — кто вызывает: `public`, `signed-in`, `internal`. Для `http-endpoint` без него — критическая дыра.
+- `output` — относительный путь со слешами `/`, без `..`, `.`, пустых частей, абсолютных путей и букв дисков. Проверяется ещё на загрузке спецификации.
 
 Intake
 - Требования берутся из `inputs`, `outputs`, `must_never`, `should`, `may`. В версии 1 из `inputs` и `outputs` ничего не бралось.
 - Порядок ID: inputs → outputs → must_never → should → may. R1..Rn.
 - `priority`: `must_never` — critical; `inputs`, `outputs`, `should` — high; `may` — medium.
 - `source` — `{field, line}`, номер строки берётся из узла YAML, а не из индекса списка.
-- Проверка способа: `inputs` — rule + test; `outputs` — test; `must_never` — rule + test; `should`, `may` — test. Analyzer подключается на Verify, не на Intake.
+- Проверка способа: `inputs` — rule + test; `outputs` — test; `must_never` — rule + test; `should`, `may` — test. Analyzer не выбирается по требованию: он запускается на Verify для всего кода (решено 2026-10-28).
 
 Design
 - Gaps — выход Design, не отдельная стадия.
@@ -67,6 +69,24 @@ Deliver
 
 ## Что реализовано сейчас
 
-Шаги 1–2 из плана: `spec.py` (загрузка и проверка spec.yaml) и `intake.py` (требования). Тесты на `unittest`.
+Шаги 1–2 (ветка `stage-1-2-intake`): `spec.py` — загрузка и проверка spec.yaml; `intake.py` — требования.
 
-Не реализовано: design, gaps, build, verify, deliver, API, CLI.
+Шаг 3 (ветка `stage-3-design-gaps`, от шагов 1–2): `gaps.py` и `design.py`. Оба без LLM.
+
+Gaps, правила по структурным полям:
+- `missing_input`, critical: нет `target`, `kind` или `output`; `http-endpoint` без `caller`; у входа есть `rule`, а в `outputs` нет 400 или 422; вход без `rule` при `validate-inputs`.
+- `contradiction`, critical: профиль `owasp-asvs-*` при `check: none`; одинаковый текст в `must_never` и в `should` или `may`.
+- `assumption`, noted: вход без `rule` (любое значение принимается); нет `profile`; нет `check`; тесты для не-Python цели не планируются.
+
+Чтение свободного `text` против требований — позже, с LLM. До того факт, сказанный только в `text`, считается отсутствующим. Пример: в `examples/spec.yaml` «Called by the public web app» есть в тексте, но нет `caller`, поэтому это критическая дыра.
+
+Design, план файлов для целей `python/*`:
+- `__init__.py` в каждой папке пути вывода (role `package`);
+- файл кода (role `code`): все требования, интерфейс из `kind`, `inputs`, `outputs`; меры `auth` (caller `signed-in`), `validation` (есть `rule` или `validate-inputs`), `rate_limit` (`id` правила содержит `rate-limit`); `library_check` — имена библиотек для сверки, сама сверка позже;
+- `tests/test_<имя>.py` (role `test`): `test_r1`… для требований, где в способе проверки есть `test`.
+
+Для `examples/spec.yaml`: 3 файла, 2 критические дыры (нет `caller`, нет ответа на неверный вход).
+
+Тесты: `python3 -m unittest discover -s tests -t .` — 57.
+
+Не реализовано: build, verify, deliver, API, CLI, чтение `text` через LLM, сверка библиотек.

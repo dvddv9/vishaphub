@@ -21,7 +21,7 @@ MAX_RULE_TEXT = 500
 KNOWN_KEYS = frozenset({
     "version", "updated", "text", "target", "kind", "output",
     "inputs", "outputs", "profile", "constraints",
-    "must_never", "should", "may", "check",
+    "must_never", "should", "may", "check", "caller",
 })
 REQUIREMENT_LISTS = ("inputs", "outputs", "must_never", "should", "may")
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
@@ -31,6 +31,9 @@ PROFILES = frozenset({"none", "owasp-asvs-1", "owasp-asvs-2"})
 CHECKS = frozenset({"analyzer", "none"})
 KINDS = frozenset({"function", "http-endpoint", "module", "config"})
 CONSTRAINTS = frozenset({"include-tests", "validate-inputs", "no-dependencies", "explain-decisions"})
+CALLERS = frozenset({"public", "signed-in", "internal"})
+MAX_OUTPUT_PATH = 200
+DRIVE_RE = re.compile(r"^[A-Za-z]:")
 
 ITEM_KEYS = {
     "inputs": frozenset({"name", "in", "rule"}),
@@ -62,6 +65,8 @@ class Spec:
     data: dict
     # field name -> list of (item, 1-based line)
     items: dict
+    # top-level key -> 1-based line
+    key_lines: dict
 
 
 def _key_line(root: yaml.MappingNode, key: str) -> int | None:
@@ -115,7 +120,8 @@ def _check_top_level(data: dict, root: yaml.MappingNode) -> None:
         raise SpecError("text", _key_line(root, "text"),
                         f"longer than {MAX_TEXT} characters")
 
-    for name, allowed in (("profile", PROFILES), ("check", CHECKS), ("kind", KINDS)):
+    for name, allowed in (("profile", PROFILES), ("check", CHECKS), ("kind", KINDS),
+                          ("caller", CALLERS)):
         if name in data and data[name] not in allowed:
             raise SpecError(name, _key_line(root, name),
                             f"must be one of: {', '.join(sorted(allowed))}")
@@ -123,6 +129,9 @@ def _check_top_level(data: dict, root: yaml.MappingNode) -> None:
     for name in ("target", "output"):
         if name in data and not (isinstance(data[name], str) and data[name].strip()):
             raise SpecError(name, _key_line(root, name), "must be a non-empty string")
+
+    if "output" in data:
+        _check_output_path(data["output"], _key_line(root, "output"))
 
     if "constraints" in data:
         cons = data["constraints"]
@@ -132,6 +141,18 @@ def _check_top_level(data: dict, root: yaml.MappingNode) -> None:
             if c not in CONSTRAINTS:
                 raise SpecError("constraints", _key_line(root, "constraints"),
                                 f"unknown constraint {c!r}")
+
+
+def _check_output_path(path: str, line: int | None) -> None:
+    """The output path is relative, forward-slashed and never leaves its folder."""
+    if len(path) > MAX_OUTPUT_PATH:
+        raise SpecError("output", line, f"longer than {MAX_OUTPUT_PATH} characters")
+    if "\\" in path:
+        raise SpecError("output", line, "use forward slashes")
+    if path.startswith("/") or DRIVE_RE.match(path):
+        raise SpecError("output", line, "must be a relative path")
+    if any(part in ("", ".", "..") for part in path.split("/")):
+        raise SpecError("output", line, "no empty, '.' or '..' parts")
 
 
 def _list_items(data: dict, root: yaml.MappingNode, field: str) -> list[tuple[dict, int]]:
@@ -244,4 +265,5 @@ def load_spec(path: str | Path) -> Spec:
         text=data["text"],
         data=data,
         items=items,
+        key_lines={str(k.value): k.start_mark.line + 1 for k, _ in root.value},
     )

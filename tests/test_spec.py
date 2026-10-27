@@ -102,6 +102,27 @@ class LoadSpecTests(unittest.TestCase):
         text = BASE + "constraints: [do-everything]\n"
         self.assert_error(text, "constraints")
 
+    def test_output_path_must_stay_inside(self):
+        for bad in ("../x.py", "a/../../x.py", "/etc/x.py", "C:/x.py", "a//x.py", "./x.py"):
+            with self.subTest(bad=bad):
+                self.assert_error(BASE + f"output: {bad}\n", "output")
+
+    def test_output_path_backslash_rejected(self):
+        self.assert_error(BASE + "output: 'a\\x.py'\n", "output")
+
+    def test_good_output_path(self):
+        spec = load_spec(write_spec(BASE + "output: handlers/user.py\n"))
+        self.assertEqual(spec.data["output"], "handlers/user.py")
+
+    def test_caller_values(self):
+        load_spec(write_spec(BASE + "caller: signed-in\n"))
+        self.assert_error(BASE + "caller: anyone\n", "caller")
+
+    def test_key_lines(self):
+        spec = load_spec(write_spec(BASE))
+        self.assertEqual(spec.key_lines["version"], 1)
+        self.assertEqual(spec.key_lines["inputs"], 5)
+
 
 if __name__ == "__main__":
     unittest.main()
