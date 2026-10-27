@@ -372,10 +372,14 @@ def _clean_header(value) -> str | None:
     return value
 
 
-def _is_static_only(x_llm_api_key: str | None) -> bool:
-    """True when the server never spends its own LLM key and the caller sent none:
-    the request is answered by the built-in rule engine (no LLM) instead of a 401."""
+def _is_static_only(x_llm_api_key: str | None, x_llm_provider: str | None = None) -> bool:
+    """True when the request is answered by the built-in rule engine (no LLM):
+    the caller asked for it (``X-LLM-Provider: rules``), or the server never spends
+    its own LLM key and the caller sent none (instead of a 401)."""
+    from src.llm import providers
     from src.llm.client import require_user_key, server_has_key, server_key_only
+    if providers.is_rules_only(_clean_header(x_llm_provider)):
+        return True
     if server_key_only():
         # the server's own key is used; without one configured there is nothing to call
         return not server_has_key()
@@ -402,6 +406,16 @@ def _apply_llm_request(key: str | None, provider: str | None, model: str | None,
     """
     from src.llm import providers
     from src.llm.client import server_key_only, set_api_key, set_llm_target
+    if providers.is_rules_only(_clean_header(provider)):
+        # "analysis without LLM": no provider, no key; the caller reads _is_static_only
+        if not allow_static:
+            raise HTTPException(
+                status_code=400,
+                detail="Batch analysis needs an LLM; 'rules' (no LLM) is for single analyses.",
+            )
+        set_api_key(None)
+        set_llm_target(None)
+        return None, None
     if server_key_only():
         # only the server's built-in key/provider; caller-supplied choices are ignored
         set_api_key(None)
@@ -451,7 +465,7 @@ async def analyze(req: AnalyzeRequest,
         raise HTTPException(status_code=400, detail="material must not be empty")
 
     _apply_llm_request(x_llm_api_key, x_llm_provider, x_llm_model)
-    static_only = _is_static_only(x_llm_api_key)
+    static_only = _is_static_only(x_llm_api_key, x_llm_provider)
     from src.pipeline.orchestrator import compute_hash
     from src.storage.history import find_done_by_hash
 
@@ -743,7 +757,7 @@ async def analyze_async(req: "AnalyzeRequest", background: BackgroundTasks,
                         x_llm_provider: str | None = Header(None, alias="X-LLM-Provider"),
                         x_llm_model: str | None = Header(None, alias="X-LLM-Model")):
     llm_key, llm_target = _apply_llm_request(x_llm_api_key, x_llm_provider, x_llm_model)
-    static_only = llm_key is None and _is_static_only(None)
+    static_only = llm_key is None and _is_static_only(None, x_llm_provider)
     with tenant_scope(tenant):
         job_id = await create_job_async(
             filename=req.filename or "unknown", tenant_id=tenant

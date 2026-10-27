@@ -30,6 +30,15 @@ PRESETS: dict[str, tuple[str, str, str]] = {
 # OLLAMA_MODEL on the server, never from a request. No API key is needed.
 LOCAL_ID = "ollama"
 
+# Pseudo-provider for "analysis without LLM": the built-in rule engine only. It is
+# not a provider (no URL, no key) and costs the operator nothing, so any caller may
+# pick it, even on a server-key-only deployment.
+RULES_ID = "rules"
+
+
+def is_rules_only(provider: str | None) -> bool:
+    return (provider or "").strip().lower() == RULES_ID
+
 
 def local_enabled() -> bool:
     return os.getenv("VISHAP_ENABLE_LOCAL_PROVIDER", "").strip().lower() in ("1", "true", "yes", "on")

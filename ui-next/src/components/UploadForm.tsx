@@ -47,11 +47,13 @@ export default function UploadForm({
   // A local model (Ollama) needs no key; the placeholder only satisfies the "has a key" checks.
   const keyless = providers.find((p) => p.id === llmProvider)?.needs_key === false;
   const effectiveKey = keyless ? "local" : llmKey;
-  const rulesOnly = !serverKeyOnly && requiresUserKey && !effectiveKey;
+  const rulesOnly = !serverKeyOnly && requiresUserKey && !effectiveKey; // no key entered on a public demo
   // Advanced stays folded until the visitor opens it, except when a key or provider was saved earlier.
   const advancedOpen = advancedChoice ?? Boolean(llmKey || llmProvider);
   // "Advanced" (own provider / key) stays folded until the visitor has used it.
   const [exampleId, setExampleId] = useState<string | null>(null);
+  // "Analysis without LLM": the built-in rule engine only, no model and no key.
+  const [noLlm, setNoLlm] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -156,7 +158,7 @@ export default function UploadForm({
       );
       return;
     }
-    if (!serverKeyOnly && llmProvider && !effectiveKey) {
+    if (!noLlm && !serverKeyOnly && llmProvider && !effectiveKey) {
       setError("You picked an LLM provider but entered no key. Add the key, or set the provider back to the no-key option.");
       return;
     }
@@ -169,9 +171,9 @@ export default function UploadForm({
       const created = await submitAnalysis(
         material,
         safeName,
-        serverKeyOnly ? undefined : effectiveKey || undefined,
-        !serverKeyOnly && effectiveKey ? llmProvider || undefined : undefined,
-        !serverKeyOnly && effectiveKey ? llmModel || undefined : undefined,
+        noLlm || serverKeyOnly ? undefined : effectiveKey || undefined,
+        noLlm ? "rules" : !serverKeyOnly && effectiveKey ? llmProvider || undefined : undefined,
+        noLlm || serverKeyOnly || !effectiveKey ? undefined : llmModel || undefined,
       );
       rememberJob({
         job_id: created.job_id,
@@ -280,7 +282,24 @@ export default function UploadForm({
         </span>
       </div>
 
-      {serverKeyOnly ? (
+      <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 px-4 py-3 text-sm">
+        <input
+          type="checkbox"
+          checked={noLlm}
+          onChange={(event) => setNoLlm(event.target.checked)}
+          disabled={submitting}
+          className="mt-0.5 h-5 w-5 shrink-0 accent-sky-600"
+        />
+        <span>
+          <span className="block font-medium text-slate-800">Analysis without LLM</span>
+          <span className="block text-xs text-slate-600">
+            Built-in rules only: no model, no key, instant and free. It catches injection, hard-coded
+            secrets, unsafe deserialization and more, but does not run the six-stage LLM analysis.
+          </span>
+        </span>
+      </label>
+
+      {noLlm ? null : serverKeyOnly ? (
         <p className="text-xs text-slate-600">
           Analysis runs on this server&apos;s built-in model. No API key is needed.
         </p>
@@ -375,7 +394,7 @@ export default function UploadForm({
               )}
             </div>
           </details>
-          {rulesOnly ? (
+          {rulesOnly && !noLlm ? (
             <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
               No key entered: Vishap will run its built-in rule engine only (no LLM) — fast, free,
               and it catches injection, secrets, unsafe deserialization and more. Open Advanced and
@@ -406,7 +425,7 @@ export default function UploadForm({
           ) : (
             <FileUp className="h-4 w-4" aria-hidden="true" />
           )}
-          {submitting ? "Submitting…" : rulesOnly ? "Analyze (no LLM)" : "Analyze"}
+          {submitting ? "Submitting…" : noLlm || (rulesOnly && !serverKeyOnly) ? "Analyze (no LLM)" : "Analyze"}
         </button>
         <button
           type="button"
