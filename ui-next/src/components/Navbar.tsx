@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ExternalLink, LayoutDashboard, Search } from "lucide-react";
 import { IS_DESKTOP } from "@/lib/desktop";
+import ThemeToggle from "@/components/ThemeToggle";
 
 // Local stubs instead of Clerk (dev/desktop: no Clerk keys needed).
 const UserButton = () => null;
@@ -42,7 +43,8 @@ function NavbarInner({ auth }: { auth: AuthState }) {
               key={href}
               href={href}
               aria-current={isActive ? "page" : undefined}
-              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm transition-colors ${
+              aria-label={label}
+              className={`flex min-h-9 min-w-9 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm transition-colors ${
                 isActive
                   ? "bg-slate-100 text-slate-900"
                   : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
@@ -58,13 +60,15 @@ function NavbarInner({ auth }: { auth: AuthState }) {
           href={DOCS_URL}
           target="_blank"
           rel="noreferrer"
-          className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-800"
+          aria-label="Docs"
+          className="flex min-h-9 min-w-9 items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-800"
         >
           <ExternalLink className="h-4 w-4" aria-hidden="true" />
           <span className="hidden sm:inline">Docs</span>
         </a>
 
         <div className="ml-auto flex items-center gap-2">
+          <ThemeToggle />
           {auth === "loading" ? (
             <span className="h-8 w-8" aria-hidden="true" />
           ) : auth === "signed-in" ? (

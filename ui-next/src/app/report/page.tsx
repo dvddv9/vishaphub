@@ -4,8 +4,6 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import {
   ArrowLeft,
   Check,
@@ -18,8 +16,9 @@ import {
 } from "lucide-react";
 import { ApiError, deleteJob, downloadAudit, forgetJob, getReport } from "@/lib/api";
 import type { Report } from "@/lib/types";
-import { formatDate, formatDateTime } from "@/lib/time";
 import { cacheReport, readCachedReport } from "@/lib/reportCache";
+import { isStale } from "@/lib/reportView";
+import ReportTabs from "@/components/ReportTabs";
 
 const BUTTON =
   "inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-800 transition-colors hover:border-sky-500 hover:text-sky-700 disabled:cursor-not-allowed disabled:opacity-50";
@@ -118,22 +117,9 @@ function ReportInner() {
   }
 
 
-  // v7.2: audit metadata
-  const audit = report?.audit as
-    | (Record<string, unknown> & {
-        fidelity_index?: number | null;
-        fidelity_index_note?: string | null;
-        bias_check?: { bias_check: string; flags?: string[] } | null;
-        reproducer_verified?: boolean | null;
-        reproducer_note?: string | null;
-        negative_evidence?: Array<{ cwe: string; reason: string }> | null;
-        report_date?: string | null;
-        valid_until?: string | null;
-      })
-    | undefined;
-
   const verdict = report?.audit?.risk_verdict ?? report?.critique_verdict ?? null;
   const rulesOnly = report?.mode === "static";
+  const stale = report ? isStale(report) : false;
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 py-10">
@@ -217,6 +203,11 @@ function ReportInner() {
                 {verdict}
               </span>
             ) : null}
+            {stale ? (
+              <span className="badge badge-queued" title="Past its 90-day validity: run it again">
+                stale
+              </span>
+            ) : null}
             {typeof report.cost_usd === "number" ? (
               <span>${report.cost_usd.toFixed(4)}</span>
             ) : null}
@@ -246,66 +237,6 @@ function ReportInner() {
         </p>
       ) : null}
 
-      {/* v7.2 audit metadata */}
-      {/* these cards are computed from the LLM stages; a rules-only report has none */}
-      {report && audit && !rulesOnly ? (
-        <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="rounded-xl border border-slate-200 bg-white p-3">
-            <div className="text-xs uppercase tracking-wide text-slate-500">Fidelity</div>
-            <div className="text-lg font-mono text-slate-900">
-              {audit.fidelity_index != null ? audit.fidelity_index.toFixed(2) : "n/a"}
-            </div>
-            {audit.fidelity_index_note ? (
-              <div className="text-xs text-slate-500">{audit.fidelity_index_note}</div>
-            ) : null}
-          </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-3">
-            <div className="text-xs uppercase tracking-wide text-slate-500">Bias check</div>
-            <div className="text-sm font-mono text-slate-900">
-              {audit.bias_check?.bias_check ?? "n/a"}
-            </div>
-            {audit.bias_check?.flags && audit.bias_check.flags.length > 0 ? (
-              <div className="text-xs text-amber-700">{audit.bias_check.flags.join(", ")}</div>
-            ) : null}
-          </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-3">
-            <div className="text-xs uppercase tracking-wide text-slate-500">Reproducer</div>
-            <div className="text-sm font-mono text-slate-900">
-              {audit.reproducer_verified ? "verified" : "not verified"}
-            </div>
-            {audit.reproducer_note ? (
-              <div className="text-xs text-slate-500">{audit.reproducer_note}</div>
-            ) : null}
-          </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-3 sm:col-span-2">
-            <div className="text-xs uppercase tracking-wide text-slate-500">Negative evidence</div>
-            <div className="text-xs text-slate-700">
-              {audit.negative_evidence && audit.negative_evidence.length > 0
-                ? `${audit.negative_evidence.length} checked-but-not-found CWEs`
-                : "n/a"}
-            </div>
-            {audit.negative_evidence && audit.negative_evidence.length > 0 ? (
-              <ul className="mt-1 list-disc pl-4 text-xs text-slate-600">
-                {audit.negative_evidence.slice(0, 5).map((e) => (
-                  <li key={e.cwe}>
-                    <span className="font-mono">{e.cwe}</span> — {e.reason}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-3">
-            <div className="text-xs uppercase tracking-wide text-slate-500">Report date</div>
-            <div className="text-xs font-mono text-slate-900">
-              {audit.report_date ? formatDateTime(audit.report_date) : "n/a"}
-            </div>
-            <div className="text-xs text-slate-500">
-              valid until {audit.valid_until ? formatDate(audit.valid_until) : "n/a"}
-            </div>
-          </div>
-        </section>
-      ) : null}
-
       {!report && isStillRunning ? (
         <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-6 text-sm text-slate-600">
           <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -333,13 +264,7 @@ function ReportInner() {
         </div>
       ) : null}
 
-      {report ? (
-        <article className="rounded-xl border border-slate-200 bg-white p-6">
-          <div className="markdown-body">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{report.final_markdown}</ReactMarkdown>
-          </div>
-        </article>
-      ) : null}
+      {report ? <ReportTabs report={report} /> : null}
     </div>
   );
 }

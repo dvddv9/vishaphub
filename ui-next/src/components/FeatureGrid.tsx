@@ -9,7 +9,7 @@ const features = [
   {
     icon: <Workflow className="h-5 w-5" />,
     title: "Six-stage pipeline",
-    body: "Ingestion → Taint → Dataflow → Risk → Verdict → Report. Every stage is auditable and can be replayed.",
+    body: "Orchestrator → Scanner → Analyst → Researcher → Synthesizer → Transmitter. Every run is logged stage by stage and carries an audit trail.",
   },
   {
     icon: <FileJson className="h-5 w-5" />,
@@ -20,7 +20,7 @@ const features = [
 
 export default function FeatureGrid() {
   return (
-    <section className="mx-auto w-full max-w-6xl px-4 pb-16">
+    <section className="w-full py-10">
       <div className="grid gap-4 sm:grid-cols-3">
         {features.map((f) => (
           <div

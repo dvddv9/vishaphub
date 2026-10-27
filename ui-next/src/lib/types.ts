@@ -40,6 +40,11 @@ export interface AuditSummary {
   negative_evidence?: Array<{ cwe: string; reason: string }> | null;
   report_date?: string | null;
   valid_until?: string | null;
+  material_hash?: string;
+  audit_id?: string;
+  generator?: string;
+  /** {"CWE-89": {title, severity, immediate[], short_term[], long_term[], escalation}} */
+  runbook?: Record<string, unknown> | null;
   [key: string]: unknown;
 }
 
@@ -55,6 +60,10 @@ export interface Report {
   /** "static" = built-in rules only (no LLM key was supplied); "llm" = full pipeline. */
   mode?: "static" | "llm";
   audit?: AuditSummary;
+  /** True when `audit.valid_until` (report date + 90 days) is in the past. */
+  stale?: boolean;
+  /** The analyst's output (`risk_nodes`, `threat_model`, ...); absent on an emergency stop. */
+  stage2?: unknown;
   [key: string]: unknown;
 }
 

@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Navbar from "@/components/Navbar";
 import { IS_DESKTOP } from "@/lib/desktop";
 import pkg from "../../package.json";
+import { DEFAULT_THEME, THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -29,8 +30,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const page = (
     <html
       lang="en"
+      data-theme={DEFAULT_THEME}
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        {/* applies a stored "light" choice before the first paint (dark is the default) */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="flex min-h-full flex-col">
         <Navbar />
         <main className="w-full flex-1">{children}</main>

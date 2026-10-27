@@ -18,6 +18,9 @@ import JobCard from "@/components/JobCard";
 import Hero from "@/components/Hero";
 import FeatureGrid from "@/components/FeatureGrid";
 import EmptyState from "@/components/EmptyState";
+import HowItWorks from "@/components/HowItWorks";
+import Faq from "@/components/Faq";
+import ServerStatus from "@/components/ServerStatus";
 import {
   ApiError,
   clearHistory,
@@ -120,7 +123,13 @@ function Dashboard({ auth }: { auth: AuthState }) {
     <div className="mx-auto w-full max-w-6xl px-4 py-10">
       <Hero canAnalyze={canAnalyze} />
 
+      <div className="mt-4 min-h-6">
+        <ServerStatus />
+      </div>
+
       <FeatureGrid />
+
+      <HowItWorks withLink />
 
       {auth === "loading" ? (
         <div className="mt-8 flex items-center gap-2 text-sm text-slate-500">
@@ -131,7 +140,7 @@ function Dashboard({ auth }: { auth: AuthState }) {
         <section className="mt-8 flex flex-wrap items-center gap-3">
           <Link
             href="/analyze"
-            className="inline-flex items-center gap-2 rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-950 transition-colors hover:bg-sky-400"
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-950 transition-colors hover:bg-sky-400 sm:min-h-10"
           >
             <Search className="h-4 w-4" aria-hidden="true" />
             New analysis
@@ -139,7 +148,7 @@ function Dashboard({ auth }: { auth: AuthState }) {
           <button
             type="button"
             onClick={() => void mutate()}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 shadow-sm transition-colors hover:border-slate-400 hover:bg-slate-50"
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 shadow-sm transition-colors hover:border-slate-400 hover:bg-slate-100 sm:min-h-10"
           >
             <RefreshCw className="h-4 w-4" aria-hidden="true" />
             Refresh
@@ -149,7 +158,7 @@ function Dashboard({ auth }: { auth: AuthState }) {
             onClick={handleAudit}
             disabled={auditBusy}
             title="Download the audit trail (JSON)"
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 shadow-sm transition-colors hover:border-slate-400 hover:bg-slate-50 disabled:opacity-50"
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 shadow-sm transition-colors hover:border-slate-400 hover:bg-slate-100 disabled:opacity-50 sm:min-h-10"
           >
             {auditBusy ? (
               <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -163,7 +172,7 @@ function Dashboard({ auth }: { auth: AuthState }) {
             onClick={handleClearHistory}
             disabled={clearing || !jobs?.length}
             title="Clear the analysis history"
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 shadow-sm transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 shadow-sm transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-10"
           >
             {clearing ? (
               <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -219,9 +228,14 @@ function Dashboard({ auth }: { auth: AuthState }) {
         </div>
       </section>
 
-      <section className="mt-10" aria-label="LLM provider settings">
+      <Faq />
+
+      <details className="mt-6 rounded-xl border border-slate-200 bg-white px-4 py-3" aria-label="LLM provider settings">
+        <summary className="min-h-9 cursor-pointer text-sm font-medium text-slate-800">
+          Advanced: LLM provider settings
+        </summary>
         <LLMSettings />
-      </section>
+      </details>
     </div>
   );
 }

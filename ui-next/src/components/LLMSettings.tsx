@@ -115,13 +115,13 @@ function UserKeySettings() {
       <div className="mt-2 flex gap-3">
         <button
           onClick={save}
-          className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-500"
+          className="min-h-11 rounded bg-sky-500 px-4 py-2 font-semibold text-slate-950 hover:bg-sky-400 sm:min-h-10"
         >
           Save
         </button>
         <button
           onClick={clear}
-          className="rounded border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
+          className="min-h-11 rounded border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-100 sm:min-h-10"
         >
           Remove
         </button>
@@ -223,7 +223,7 @@ function ServerSettings({ initial }: { initial: Config }) {
           />
 
           <label className="block text-sm text-slate-700 mb-1">
-            API Key {cfg.has_custom_key && <span className="text-green-600">(already set)</span>}
+            API Key {cfg.has_custom_key && <span className="text-emerald-700">(already set)</span>}
           </label>
           <input
             type="password"
@@ -238,7 +238,7 @@ function ServerSettings({ initial }: { initial: Config }) {
       <button
         onClick={save}
         disabled={saving}
-        className="mt-2 rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-500 disabled:opacity-50"
+        className="mt-2 min-h-11 rounded bg-sky-500 px-4 py-2 font-semibold text-slate-950 hover:bg-sky-400 disabled:opacity-50 sm:min-h-10"
       >
         {saving ? "Saving..." : "Save"}
       </button>
@@ -265,7 +265,7 @@ export default function LLMSettings() {
       <div className="rounded-xl border border-slate-300 bg-white p-6 mt-8">
         <h2 className="text-lg font-semibold text-slate-900 mb-1">LLM</h2>
         <p className="text-sm text-slate-600">
-          This server analyses with its built-in Claude model. No provider or API key is needed.
+          This server analyses with its built-in model. No provider or API key is needed.
         </p>
       </div>
     );

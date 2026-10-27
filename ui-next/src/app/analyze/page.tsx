@@ -13,6 +13,8 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import UploadForm, { type UploadDraft } from "@/components/UploadForm";
+import ServerStatus from "@/components/ServerStatus";
+import RunProgress from "@/components/RunProgress";
 import { ApiError, forgetJob, getJob, rememberJob } from "@/lib/api";
 import { isTerminal, type Job, type JobStatus } from "@/lib/types";
 
@@ -83,6 +85,15 @@ export default function AnalyzePage() {
         redirects you to the report when it is ready.
       </p>
 
+      <ol className="mt-4 flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-700">
+        <li><span className="font-mono text-emerald-700">1</span> Paste or upload</li>
+        <li><span className="font-mono text-emerald-700">2</span> Press Analyze</li>
+        <li><span className="font-mono text-emerald-700">3</span> Read the report</li>
+      </ol>
+      <div className="mt-3 min-h-6">
+        <ServerStatus />
+      </div>
+
       {!jobId ? (
         <section className="mt-8">
           <UploadForm
@@ -104,7 +115,7 @@ export default function AnalyzePage() {
             <button
               type="button"
               onClick={() => startOver(false)}
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 transition-colors hover:border-slate-400 hover:text-slate-900"
+              className="min-h-11 rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 transition-colors hover:border-slate-400 hover:text-slate-900 sm:min-h-9"
             >
               Start another
             </button>
@@ -147,6 +158,10 @@ export default function AnalyzePage() {
               );
             })}
           </ol>
+
+          {!lost && job?.status !== "failed" ? (
+            <RunProgress since={job?.started_at ?? job?.created_at} />
+          ) : null}
 
           {job?.status === "failed" ? (
             <p className="mt-5 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
