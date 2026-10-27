@@ -271,3 +271,30 @@ class RollbackTests(TmpCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RequireCoverageTests(TmpCase):
+    def skipped(self):
+        p = prepare()
+        v = dataclasses.replace(p["verify"], coverage_status="skipped", coverage_percent=None,
+                                coverage_note="coverage is not installed")
+        return p, v
+
+    def test_skipped_coverage_blocks_only_when_required(self):
+        p, v = self.skipped()
+        self.assertFalse(gate_check(p["design"], p["build"], v).blocked)
+        g = gate_check(p["design"], p["build"], v, require_coverage=True)
+        self.assertTrue(g.blocked)
+        self.assertIn("coverage was not measured (coverage is not installed)", g.reasons)
+
+    def test_measured_coverage_passes_when_required(self):
+        p = prepare()
+        v = dataclasses.replace(p["verify"], coverage_status="ok", coverage_percent=91.0)
+        self.assertFalse(gate_check(p["design"], p["build"], v, require_coverage=True).blocked)
+
+    def test_deliver_passes_the_flag_through(self):
+        p, v = self.skipped()
+        p["verify"] = v
+        res = deliver(**p, out_root=self.root, gate=True, require_coverage=True, now=NOW)
+        self.assertTrue(res.blocked)
+        self.assertFalse(self.root.exists())

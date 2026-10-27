@@ -29,6 +29,9 @@ def cmd_generate(args) -> int:
     if args.force and not args.gate:
         print("error: --force only makes sense with --gate", file=sys.stderr)
         return 2
+    if args.require_coverage and not args.gate:
+        print("error: --require-coverage only makes sense with --gate", file=sys.stderr)
+        return 2
     if not args.out and not args.no_llm:
         print("error: --out DIR is required", file=sys.stderr)
         return 2
@@ -36,7 +39,7 @@ def cmd_generate(args) -> int:
     print(f"spec        {spec_file}")
     res = run_pipeline(
         spec_file, out_dir=args.out, gate=args.gate, force=args.force, dry_run=args.dry_run,
-        no_llm=args.no_llm, repairs=args.repairs,
+        no_llm=args.no_llm, repairs=args.repairs, require_coverage=args.require_coverage,
         analyzer=None if args.no_analyzer else _default_analyzer(),
         log=print)
     if res.error:
@@ -104,6 +107,8 @@ def build_parser() -> argparse.ArgumentParser:
     g.add_argument("--no-analyzer", action="store_true", help="skip the Vishap Analyzer")
     g.add_argument("--repairs", type=int, default=DEFAULT_REPAIRS, metavar="N",
                    help=f"repair rounds when Verify finds problems (default {DEFAULT_REPAIRS})")
+    g.add_argument("--require-coverage", action="store_true",
+                   help="with --gate: coverage that could not be measured (no `coverage` package) blocks too")
     g.add_argument("--json", metavar="FILE", help="write the full result as JSON")
     g.add_argument("--sarif", metavar="FILE", help="write SARIF 2.1.0 for the result")
     g.set_defaults(func=cmd_generate)

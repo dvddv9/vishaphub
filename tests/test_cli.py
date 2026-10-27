@@ -97,6 +97,11 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("G1 critical", out)
 
+    def test_require_coverage_needs_gate(self):
+        code, _, err = self.run_cli(["generate", str(CLEAN_SPEC), "--out", str(self.out), "--require-coverage"])
+        self.assertEqual(code, 2)
+        self.assertIn("--gate", err)
+
     def test_no_command_is_an_error(self):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             cli.main([])
@@ -104,3 +109,4 @@ class CliTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

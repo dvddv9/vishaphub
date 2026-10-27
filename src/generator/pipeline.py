@@ -74,6 +74,7 @@ def _count(reqs) -> str:
 def run_pipeline(spec_path: str | Path, *, out_dir: str | Path | None = None,
                  gate: bool = False, force: bool = False, dry_run: bool = False,
                  no_llm: bool = False, repairs: int = DEFAULT_REPAIRS,
+                 require_coverage: bool = False,
                  chat_fn: Callable[..., str] = chat, config: LLMConfig | None = None,
                  analyzer: Callable[[dict], AnalyzerResult] | None = run_analyzer,
                  today: dt.date | None = None, now: dt.datetime | None = None,
@@ -161,12 +162,12 @@ def run_pipeline(spec_path: str | Path, *, out_dir: str | Path | None = None,
         if allow_write:
             out = deliver(spec=spec, requirements=reqs, design=d, files=files, build=build,
                           verify=v, out_root=out_dir, gate=gate, force=force,
-                          dry_run=dry_run, now=now)
+                          dry_run=dry_run, require_coverage=require_coverage, now=now)
         else:   # nothing on disk is read or written: an empty folder stands in for the target
             with tempfile.TemporaryDirectory(prefix="vg-dry-") as empty:
                 out = deliver(spec=spec, requirements=reqs, design=d, files=files, build=build,
                               verify=v, out_root=Path(empty) / "out", gate=gate, force=force,
-                              dry_run=True, now=now)
+                              dry_run=True, require_coverage=require_coverage, now=now)
     except DeliverError as e:
         res.exit_code, res.error = 2, f"deliver: {e}"
         return res

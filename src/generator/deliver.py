@@ -48,8 +48,13 @@ class GateResult:
         return {"blocked": self.blocked, "reasons": list(self.reasons)}
 
 
-def gate_check(design: DesignResult, build: BuildCheck, verify: VerifyResult) -> GateResult:
-    """The reasons a gated run would not write. Empty list: it may."""
+def gate_check(design: DesignResult, build: BuildCheck, verify: VerifyResult,
+               require_coverage: bool = False) -> GateResult:
+    """The reasons a gated run would not write. Empty list: it may.
+
+    Coverage that could not be measured (`skipped`) does not block unless
+    `require_coverage` is set: then "not measured" counts as a failure.
+    """
     reasons: list[str] = []
     for e in build.errors:
         reasons.append(f"build: {e}")
@@ -63,6 +68,8 @@ def gate_check(design: DesignResult, build: BuildCheck, verify: VerifyResult) ->
         reasons.append("analyzer reported errors")
     if verify.coverage_status == "below":
         reasons.append(f"coverage {verify.coverage_percent:.0f}% is under {COVERAGE_MIN:.0f}%")
+    if require_coverage and verify.coverage_status == "skipped":
+        reasons.append(f"coverage was not measured ({verify.coverage_note or 'no reason given'})")
     for g in design.critical_gaps:
         reasons.append(f"open critical gap {g.id}: {g.text}")
     if verify.spec_stale:
@@ -193,12 +200,13 @@ def _diff(rel: str, old: str | None, new: str) -> str:
 def deliver(*, spec: Spec, requirements: tuple[Requirement, ...], design: DesignResult,
             files: dict[str, str], build: BuildCheck, verify: VerifyResult,
             out_root: str | os.PathLike, gate: bool = False, force: bool = False,
-            dry_run: bool = False, now: dt.datetime | None = None) -> DeliverResult:
+            dry_run: bool = False, require_coverage: bool = False,
+            now: dt.datetime | None = None) -> DeliverResult:
     now = now or dt.datetime.now().replace(microsecond=0)
     root = Path(out_root).resolve()
     if root.exists() and not root.is_dir():
         raise DeliverError(f"output folder is a file: {root}")
-    gate_result = gate_check(design, build, verify)
+    gate_result = gate_check(design, build, verify, require_coverage)
     blocked = gate and gate_result.blocked
     forced = bool(gate and blocked and force)
     run_id = _new_run_id(root, spec.sha256, now)
