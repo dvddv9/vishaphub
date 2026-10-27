@@ -78,15 +78,15 @@ Gaps, правила по структурным полям:
 - `contradiction`, critical: профиль `owasp-asvs-*` при `check: none`; одинаковый текст в `must_never` и в `should` или `may`.
 - `assumption`, noted: вход без `rule` (любое значение принимается); нет `profile`; нет `check`; тесты для не-Python цели не планируются.
 
-Чтение свободного `text` против требований — позже, с LLM. До того факт, сказанный только в `text`, считается отсутствующим. Пример: в `examples/spec.yaml` «Called by the public web app» есть в тексте, но нет `caller`, поэтому это критическая дыра.
+Чтение свободного `text` против требований — позже, с LLM. До того факт, сказанный только в `text`, считается отсутствующим. В `examples/spec.yaml` теперь есть `caller: public` (решено 2026-10-28). Без него «Called by the public web app» в тексте не засчитывается, и дыра критическая.
 
 Design, план файлов для целей `python/*`:
 - `__init__.py` в каждой папке пути вывода (role `package`);
 - файл кода (role `code`): все требования, интерфейс из `kind`, `inputs`, `outputs`; меры `auth` (caller `signed-in`), `validation` (есть `rule` или `validate-inputs`), `rate_limit` (`id` правила содержит `rate-limit`); `library_check` — имена библиотек для сверки, сама сверка позже;
 - `tests/test_<имя>.py` (role `test`): `test_r1`… для требований, где в способе проверки есть `test`.
 
-Для `examples/spec.yaml`: 3 файла, 2 критические дыры (нет `caller`, нет ответа на неверный вход).
+Для `examples/spec.yaml`: 3 файла, 1 критическая дыра (нет ответа на неверный вход, 400 или 422). Решено 2026-10-28: это критическая дыра, не noted.
 
-Тесты: `python3 -m unittest discover -s tests -t .` — 57.
+Тесты: `python3 -m unittest discover -s tests -t .` — 58.
 
 Не реализовано: build, verify, deliver, API, CLI, чтение `text` через LLM, сверка библиотек.

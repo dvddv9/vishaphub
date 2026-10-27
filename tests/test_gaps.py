@@ -24,13 +24,17 @@ def kinds(gaps):
 
 
 class GapTests(unittest.TestCase):
-    def test_example_has_two_critical_gaps(self):
+    def test_example_has_one_critical_gap(self):
         gaps = find_gaps(load_spec(EXAMPLE))
-        self.assertEqual(kinds(gaps), [("missing_input", "critical"),
-                                       ("missing_input", "critical")])
+        self.assertEqual(kinds(gaps), [("missing_input", "critical")])
+        self.assertIn("invalid input", gaps[0].text)
+        self.assertEqual([g.id for g in gaps], ["G1"])
+
+    def test_example_without_caller_has_two(self):
+        text = EXAMPLE.read_text(encoding="utf-8").replace("caller: public\n", "")
+        gaps = gaps_for(text)
+        self.assertEqual([g.severity for g in gaps], ["critical", "critical"])
         self.assertIn("who calls", gaps[0].text)
-        self.assertIn("invalid input", gaps[1].text)
-        self.assertEqual([g.id for g in gaps], ["G1", "G2"])
 
     def test_complete_spec_has_one_gap_for_invalid_input(self):
         gaps = gaps_for(FULL)
@@ -94,7 +98,7 @@ class GapTests(unittest.TestCase):
     def test_to_dict(self):
         d = find_gaps(load_spec(EXAMPLE))[0].to_dict()
         self.assertEqual(d["type"], "missing_input")
-        self.assertEqual(d["source"]["field"], "kind")
+        self.assertEqual(d["source"]["field"], "outputs")
 
 
 if __name__ == "__main__":

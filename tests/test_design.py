@@ -17,7 +17,7 @@ class DesignTests(unittest.TestCase):
 
     def test_example_gaps_come_with_the_design(self):
         res = design(load_spec(EXAMPLE))
-        self.assertEqual(len(res.critical_gaps), 2)
+        self.assertEqual(len(res.critical_gaps), 1)
 
     def test_code_file_serves_every_requirement(self):
         code = [f for f in design(load_spec(EXAMPLE)).files if f.role == "code"][0]
@@ -65,7 +65,7 @@ class DesignTests(unittest.TestCase):
     def test_to_dict(self):
         d = design(load_spec(EXAMPLE)).to_dict()
         self.assertEqual(len(d["files"]), 3)
-        self.assertEqual(len(d["gaps"]), 2)
+        self.assertEqual(len(d["gaps"]), 1)
 
 
 if __name__ == "__main__":
