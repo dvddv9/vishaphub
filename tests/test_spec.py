@@ -133,3 +133,15 @@ class LoadSpecTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ExamplesTests(unittest.TestCase):
+    def test_both_examples_load_and_differ_by_the_400_output(self):
+        from generator.design import design
+        from generator.intake import requirements_from
+        base = EXAMPLE.parent
+        gaps = {}
+        for name in ("spec.yaml", "spec-clean.yaml"):
+            spec = load_spec(base / name)
+            gaps[name] = [g.id for g in design(spec, requirements_from(spec)).critical_gaps]
+        self.assertEqual(gaps, {"spec.yaml": ["G1"], "spec-clean.yaml": []})

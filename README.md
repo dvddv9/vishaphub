@@ -1,31 +1,110 @@
 # vishap-generator
 
-Генератор кода из спецификации, который доказывает результат. Пишется отдельно от Vishap: Анализатор подключается как внешняя зависимость.
+Генератор кода из спецификации, который доказывает результат. На входе `spec.yaml`, на выходе файлы, тесты и трасса «требование → код → тест → находка». Каждое требование получает статус `passed`, `failed`, `needs_verification` или `not_verified`; «не доказано» не выдаётся за «прошло».
 
-Статус: черновик, локально, без remote. Ничего не запускалось на реальном LLM.
+Живёт отдельно от Vishap. Анализатор Vishap подключается как внешняя программа (`vishap analyze`), не как зависимость.
 
-## Этапы
+Статус: готов к локальному использованию. Репозиторий локальный, без remote.
 
-1. **Intake** — spec.yaml → требования R1..Rn с priority (critical / high / medium). Без LLM.
-2. **Design** — выход из двух частей: файлы (path, interface, requirements, measures, library_check) и дыры (gaps: assumption / contradiction / missing_input).
-3. **Build** — код и тесты (test_rN), проверка ast.parse и ruff до Verify.
-4. **Verify** — три выхода: вердикт по коду, вердикт по спецификации (stale: true старше 90 дней), coverage (< 80% → needs_verification).
-5. **Deliver** — трасса (требование → код → тест → находка), diff, backup, rollback. Файлы пишутся только внутри output-папки.
+## Пять этапов
 
-## Гейт
+1. **Intake**: `spec.yaml` → требования R1..Rn с приоритетом (critical / high / medium). Без LLM.
+2. **Design**: план файлов и дыры в спецификации (`assumption`, `contradiction`, `missing_input`). Без LLM.
+3. **Build**: модель пишет код и тесты (`test_rN` на каждое требование). Проверки до Verify: `ast.parse`, `ruff` если установлен.
+4. **Verify**: три вывода: вердикт по коду, вердикт по спецификации (`stale`, если `updated` старше 90 дней), покрытие (меньше 80% не считается проходом). Доказательства трёх видов: тесты модели, собственные атаки Verify (в том числе `значение\n`, границы длины, кавычка), статические правила (SQL из ввода, ввод в логах). Анализатор Vishap запускается при `check: analyzer`. Если Verify нашёл проблему, до `--repairs` раундов (по умолчанию 2) модель получает её текст и исправляет файлы.
+5. **Deliver**: гейт, diff, backup, запись, трасса `.vishap/<имя>.trace.json`, откат.
 
-- Без `--gate`: файлы пишутся, дыры и провалы — в отчёте.
-- С `--gate`: блок записи при провале critical/high, coverage < 80%, открытой critical-дыре (contradiction / missing_input) или stale: true. Exit 1.
-- `--force` с `--gate`: запись есть, отчёт помечен `forced: true`.
+## Установка
+
+    cd C:\AI\vishap-generator
+    python -m pip install -e .
+
+Без установки то же самое работает из папки проекта: `$env:PYTHONPATH = "src"; python -m generator generate ...`.
+
+Нужен Python 3.11+ и PyYAML (ставится сам). Необязательно: `ruff`, `coverage` (без них в отчёте `skipped` с причиной), Flask (если сгенерированный код его использует), команда `vishap` (Анализатор).
+
+## Модель
+
+Любой OpenAI-совместимый endpoint. Настройки только из окружения, ключ никуда не пишется:
+
+    $env:VISHAP_LLM_PROVIDER = "custom"
+    $env:CUSTOM_LLM_URL      = "https://api.deepseek.com"
+    $env:CUSTOM_LLM_MODEL    = "deepseek-flash"
+    $env:CUSTOM_LLM_KEY      = "<ключ>"
+    $env:CUSTOM_LLM_THINKING = "disabled"      # для DeepSeek: иначе рассуждения съедают лимит токенов
+
+Задавайте на сессию PowerShell, не постоянными переменными Windows: Vishap читает `.env` без перезаписи, и постоянные `CUSTOM_LLM_*` перебили бы его настройки. Для локального сервера (Ollama) ключ не нужен, адрес `http://localhost:...`.
+
+Анализатор: команда по умолчанию `vishap`, другую можно задать `VISHAP_ANALYZER_CMD` (например `python -m src.cli`). Анализатор отправляет читаемый код своей модели. Если команды нет, проверка `skipped` и это видно в отчёте.
+
+## Командная строка
+
+    vishap-generator generate examples/spec-clean.yaml --out out/
+    vishap-generator generate spec.yaml --out src/ --gate
+    vishap-generator generate spec.yaml --out src/ --dry-run
+    vishap-generator generate spec.yaml --no-llm
+    vishap-generator rollback 8f3a1c2e --out src/
+
+(`python -m generator ...` работает так же.)
+
+| флаг | что делает |
+|---|---|
+| `--out DIR` | куда писать файлы |
+| `--gate` | блокирует запись (код выхода 1), если: провален или не доказан critical/high; покрытие меньше 80%; открыта critical-дыра; спецификация stale; ошибка сборки; Analyzer нашёл ошибку; Verify не смог что-то запустить |
+| `--force` | только с `--gate`: записать всё равно; в трассе `forced: true` |
+| `--dry-run` | показать diff, ничего не писать |
+| `--no-llm` | только Intake и Design (проверка спецификации) |
+| `--no-analyzer` | не запускать Анализатор |
+| `--repairs N` | раунды исправления (0 — без них) |
+| `--json FILE`, `--sarif FILE` | полный результат / SARIF 2.1.0 |
+
+Без `--gate` файлы пишутся всегда, провалы и дыры остаются в отчёте. Коды выхода: 0 готово, 1 гейт заблокировал, 2 ошибка (спецификация, модель, запись).
+
+Откат: `rollback ID` возвращает старые файлы и удаляет созданные. Отказывается, если файл изменён после прогона (`--force` перебивает). Backup и манифест лежат в `<out>/.vishap/runs/<ID>/`.
+
+## REST API и веб-форма
+
+    vishap-generator serve            # http://127.0.0.1:8787/
+
+- `GET /` — форма: вставить spec, получить вердикт, требования с доказательствами, дыры, файлы, трассу.
+- `POST /api/check` `{"spec": "<yaml>"}` — Intake и Design.
+- `POST /api/generate` `{"spec": "<yaml>", "gate": false, "repairs": 2, "no_analyzer": false}` — все этапы. Ничего не пишет на диск сервера: файлы приходят в ответе.
+
+Защита: по умолчанию только `127.0.0.1`; для другого адреса обязателен `GENERATOR_API_TOKEN` (заголовок `Authorization: Bearer ...`). Принимается только `application/json`, проверяются `Host` и `Origin` (страница с чужого сайта не может потратить ваш ключ модели), тело до 256 КБ, одновременно один прогон (второй получает 429).
+
+## Спецификация
+
+Два примера: `examples/spec-clean.yaml` (без открытых дыр, с него начинать) и `examples/spec.yaml` (нарочно без ответа 400/422: Design сообщает критическую дыру G1, `--gate` заблокирует запись). Известные поля проверяются при загрузке; незнакомое поле останавливает прогон и перечисляет известные.
+
+## Безопасность и пределы
+
+- **Verify не изолирует код.** Сгенерированный код запускается подпроцессом с правами пользователя (чистое окружение без ключей, таймаут, `-X utf8`). Это проверка работы кооперативной модели, не защита от враждебного кода. Перед работой с чужими спецификациями нужен Docker или похожая изоляция.
+- Файлы пишутся только внутри `--out`: пути проверяются, абсолютные, `..` и симлинки отвергаются; сбой посреди записи отменяет прогон целиком.
+- `material_hash` считается на сервере по байтам спецификации.
+- Текст спецификации передаётся модели как данные между маркерами, не как инструкции.
+- Свободный `text` читается только моделью при Build. Требования создаются только из структурных полей: факт, сказанный лишь в `text`, считается отсутствующим.
+- Не поддерживается: цели кроме `python/*` проверяются только на уровне плана и `ast`, атаки Verify работают для `http-endpoint` с входами в `query` и `header`.
+
+## Тесты
+
+    python -m unittest discover -s tests -t .
 
 ## Структура
 
-    src/generator/intake.py
-    src/generator/design.py
-    src/generator/gaps.py
-    src/generator/build.py
-    src/generator/verify.py
-    src/generator/deliver.py
+    src/generator/spec.py       загрузка и проверка spec.yaml
+    src/generator/intake.py     этап 1
+    src/generator/gaps.py       дыры
+    src/generator/design.py     этап 2
+    src/generator/llm.py        клиент OpenAI-совместимого endpoint
+    src/generator/generate.py   этап 3: генерация и исправление
+    src/generator/build.py      проверки сборки
+    src/generator/verify.py     этап 4
+    src/generator/analyzer.py   запуск Анализатора Vishap
+    src/generator/deliver.py    этап 5: гейт, запись, трасса, откат
+    src/generator/pipeline.py   все этапы подряд
+    src/generator/cli.py        командная строка
+    src/generator/server.py     REST API и веб-форма (web/index.html)
+    src/generator/sarif.py      SARIF 2.1.0
     examples/spec.yaml
+    docs/plan.md  docs/stages.md
     tests/
-    docs/stages.md
