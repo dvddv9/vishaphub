@@ -53,11 +53,12 @@ function UserKeySettings() {
       setMsg("Pick a provider.");
       return;
     }
-    if (!key.trim()) {
+    const keyless = providers.find((p) => p.id === provider)?.needs_key === false;
+    if (!keyless && !key.trim()) {
       setMsg("Enter your API key.");
       return;
     }
-    writeLlmChoice({ provider, model: model.trim(), key: key.trim() });
+    writeLlmChoice({ provider, model: model.trim(), key: keyless ? "" : key.trim() });
     setMsg("Saved. Your next analysis uses this provider and key.");
   }
 
@@ -105,12 +106,20 @@ function UserKeySettings() {
         placeholder={current?.default_model ?? "provider default"}
       />
 
-      <label className="block text-sm text-slate-700 mb-1" htmlFor="user-llm-key">
-        API key
-      </label>
-      <div className="mb-3">
-        <LlmKeyField id="user-llm-key" value={key} onChange={setKey} className={FIELD} />
-      </div>
+      {current?.needs_key === false ? (
+        <p className="mb-3 text-sm text-slate-600">
+          Local model: no API key needed. The server must be able to reach your model.
+        </p>
+      ) : (
+        <>
+          <label className="block text-sm text-slate-700 mb-1" htmlFor="user-llm-key">
+            API key
+          </label>
+          <div className="mb-3">
+            <LlmKeyField id="user-llm-key" value={key} onChange={setKey} className={FIELD} />
+          </div>
+        </>
+      )}
 
       <div className="mt-2 flex gap-3">
         <button

@@ -169,6 +169,8 @@ export interface LlmProvider {
   id: string;
   label: string;
   default_model: string;
+  /** False for a local model (Ollama): no API key is needed. Missing means a key is needed. */
+  needs_key?: boolean;
 }
 
 export interface ProviderList {

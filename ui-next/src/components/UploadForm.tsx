@@ -44,7 +44,10 @@ export default function UploadForm({
   // Only the server's built-in Claude key is used: no provider / model / key fields.
   const [serverKeyOnly, setServerKeyOnly] = useState(false);
   const [advancedChoice, setAdvancedChoice] = useState<boolean | null>(null);
-  const rulesOnly = !serverKeyOnly && requiresUserKey && !llmKey;
+  // A local model (Ollama) needs no key; the placeholder only satisfies the "has a key" checks.
+  const keyless = providers.find((p) => p.id === llmProvider)?.needs_key === false;
+  const effectiveKey = keyless ? "local" : llmKey;
+  const rulesOnly = !serverKeyOnly && requiresUserKey && !effectiveKey;
   // Advanced stays folded until the visitor opens it, except when a key or provider was saved earlier.
   const advancedOpen = advancedChoice ?? Boolean(llmKey || llmProvider);
   // "Advanced" (own provider / key) stays folded until the visitor has used it.
@@ -153,7 +156,7 @@ export default function UploadForm({
       );
       return;
     }
-    if (!serverKeyOnly && llmProvider && !llmKey) {
+    if (!serverKeyOnly && llmProvider && !effectiveKey) {
       setError("You picked an LLM provider but entered no key. Add the key, or set the provider back to the no-key option.");
       return;
     }
@@ -166,9 +169,9 @@ export default function UploadForm({
       const created = await submitAnalysis(
         material,
         safeName,
-        serverKeyOnly ? undefined : llmKey || undefined,
-        !serverKeyOnly && llmKey ? llmProvider || undefined : undefined,
-        !serverKeyOnly && llmKey ? llmModel || undefined : undefined,
+        serverKeyOnly ? undefined : effectiveKey || undefined,
+        !serverKeyOnly && effectiveKey ? llmProvider || undefined : undefined,
+        !serverKeyOnly && effectiveKey ? llmModel || undefined : undefined,
       );
       rememberJob({
         job_id: created.job_id,
@@ -344,22 +347,32 @@ export default function UploadForm({
                   </div>
                 </div>
               ) : null}
-              <label htmlFor="llm-key" className="text-sm font-medium text-slate-700">
-                Your LLM API key
-              </label>
-              <LlmKeyField
-                id="llm-key"
-                value={llmKey}
-                disabled={submitting}
-                onChange={(value) => {
-                  setLlmKey(value);
-                  writeLlmChoice({ key: value });
-                }}
-              />
-              <p className="text-xs text-slate-600">
-                Sent over HTTPS to this Vishap server, which forwards it only to the provider you
-                picked, for your analysis. It is kept in this browser only and is not shown again.
-              </p>
+              {keyless ? (
+                <p className="text-xs text-slate-600">
+                  Local model: no API key needed. It works when this Vishap server can reach your
+                  model (for example Ollama on the same machine). Your material is not sent to a cloud
+                  provider.
+                </p>
+              ) : (
+                <>
+                  <label htmlFor="llm-key" className="text-sm font-medium text-slate-700">
+                    Your LLM API key
+                  </label>
+                  <LlmKeyField
+                    id="llm-key"
+                    value={llmKey}
+                    disabled={submitting}
+                    onChange={(value) => {
+                      setLlmKey(value);
+                      writeLlmChoice({ key: value });
+                    }}
+                  />
+                  <p className="text-xs text-slate-600">
+                    Sent over HTTPS to this Vishap server, which forwards it only to the provider you
+                    picked, for your analysis. It is kept in this browser only and is not shown again.
+                  </p>
+                </>
+              )}
             </div>
           </details>
           {rulesOnly ? (
