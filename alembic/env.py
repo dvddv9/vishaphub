@@ -15,7 +15,6 @@ from src.api.job_store_postgres import Base
 # against the live schema. Without these imports, Alembic sees the tables only
 # in the DB and proposes to drop them.
 from src.api import tenants as _tenants  # noqa: F401
-from src.billing.lemonsqueezy import webhook as _ls_webhook  # noqa: F401
 
 config = context.config
 

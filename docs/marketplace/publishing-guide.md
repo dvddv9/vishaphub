@@ -34,22 +34,21 @@ GitHub asks for:
 - the listing name and the short description (≤140 characters);
 - the logo (PNG, at least 200×200, transparent background);
 - the primary category;
-- the pricing plan(s).
+- the plan: Vishap is a free, open-source app, so list it as **Free**.
 
 You can draft the listing publicly as "unlisted" first and check the rendering
 before submitting.
 
 ## 4. Complete the listing
 
-Everything below lives in [`description.md`](description.md) and
-[`pricing.md`](pricing.md) — paste it in:
+Everything below lives in [`description.md`](description.md) — paste it in:
 
 | Listing field | Source |
 | --- | --- |
 | Short description | `description.md` → Short description |
 | Long description | `description.md` → Long description |
 | Categories | Security, Code review, CI/CD |
-| Pricing plans | `pricing.md` |
+| Pricing plan | Free |
 | Screenshots | `screenshots/` — replace the three placeholders with real PNGs |
 | Support URL / email | `support@vishap.dev` |
 | Privacy policy URL | `https://dvddv9.github.io/vishap/docs/legal/privacy` |
@@ -67,8 +66,6 @@ Expect 1–2 weeks. The most common reasons a listing bounces:
 - a URL that 404s or redirects to a sign-in page;
 - permissions broader than the description justifies;
 - screenshots that show another product, or contain real customer data;
-- a pricing plan whose free tier is not actually usable (they install it);
-- no visible way to cancel a paid plan.
 
 Respond to reviewer questions in the same thread; re-submission after a fix is
 usually faster than the first pass.
@@ -78,7 +75,6 @@ usually faster than the first pass.
 - [ ] Install the app on a fresh test repository and confirm the PR comment.
 - [ ] Verify webhook deliveries under **App settings → Advanced → Recent
       Deliveries** — a 401 there means signature verification is broken.
-- [ ] Confirm the `invoice.paid` path works for a paid plan (one test purchase).
 - [ ] Add the Marketplace badge to the project README.
 - [ ] Watch the first week of reviews and install errors; a listing with no
       support response looks abandoned.
@@ -92,4 +88,4 @@ usually faster than the first pass.
 - [ ] Three real screenshots, no customer data
 - [ ] Privacy policy and ToS return 200
 - [ ] Publish-to-Marketplace toggle enabled
-- [ ] Billing plan created in the organisation account
+- [ ] Plan set to Free

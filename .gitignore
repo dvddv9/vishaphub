@@ -147,3 +147,5 @@ patch-*.ps1
 /claude-plugin-bundle-anthropic/
 _bump_*.py
 diag_*.py
+# files set aside for manual deletion
+_to_delete/

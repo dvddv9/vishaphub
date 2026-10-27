@@ -48,7 +48,7 @@
 
 **Focus:** SaaS (optional, deferred from v7.0).
 
-- [ ] Multi-tenant (Clerk orgs, Lemon Squeezy billing)
+- [ ] Multi-tenant (Clerk orgs)
 - [ ] Postgres job store (optional; memory still default for desktop)
 - [ ] REST API v2 (async jobs, SSE streaming)
 - [ ] Dashboard (metrics, trends, MTTR)

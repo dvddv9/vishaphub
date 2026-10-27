@@ -11,7 +11,6 @@ const sidebars: SidebarsConfig = {
         'api-reference',
         'cli',
         'deploy',
-        'webhook',
       ],
     },
     {

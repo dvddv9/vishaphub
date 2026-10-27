@@ -215,18 +215,6 @@ class BatchResponse(BaseModel):
     max_concurrent: int
 
 
-class CheckoutRequest(BaseModel):
-    email: str
-    success_url: str
-    cancel_url: str
-
-
-class InvoiceRequest(BaseModel):
-    customer_id: str
-    description: str
-    amount_cents: int
-
-
 # === Endpoints ===
 
 @app.get("/version")
@@ -283,35 +271,6 @@ async def github_webhook(request: Request):
         from fastapi import HTTPException
         raise HTTPException(status_code=401, detail="invalid GitHub signature")
     return await handle_webhook(request)
-
-
-
-@app.post("/webhook/lemonsqueezy")
-async def lemonsqueezy_webhook(request: Request):
-    """Lemon Squeezy webhook: HMAC verify, idempotency, tenant status update."""
-    from src.api.tenants import get_store
-    from src.billing.lemonsqueezy.webhook import handle_lemonsqueezy_webhook
-
-    store = get_store()
-    payload = await request.body()
-    sig = request.headers.get("X-Signature", "")
-    async with store._session_factory() as session:
-        return await handle_lemonsqueezy_webhook(payload, sig, session)
-@app.post("/billing/checkout")
-async def checkout(req: CheckoutRequest):
-    return create_checkout_session(req.email, req.success_url, req.cancel_url)
-
-
-@app.post("/billing/invoice", dependencies=[Depends(current_user)])
-async def create_invoice_endpoint(req: InvoiceRequest):
-    if req.amount_cents <= 0:
-        raise HTTPException(status_code=400, detail="amount_cents must be positive")
-    return create_invoice(req.customer_id, req.description, req.amount_cents)
-
-
-@app.get("/billing/products")
-async def billing_products():
-    return list_prices()
 
 
 @app.get("/api/me/data")

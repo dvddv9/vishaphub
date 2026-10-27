@@ -47,7 +47,7 @@ cp .env.example .env        # set HARNESS_URL + HARNESS_TOKEN
 python -m src.main          # API on :5001, docs at /docs
 ```
 
-Postgres and Redis are only needed for the multi-tenant/billing paths and the
+Postgres and Redis are only needed for the multi-tenant paths and the
 async job store; `JOB_STORE=memory` runs the API without them.
 
 ## Env vars
@@ -55,14 +55,11 @@ async job store; `JOB_STORE=memory` runs the API without them.
 | Var | Default | Required |
 | --- | --- | --- |
 | `DATABASE_URL` | — | **Yes** (checked at startup) |
-| `LEMONSQUEEZY_API_KEY` | — | **Yes** (checked at startup) |
 | `CLERK_SECRET_KEY` | — | **Yes** (checked at startup) |
 | `CONVEYOR_API_KEY` | `""` | Yes in production (empty → binds `127.0.0.1`) |
 | `HARNESS_URL` | `http://127.0.0.1:3080` | Yes for analysis (the DSH harness) |
 | `HARNESS_TOKEN` | — | Yes for analysis |
 | `HARNESS_AUTOSTART` | `1` | Set to `0` on a server: start the harness yourself |
-| `LEMONSQUEEZY_WEBHOOK_SECRET` | — | Yes for billing |
-| `LEMONSQUEEZY_VARIANT_ID` | — | Yes for checkout |
 | `CLERK_JWKS_URL` | — | Yes for `/analyze/secure` |
 | `VISHAP_DEV` | `false` | No — `true` downgrades the startup check to a warning |
 | `PORT` | `5001` | No |
@@ -87,6 +84,6 @@ systemctl restart vishap
 | --- | --- |
 | Service up, nothing on 5001 | `CONVEYOR_API_KEY` unset → bound to loopback |
 | `Missing env vars: ...` in journal | `validate_config()` refused to start; fill `.env` |
-| 401 on every Lemon Squeezy webhook | `LEMONSQUEEZY_WEBHOOK_SECRET` wrong or missing |
+| 401 on every GitHub webhook | `GITHUB_WEBHOOK_SECRET` wrong or missing |
 | `password authentication failed` | `POSTGRES_PASSWORD` ≠ password in `DATABASE_URL` |
 | API healthy, jobs stuck `queued` | worker not running, or `JOB_STORE` not `postgres` on the worker |

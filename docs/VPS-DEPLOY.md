@@ -1,7 +1,7 @@
 # Deploying Vishap to a VPS
 
 Step by step, from an empty account to a working API behind TLS. Roughly 30
-minutes, most of it DNS propagation and Lemon Squeezy verification.
+minutes, most of it DNS propagation.
 
 Vishap is distributed through **PyPI** (`pip install vishap-analyzer`) and runs as a
 plain Python service under **systemd**. There is no container in the deployment
@@ -89,12 +89,9 @@ Minimum for a working deployment:
 | `HARNESS_AUTOSTART` | `0` on a server — run `dsh web` yourself under its own service |
 | `CLERK_SECRET_KEY` | `sk_live_...` |
 | `CLERK_JWKS_URL` | `https://<clerk-instance>/.well-known/jwks.json` |
-| `LEMONSQUEEZY_API_KEY` | `sk_live_...` (see [Lemon Squeezy-LIVE.md](Lemon Squeezy-LIVE.md)) |
-| `LEMONSQUEEZY_WEBHOOK_SECRET` | `whsec_...` from the live webhook endpoint |
-| `LEMONSQUEEZY_VARIANT_ID` | price id **created in live mode** |
 | `FERNET_KEY` | `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |
 
-Add `VISHAP_TENANT_KEYS=true` only if you sell manual (bank transfer) plans —
+Add `VISHAP_TENANT_KEYS=true` only if you issue per-tenant API keys —
 it turns on the `tenants` table lookup for `X-API-Key`.
 
 Keep `JOB_STORE=postgres` (the default) if you run the worker; `JOB_STORE=memory`
@@ -152,13 +149,12 @@ systemctl reload caddy
 
 Verify: `curl https://api.example.com/health`.
 
-Do not rewrite request bodies — Lemon Squeezy's signature covers the raw payload.
+Do not rewrite request bodies — the GitHub webhook signature covers the raw payload.
 
 ## 10. Smoke test
 
 ```bash
 curl -fsS https://api.example.com/health
-curl -fsS https://api.example.com/billing/products    # [] until Lemon Squeezy is set up
 
 # an analysis end to end
 curl -sS -X POST https://api.example.com/analyze/async \

@@ -60,17 +60,6 @@ replacing them.
 YAML, Terraform, Markdown, and plain logs or specs. Analysis runs on the
 material you paste or upload; PII is redacted before it reaches a model.
 
-## Pricing summary
-
-| Plan | Price | Limits |
-| --- | --- | --- |
-| Free | $0 | 10 analyses/month, Python only |
-| Pro | $29/mo | 500 analyses, all languages, GitHub App |
-| Enterprise | Contact | Unlimited, SSO, SLA, dedicated support |
-
-Enterprise includes DPA, SLA with service credits, SSO (SAML, requires the
-Clerk Enterprise tier), and audit-trail export for compliance.
-
 ## Links
 
 | Field | Value |

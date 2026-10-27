@@ -158,36 +158,6 @@ Errors: 403 invalid signature.
 
 ---
 
-POST /webhook/stripe
-
-Stripe webhook. Handles customer.subscription.updated.
-
-Auth: Stripe-Signature (HMAC, STRIPE_WEBHOOK_SECRET)
-
-```json
-{"ok": true, "event": "customer.subscription.updated", "subscription_id": "sub_123"}
-```
-
-Errors: 400 invalid payload/signature, 500 webhook secret not set.
-
----
-
-POST /billing/checkout
-
-Create a Stripe Checkout Session (subscription mode).
-
-```
-curl -X POST http://localhost:8080/billing/checkout \
-  -H "Content-Type: application/json" \
-  -d '{"email": "a@b.c", "success_url": "https://ok", "cancel_url": "https://cancel"}'
-```
-
-```
-{"session_id": "cs_test_...", "url": "https://checkout.stripe.com/..."}
-```
-
----
-
 GET /metrics
 
 Prometheus metrics (text/plain; version=0.0.4).

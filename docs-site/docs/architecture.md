@@ -1,6 +1,6 @@
 # Architecture
 
-Vishap is a FastAPI service backed by a 6-stage LLM pipeline, an optional Celery/Redis queue, PostgreSQL for job persistence, Clerk for auth, and Stripe for billing.
+Vishap is a FastAPI service backed by a 6-stage LLM pipeline, an optional Celery/Redis queue, PostgreSQL for job persistence, and Clerk for auth.
 
 ## Components
 
@@ -13,7 +13,6 @@ Vishap is a FastAPI service backed by a 6-stage LLM pipeline, an optional Celery
 | `src/api/` | JobStore (memory/Postgres) + Celery tasks |
 | `src/auth/` | Clerk JWT verification (JWKS) |
 | `src/github_app/` | GitHub App: JWT, PR comment, webhook |
-| `src/billing/` | Stripe checkout, webhook, usage meters |
 | `src/observability/` | structlog logging + Prometheus metrics |
 | `src/tools/` | Deterministic tools (SAST, SCA, SARIF, SBOM, ...) |
 
@@ -37,7 +36,7 @@ Stages 0, 1, 2 and 4 run for every request; Stage 3 runs only when the material 
 
 - **PII redaction** — secrets and PII are redacted before any LLM call. The audit trail records both `material_hash` (analyzed slice) and `material_hash_full` (original).
 - **Fernet** — secret encryption via `src/security/fernet.py` (`FERNET_KEY` env).
-- **HMAC** — GitHub webhooks are verified with `X-Hub-Signature-256`; Stripe webhooks with `Stripe-Signature`.
+- **HMAC** — GitHub webhooks are verified with `X-Hub-Signature-256`.
 - **JWT** — Clerk verifies RS256 tokens against JWKS; the GitHub App signs requests with an RS256 JWT.
 
 ## Observability
