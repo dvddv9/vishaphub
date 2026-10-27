@@ -349,6 +349,44 @@ RUNBOOKS = {
         ],
         "escalation": "Security team + Platform",
     },
+    "CWE-119": {
+        "title": "Memory Buffer Bounds Violation (C/C++)",
+        "severity": "critical",
+        "immediate": [
+            "Isolate the affected process (container / cgroup) and stop new inputs to it.",
+            "Preserve core dumps and crash logs before restart.",
+            "Notify on-call security engineer.",
+        ],
+        "short_term": [
+            "Reproduce under AddressSanitizer + UBSan: -fsanitize=address,undefined (C/C++ only).",
+            "Run valgrind --tool=memcheck on the failing input.",
+            "Deploy the fix to canary (1% traffic).",
+        ],
+        "long_term": [
+            "Use bounds-checked types (std::span, std::vector::at) and -D_FORTIFY_SOURCE=2.",
+            "Fuzz the parser/entry points (AFL++ / libFuzzer) in CI.",
+        ],
+        "escalation": "Security team + SRE",
+    },
+    "CWE-416": {
+        "title": "Use After Free (C/C++)",
+        "severity": "critical",
+        "immediate": [
+            "Isolate the affected process (container / cgroup) and stop new inputs to it.",
+            "Preserve core dumps and crash logs before restart.",
+            "Notify on-call security engineer.",
+        ],
+        "short_term": [
+            "Reproduce under AddressSanitizer + UBSan: -fsanitize=address,undefined (C/C++ only).",
+            "Run valgrind --tool=memcheck; ASan reports the free and the use stack.",
+            "Deploy the fix to canary (1% traffic).",
+        ],
+        "long_term": [
+            "Prefer RAII / smart pointers (std::unique_ptr, std::shared_ptr) over raw delete.",
+            "Fuzz the parser/entry points (AFL++ / libFuzzer) in CI.",
+        ],
+        "escalation": "Security team + SRE",
+    },
 }
 
 

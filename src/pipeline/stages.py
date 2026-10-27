@@ -6,7 +6,7 @@ v2: улучшенный JSON-парсинг + max_tokens из config.
 import json
 import re
 from src.llm.client import chat as llm_chat
-from src.pipeline.prompts import build_prompt
+from src.pipeline.prompts import build_prompt, wrap_material
 from src.config import MAX_TOKENS, MAX_TOKENS_STAGE4, ENABLE_WEB_SEARCH
 from src.tools.web_search import search_many, is_enabled as web_search_enabled
 
@@ -324,7 +324,7 @@ def stage1_5_translator(material: str, context: dict, async_mode: bool = False, 
     )
     user = (
         "Findings (JSON):\n" + findings_json + "\n\n"
-        "Material (first 3000 chars):\n" + material[:3000]
+        "Material (first 3000 chars):\n" + wrap_material(material, 3000)
     )
 
     try:
@@ -439,7 +439,7 @@ def stage2_5_redteam(material: str, context: dict, async_mode: bool = False, ver
         "⚠️ Do not hallucinate. If unsure — do not include in missed.\n"
         "Return ONLY valid JSON, no markdown, no comments."
     )
-    user = "Material (first 3000 chars):\n" + material[:3000]
+    user = "Material (first 3000 chars):\n" + wrap_material(material, 3000)
 
     try:
         if async_mode:
@@ -520,7 +520,7 @@ def stage3_5_tester(material: str, context: dict, async_mode: bool = False, verb
         )
         user = (
             f"Defect: {cwe} — {desc}\n"
-            f"Material (first 2000 chars):\n{material[:2000]}"
+            f"Material (first 2000 chars):\n{wrap_material(material, 2000)}"
         )
         try:
             result = llm_chat(system, user, temperature=0.1, max_tokens=500)
@@ -599,7 +599,7 @@ def stage4_5_fixer(material: str, context: dict, async_mode: bool = False, verbo
         )
         user = (
             f"Fix: {title} — {fix_desc}\n"
-            f"Material (first 3000 chars):\n{material[:3000]}"
+            f"Material (first 3000 chars):\n{wrap_material(material, 3000)}"
         )
         try:
             result = llm_chat(system, user, temperature=0.1, max_tokens=1500)

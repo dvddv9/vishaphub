@@ -785,6 +785,23 @@ async def get_status(job_id: str, tenant: str = Depends(current_tenant)):
         }
 
 
+def _report_is_stale(result) -> bool:
+    """True when the report's valid_until (report_date + 90 days) is in the past."""
+    if not isinstance(result, dict):
+        return False
+    audit = result.get("audit")
+    raw = (audit.get("valid_until") if isinstance(audit, dict) else None) or result.get("valid_until")
+    if not raw or not isinstance(raw, str):
+        return False
+    try:
+        dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    return dt < datetime.now(UTC)
+
+
 @app.get("/report/{job_id}")
 async def get_report(job_id: str, tenant: str = Depends(current_tenant)):
     with tenant_scope(tenant):
@@ -796,7 +813,10 @@ async def get_report(job_id: str, tenant: str = Depends(current_tenant)):
                 status_code=409,
                 detail=f"job not done: {job['status']}",
             )
-        return job["result"]
+        result = job["result"]
+        if isinstance(result, dict):
+            return {**result, "stale": _report_is_stale(result)}
+        return result
 
 
 @app.get("/report/{job_id}/download")
