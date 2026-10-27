@@ -18,6 +18,10 @@ or
 
 > "Run a security review of my Dockerfile: [paste]"
 
+or
+
+> "Check this Flask upload handler for path traversal: [paste]"
+
 Claude will analyze the material and return a structured Markdown report.
 
 ## License
