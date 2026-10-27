@@ -6,6 +6,13 @@ Configuration comes from the environment, the same names as in Vishap:
   CUSTOM_LLM_URL       base URL, e.g. https://api.example.com/v1  (required)
   CUSTOM_LLM_MODEL     model name                                  (required)
   CUSTOM_LLM_KEY       API key; required unless the URL is localhost
+  CUSTOM_LLM_THINKING  optional: enabled | disabled. Sent as
+                       {"thinking": {"type": ...}} (DeepSeek). Unset: not sent.
+  CUSTOM_LLM_REASONING_EFFORT  optional: low | high | max. Sent as
+                       reasoning_effort. Unset: not sent.
+
+The two optional fields are not part of every OpenAI-compatible API, so
+they are sent only when set.
 
 There is no default URL: a forgotten variable must not send a spec to a
 provider nobody chose. Plain http is allowed only for localhost (Ollama
@@ -29,6 +36,8 @@ MAX_RESPONSE_BYTES = 5 * 1024 * 1024
 LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
 MAX_KEY_LENGTH = 200
 KEY_RE = re.compile(r"^[\x21-\x7E]+$")  # printable ASCII, no spaces
+THINKING_VALUES = frozenset({"enabled", "disabled"})
+EFFORT_VALUES = frozenset({"low", "high", "max"})
 
 
 class LLMConfigError(ValueError):
@@ -49,6 +58,8 @@ class LLMConfig:
     model: str
     key: str = field(default="", repr=False)
     timeout: float = DEFAULT_TIMEOUT
+    thinking: str = ""
+    reasoning_effort: str = ""
 
     @property
     def endpoint(self) -> str:
@@ -85,7 +96,14 @@ def config_from_env(env: dict | None = None) -> LLMConfig:
             f"{MAX_KEY_LENGTH} characters). Was something else in the clipboard?")
     if not key and urllib.parse.urlsplit(url).hostname not in LOCAL_HOSTS:
         raise LLMConfigError("CUSTOM_LLM_KEY is not set (only a localhost server may go without one)")
-    return LLMConfig(url=url, model=model, key=key)
+    thinking = env.get("CUSTOM_LLM_THINKING", "").strip().lower()
+    if thinking and thinking not in THINKING_VALUES:
+        raise LLMConfigError("CUSTOM_LLM_THINKING must be enabled or disabled")
+    effort = env.get("CUSTOM_LLM_REASONING_EFFORT", "").strip().lower()
+    if effort and effort not in EFFORT_VALUES:
+        raise LLMConfigError("CUSTOM_LLM_REASONING_EFFORT must be low, high or max")
+    return LLMConfig(url=url, model=model, key=key,
+                     thinking=thinking, reasoning_effort=effort)
 
 
 def _short(body: bytes, key: str) -> str:
@@ -97,11 +115,16 @@ def chat(messages: list[dict], config: LLMConfig | None = None,
          max_tokens: int = 4096) -> str:
     """Send one chat request and return the text of the first choice."""
     cfg = config or config_from_env()
-    body = json.dumps({
+    payload: dict = {
         "model": cfg.model,
         "messages": messages,
         "max_tokens": max_tokens,
-    }).encode("utf-8")
+    }
+    if cfg.thinking:
+        payload["thinking"] = {"type": cfg.thinking}
+    if cfg.reasoning_effort:
+        payload["reasoning_effort"] = cfg.reasoning_effort
+    body = json.dumps(payload).encode("utf-8")
     headers = {"Content-Type": "application/json", "Accept": "application/json"}
     if cfg.key:
         headers["Authorization"] = f"Bearer {cfg.key}"

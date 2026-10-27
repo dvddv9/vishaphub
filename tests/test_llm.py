@@ -78,6 +78,20 @@ class ChatTests(unittest.TestCase):
             "max_tokens": 100,
         })
 
+    def test_thinking_and_effort_sent_only_when_set(self):
+        cfg = LLMConfig(url=self.stub.url, model="m1", key=KEY, timeout=5,
+                        thinking="disabled", reasoning_effort="low")
+        chat([{"role": "user", "content": "x"}], cfg)
+        body = self.stub.requests[0]["body"]
+        self.assertEqual(body["thinking"], {"type": "disabled"})
+        self.assertEqual(body["reasoning_effort"], "low")
+
+    def test_no_extra_fields_by_default(self):
+        chat([{"role": "user", "content": "x"}], self.cfg)
+        body = self.stub.requests[0]["body"]
+        self.assertNotIn("thinking", body)
+        self.assertNotIn("reasoning_effort", body)
+
     def test_trailing_slash_in_url(self):
         cfg = LLMConfig(url=self.stub.url + "/", model="m1", key=KEY, timeout=5)
         chat([{"role": "user", "content": "x"}], cfg)
@@ -207,6 +221,16 @@ class ConfigTests(unittest.TestCase):
                     config_from_env(dict(self.BASE, CUSTOM_LLM_KEY=key))
                 self.assertIn("does not look like an API key", str(cm.exception))
                 self.assertNotIn(key, str(cm.exception))
+
+    def test_thinking_and_effort_from_env(self):
+        cfg = config_from_env(dict(self.BASE, CUSTOM_LLM_THINKING="Disabled",
+                                   CUSTOM_LLM_REASONING_EFFORT="low"))
+        self.assertEqual((cfg.thinking, cfg.reasoning_effort), ("disabled", "low"))
+        for name, bad in (("CUSTOM_LLM_THINKING", "off"),
+                          ("CUSTOM_LLM_REASONING_EFFORT", "medium")):
+            with self.subTest(name=name):
+                with self.assertRaises(LLMConfigError):
+                    config_from_env(dict(self.BASE, **{name: bad}))
 
     def test_key_may_be_empty(self):
         env = dict(self.BASE, CUSTOM_LLM_URL="http://localhost:11434/v1")
