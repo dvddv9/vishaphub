@@ -3,7 +3,7 @@
 # Terms of Service
 
 **Effective date:** October 18, 2026
-**Operator:** dvddv9 (Individual Entrepreneur) ("Vishap", "we", "us")
+**Operator:** dvddv9 (individual) ("Vishap", "we", "us")
 **Contact:** dvddvd9h@outlook.com
 
 These Terms of Service ("Terms") govern your access to and use of the Vishap
@@ -39,7 +39,7 @@ model inference.
 not a substitute for a security audit, penetration test, or legal advice.
 
 2.4. We may modify, suspend or discontinue features of the Service. We will give
-reasonable notice where a change materially degrades a paid subscription.
+reasonable notice where a change materially degrades the Service.
 
 ## 3. Accounts
 
@@ -56,26 +56,16 @@ access to your account.
 3.4. You are responsible for the users you invite to your organisation and for
 their compliance with these Terms.
 
-## 4. Subscriptions and Billing
+## 4. Free Service
 
-4.1. Paid features are sold as recurring subscriptions and processed by our
-payment processor, Stripe. Prices are displayed in the Service before purchase.
+4.1. The Service is provided **free of charge**. There are no subscriptions, paid
+plans or fees, and we do not process payments or store payment details.
 
-4.2. **Subscriptions renew automatically** at the end of each billing period
-unless cancelled before the renewal date. You can cancel at any time through the
-billing portal; cancellation takes effect at the end of the current period.
+4.2. Usage limits apply to the public demo, per visitor per day and across all
+visitors per day. They may change without notice.
 
-4.3. Where usage-based charges apply, they are metered and reported to Stripe.
-You are responsible for monitoring your consumption.
-
-4.4. **Refunds** are provided at our discretion where required by law. Statutory
-rights of withdrawal for consumers are not affected by this section.
-
-4.5. If a payment fails, we may suspend paid features after a reasonable grace
-period. You remain liable for accrued charges.
-
-4.6. All fees are exclusive of taxes (VAT, sales tax and similar), which you are
-responsible for where applicable.
+4.3. The Service is operated as a non-commercial open-source project. Any change
+to this will be announced under Section 1.3 before it takes effect.
 
 ## 5. Acceptable Use
 
@@ -90,7 +80,7 @@ responsible for where applicable.
 - probe, scan or load-test the Service without prior written permission;
 - reverse-engineer, resell, or provide the Service to third parties as a
   competing offering;
-- circumvent usage limits, rate limits, or billing controls;
+- circumvent usage limits or rate limits;
 - upload material you do not have the right to analyse.
 
 5.2. Analysis of malicious samples for defensive purposes is permitted, provided
@@ -142,8 +132,7 @@ incidental, special, consequential or punitive damages, nor for lost profits,
 revenue, data or goodwill.
 
 8.4. Our aggregate liability arising out of or relating to these Terms is limited
-to the greater of (a) the amount you paid us in the 12 months preceding the
-claim, or (b) USD 100.
+to USD 100.
 
 8.5. Nothing in these Terms excludes liability that cannot be excluded by law,
 including for death or personal injury caused by negligence, or for fraud.

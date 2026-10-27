@@ -3,7 +3,7 @@
 # Privacy Policy
 
 **Effective date:** October 18, 2026
-**Data controller:** dvddv9 (Individual Entrepreneur) ("Vishap", "we", "us")
+**Data controller:** dvddv9 (individual) ("Vishap", "we", "us")
 **Contact:** dvddvd9h@outlook.com
 
 This Privacy Policy explains what personal data we collect, why we collect it,
@@ -30,10 +30,6 @@ codes, job counts and durations, and error diagnostics. Collected through
 Prometheus metrics, structured application logs, and OpenTelemetry traces
 (exported to Tempo and visualised in Grafana).
 
-**Billing data (via Stripe).** Customer identifier, subscription status, billing
-period, metered usage and invoice status. Card details are entered directly into
-Stripe and never reach our servers.
-
 **Integration data (GitHub App).** Installation identifiers, repository names,
 webhook payloads and the commit references we analyse.
 
@@ -43,18 +39,17 @@ webhook payloads and the commit references we analyse.
   report to you.
 - **Authenticate and secure your account** — verify identity, enforce access
   control, detect abuse and rate-limit requests.
-- **Bill you** — manage subscriptions, meter usage and process payments.
 - **Operate and improve the Service** — measure performance, diagnose failures,
   and understand which features are used.
 - **Communicate** — respond to support requests and send service notices. We do
   not send marketing email without consent.
-- **Comply with law** — meet legal, tax and accounting obligations, and respond
+- **Comply with law** — meet legal obligations and respond
   to lawful requests.
 
 **Legal bases (GDPR).** Performance of a contract (Articles 6(1)(b)) for
-providing the Service and billing; legitimate interests (6(1)(f)) for security,
+providing the Service; legitimate interests (6(1)(f)) for security,
 abuse prevention and service reliability; consent (6(1)(a)) where we ask for it;
-and legal obligation (6(1)(c)) for tax and accounting records.
+and legal obligation (6(1)(c)) where the law requires us to keep or disclose data.
 
 **Automated decision-making.** The Service produces automated risk assessments of
 the material you submit. These assess code and configuration, not individuals, and
@@ -69,7 +64,6 @@ processing agreement.
 | Sub-processor | Purpose | Data shared |
 | --- | --- | --- |
 | **Clerk** | Authentication and user management | Email, name, profile, session tokens |
-| **Stripe** | Payments and subscription billing | Customer ID, subscription and usage data, billing email |
 | **GitHub** | GitHub App webhooks and repository access | Installation ID, repository name, commit references |
 | **LLM: local DSH harness** (runs on the same machine, `HARNESS_URL`) | Generate the analysis report | The analysed material **after PII redaction**, plus the filename — processed on-premise, not transferred to a third party |
 | **Grafana Cloud / self-hosted Tempo, Grafana, Prometheus** | Observability: metrics, traces, dashboards | Technical telemetry, job identifiers, endpoint timings |
@@ -101,7 +95,6 @@ for cross-context behavioural advertising.
 | Generated reports | 90 days from generation |
 | Analysis audit trail (hashes, flags) | 12 months |
 | Account and profile data | For the life of the account, then 30 days |
-| Billing and invoice records | 7 years (statutory accounting requirement) |
 | Application logs | 30 days |
 | OpenTelemetry traces and metrics | 14 days |
 | GitHub App webhook payloads | 30 days |
@@ -146,7 +139,7 @@ We apply technical and organisational measures appropriate to the risk:
 - **Encryption at rest** — sensitive stored values (for example API credentials and
   integration secrets) are encrypted with **Fernet** (AES-128-CBC with HMAC-SHA256
   authentication).
-- **Webhook authentication** — inbound GitHub and Stripe webhooks are verified with
+- **Webhook authentication** — inbound GitHub webhooks are verified with
   **HMAC SHA-256 signatures**, with timestamp tolerance to prevent replay.
 - **Authentication** — session tokens are signed **JWTs** issued by Clerk and
   validated on every request, with strict key verification.
@@ -171,7 +164,6 @@ We use a minimal set of cookies and equivalent browser storage.
 | Cookie / storage | Provider | Purpose | Type |
 | --- | --- | --- | --- |
 | `__session`, `__client_uat` | Clerk | Authentication session and session freshness | Strictly necessary |
-| `__stripe_mid`, `__stripe_sid` | Stripe | Fraud prevention during checkout | Strictly necessary |
 | `vishap.jobs.v1` (localStorage) | Vishap | Remembers the job IDs your browser submitted, so the dashboard can list them | Functional |
 
 7.1. We do not use advertising or cross-site tracking cookies, and therefore do not

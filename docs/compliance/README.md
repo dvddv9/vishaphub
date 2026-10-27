@@ -29,7 +29,7 @@ the audit conversation shorter:
   `DELETE /api/me`), plus a written retention policy.
 - **Encryption.** TLS in transit; Fernet for stored secrets; HMAC-verified
   webhooks.
-- **Legal documents.** Terms, Privacy Policy, DPA and SLA templates are written
+- **Legal documents.** Terms, Privacy Policy and DPA templates are written
   and in the repository.
 
 ## Documents
@@ -60,7 +60,5 @@ the audit conversation shorter:
   Privacy Policy; confirm the storage layer enforces them before claiming it in
   an audit.
 - No EU/UK representative has been appointed, which GDPR Article 27 may require.
-- The SLA promises 99.9% uptime and a shared Grafana dashboard; neither is
-  measured automatically yet.
 - SSO (SAML) returns `501` until the Clerk Enterprise tier is enabled, so an
   enterprise buyer asking for SSO today will be told "not yet".

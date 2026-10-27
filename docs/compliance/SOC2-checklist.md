@@ -14,7 +14,7 @@ when a customer asks for them.
 | Criterion | What an auditor expects | Status | Evidence / gap |
 | --- | --- | --- | --- |
 | **CC1** Control Environment | Written policies, defined roles, code of conduct, org chart | ⏳ | No policies exist yet. The repository is the only documented process. |
-| **CC2** Communication & Information | Internal communication of objectives; external commitments documented | ⏳ | Terms, Privacy, DPA and SLA are written. No internal comms or training record. |
+| **CC2** Communication & Information | Internal communication of objectives; external commitments documented | ⏳ | Terms, Privacy and DPA are written. No internal comms or training record. |
 | **CC3** Risk Assessment | Risk register, annual assessment, fraud risk considered | ❌ | Nothing formal. Needs a register with owners and review dates. |
 | **CC4** Monitoring Activities | Ongoing monitoring of controls, not just systems | ⏳ | Prometheus and OpenTelemetry cover the system, not the controls. No control testing schedule. |
 | **CC5** Control Activities | Documented controls mapped to risks; segregation of duties | ⏳ | Technical controls exist (see CC6–CC8) but are not mapped to risks on paper. |
@@ -29,7 +29,7 @@ when a customer asks for them.
 | --- | --- | --- | --- |
 | **A1.1** Capacity | Capacity monitored and planned | ⏳ | Metrics exist; no documented capacity plan or thresholds. |
 | **A1.2** Recovery | Backups, restore testing, DR objectives (RTO/RPO) | ❌ | No backup/restore procedure or test record. |
-| **A1.3** Availability commitment | SLA published and measured | ⏳ | `docs/legal/SLA.md` defines 99.9% and credits. Uptime is not measured automatically yet, so the commitment cannot currently be evidenced. |
+| **A1.3** Availability commitment | Availability commitment documented and measured | ⏳ | No SLA is published: the service is free and best-effort. Uptime is not measured automatically yet. |
 
 ## Processing Integrity (PI1)
 
@@ -70,7 +70,7 @@ Ordered by cost-effectiveness, not by criterion number:
    Hand-collecting evidence for a year costs more than the subscription.
 3. **Define RTO/RPO and test a restore.** A1.2 is currently a hard ❌ and is the
    easiest to fail in an audit because there is no artifact at all.
-4. **Start measuring uptime** if the SLA is going to be sold. A commitment
+4. **Start measuring uptime** before making any availability promise. A commitment
    nobody measures is a liability, not a selling point.
 5. **Engage the auditor** once policies exist and controls have run for at least
    three months. SOC 2 Type I first; Type II needs an observation window.

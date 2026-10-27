@@ -25,7 +25,7 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Legal',
-      items: ['legal/terms', 'legal/privacy', 'legal/dpa', 'legal/sla'],
+      items: ['legal/terms', 'legal/privacy', 'legal/dpa'],
     },
   ],
 };

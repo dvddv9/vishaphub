@@ -4,7 +4,7 @@
 
 **Effective date:** October 18, 2026
 **Controller (Customer):** [Customer Legal Name]
-**Processor:** dvddv9 (Individual Entrepreneur) ("Vishap")
+**Processor:** dvddv9 (individual) ("Vishap")
 **Contact:** dvddvd9h@outlook.com
 
 This Data Processing Agreement ("DPA") forms part of the agreement between the
@@ -46,8 +46,7 @@ interface described in the Terms of Service.
 ## 2. Scope and Purpose
 
 2.1. Vishap processes Customer Data only to provide the Services: running the
-six-stage analysis pipeline, returning reports, authenticating users and
-administering subscriptions.
+six-stage analysis pipeline, returning reports and authenticating users.
 
 2.2. The categories of Personal Data and the purposes of processing are:
 
@@ -55,9 +54,8 @@ administering subscriptions.
 | --- | --- | --- |
 | Account data | Email, name, profile image, organisation membership | Authentication (Clerk), support |
 | Submitted material | Source code, configuration, specifications, logs, data | Security analysis and report generation |
-| Derived data | Audit trail (SHA-256 hashes, PII flags), token counts, cost | Traceability, billing |
+| Derived data | Audit trail (SHA-256 hashes, PII flags), token counts, cost | Traceability |
 | Technical data | IP address, request paths and timings, job identifiers | Security, reliability, abuse prevention |
-| Billing data | Customer identifier, subscription status, metered usage | Payments (Stripe) |
 
 2.3. **Special categories.** The Services are not intended for material
 containing special categories of Personal Data (Article 9 GDPR) or data relating
@@ -103,8 +101,7 @@ relevant.
 
 3.7. **Deletion or return on termination.** At the Customer's choice, Vishap
 deletes or returns Customer Data after the end of the provision of the Services,
-and deletes existing copies, except where retention is required by law. Billing
-records are retained for the statutory period (Section 5).
+and deletes existing copies, except where retention is required by law.
 
 3.8. **Demonstrating compliance.** Vishap makes available the information
 necessary to demonstrate compliance with Article 28 GDPR and allows audits under
@@ -121,7 +118,6 @@ sub-processors listed below.
 | Sub-processor | Purpose | Location |
 | --- | --- | --- |
 | Clerk | Authentication and user management | United States |
-| Stripe | Payments and subscription billing | United States / EU |
 | GitHub | GitHub App webhooks and repository access | United States |
 | Local DSH harness (on the Controller's or the Processor's own machine) | LLM analysis | Customer infrastructure — no transfer |
 | Grafana / Tempo / Prometheus | Observability: metrics, traces, dashboards | EU / United States |
@@ -158,7 +154,6 @@ described in this DPA:
 | Account and profile data | Term of the account, then 30 days |
 | OpenTelemetry traces and metrics | 14 days |
 | Application logs | 30 days |
-| Billing and invoice records | 7 years (statutory) |
 
 5.2. Deleted data is removed from primary storage promptly; residual copies may
 persist in backups for up to 30 days.
@@ -173,7 +168,7 @@ permitted.
 integration secrets — are encrypted with Fernet (AES-128-CBC with HMAC-SHA256
 authentication).
 
-6.2. **Webhook authentication.** Inbound GitHub and Stripe webhooks are verified
+6.2. **Webhook authentication.** Inbound GitHub webhooks are verified
 with HMAC SHA-256 signatures and a timestamp tolerance to prevent replay.
 
 6.3. **Authentication and access control.** Sessions are signed JWTs issued by
