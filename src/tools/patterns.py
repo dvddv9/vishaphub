@@ -44,16 +44,16 @@ COMPLIANCE_TRIGGERS = {
 # These are RCE, code injection, deserialization, path traversal, SQLi.
 CRITICAL_RISK_PATTERNS = {
     "rce_shell": re.compile(r"\b(os\.system|subprocess\.(call|run|Popen|check_output|check_call)|os\.popen)\s*\("),
-    "rce_eval": re.compile(r"\b(eval|exec)\s*\("),
+    "rce_eval": re.compile(r"(?<![\w.])(eval|exec)\s*\("),
     "rce_import": re.compile(r"__import__\s*\(|getattr\s*\([^,]+,\s*[a-z_]+\s*\)"),
     "sqli_concat": re.compile(r"(SELECT|INSERT|UPDATE|DELETE|DROP)\s+.*['\"]\s*\+\s*", re.IGNORECASE),
     "sqli_fstring": re.compile(r"execute\s*\(\s*f['\"]", re.IGNORECASE),
     "path_traversal": re.compile(r"open\s*\([^)]*\.\.[/\\]|os\.path\.join\s*\([^,]+,\s*[a-z_]+\s*\)"),
     "insecure_deser": re.compile(r"(pickle\.loads|yaml\.load\s*\([^,)]+\)|marshal\.loads)"),
-    "shell_true": re.compile(r"shell\s*=\s*True"),
+    "shell_true": re.compile(r"\b(subprocess\.\w+|Popen|check_output|check_call|run|call)\s*\([^)]*shell\s*=\s*True"),
     "ssti": re.compile(r"render_template_string\s*\(|Template\s*\([^)]+\).*render"),
     "ldap_injection": re.compile(r"search\s*\([^)]*\+\s*[a-z_]+"),
-    "xxe": re.compile(r"(etree\.parse|XMLParser|parseString)\s*\(.*resolve_entities"),
+    "xxe": re.compile(r"\b(XMLParser|parseString)\s*\([^)]*resolve_entities\s*=\s*(?!False)True"),
 }
 
 
@@ -579,7 +579,7 @@ def detect_exploitability(material: str) -> dict:
     - Python (Flask/FastAPI): reachable=True, blast=high.
     - Else: reachable=False, blast=none.
     """
-    if material.lstrip().startswith(("2026-","2025-","2024-")):
+    if re.match(r"^\d{4}-\d{2}-\d{2}[T ]", material.lstrip()):
         return {"reachable": True, "auth_required": False,
                 "exploit_path": [{"type":"log","path":"log analysis"}],
                 "blast_radius": "high",
@@ -599,12 +599,27 @@ def detect_exploitability(material: str) -> dict:
             "blast_indicators": ["AWS account", "public S3", "public RDS"],
         }
 
+    # JS/Express
+    if any(p in stripped for p in ("app.get(", "app.post(", "app.put(", "app.delete(", "router.get(", "router.post(", "express(")):
+        return {
+            "reachable": True,
+            "auth_required": False,
+            "exploit_path": [{"type": "chain", "path": "js_route -> exec"}],
+            "blast_radius": "high",
+            "entry_points": ["HTTP route"],
+            "blast_indicators": ["RCE", "SSRF", "SQLi"],
+        }
+
     # C (regression guard: the v7.4 exploitability rework dropped this branch —
     # system() is a cmd-injection sink, strcpy-class is a buffer overflow, fopen
     # a file primitive; main is the entry point).
-    if any(p in stripped for p in ("#include", "int main(", "void main(",
-                                   "system(", "popen(", "strcpy(", "strcat(",
-                                   "sprintf(", "gets(", "fopen(")):
+    # C-only markers: "system(" and "popen(" are NOT markers — os.system() and
+    # subprocess.Popen() live in Python/JS too, and treating them as C made every
+    # os.system() call report reachable=False.
+    has_c_marker = any(p in stripped for p in ("#include", "int main(", "void main(", "FILE *",
+                                                "malloc(", "printf(", "fopen(", "strcpy(",
+                                                "sprintf(", "gets(", "scanf("))
+    if has_c_marker:
         blast = "low"
         entry_points = []
         if any(p in stripped for p in ("system(", "popen(", "execvp(", "execve(")):
@@ -620,17 +635,6 @@ def detect_exploitability(material: str) -> dict:
             "blast_radius": blast,
             "entry_points": entry_points,
             "blast_indicators": ["CWE-78", "CWE-121", "CWE-120", "CWE-134"],
-        }
-
-    # JS/Express
-    if any(p in stripped for p in ("app.get(", "app.post(", "app.put(", "app.delete(", "router.get(", "router.post(", "express(")):
-        return {
-            "reachable": True,
-            "auth_required": False,
-            "exploit_path": [{"type": "chain", "path": "js_route -> exec"}],
-            "blast_radius": "high",
-            "entry_points": ["HTTP route"],
-            "blast_indicators": ["RCE", "SSRF", "SQLi"],
         }
 
     # Python Flask/FastAPI

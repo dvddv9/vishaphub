@@ -4,14 +4,18 @@
 Consolidates logic from run_audit() (v5.10.6 risk_nodes, v5.11.1 security.findings).
 """
 import re
+import shlex
 from typing import Any
 
 
 # v6.1-fix: fallback scan of final_markdown for critical SEC findings the LLM
 # put in free text ([CONCLUSION]) instead of structured security.findings.
+# Both orders on one line: a marker written before the id ("Критично: SEC-0001")
+# used to be missed, and the DOTALL span could cross into unrelated text.
 _SEC_CRITICAL_RE = re.compile(
-    r"SEC-\d+.{0,300}?(критично|critical|CVE-\d|crash|overflow|injection)",
-    re.IGNORECASE | re.DOTALL,
+    r"SEC-\d+[^\n]{0,300}?(критично|critical|CVE-\d|crash|overflow|injection)"
+    r"|(критично|critical)[^\n]{0,80}?SEC-\d+",
+    re.IGNORECASE,
 )
 
 
@@ -129,6 +133,18 @@ def compute_critique_verdict(context_thread: dict | None,
     if has_critical:
         return "REQUIRES_REVIEW"
 
+    # A critical STRIDE threat escalates risk_verdict too (compute_risk_verdict
+    # rule 5); without this check the critique came out SAFE while risk said
+    # REQUIRES_REVIEW, and clients read critique_verdict as "verdict".
+    threat_model = s2.get("threat_model") or {}
+    threats = threat_model.get("threats") if isinstance(threat_model, dict) else []
+    if isinstance(threats, list) and any(
+        isinstance(t, dict)
+        and str(t.get("priority", "")).lower() in ("\u043a\u0440\u0438\u0442\u0438\u0447\u043d\u043e", "critical")
+        for t in threats
+    ):
+        return "REQUIRES_REVIEW"
+
     ct = context_thread or {}
     evidence = ct.get("evidence") or {}
     python_run = bool(evidence.get("python_run"))
@@ -161,14 +177,21 @@ _REASON_HINTS = {
 }
 
 
-def compute_negative_evidence(cwe_ids, stage2_result):
-    """Return [{cwe, reason}] for checked-but-not-found CWEs."""
-    found = set(cwe_ids or [])
+def compute_negative_evidence(cwe_ids, stage2_result=None, checked=None):
+    """Return [{cwe, reason}] for CWEs the run actually examined and did not find.
+
+    ``checked`` must be the CWEs the deterministic scanner covers; without it the
+    function returns nothing. It used to claim "no SQL queries in material" (and 11
+    more) even for runs where nothing had been scanned at all.
+    """
+    if not checked:
+        return []
+    found = {str(c) for c in (cwe_ids or [])}
     out = []
-    for cwe in CHECKED_CWES:
+    for cwe in checked:
         if cwe in found:
             continue
-        out.append({"cwe": cwe, "reason": _REASON_HINTS.get(cwe, "not found in material")})
+        out.append({"cwe": cwe, "reason": _REASON_HINTS.get(cwe, "checked, not found in material")})
     return out
 
 
@@ -244,6 +267,9 @@ def compute_bias_check(context_thread: dict | None,
     items = list(findings or [])
     if not items and ct.get("cwe_found"):
         items = list(ct.get("cwe_found") or [])
+    if not items:
+        # A check that never ran must not read as "passed".
+        return {"bias_check": "insufficient (no findings)", "flags": []}
 
     critical = 0
     for f in items:
@@ -295,32 +321,38 @@ def compute_reproducer(context_thread: dict | None,
             "reproducer_verified": False,
             "reproducer_note": "not provided (IaC: use terraform plan / checkov)",
         }
-    if stripped.startswith(("import ", "const ", "function ", "export ", "interface ", "type ")):
+
+    # Logs first: a log line such as "ImportError: cannot import yaml" used to fall
+    # into the Python branch below and was offered as `python -c "<log text>"`.
+    if re.match(r"^\d{4}-\d{2}-\d{2}[T ]", stripped):
+        return {
+            "reproducer": None,
+            "reproducer_verified": False,
+            "reproducer_note": "not provided (log: use log analysis / DLP scan)",
+        }
+
+    # A Python file very often starts with `import `, which used to be classified as
+    # TypeScript/JS. TypeScript markers are checked explicitly instead.
+    is_typescript = bool(re.search(r"(^\s*(const|let|interface|export)\s|\bexport\s+default\b|:\s*(string|number|boolean)\b)", material, re.MULTILINE))
+    is_python = bool(re.search(r"(^\s*(def|class)\s+\w+|^\s*(import|from)\s+[\w.]+)", material, re.MULTILINE))
+    if is_typescript and not is_python:
         return {
             "reproducer": None,
             "reproducer_verified": False,
             "reproducer_note": "not provided (TypeScript/JS: use npm test / eslint)",
         }
 
-    # Python fallback
-    if material and ("def " in material or "import " in material or "class " in material):
+    # Python fallback: quote the payload properly — the old double-quote wrapper left
+    # `"`, `$` and backticks live, breaking the command and inviting shell injection.
+    if is_python or (material and ("def " in material or "class " in material)):
         try:
-            _esc = material.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n")
             return {
-                "reproducer": f'python -c "{_esc}"',
+                "reproducer": "python -c " + shlex.quote(material),
                 "reproducer_verified": False,
                 "reproducer_note": "provided (python -c, not verified)",
             }
         except Exception:
             pass
-
-    # Логи: reproducer не применим (patch-logs)
-    if stripped.startswith(("2026-", "2025-", "2024-")):
-        return {
-            "reproducer": None,
-            "reproducer_verified": False,
-            "reproducer_note": "not provided (log: use log analysis / DLP scan)",
-        }
     python_run = bool(evidence.get("python_run"))
     if not python_run:
         return {

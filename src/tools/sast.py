@@ -234,5 +234,18 @@ def run_sast(file_path: str, language: str = "") -> dict:
             for m in pat.finditer(_code):
                 findings.append({"pattern": name, "line": _code[:m.start()].count("\n") + 1, "match": m.group()[:80]})
 
-    return {"language": language, "findings": findings, "count": len(findings)}
+    # The pipeline reads total_findings / high_priority / engine / cwe_ids
+    # (orchestrator.run_audit); returning only `count` made every SAST hit
+    # invisible to the verdict. Keep `count` for older callers.
+    critical = {"eval", "exec", "shell", "pickle", "deserialization", "hardcoded"}
+    high_priority = sum(1 for f in findings if any(k in f.get("pattern", "").lower() for k in critical))
+    return {
+        "language": language,
+        "findings": findings,
+        "count": len(findings),
+        "total_findings": len(findings),
+        "high_priority": high_priority,
+        "engine": "static-scan" if findings or language in ("python", "javascript", "terraform", "yaml") else "",
+        "cwe_ids": [],
+    }
 

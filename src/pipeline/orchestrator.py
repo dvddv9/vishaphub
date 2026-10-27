@@ -32,7 +32,7 @@ from src.tools.fallback_check import REQUIRED as REQUIRED_BLOCKS, LOSS_THRESHOLD
 from src.pipeline.cost import sum_stage_costs
 from src.tools.redact import redact_pii  # dogfood P0: pre-LLM PII redaction
 from src.tools.sast import run_sast  # dogfood P1: deterministic SAST
-from src.tools.static_scan import scan_material, render_markdown as render_static_md  # built-in rules, no LLM
+from src.tools.static_scan import RULES as STATIC_RULES, scan_material, render_markdown as render_static_md  # built-in rules, no LLM
 from src.tools.provenance import get_provenance  # dogfood P2: source tracking
 from src.tools.sca import run_sca  # dogfood P1: dependency audit
 from src.tools.patterns import PII_PATTERNS, COMPLIANCE_TRIGGERS
@@ -162,8 +162,12 @@ def detect_material_complete(material: str, final_markdown: str = "") -> bool:
 
 
 def compute_hash(material: str, context: str = "") -> str:
-    """Compute SHA-256 hash of material."""
-    payload = material
+    """Compute SHA-256 hash of material, bound to the caller's context.
+
+    ``context`` is ``f"{filename}:{session_id}"`` at every call site; ignoring it
+    made identical bytes from different files/sessions collapse to one key.
+    """
+    payload = material if not context else f"{context}\x00{material}"
     h = hashlib.sha256(payload.encode("utf-8", errors="replace"))
     return f"sha256:{h.hexdigest()}"
 
@@ -183,9 +187,11 @@ def strip_llm_audit_blocks(md: str) -> str:
 
 def _filter_copyright_emails(text: str, pattern) -> list:
     """Return emails NOT in copyright/license/author headers."""
+    # Only real attribution markers. A bare "by " used to match any line like
+    # "# contact sec@corp.ru (used by the billing job)" and hid the PII.
     _MARKERS = (
         "copyright", "(c)", "\u00a9", "author", "maintainer",
-        "license", "licence", "written by", "by ",
+        "license", "licence", "written by",
         "@wireshark.org", "@gnu.org", "@fsf.org", "@apache.org",
         "@python.org", "@gnome.org", "@kernel.org",
     )
@@ -310,16 +316,17 @@ def sanitize_session_id(text: str, real_session_id: str) -> str:
 
 
 def _is_d0(material: str) -> tuple[bool, str]:
+    """True when the material is too small to analyse at all.
+
+    'parse_error' is deliberately NOT D0: a file that fails ``ast.parse`` is
+    exactly the case a scanner must still look at (Python 2 syntax, templates), so
+    it falls through to SAST + the LLM pipeline. Classifying it as D0 used to answer
+    SAFE for unparsable code that contained ``os.system(user_input)``.
+    """
     if not material or not material.strip():
         return True, 'empty'
     if len(material.strip()) < 10:
         return True, 'trivial'
-    try:
-        import ast as _ast
-        if material.lstrip().startswith(('def ', 'import ', 'class ', 'from ')):
-            _ast.parse(material)
-    except SyntaxError:
-        return True, 'parse_error'
     return False, ''
 
 def run_audit(material: str, session_id: str, model: str = "custom",
@@ -418,9 +425,13 @@ def run_audit(material: str, session_id: str, model: str = "custom",
         "escalation_level": escalation_level,
     }
     # v7.2: #4 negative_evidence
+    _checked_cwes = sorted({r.cwe for r in STATIC_RULES if getattr(r, "cwe", "")})
+    if isinstance(context_thread, dict):
+        context_thread["checked"] = _checked_cwes
     audit["negative_evidence"] = compute_negative_evidence(
         cwe_ids=cwe_ids,
         stage2_result=stage2_result,
+        checked=_checked_cwes,
     )
     # v7.2: #8 report_date / valid_until
     # timezone-aware (UTC): a naive timestamp is shown shifted by the viewer's UTC offset
@@ -761,11 +772,21 @@ def run_pipeline(material: str, filename: str, verbose: bool = True, api_key: st
         m for m in (stage2_5.get("missed") or [])
         if isinstance(m, dict) and str(m.get("cwe", "") or "") not in _existing_cwes
     ]
+    # red-team entries carry "severity"; every verdict check reads "priority", so
+    # a critical miss used to add no escalation at all. Map it, then merge safely
+    # (a model that answers "risk_nodes": null must not crash the run).
+    for _m in _new_missed:
+        if "priority" not in _m and _m.get("severity"):
+            _m["priority"] = _m["severity"]
     if _new_missed:
-        stage2.setdefault("risk_nodes", []).extend(_new_missed)
+        _nodes = stage2.get("risk_nodes")
+        if not isinstance(_nodes, list):
+            _nodes = []
+        _nodes.extend(_new_missed)
+        stage2["risk_nodes"] = _nodes
     if verbose and _new_missed:
         print(f"  → red team missed (new): {len(_new_missed)}")
-    risk_nodes = stage2.get("risk_nodes", [])
+    risk_nodes = stage2.get("risk_nodes") or []
     # v7.2: #1 context_thread (after stage2)
     context_thread["cwe_found"] = list(risk_nodes)
     context_thread["decisions"]["level"] = level
@@ -1154,7 +1175,8 @@ async def run_pipeline_async(material: str, filename: str, verbose: bool = False
                     "missing_count": len(missing), "loss_pct": loss_pct,
                     "material_complete": not truncated,
                     "threshold": LOSS_THRESHOLD,
-                    "verdict": "ACCEPTABLE" if loss_pct <= LOSS_THRESHOLD else "INCOMPLETE"}
+                    "llm_error": bool(llm_error),
+                    "verdict": "ERROR" if llm_error else ("ACCEPTABLE" if loss_pct <= LOSS_THRESHOLD else "INCOMPLETE")}
     final_markdown += (
         "\n\n[COMPLETENESS]\n"
         f"level: {level}\nrequired: {len(required)}\nmissing: {missing}\n"

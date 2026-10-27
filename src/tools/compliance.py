@@ -31,6 +31,8 @@ def map_compliance(cwe_ids: list[str], standards: list[str] | None = None) -> di
         return {}
 
     try:
+        if isinstance(standards, str):
+            standards = [standards]
         target_standards = list(standards) if standards else list(COMPLIANCE_MAP.keys())
     except Exception:
         return {}

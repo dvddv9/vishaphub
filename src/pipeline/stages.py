@@ -231,7 +231,12 @@ def run_stage(stage_name: str, prompt_name: str, material: str,
     result = llm_chat(system, user, temperature=temperature, max_tokens=max_tokens)
     parsed = parse_json_response(result["text"])
 
-    if retry_on_json_fail and "_error" in parsed and parsed["_error"] == "JSON parse failed":
+    # parse_json_response may return None / True / 42 for a bare JSON scalar, so the
+    # dict guard has to run before the membership test (`"_error" in None` raised).
+    if not isinstance(parsed, dict):
+        parsed = {"_raw": parsed, "_error": "expected dict"}
+
+    if retry_on_json_fail and parsed.get("_error") == "JSON parse failed":
         print(f"  [!] {stage_name}: JSON parse failed, retry...")
         retry_user = (
             user
@@ -241,12 +246,10 @@ def run_stage(stage_name: str, prompt_name: str, material: str,
         )
         result = llm_chat(system, retry_user, temperature=temperature, max_tokens=max_tokens)
         parsed = parse_json_response(result["text"])
+        if not isinstance(parsed, dict):
+            parsed = {"_raw": parsed, "_error": "expected dict"}
 
     from src.pipeline.cost import estimate_cost
-
-    # === FIX: ensure parsed is dict ===
-    if not isinstance(parsed, dict):
-        parsed = {"_raw": parsed, "_error": "expected dict, got list"}
 
     parsed["_meta"] = {
         "stage": stage_name,
@@ -528,10 +531,14 @@ def stage3_5_tester(material: str, context: dict, async_mode: bool = False, verb
                 if test_code.startswith("python"):
                     test_code = test_code[6:]
             sandbox = run_pytest_in_sandbox(test_code, timeout=5)
+            # The generated test FAILS when the defect is present (see the prompt
+            # above), so a non-zero exit means the defect reproduced. Treating a
+            # passing test as "confirmed" inverted this: real defects landed in
+            # false_positives and a vacuous `assert True` counted as proof.
             if sandbox["ok"]:
-                confirmed.append({"cwe": cwe, "test_ok": True, "reason": sandbox["reason"]})
-            else:
                 false_positives.append({"cwe": cwe, "test_ok": False, "reason": sandbox["reason"]})
+            else:
+                confirmed.append({"cwe": cwe, "test_ok": True, "reason": sandbox["reason"]})
         except Exception as e:
             false_positives.append({"cwe": cwe, "test_ok": False, "reason": f"error: {e}"})
 
