@@ -4,9 +4,9 @@ Step by step, from an empty account to a working API behind TLS. Roughly 30
 minutes, most of it DNS propagation.
 
 Vishap is distributed through **PyPI** (`pip install vishap-analyzer`) and runs as a
-plain Python service under **systemd**. There is no container in the deployment
-path any more: the Dockerfile, Compose files and the image workflows were removed in
-v7, so a VPS install is `apt` for the services, `pip` for the app, `systemd` for the
+plain Python service under **systemd**. There is no container in the VPS
+deployment path: the repository still ships a `Dockerfile` and `docker-compose.yml`
+(the hosted demo on Render is built from the Dockerfile), but a VPS install is `apt` for the services, `pip` for the app, `systemd` for the
 process.
 
 > **Automated deployment is not wired up.** CI builds and publishes the Python

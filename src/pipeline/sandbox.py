@@ -2,13 +2,38 @@
 """Sandbox for generated pytest code (v7.3.14).
 
 WARNING: runs LLM-generated code. Use only with VISHAP_TESTER=1.
-Limits: 5s timeout, no network, isolated temp dir.
+Limits: short timeout, throw-away working directory, and a CLEAN environment: the child
+gets a short allow-list of variables, never the server's own (LLM key, CONVEYOR_API_KEY,
+DATABASE_URL, ...). NOT isolated: network and file system. Use it only for trusted
+material, or inside a container (see src/pipeline/sandbox_local.py).
 """
 import os
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+#: The only server variables the child may inherit: enough to start Python and find
+#: tools, nothing that carries a secret.
+_ENV_ALLOWLIST = (
+    "PATH", "PATHEXT", "COMSPEC", "SYSTEMROOT", "SYSTEMDRIVE", "WINDIR",
+    "HOME", "USERPROFILE", "APPDATA", "LOCALAPPDATA", "LANG", "LC_ALL", "TZ",
+)
+
+
+def _sandbox_env(tmp: str) -> dict:
+    """Environment for the sandboxed child: allow-listed variables plus sandbox markers."""
+    env = {name: os.environ[name] for name in _ENV_ALLOWLIST if name in os.environ}
+    env.update({
+        "VISHAP_SANDBOX": "1",
+        "TMPDIR": tmp, "TEMP": tmp, "TMP": tmp,
+        "PYTHONDONTWRITEBYTECODE": "1",
+        # network off by convention only (best-effort; subprocess cannot block it)
+        "http_proxy": "http://127.0.0.1:1", "https_proxy": "http://127.0.0.1:1",
+        "HTTP_PROXY": "http://127.0.0.1:1", "HTTPS_PROXY": "http://127.0.0.1:1",
+        "NO_PROXY": "",
+    })
+    return env
 
 
 def run_pytest_in_sandbox(test_code: str, timeout: int = 5) -> dict:
@@ -23,12 +48,7 @@ def run_pytest_in_sandbox(test_code: str, timeout: int = 5) -> dict:
     test_file = Path(tmp) / "test_generated.py"
     try:
         test_file.write_text(test_code, encoding="utf-8")
-        env = os.environ.copy()
-        env["VISHAP_SANDBOX"] = "1"
-        # disable network via env (best-effort; subprocess cannot fully block without container)
-        env["http_proxy"] = "http://127.0.0.1:1"
-        env["https_proxy"] = "http://127.0.0.1:1"
-        env["NO_PROXY"] = ""
+        env = _sandbox_env(tmp)
         cmd = [sys.executable, "-m", "pytest", str(test_file), "-q", "--no-header", "--tb=short"]
         kwargs = {}
         if os.name == "nt":
@@ -76,10 +96,7 @@ def apply_fix_and_verify(original_code: str, fixed_code: str, timeout: int = 10)
     }
     try:
         fixed_file.write_text(fixed_code, encoding="utf-8")
-        env = os.environ.copy()
-        env["VISHAP_SANDBOX"] = "1"
-        env["http_proxy"] = "http://127.0.0.1:1"
-        env["https_proxy"] = "http://127.0.0.1:1"
+        env = _sandbox_env(tmp)
         kwargs = {}
         if os.name == "nt":
             kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW

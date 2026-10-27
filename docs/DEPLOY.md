@@ -6,8 +6,10 @@ checklist (TLS, systemd, backups) lives in
 [`deploy/README.md`](../deploy/README.md) and
 [`docs/VPS-DEPLOY.md`](VPS-DEPLOY.md).
 
-> Docker support (Dockerfile, Compose files, image workflows) was removed in v7.
-> There is one install path: `pip`, and one process manager: `systemd`.
+> The repository also ships a `Dockerfile` and `docker-compose.yml` (the hosted demo on
+> Render is built from the Dockerfile; the `docker-build` workflow only checks that the
+> image builds and publishes nothing). The server install on this page is `pip` plus
+> `systemd` and does not use them.
 
 > **Automated deployment is not wired up.** CI publishes the Python package on a
 > `v*` tag (`publish.yml`). The steps below are manual.

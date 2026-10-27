@@ -1,8 +1,9 @@
 # Deployment
 
 Vishap is distributed through **PyPI** and runs as a plain Python service under
-**systemd**. Docker support (Dockerfile, Compose files, image workflows) was removed
-in v7 — one install path, one process manager.
+**systemd**. The repository also ships a `Dockerfile` and `docker-compose.yml` (the
+hosted demo on Render is built from the Dockerfile; the `docker-build` workflow only
+checks that the image builds and publishes nothing). The VPS install below does not use them.
 
 | Path | Use it for |
 | --- | --- |

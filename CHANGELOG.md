@@ -6,6 +6,10 @@ All notable changes to Vishap. Format based on [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+### Fixed (sandbox environment, deploy docs)
+- The test/fixer sandbox (`VISHAP_TESTER=1`, `VISHAP_FIXER=1`) no longer passes the server's environment to the code it runs: only a short allow-list of variables reaches the child, so the LLM key, `CONVEYOR_API_KEY` and `DATABASE_URL` stay out of its reach. Network and file system are still not isolated; use those flags only for trusted material.
+- Deploy docs no longer say Docker support was removed in v7: the `Dockerfile` and `docker-compose.yml` exist and the Render demo is built from the Dockerfile.
+
 ### Fixed (site usability sweep)
 - Hydration error #418: the upload form no longer reads browser storage during the first render; the navbar fallback no longer renders text that differs from the real navbar.
 - Report/history timestamps are timezone-aware UTC; the UI treats offset-less legacy stamps as UTC, so dates are no longer shifted.

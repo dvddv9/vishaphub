@@ -79,7 +79,7 @@
 
 ## Explicitly deferred
 
-- **Docker / compose / Docker Hub** — removed in v7.0 (slim). Local + `systemd` only.
+- **Docker Hub publishing** — not done (v7 ships through PyPI). The `Dockerfile` and `docker-compose.yml` exist and the Render demo builds from them; the `docker-build` workflow only checks the build.
 - **PyPI publish** — removed in v7.0 (`vishap-analyzer` project deleted on PyPI).
 - **Streamlit UI** — removed in v7.0 (single UI = `ui-next/`).
 - **Direct DeepSeek/OpenAI/Ollama calls** — removed in v7.0 (harness is the only path).

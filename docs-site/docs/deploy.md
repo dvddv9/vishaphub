@@ -1,8 +1,10 @@
 # Deploying Vishap
 
 Vishap ships as a Python package (`pip install vishap-analyzer`) and runs as a
-plain process under `systemd`. Docker support (Dockerfile, Compose files, image
-workflows) was removed in v7 — one install path, one process manager.
+plain process under `systemd`. The repository also ships a `Dockerfile` and
+`docker-compose.yml` (the hosted demo on Render is built from the Dockerfile; the
+`docker-build` workflow only checks that the image builds and publishes nothing). The
+VPS install below does not use them.
 
 The VPS-specific checklist (TLS, systemd unit, backups) lives in
 [`docs/VPS-DEPLOY.md`](https://github.com/dvddv9/vishap/blob/main/docs/VPS-DEPLOY.md).
