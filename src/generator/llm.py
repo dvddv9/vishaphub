@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import socket
 import urllib.error
 import urllib.parse
@@ -26,6 +27,8 @@ from dataclasses import dataclass, field
 DEFAULT_TIMEOUT = 60.0
 MAX_RESPONSE_BYTES = 5 * 1024 * 1024
 LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+MAX_KEY_LENGTH = 200
+KEY_RE = re.compile(r"^[\x21-\x7E]+$")  # printable ASCII, no spaces
 
 
 class LLMConfigError(ValueError):
@@ -75,6 +78,11 @@ def config_from_env(env: dict | None = None) -> LLMConfig:
     if not model:
         raise LLMConfigError("CUSTOM_LLM_MODEL is not set")
     key = env.get("CUSTOM_LLM_KEY", "").strip()
+    if key and (len(key) > MAX_KEY_LENGTH or not KEY_RE.match(key)):
+        raise LLMConfigError(
+            f"CUSTOM_LLM_KEY does not look like an API key (length {len(key)}; "
+            "it must be printable ASCII without spaces, at most "
+            f"{MAX_KEY_LENGTH} characters). Was something else in the clipboard?")
     if not key and urllib.parse.urlsplit(url).hostname not in LOCAL_HOSTS:
         raise LLMConfigError("CUSTOM_LLM_KEY is not set (only a localhost server may go without one)")
     return LLMConfig(url=url, model=model, key=key)

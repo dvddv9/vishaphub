@@ -178,6 +178,14 @@ class ConfigTests(unittest.TestCase):
                     config_from_env(dict(self.BASE, CUSTOM_LLM_KEY=key))
                 self.assertIn("CUSTOM_LLM_KEY is not set", str(cm.exception))
 
+    def test_key_that_is_not_a_key(self):
+        for key in ("sk-abc def", "sk-ключ", "x" * 201, "line1\nline2"):
+            with self.subTest(key=key[:20]):
+                with self.assertRaises(LLMConfigError) as cm:
+                    config_from_env(dict(self.BASE, CUSTOM_LLM_KEY=key))
+                self.assertIn("does not look like an API key", str(cm.exception))
+                self.assertNotIn(key, str(cm.exception))
+
     def test_key_may_be_empty(self):
         env = dict(self.BASE, CUSTOM_LLM_URL="http://localhost:11434/v1")
         del env["CUSTOM_LLM_KEY"]
