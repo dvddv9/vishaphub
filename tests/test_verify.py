@@ -7,6 +7,7 @@ from unittest import mock
 
 from tests.helpers import EXAMPLE
 
+from generator.analyzer import AnalyzerResult
 from generator.design import design
 from generator.intake import requirements_from
 from generator.spec import load_spec
@@ -99,13 +100,13 @@ TODAY = dt.date(2026, 10, 28)
 HAS_COVERAGE = importlib.util.find_spec("coverage") is not None
 
 
-def run(code=GOOD, tests=TESTS, today=TODAY, timeout=60):
+def run(code=GOOD, tests=TESTS, today=TODAY, timeout=60, analyzer=None):
     spec = load_spec(EXAMPLE)
     reqs = requirements_from(spec)
     d = design(spec, reqs)
     files = {"handlers/__init__.py": "", "handlers/user.py": code,
              "tests/__init__.py": "", "tests/test_user.py": tests}
-    return verify(spec, reqs, d, files, today=today, timeout=timeout)
+    return verify(spec, reqs, d, files, today=today, timeout=timeout, analyzer=analyzer)
 
 
 def status(result, rid):
@@ -177,6 +178,43 @@ class EndToEndTests(unittest.TestCase):
         res = run(tests="import no_such_module\n")
         self.assertTrue(any("could not load" in p or "no model test ran" in p
                             for p in res.problems), res.problems)
+
+
+class AnalyzerIntegrationTests(unittest.TestCase):
+    def test_not_asked_means_no_analyzer_block(self):
+        self.assertIsNone(run().analyzer)
+
+    def test_failed_analyzer_fails_the_code(self):
+        seen = {}
+
+        def fake(files):
+            seen.update(files)
+            return AnalyzerResult("failed", note="1 error")
+
+        res = run(analyzer=fake)
+        self.assertEqual(list(seen), ["handlers/user.py"])
+        self.assertEqual(res.code_verdict, "failed")
+        self.assertEqual(res.to_dict()["analyzer"]["status"], "failed")
+
+    def test_passed_analyzer_keeps_the_verdict(self):
+        self.assertEqual(run(analyzer=lambda f: AnalyzerResult("passed")).code_verdict, "passed")
+
+    def test_analyzer_error_needs_verification(self):
+        res = run(analyzer=lambda f: AnalyzerResult("error", note="timeout"))
+        self.assertEqual(res.code_verdict, "needs_verification")
+        self.assertTrue(any(p.startswith("analyzer:") for p in res.problems))
+
+    def test_skipped_analyzer_is_noted_not_blocking(self):
+        res = run(analyzer=lambda f: AnalyzerResult("skipped", note="command not found: vishap"))
+        self.assertEqual(res.code_verdict, "passed")
+        self.assertTrue(any("analyzer skipped" in n for n in res.notes))
+
+
+class NotesTests(unittest.TestCase):
+    def test_500_on_valid_input_is_noted(self):
+        code = GOOD.replace('    if name not in USERS:', '    raise RuntimeError("no db")\n    if name not in USERS:')
+        res = run(code=code)
+        self.assertTrue(any("valid input gave a server error" in n for n in res.notes), res.notes)
 
 
 class RuleTests(unittest.TestCase):

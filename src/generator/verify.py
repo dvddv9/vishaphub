@@ -26,9 +26,11 @@ import re
 import subprocess
 import sys
 import tempfile
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
+from .analyzer import AnalyzerResult
 from .build import TEST_NAME_RE
 from .design import DesignResult
 from .intake import Requirement
@@ -81,6 +83,8 @@ class VerifyResult:
     coverage_percent: float | None
     coverage_note: str
     problems: tuple[str, ...]
+    notes: tuple[str, ...] = ()
+    analyzer: AnalyzerResult | None = None
 
     @property
     def passed(self) -> int:
@@ -93,6 +97,8 @@ class VerifyResult:
             "coverage": {"status": self.coverage_status, "percent": self.coverage_percent,
                          "minimum": COVERAGE_MIN, "note": self.coverage_note},
             "problems": list(self.problems),
+            "notes": list(self.notes),
+            "analyzer": self.analyzer.to_dict() if self.analyzer else None,
             "requirements": [r.to_dict() for r in self.requirements],
         }
 
@@ -362,10 +368,12 @@ def _decide(evidence: list[Evidence]) -> tuple[str, str]:
 
 def verify(spec: Spec, requirements: tuple[Requirement, ...], design: DesignResult,
            files: dict[str, str], *, today: dt.date | None = None,
-           timeout: float = DEFAULT_TIMEOUT, python: str | None = None) -> VerifyResult:
+           timeout: float = DEFAULT_TIMEOUT, python: str | None = None,
+           analyzer: Callable[[dict[str, str]], AnalyzerResult] | None = None) -> VerifyResult:
     python = python or sys.executable
     today = today or dt.date.today()
     problems: list[str] = []
+    notes: list[str] = []
     evidence: dict[str, list[Evidence]] = {r.id: [] for r in requirements}
     item_of = _items_by_requirement(spec, requirements)
     planned = {f.path: files[f.path] for f in design.files if f.path in files}
@@ -440,6 +448,18 @@ def verify(spec: Spec, requirements: tuple[Requirement, ...], design: DesignResu
                     req = by_id[res["id"]]
                     status, detail = _judge(req, res, reject)
                     evidence[req["req"]].append(Evidence("attack", req["label"], status, detail))
+                    if status == "pass" and req["expect"] == "accept" and (
+                            res.get("error") or (res.get("status") or 0) >= 500):
+                        notes.append(f"{req['req']} '{req['label']}': valid input gave a server error "
+                                     f"({detail}); may only mean the sandbox has no database")
+
+    analyzer_result = None
+    if analyzer is not None and spec.data.get("check", "analyzer") == "analyzer":
+        analyzer_result = analyzer({p: files[p] for p in code_files})
+        if analyzer_result.status == "error":
+            problems.append(f"analyzer: {analyzer_result.note}")
+        elif analyzer_result.status == "skipped":
+            notes.append(f"analyzer skipped: {analyzer_result.note}")
 
     verdicts = []
     for r in requirements:
@@ -447,7 +467,7 @@ def verify(spec: Spec, requirements: tuple[Requirement, ...], design: DesignResu
         verdicts.append(RequirementVerdict(r.id, r.priority, status, tuple(evidence[r.id]), note))
 
     hard = [v for v in verdicts if v.priority in ("critical", "high")]
-    if any(v.status == "failed" for v in hard):
+    if any(v.status == "failed" for v in hard) or (analyzer_result and analyzer_result.status == "failed"):
         code_verdict = "failed"
     elif any(v.status != "passed" for v in hard) or coverage_status == "below" or problems:
         code_verdict = "needs_verification"
@@ -459,4 +479,5 @@ def verify(spec: Spec, requirements: tuple[Requirement, ...], design: DesignResu
         requirements=tuple(verdicts), code_verdict=code_verdict,
         spec_stale=age > STALE_DAYS, spec_age_days=age,
         coverage_status=coverage_status, coverage_percent=coverage_percent,
-        coverage_note=coverage_note, problems=tuple(problems))
+        coverage_note=coverage_note, problems=tuple(problems),
+        notes=tuple(notes), analyzer=analyzer_result)
