@@ -21,7 +21,7 @@ MAX_RULE_TEXT = 500
 KNOWN_KEYS = frozenset({
     "version", "updated", "text", "target", "kind", "output",
     "inputs", "outputs", "profile", "constraints",
-    "must_never", "should", "may", "check", "caller",
+    "must_never", "should", "may", "check", "caller", "route",
 })
 REQUIREMENT_LISTS = ("inputs", "outputs", "must_never", "should", "may")
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
@@ -34,6 +34,7 @@ CONSTRAINTS = frozenset({"include-tests", "validate-inputs", "no-dependencies", 
 CALLERS = frozenset({"public", "signed-in", "internal"})
 MAX_OUTPUT_PATH = 200
 DRIVE_RE = re.compile(r"^[A-Za-z]:")
+ROUTE_RE = re.compile(r"^(GET|POST|PUT|PATCH|DELETE) (/[A-Za-z0-9_\-./{}<>:]*)$")
 
 ITEM_KEYS = {
     "inputs": frozenset({"name", "in", "rule"}),
@@ -132,6 +133,11 @@ def _check_top_level(data: dict, root: yaml.MappingNode) -> None:
 
     if "output" in data:
         _check_output_path(data["output"], _key_line(root, "output"))
+
+    if "route" in data:
+        if not isinstance(data["route"], str) or not ROUTE_RE.match(data["route"]):
+            raise SpecError("route", _key_line(root, "route"),
+                            "must look like: GET /user")
 
     if "constraints" in data:
         cons = data["constraints"]

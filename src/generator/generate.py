@@ -69,6 +69,8 @@ def build_messages(spec: Spec, requirements: tuple[Requirement, ...],
     data = spec.data
     lines.append("TARGET: " + str(data.get("target", "not given")))
     lines.append("KIND: " + str(data.get("kind", "not given")))
+    if data.get("route"):
+        lines.append("ROUTE: " + str(data["route"]))
     if data.get("caller"):
         lines.append("CALLER: " + str(data["caller"]))
     if data.get("profile"):

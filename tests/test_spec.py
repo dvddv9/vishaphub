@@ -118,6 +118,13 @@ class LoadSpecTests(unittest.TestCase):
         load_spec(write_spec(BASE + "caller: signed-in\n"))
         self.assert_error(BASE + "caller: anyone\n", "caller")
 
+    def test_route(self):
+        load_spec(write_spec(BASE + "route: GET /user\n"))
+        load_spec(write_spec(BASE + "route: POST /users/{id}\n"))
+        for bad in ("user", "GET user", "FETCH /user", "GET /user now"):
+            with self.subTest(bad=bad):
+                self.assert_error(BASE + f"route: {bad}\n", "route")
+
     def test_key_lines(self):
         spec = load_spec(write_spec(BASE))
         self.assertEqual(spec.key_lines["version"], 1)

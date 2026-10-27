@@ -7,13 +7,18 @@ from generator.spec import load_spec
 
 
 class DesignTests(unittest.TestCase):
-    def test_example_plans_three_files(self):
+    def test_example_plans_four_files(self):
         res = design(load_spec(EXAMPLE))
         self.assertEqual([(f.path, f.role) for f in res.files], [
             ("handlers/__init__.py", "package"),
             ("handlers/user.py", "code"),
+            ("tests/__init__.py", "package"),
             ("tests/test_user.py", "test"),
         ])
+
+    def test_route_is_in_the_interface(self):
+        code = [f for f in design(load_spec(EXAMPLE)).files if f.role == "code"][0]
+        self.assertIn("route: GET /user", code.interface)
 
     def test_example_gaps_come_with_the_design(self):
         res = design(load_spec(EXAMPLE))
@@ -37,7 +42,7 @@ class DesignTests(unittest.TestCase):
         text = BASE + "target: python/flask\nkind: function\noutput: app/api/users.py\n"
         res = design(load_spec(write_spec(text)))
         self.assertEqual([f.path for f in res.files if f.role == "package"],
-                         ["app/__init__.py", "app/api/__init__.py"])
+                         ["app/__init__.py", "app/api/__init__.py", "tests/__init__.py"])
 
     def test_signed_in_caller_adds_auth(self):
         text = BASE + "target: python/flask\nkind: http-endpoint\noutput: h.py\ncaller: signed-in\n"
@@ -64,7 +69,7 @@ class DesignTests(unittest.TestCase):
 
     def test_to_dict(self):
         d = design(load_spec(EXAMPLE)).to_dict()
-        self.assertEqual(len(d["files"]), 3)
+        self.assertEqual(len(d["files"]), 4)
         self.assertEqual(len(d["gaps"]), 1)
 
 

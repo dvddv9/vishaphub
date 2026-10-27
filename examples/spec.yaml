@@ -32,3 +32,4 @@ must_never:
     text: "Raw input is never logged"
 
 check: analyzer
+route: GET /user

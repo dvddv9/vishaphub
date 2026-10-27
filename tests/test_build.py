@@ -58,6 +58,7 @@ def good_files():
     return {
         "handlers/__init__.py": "",
         "handlers/user.py": CODE,
+        "tests/__init__.py": "",
         "tests/test_user.py": TESTS,
     }
 

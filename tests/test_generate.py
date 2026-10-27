@@ -22,6 +22,7 @@ def good_answer():
     return json.dumps({"files": {
         "handlers/__init__.py": "",
         "handlers/user.py": CODE,
+        "tests/__init__.py": "",
         "tests/test_user.py": TESTS,
     }})
 
@@ -43,7 +44,7 @@ class GenerateTests(unittest.TestCase):
         res = generate_code(spec, reqs, d, chat_fn=FakeModel(good_answer()))
         self.assertTrue(res.ok, res.check.to_dict())
         self.assertEqual(set(res.files), {"handlers/__init__.py", "handlers/user.py",
-                                          "tests/test_user.py"})
+                                          "tests/__init__.py", "tests/test_user.py"})
 
     def test_fenced_json_is_accepted(self, _w):
         spec, reqs, d = setup()
@@ -99,6 +100,7 @@ class PromptTests(unittest.TestCase):
         self.assertIn("<<<SPEC", user)
         self.assertIn("GET /user returns one user", user)
         self.assertIn("CALLER: public", user)
+        self.assertIn("ROUTE: GET /user", user)
 
     def test_system_rules(self):
         spec, reqs, d = setup()

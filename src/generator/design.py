@@ -77,6 +77,8 @@ def _interface(spec: Spec) -> str:
     ins = ", ".join(f"{i['name']} ({i['in']})" for i, _ in spec.items.get("inputs", []))
     outs = ", ".join(str(o["status"]) for o, _ in spec.items.get("outputs", []))
     parts = [data.get("kind", "unknown kind")]
+    if data.get("route"):
+        parts.append(f"route: {data['route']}")
     if ins:
         parts.append(f"inputs: {ins}")
     if outs:
@@ -115,6 +117,11 @@ def design(spec: Spec, requirements: tuple[Requirement, ...] | None = None) -> D
 
         if target.startswith("python/"):
             names = ", ".join(f"test_{r.id.lower()}" for r in tested)
+            files.append(FilePlan(
+                path="tests/__init__.py", role="package",
+                interface="package marker, so python -m unittest finds the tests",
+                requirements=(), measures=(), library_check=(),
+            ))
             files.append(FilePlan(
                 path=f"tests/test_{out_path.stem}.py", role="test",
                 interface=f"tests: {names}" if names else "tests: none",
