@@ -274,6 +274,19 @@ h1, h2, h3 { margin: 0; line-height: 1.15; letter-spacing: -0.02em; }
 .install .code-plain { font-size: 0.9rem; }
 .install .fine { margin-top: 14px; }
 
+/* ---------- reviews (only real ones, from assets/reviews.json) ---------- */
+.reviews { margin: 24px 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+@media (min-width: 760px) { .reviews { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1000px) { .reviews { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.reviews[hidden], .reviews-empty[hidden] { display: none; }
+.review { display: flex; flex-direction: column; gap: 16px; padding: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.review blockquote { margin: 0; flex: 1; }
+.review blockquote p { margin: 0; }
+.review-by { font-size: 0.92rem; color: var(--muted); }
+.review-by strong { color: var(--ink); font-weight: 650; }
+.reviews-empty { margin-top: 20px; padding: 12px 16px; border: 1px solid var(--line); border-left: 4px solid var(--brand); border-radius: 8px; background: var(--surface); }
+.reviews-cta { margin-top: 20px; }
+
 .closer { padding: 56px 0; background: var(--surface); border-top: 1px solid var(--line); }
 .closer-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px 32px; }
 .closer h2 { max-width: 18em; }
