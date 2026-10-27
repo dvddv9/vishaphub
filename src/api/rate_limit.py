@@ -115,7 +115,14 @@ def _check_daily(key: str, limit: int, peek_only: bool = False) -> None:
 
 
 async def rate_limit_daily(request: Request) -> None:
-    """Per-visitor day cap (by client IP) AND a global ceiling for everybody."""
+    """Per-visitor day cap (by client IP) AND a global ceiling for everybody.
+
+    A caller who brings their own LLM key (``X-LLM-Api-Key``) pays for the call
+    themselves, so the operator's caps do not apply to them — only the per-minute
+    limiter above still does.
+    """
+    if (request.headers.get("x-llm-api-key") or "").strip():
+        return
     global_cap = _env_int("VISHAP_DAILY_LIMIT_GLOBAL", 30)
     if global_cap:
         _check_daily("daily:global", global_cap, peek_only=True)
