@@ -141,6 +141,12 @@ ul.tight { margin:.4rem 0; padding-left:1.1rem; font-size:.875rem; color:var(--s
 
 /* progress */
 .progress { display:flex; align-items:center; gap:.75rem; }
+.steps { list-style:none; display:flex; flex-wrap:wrap; gap:.4rem; margin:.75rem 0 0; padding:0; }
+.step { border:1px solid var(--s300); border-radius:999px; padding:.2rem .7rem; font-size:.78rem; color:var(--s500); }
+.step.done { border-color:var(--ok); color:var(--ok); }
+.step.now { border-color:var(--sky); color:var(--foreground); font-weight:600; }
+.livelog { margin:.6rem 0 0; max-height:14rem; overflow:auto; font:12px/1.5 var(--mono); white-space:pre-wrap; word-break:break-word; background:var(--surface); border:1px solid var(--border); border-radius:.5rem; padding:.6rem .8rem; }
+.livelog:empty { display:none; }
 .spin { width:1rem; height:1rem; border:2px solid var(--s300); border-top-color:var(--sky); border-radius:50%; animation:spin .8s linear infinite; }
 @keyframes spin { to { transform:rotate(360deg); } }
 
@@ -230,6 +236,31 @@ async function api(path, body) {
   let data = {};
   try { data = await res.json(); } catch (e) { /* not JSON */ }
   return { ok: res.ok, status: res.status, data };
+}
+
+/* A generate run as a job: start it, poll for the stage and the new log lines, resolve with the same
+   {ok, status, data} shape as api(). A server without /api/generate/async (404) falls back to the one-call answer. */
+const STAGE_NAMES = ["Intake", "Design", "Build", "Verify", "Deliver"];
+async function runJob(body, onUpdate) {
+  const start = await api("/api/generate/async", body);
+  if (start.status === 404) return api("/api/generate", body);
+  if (start.status !== 202) return start;
+  const id = start.data.job;
+  let since = 0, failures = 0;
+  for (;;) {
+    await new Promise((r) => setTimeout(r, 1000));
+    let r;
+    try { r = await api("/api/jobs/" + encodeURIComponent(id) + "?since=" + since); failures = 0; }
+    catch (e) { if (++failures >= 5) return { ok: false, status: 0, data: { error: "lost the server while the run was going: " + e } }; continue; }
+    if (!r.ok) return r;
+    const j = r.data;
+    since = j.log_total;
+    onUpdate(j);
+    if (j.status === "done" || j.status === "failed") {
+      const st = j.http_status || (j.status === "done" ? 200 : 500);
+      return { ok: st < 400, status: st, data: j.result || { error: j.error || "the run failed" } };
+    }
+  }
 }
 
 /* ---------- theme + navbar ---------- */
@@ -434,12 +465,27 @@ function pageGenerate(query) {
     const t0 = Date.now();
     const timer = el("span", { class: "muted" }, "0 s");
     const iv = setInterval(() => (timer.textContent = Math.floor((Date.now() - t0) / 1000) + " s"), 500);
-    out.append(el("div", { class: "card progress", role: "status" }, el("div", { class: "spin" }), el("span", null, mode === "check" ? "Checking the spec…" : "Running the five stages. A model run takes a few minutes, with repair rounds longer. "), timer));
+    const steps = STAGE_NAMES.map((n) => el("li", { class: "step" }, n));
+    const livelog = el("pre", { class: "livelog", "aria-live": "polite" });
+    const note = el("span", null, mode === "check" ? "Checking the spec…" : "Running the five stages. A model run takes a few minutes, with repair rounds longer. ");
+    out.append(el("div", { class: "card progress", role: "status" }, el("div", { class: "spin" }), note, timer));
+    if (mode !== "check") out.append(el("ol", { class: "steps", "aria-label": "Stages" }, steps), livelog);
+    const mark = (stage, repairing) => {
+      const at = Math.max(0, STAGE_NAMES.indexOf(stage === "Repair" ? "Build" : stage));
+      steps.forEach((li, i) => { li.className = "step" + (i < at ? " done" : i === at ? " now" : ""); });
+      note.textContent = stage ? "Stage " + (at + 1) + " of 5: " + STAGE_NAMES[at] + (repairing ? " (repair round)" : "") + ". " : note.textContent;
+    };
     app.draft = { spec: spec.value, options: { ...opts } };
     const body = { spec: spec.value, gate: opts.gate, require_coverage: opts.requireCov, repairs: Number(opts.repairs), no_analyzer: opts.noAnalyzer, text_check: !opts.noText };
     if (mode === "run") { const l = llmForRequest(); if (l) body.llm = l; }
     let res;
-    try { res = await api(mode === "check" ? "/api/check" : "/api/generate", body); }
+    try {
+      res = mode === "check" ? await api("/api/check", body) : await runJob(body, (j) => {
+        if (j.stage) mark(j.stage, j.stage === "Repair");
+        if (j.log.length) livelog.textContent += (livelog.textContent ? "\n" : "") + j.log.join("\n");
+        livelog.scrollTop = livelog.scrollHeight;
+      });
+    }
     catch (e) { res = { ok: false, status: 0, data: { error: "could not reach the server: " + e } }; }
     clearInterval(iv);
     [runBtn, checkBtn].forEach((b) => (b.disabled = false));

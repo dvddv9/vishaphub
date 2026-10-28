@@ -71,6 +71,9 @@ def cmd_generate(args) -> int:
         _write_file(args.json, json.dumps(res.to_dict(), indent=2, ensure_ascii=False) + "\n")
     if args.sarif:
         _write_file(args.sarif, json.dumps(to_sarif(res, spec_file.name), indent=2) + "\n")
+    if args.report:
+        from generator.tools.report import render_markdown
+        _write_file(args.report, render_markdown(res, spec_file.name))
     return res.exit_code
 
 
@@ -285,6 +288,7 @@ def build_parser() -> argparse.ArgumentParser:
                    help="with --gate: coverage that could not be measured (no `coverage` package) blocks too")
     g.add_argument("--json", metavar="FILE", help="write the full result as JSON")
     g.add_argument("--sarif", metavar="FILE", help="write SARIF 2.1.0 for the result")
+    g.add_argument("--report", metavar="FILE", help="write a Markdown report of the run")
     g.set_defaults(func=cmd_generate)
 
     i = sub.add_parser("init", help="write a starting spec.yaml")

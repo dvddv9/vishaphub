@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from generator.tools.report import render_markdown
+
 
 def report(res, log: list[str]) -> dict:
     out = res.to_dict()
     out["log"] = log
+    out["markdown"] = render_markdown(res)
     if res.files and res.design:
         planned = {f.path for f in res.design.files}
         out["files"] = {p: c for p, c in res.files.items() if p in planned}

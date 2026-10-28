@@ -140,6 +140,19 @@ class CliCommandTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("no spec files", err)
 
+    def test_generate_report_file(self):
+        import functools
+        from unittest import mock
+        spec = self.root / "spec.yaml"
+        shutil.copy(CLEAN_SPEC, spec)
+        real = functools.partial(run_pipeline, chat_fn=Stub(answer(GOOD)), today=TODAY)
+        with mock.patch.object(cli, "run_pipeline", real), mock.patch.object(cli, "_default_analyzer", lambda: None):
+            code, out, err = self.run_cli("generate", str(spec), "--out", str(self.root / "o"),
+                                          "--report", str(self.root / "r.md"))
+        self.assertEqual(code, 0, err)
+        self.assertIn("usage       2 model call(s)", out)
+        self.assertIn("**Verdict:** PASSED", (self.root / "r.md").read_text())
+
     def test_usage_line(self):
         line = cli.usage_line({"llm_calls": 3, "tokens_in": 100, "tokens_out": 50, "cost_usd": 0.0123,
                                "duration_s": 4.25})
