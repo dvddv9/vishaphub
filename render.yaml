@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: vishap-hub
+    runtime: docker
+    plan: free
+    region: frankfurt
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: VISHAP_ANALYSER_URL
+        value: https://vishap-zwpx.onrender.com
+      - key: VISHAP_GENERATOR_URL
+        sync: false
+      - key: VISHAP_VALIDATOR_CMD
+        value: python -m validator.cli
