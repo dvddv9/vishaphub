@@ -37,3 +37,4 @@ opentelemetry-instrumentation-fastapi>=0.46b0
 opentelemetry-instrumentation-celery>=0.46b0
 opentelemetry-exporter-otlp>=1.25.0
 slowapi>=0.1.9
+vishap-core @ git+https://github.com/dvddv9/vishap-core.git@main
