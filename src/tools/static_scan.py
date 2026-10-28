@@ -18,6 +18,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from src.tools.patterns import TEMPLATE_VALUE   # "{x}", "%s", "$x" are templates, not secrets
+
 MAX_LINE = 600          # longer lines are cut before matching (regex DoS guard)
 MAX_FINDINGS = 200
 
@@ -139,7 +141,7 @@ RULES: tuple[Rule, ...] = (
        r"""-----BEGIN (RSA |EC |OPENSSH |DSA |ENCRYPTED )?PRIVATE KEY-----""",
        "Remove and rotate the key; store keys in a secret manager.", secret=True),
     _r("secret-hardcoded", "Hard-coded password / secret", "high", "CWE-798",
-       r"""(?i)\b(passwd|password|pwd|secret|api[_-]?key|access[_-]?key|auth[_-]?token|token)\b\s*[:=]\s*["'][^"'\s]{6,}["']""",
+       r"""(?i)\b(passwd|password|pwd|secret|api[_-]?key|access[_-]?key|auth[_-]?token|token)\b\s*[:=]\s*["'](?!""" + TEMPLATE_VALUE + r""")[^"'\s]{6,}["']""",
        "Read secrets from the environment or a secret manager; never commit them.", secret=True),
     # ---- configuration ----------------------------------------------------
     _r("debug-on", "Debug mode enabled", "medium", "CWE-489",
@@ -167,8 +169,11 @@ RULES: tuple[Rule, ...] = (
        r"""\bredirect\s*\(\s*(request\.|req\.|url\b|next\b)|res\.redirect\s*\(\s*req\.""",
        "Validate the target against an allow-list of relative paths or hosts."),
     _r("sql-star", "SELECT * returns every column", "low", "CWE-200",
-       r"""(?i)\bselect\s+\*\s+from\b""",
+       r"""(?i)\bselect\s+\*\s+from\b(?!\s+(?:users?|accounts?|credentials?|customers?|members?)\b)""",
        "Select only the columns you need (avoid leaking password hashes and PII)."),
+    _r("sql-star-credentials", "SELECT * on a user table also returns the password column", "medium", "CWE-200",
+       r"""(?i)\bselect\s+\*\s+from\s+(?:users?|accounts?|credentials?|customers?|members?)\b""",
+       "List the columns explicitly and never select the password / hash column into a response or an export."),
     # ---- memory safety (C / C++) -----------------------------------------
     _r("c-gets", "gets() - unbounded read", "critical", "CWE-242",
        r"""\bgets\s*\(""", "Use fgets with a size limit.", _C),
@@ -264,7 +269,7 @@ _SECURITY_EXTRA: tuple[Rule, ...] = (
        "lets file=/etc/passwd replace the base directory.", _PY),
     _r("secret-hardcoded-named", "Hard-coded secret in a *_KEY / *_SECRET variable", "high", "CWE-798",
        r"""(?i)\b(?!(?:passwd|password|pwd|secret|api[_-]?key|access[_-]?key|auth[_-]?token|token)\b)"""
-       r"""\w*(?:secret|api_?key|access_?key|private_?key|auth_?token|passw(?:or)?d)\w*\s*[:=]\s*["'][^"'\s]{6,}["']""",
+       r"""\w*(?:secret|api_?key|access_?key|private_?key|auth_?token|passw(?:or)?d)\w*\s*[:=]\s*["'](?!""" + TEMPLATE_VALUE + r""")[^"'\s]{6,}["']""",
        "Read it from the environment or a secret manager and rotate the committed value.", secret=True),
 )
 
@@ -370,6 +375,48 @@ def _snippet(line: str, rule: Rule, m: re.Match) -> str:
     return s[:160]
 
 
+_DEF = re.compile(r"^\s*(?:async\s+)?def\s+(\w+)|^\s*(?:export\s+)?(?:async\s+)?function\s+(\w+)|^\s*class\s+(\w+)")
+
+
+def collapse_repeats(findings: list, lines: list) -> int:
+    """Merge findings with the same rule, the same code and the same enclosing function.
+
+    This is what a file pasted twice (or three times) produces: every finding triples. The first one
+    is kept, ``also_at`` lists where the copies are, and the return value is how many were merged.
+    Two *different* functions with an identical line stay separate.
+    """
+    headers = []
+    for i, raw in enumerate(lines, start=1):
+        m = _DEF.match(raw)
+        if m:
+            headers.append((i, next(g for g in m.groups() if g)))
+
+    def scope(line: int) -> str:
+        text = lines[line - 1] if 0 < line <= len(lines) else ""
+        if text[:1] not in (" ", "\t"):
+            return ""            # column 0 = module level, whatever function came before it
+        name = ""
+        for ln, nm in headers:
+            if ln > line:
+                break
+            name = nm
+        return name
+
+    kept: dict = {}
+    drop = []
+    for f in sorted(findings, key=lambda x: x["line"]):
+        key = (f["id"], re.sub(r"\s+", " ", f.get("snippet", ""))[:60], scope(f["line"]))   # a glued-on tail must not hide a copy
+        first = kept.get(key)
+        if first is None:
+            kept[key] = f
+        else:
+            first.setdefault("also_at", []).append(f["line"])
+            drop.append(f)
+    for f in drop:
+        findings.remove(f)
+    return len(drop)
+
+
 def scan_material(material: str, filename: str = "") -> dict:
     """Scan submitted text. Never raises; always returns a result dict."""
     material = material or ""
@@ -436,13 +483,21 @@ def scan_material(material: str, filename: str = "") -> dict:
             findings.append(f)
     except Exception:
         routes = []
+    merged = 0
+    try:
+        merged = collapse_repeats(findings, material.splitlines())
+    except Exception:
+        merged = 0
     findings.sort(key=lambda f: (SEV_ORDER.get(f["severity"], 9), f["line"]))
     try:   # stable identity: survives line shifts, drives baselines, diffs and SARIF alerts
         from src.tools.findings_diff import assign_fingerprints
         assign_fingerprints(findings, filename)
     except Exception:
         pass
-    return _result(lang, findings, flow, routes=routes)
+    result = _result(lang, findings, flow, routes=routes)
+    if merged:
+        result["repeats_collapsed"] = merged   # the same code was submitted more than once
+    return result
 
 
 def to_rules_view(findings: list) -> list:

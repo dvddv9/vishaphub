@@ -6,6 +6,15 @@ All notable changes to Vishap. Format based on [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+### Fixed / Added (a blind `user_service.py` run exposed these, 2026-10-28)
+- **A quoted template is no longer a secret.** `password = '{new_password}'` inside an f-string SQL, `%s`, `:name` and `${X}` were matched by `secret-hardcoded`, `hardcoded_password` and `hardcoded_secret`. The scan reported a false "hard-coded password", and `redact_pii` blanked part of the query before the model saw it ("the SET clause is redacted"). Both patterns now skip templates (`TEMPLATE_VALUE` in `src/tools/patterns.py`).
+- **Redaction keeps the variable name.** `API_KEY = "sk_live_..."` becomes `API_KEY = "<STRIPE_LIVE_KEY_REDACTED>"` instead of `<SECRET_REDACTED>`, so the model no longer concludes that `API_KEY` is undefined (NameError). Idempotent.
+- **Taint flow names the source that reaches the sink** (a function argument or a source call assigned on the way), not the first `os.environ` read in the file.
+- **Checks for plain service functions** (`src/tools/route_checklist.py`, no HTTP handler needed): `func-amount-no-bounds` (a negative `amount` reverses a transfer), `func-check-then-act` (race), `func-read-modify-write` (lost update), `func-unchecked-rowcount`; `SELECT *` on a user table is its own medium rule, `sql-star-credentials`. Rule engine alone on `blind/user_service.py`: 10 -> 17 of 27 bugs.
+- **A file pasted more than once is reported once**: findings with the same rule, code and enclosing function are merged (`also_at` lists the copies, `repeats_collapsed` counts them).
+- **Focused logic pass** (`src/pipeline/multipass.py`, `vishap/02b_logic.md`, `src/tools/chunker.py`): after Stage 2 the code is cut into chunks of a few functions (with the module header and original line numbers) and a narrow prompt looks for logic, money and boundary bugs; its findings are merged into `security.findings` as `LOG-n` without duplicating Stage 2's. One extra model call per chunk (at most 6, run concurrently); `VISHAP_MULTIPASS=0` switches it off; a failing chunk never breaks Stage 2.
+- Benchmark: `blind/user_service.py` with 27 bugs (the list was written by the assistant from a review, not by the file's author).
+
 ### Changed (Claude extension runs the real engine)
 - **`vishap_analyze` in the Claude extension (`claude-plugin-anthropic`, 7.5.0) is no longer a single Claude call.** It runs Vishap's rule engine locally (security and logic rules, per-handler checklist), optionally proves findings by running the Flask handlers in isolation (`VISHAP_PROVE` setting; bubblewrap on Linux, WSL on Windows), gives Claude the findings and the ten-point handler checklist, and puts the proven findings first and the engine's table last. Without an API key it still returns the engine's result. `python claude-plugin-anthropic/build.py` copies the engine into the bundle and builds the `.mcpb`.
 - **Money in float** is a logic rule (`logic-money-float`, `logic-js-money-float`): `float(...price...)`, `total = round(...)`, `parseFloat(...amount...)`; lines that use `Decimal` are skipped.

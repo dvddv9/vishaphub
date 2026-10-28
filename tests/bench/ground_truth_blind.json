@@ -1,8 +1,9 @@
 {
- "note": "Blind benchmark: no comment in the code says it is vulnerable. 'rules' lists the built-in rules that are expected to catch the bug today; an empty list means the rule engine cannot see it and a model has to. The rules were NOT written for this file.",
+ "note": "Blind benchmark: no comment in the code says it is vulnerable. 'rules' lists the built-in rules that are expected to catch the bug today; an empty list means the rule engine cannot see it and a model has to. The rules were NOT written for this file. user_service.py: the bug list U01-U27 was written by the assistant from its own review of the file, not by the file's author; treat misses as a prompt to check the list as well as the tool.",
  "files": [
   "shop_service.py",
-  "orders_service.py"
+  "orders_service.py",
+  "user_service.py"
  ],
  "dir": "blind",
  "bugs": [
@@ -695,6 +696,519 @@
     "nonexistent order",
     "non-existent order",
     "order exists"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U01",
+   "title": "SQL injection in create_user (f-string query, three fields)",
+   "file": "user_service.py",
+   "lines": [
+    21
+   ],
+   "kind": "security",
+   "rules": [
+    "taint-flow"
+   ],
+   "keywords": [
+    "create_user"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U02",
+   "title": "SQL injection in get_user",
+   "file": "user_service.py",
+   "lines": [
+    29
+   ],
+   "kind": "security",
+   "rules": [
+    "sqli-fstring"
+   ],
+   "keywords": [
+    "get_user"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U03",
+   "title": "SQL injection in get_user_profile",
+   "file": "user_service.py",
+   "lines": [
+    64
+   ],
+   "kind": "security",
+   "rules": [
+    "sqli-fstring"
+   ],
+   "keywords": [
+    "get_user_profile"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U04",
+   "title": "SQL injection in reset_password via new_password",
+   "file": "user_service.py",
+   "lines": [
+    72
+   ],
+   "kind": "security",
+   "rules": [
+    "sqli-fstring"
+   ],
+   "keywords": [
+    "reset_password"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U05",
+   "title": "SQL injection in export_user_data",
+   "file": "user_service.py",
+   "lines": [
+    81
+   ],
+   "kind": "security",
+   "rules": [
+    "sqli-fstring"
+   ],
+   "keywords": [
+    "export_user_data"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U06",
+   "title": "SQL injection in delete_user",
+   "file": "user_service.py",
+   "lines": [
+    111
+   ],
+   "kind": "security",
+   "rules": [
+    "sqli-fstring"
+   ],
+   "keywords": [
+    "delete_user"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U07",
+   "title": "SQL injection in bulk_update_users",
+   "file": "user_service.py",
+   "lines": [
+    120
+   ],
+   "kind": "security",
+   "rules": [
+    "sqli-fstring"
+   ],
+   "keywords": [
+    "bulk_update_users"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U08",
+   "title": "Live Stripe key hard-coded",
+   "file": "user_service.py",
+   "lines": [
+    8
+   ],
+   "kind": "security",
+   "rules": [
+    "secret-token",
+    "secret-hardcoded"
+   ],
+   "keywords": [
+    "stripe",
+    "hard-coded",
+    "hardcoded"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U09",
+   "title": "API key written to the log",
+   "file": "user_service.py",
+   "lines": [
+    89
+   ],
+   "kind": "security",
+   "rules": [],
+   "keywords": [
+    "logged",
+    "log line",
+    "logger",
+    "written to log",
+    "in logs"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U10",
+   "title": "Command injection through os.system with message and email",
+   "file": "user_service.py",
+   "lines": [
+    138
+   ],
+   "kind": "security",
+   "rules": [
+    "cmd-injection-py"
+   ],
+   "keywords": [
+    "os.system",
+    "command injection",
+    "shell"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U11",
+   "title": "Password reset: hard-coded token and it always resets user id 1 (admin)",
+   "file": "user_service.py",
+   "lines": [
+    69,
+    70,
+    71,
+    72
+   ],
+   "kind": "security",
+   "rules": [],
+   "keywords": [
+    "reset-secret-token",
+    "hard-coded token",
+    "static token",
+    "id=1",
+    "id = 1",
+    "admin"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U12",
+   "title": "get_user_profile gives admin data for user_id == 1 (backdoor, type confusion)",
+   "file": "user_service.py",
+   "lines": [
+    60,
+    61
+   ],
+   "kind": "security",
+   "rules": [],
+   "keywords": [
+    "user_id == 1",
+    "backdoor",
+    "type confusion",
+    "hard-coded admin",
+    "god-mode"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U13",
+   "title": "Passwords stored in plain text",
+   "file": "user_service.py",
+   "lines": [
+    20
+   ],
+   "kind": "security",
+   "rules": [],
+   "keywords": [
+    "plaintext",
+    "plain text",
+    "plain-text",
+    "hash",
+    "argon",
+    "bcrypt"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U14",
+   "title": "transfer_funds accepts a negative amount: steals from the recipient",
+   "file": "user_service.py",
+   "lines": [
+    51,
+    52
+   ],
+   "kind": "logic",
+   "rules": [
+    "func-amount-no-bounds"
+   ],
+   "keywords": [
+    "negative amount",
+    "negative",
+    "amount > 0",
+    "amount <= 0"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U15",
+   "title": "transfer_funds: balance checked, then written (race / overdraft)",
+   "file": "user_service.py",
+   "lines": [
+    51,
+    52
+   ],
+   "kind": "logic",
+   "rules": [
+    "func-check-then-act"
+   ],
+   "keywords": [
+    "race",
+    "toctou",
+    "double-spend",
+    "double spend",
+    "atomic",
+    "begin immediate"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U16",
+   "title": "transfer_funds: unknown recipient or same id destroys or duplicates money",
+   "file": "user_service.py",
+   "lines": [
+    51,
+    52
+   ],
+   "kind": "logic",
+   "rules": [
+    "func-unchecked-rowcount"
+   ],
+   "keywords": [
+    "nonexistent",
+    "non-existent",
+    "unknown recipient",
+    "self-transfer",
+    "from==to",
+    "from_user != to_user",
+    "rowcount"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U17",
+   "title": "update_balance reads, changes in Python, writes back (lost update)",
+   "file": "user_service.py",
+   "lines": [
+    40
+   ],
+   "kind": "logic",
+   "rules": [
+    "func-read-modify-write"
+   ],
+   "keywords": [
+    "lost update",
+    "read-modify-write",
+    "race"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U18",
+   "title": "update_balance: any amount, any user, no check",
+   "file": "user_service.py",
+   "lines": [
+    40
+   ],
+   "kind": "logic",
+   "rules": [
+    "func-amount-no-bounds"
+   ],
+   "keywords": [
+    "unbounded",
+    "any amount",
+    "credits themselves",
+    "arbitrary amount",
+    "no authorization"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U19",
+   "title": "get_user: fetchone() is None for an unknown id (TypeError)",
+   "file": "user_service.py",
+   "lines": [
+    30,
+    31
+   ],
+   "kind": "logic",
+   "rules": [],
+   "keywords": [
+    "get_user crash",
+    "get_user:",
+    "typeerror",
+    "none check"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U20",
+   "title": "get_admin_stats never checks admin_id",
+   "file": "user_service.py",
+   "lines": [
+    125,
+    126,
+    127,
+    128,
+    129
+   ],
+   "kind": "security",
+   "rules": [],
+   "keywords": [
+    "get_admin_stats",
+    "admin_id"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U21",
+   "title": "No authorization or ownership check in any function (IDOR)",
+   "file": "user_service.py",
+   "lines": [
+    17,
+    26,
+    34,
+    45,
+    58,
+    78,
+    108,
+    116
+   ],
+   "kind": "security",
+   "rules": [],
+   "keywords": [
+    "idor",
+    "no authorization",
+    "no authentication",
+    "ownership",
+    "no auth"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U22",
+   "title": "check_subscription: naive vs aware datetime, NULL or bad date",
+   "file": "user_service.py",
+   "lines": [
+    104,
+    105
+   ],
+   "kind": "logic",
+   "rules": [],
+   "keywords": [
+    "naive",
+    "timezone",
+    "tz-aware",
+    "aware datetime",
+    "fromisoformat"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U23",
+   "title": "process_payment records 'success' without charging, no idempotency; float/NaN amount",
+   "file": "user_service.py",
+   "lines": [
+    85,
+    86,
+    87,
+    88,
+    89,
+    90,
+    91,
+    92,
+    93,
+    94
+   ],
+   "kind": "logic",
+   "rules": [],
+   "keywords": [
+    "idempotency",
+    "without charging",
+    "no charge",
+    "nan",
+    "float",
+    "provider"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U24",
+   "title": "export_user_data returns every column of users, password included",
+   "file": "user_service.py",
+   "lines": [
+    81
+   ],
+   "kind": "security",
+   "rules": [
+    "sql-star-credentials"
+   ],
+   "keywords": [
+    "password column",
+    "select *",
+    "pii",
+    "exposes password",
+    "password hash"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U25",
+   "title": "send_notification: fetchone() is None for an unknown user",
+   "file": "user_service.py",
+   "lines": [
+    137
+   ],
+   "kind": "logic",
+   "rules": [
+    "logic-fetchone-index"
+   ],
+   "keywords": [
+    "send_notification"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U26",
+   "title": "delete_user reports success even when no row was deleted",
+   "file": "user_service.py",
+   "lines": [
+    111
+   ],
+   "kind": "logic",
+   "rules": [
+    "func-unchecked-rowcount"
+   ],
+   "keywords": [
+    "delete_user",
+    "rowcount",
+    "reports success"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U27",
+   "title": "Database connections are never closed",
+   "file": "user_service.py",
+   "lines": [
+    13,
+    14
+   ],
+   "kind": "logic",
+   "rules": [],
+   "keywords": [
+    "never closed",
+    "not closed",
+    "connection leak",
+    "close()",
+    "context manager",
+    "leak"
    ],
    "provable": false
   }

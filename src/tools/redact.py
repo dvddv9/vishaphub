@@ -31,6 +31,18 @@ PLACEHOLDERS = {
 }
 
 
+_VALUE_ONLY = ("hardcoded_password", "hardcoded_secret")
+
+
+def _hide_value(match_text: str, placeholder: str) -> str:
+    """`name = "value"` -> `name = "<PLACEHOLDER>"` (the quotes and the name stay)."""
+    quotes = [i for i in (match_text.find('"'), match_text.find("'")) if i >= 0]
+    if not quotes:
+        return placeholder
+    i = min(quotes)
+    return match_text[:i + 1] + placeholder + match_text[-1]
+
+
 def redact_pii(text: str) -> tuple[str, dict]:
     """Replace PII/secrets with placeholders.
 
@@ -53,7 +65,12 @@ def redact_pii(text: str) -> tuple[str, dict]:
         matches = pattern.findall(redacted)
         if matches:
             mapping[name] = len(matches)
-            redacted = pattern.sub(placeholder, redacted)
+            if name in _VALUE_ONLY:
+                # keep `API_KEY = "` ... `"`: the model must still see that the variable exists and is
+                # used, otherwise it reports "API_KEY is undefined" (NameError) for a defined constant.
+                redacted = pattern.sub(lambda m, ph=placeholder: _hide_value(m.group(0), ph), redacted)
+            else:
+                redacted = pattern.sub(placeholder, redacted)
 
     return redacted, mapping
 

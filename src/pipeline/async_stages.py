@@ -103,7 +103,32 @@ async def async_stage2_analyst(material: str, context: dict,
         "queries": queries_used,
         "credits": len(queries_used),
     }
+    await _async_apply_multipass(result, material, context)
     return result
+
+
+async def _async_logic_runner(text: str, ctx: dict) -> dict:
+    from src.pipeline.multipass import MAX_TOKENS as LOGIC_MAX_TOKENS
+    return await async_run_stage(stage_name="stage2_logic", prompt_name="02b_logic", material=text,
+                                 context=ctx, temperature=0.0, max_tokens=LOGIC_MAX_TOKENS)
+
+
+async def _async_apply_multipass(result: dict, material: str, context: dict | None) -> None:
+    """Async twin of stages._apply_multipass: chunks run concurrently, a failure never breaks stage 2."""
+    try:
+        from src.pipeline import multipass
+        if not multipass.enabled() or not isinstance(result, dict) or result.get("mode") == "error":
+            return
+        from src.tools.static_scan import detect_language
+        sec = result.get("security")
+        existing = sec.get("findings") if isinstance(sec, dict) and isinstance(sec.get("findings"), list) else []
+        added, info = await multipass.arun_logic_passes(
+            material, detect_language("", material), _async_logic_runner,
+            hint=(context or {}).get("static_checklist"), existing=existing)
+        multipass.apply_to_stage2(result, added, info)
+    except Exception as e:   # noqa: BLE001
+        if isinstance(result, dict):
+            result["_multipass"] = {"error": f"{type(e).__name__}: {e}"}
 
 
 async def async_stage3_researcher(material: str, context: dict) -> dict:

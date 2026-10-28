@@ -257,6 +257,87 @@ def _python_routes(code: str):
     return findings, table
 
 
+_PARAM_AMOUNTS = ("amount", "price", "qty", "quantity", "total", "sum", "delta", "value")
+
+
+def _read_modify_write(execs) -> int:
+    """Line of an UPDATE that stores a Python-side value into a column an earlier SELECT read.
+
+    ``SELECT balance`` ... ``UPDATE users SET balance = ?`` loses concurrent updates (lost update);
+    ``SET balance = balance + ?`` does not, so that form is left alone.
+    """
+    read_cols = {}
+    for ln, sql in execs:
+        if _verb(sql) == "select":
+            m = re.match(r"\s*select\s+(.*?)\s+from\b", sql, re.I | re.S)
+            if m:
+                for col in re.split(r"\s*,\s*", m.group(1)):
+                    read_cols.setdefault(col.strip().lower(), ln)
+        elif _verb(sql) == "update":
+            m = re.search(r"\bset\s+(\w+)\s*=\s*(\?|%s|:\w+|\{)", sql, re.I)
+            if m and read_cols.get(m.group(1).lower(), ln + 1) < ln and not _TXN.search(sql):
+                return ln
+    return 0
+
+
+def _python_functions(code: str):
+    """Checks for plain functions that run SQL (service / DAO modules with no HTTP handlers)."""
+    try:
+        tree = ast.parse(code)
+    except (SyntaxError, ValueError, RecursionError):
+        return []
+    lines = code.splitlines()
+
+    def at(line):
+        return lines[line - 1] if 0 < line <= len(lines) else ""
+
+    scopes = [tree.body]
+    scopes += [n.body for n in tree.body if isinstance(n, ast.ClassDef)]
+    out = []
+    for body in scopes:
+        for fn in body:
+            if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)) or _route_decorator(fn):
+                continue
+            execs = _executes(fn)
+            if not execs:
+                continue
+            src = ast.unparse(fn)
+            writes = [(ln, s_) for ln, s_ in execs if _verb(s_) in _WRITE_VERBS]
+            money = bool(_MONEY.search(fn.name)) or any(_MONEY.search(s_) for _, s_ in execs)
+            has_txn = bool(_TXN.search(src))
+            params = [a.arg for a in list(fn.args.args) + list(fn.args.kwonlyargs)]
+
+            cta = _check_then_act(fn, execs)
+            if cta and not has_txn:
+                out.append(_finding(
+                    "func-check-then-act", f"{fn.name}(): value is read, checked, then written without a guard (race)",
+                    "high" if money else "medium", "CWE-367", cta, at(cta),
+                    "Make the check part of the write: UPDATE ... SET balance = balance - ? WHERE id = ? AND balance >= ?, "
+                    "check cursor.rowcount, and run it in one transaction (BEGIN IMMEDIATE)."))
+            rmw = _read_modify_write(execs)
+            if rmw and not has_txn and rmw != cta:
+                out.append(_finding(
+                    "func-read-modify-write", f"{fn.name}(): value is read, changed in Python and written back (lost update)",
+                    "high" if money else "medium", "CWE-362", rmw, at(rmw),
+                    "Let the database do the arithmetic (SET balance = balance + ?) and use a transaction."))
+            amounts = [p for p in params if p.lower() in _PARAM_AMOUNTS]
+            if amounts and writes and not _RANGE.search(src):
+                ln = writes[0][0]
+                out.append(_finding(
+                    "func-amount-no-bounds", f"{fn.name}(): parameter '{amounts[0]}' is written without a range check",
+                    "high" if money else "medium", "CWE-20", ln, at(ln),
+                    "Reject non-numeric, NaN, zero and negative values and cap the maximum: a negative amount "
+                    "reverses a transfer, a huge one overflows a balance."))
+            if writes and "rowcount" not in src:
+                ln, _ = next((w for w in writes if _verb(w[1]) in ("update", "delete")), (0, ""))
+                if ln:
+                    out.append(_finding(
+                        "func-unchecked-rowcount", f"{fn.name}(): UPDATE/DELETE result is never checked",
+                        "medium" if money else "low", "CWE-252", ln, at(ln),
+                        "Check cursor.rowcount: 0 rows means the target does not exist; do not report success."))
+    return out
+
+
 _JS_ROUTE = re.compile(r"""\b(app|router)\.(post|put|patch|delete)\(\s*['"`]([^'"`]+)['"`]""")
 _JS_AUTH = re.compile(r"auth|passport|jwt|isLoggedIn|ensureLoggedIn|requireUser|verifyToken|protect|session", re.I)
 
@@ -287,6 +368,7 @@ def checklist(code: str, language: str) -> dict:
     try:
         if language == "python":
             findings, table = _python_routes(code)
+            findings = findings + _python_functions(code)
         elif language in ("javascript", "typescript"):
             findings, table = _js_routes(code)
         else:

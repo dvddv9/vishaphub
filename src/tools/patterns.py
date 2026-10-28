@@ -6,6 +6,12 @@ required extracting patterns into a standalone module.
 """
 import re
 
+# A quoted value that is a template, not a secret: "{name}", "${X}", "%s", "%(x)s", ":param", or any
+# string holding a {...} interpolation (f-string SQL such as password = '{new_password}'). Treating these
+# as secrets both flagged the SQL line wrongly and made redact_pii blank out part of the query before the
+# LLM saw it.
+TEMPLATE_VALUE = r"""\{|\$\{|%[sd(]|:[A-Za-z_]|<[A-Z_]+_REDACTED>|[^"']*\{[^"']*\}"""
+
 
 PII_PATTERNS = {
     "email": re.compile(r"(?<![\w%])[a-zA-Z0-9._+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"),
@@ -22,8 +28,8 @@ PII_PATTERNS = {
     "slack_token": re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}\b"),
     "google_api_key": re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b"),
     "private_key": re.compile(r"-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----"),
-    "hardcoded_password": re.compile(r"(?i)\bpassword\s*[:=]\s*[\"'][^\"']{8,}[\"']"),
-    "hardcoded_secret": re.compile(r"(?i)\b(secret|api_key|access_key|token)\s*[:=]\s*[\"'][^\"']{12,}[\"']"),
+    "hardcoded_password": re.compile(r"""(?i)\bpassword\s*[:=]\s*["'](?!""" + TEMPLATE_VALUE + r""")[^"']{8,}["']"""),
+    "hardcoded_secret": re.compile(r"""(?i)\b(secret|api_key|access_key|token)\s*[:=]\s*["'](?!""" + TEMPLATE_VALUE + r""")[^"']{12,}["']"""),
 }
 
 

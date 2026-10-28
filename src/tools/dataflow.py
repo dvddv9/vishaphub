@@ -64,6 +64,66 @@ def _node_content(node: ast.AST) -> str:
         return ""
 
 
+def _trace_origin(tree: ast.AST, sink: dict, flat_sources: dict) -> dict | None:
+    """Origin (source dict) of the tainted names used in ``sink``, or None when it cannot be traced.
+
+    Scope is the function that contains the sink: its arguments are the entry points, plus any
+    assignment whose right side calls a known source. Origins propagate through assignments and
+    ``for`` loops.
+    """
+    func = None
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            end = getattr(node, "end_lineno", node.lineno)
+            if node.lineno <= sink["line"] <= end and (func is None or node.lineno >= func.lineno):
+                func = node
+    scope = func if func is not None else tree
+
+    origin: dict[str, dict] = {}
+    if func is not None:
+        for arg in list(func.args.args) + list(func.args.kwonlyargs):
+            if arg.arg and arg.arg != "self":
+                origin[arg.arg] = {"line": arg.lineno, "name": arg.arg, "content": "arg: " + arg.arg}
+
+    def names_in(expr: ast.AST) -> set:
+        return {n.id for n in ast.walk(expr) if isinstance(n, ast.Name)}
+
+    links = []   # (target, names read, source dict or None, line)
+    for node in ast.walk(scope):
+        if isinstance(node, ast.Assign):
+            src = None
+            for sub in ast.walk(node.value):
+                if isinstance(sub, ast.Call):
+                    dotted = _call_to_dotted(sub.func)
+                    if dotted and any(dotted == p or dotted.startswith(p + ".") for p in flat_sources):
+                        src = {"line": _node_line(sub), "name": dotted, "content": _node_content(sub)}
+                        break
+            for t in node.targets:
+                if isinstance(t, ast.Name):
+                    links.append((t.id, names_in(node.value), src, node.lineno))
+        elif isinstance(node, ast.For) and isinstance(node.target, ast.Name):
+            links.append((node.target.id, names_in(node.iter), None, node.lineno))
+
+    for target, _names, src, _line in links:
+        if src is not None:
+            origin[target] = src
+    for _ in range(4):
+        for target, names, _src, _line in sorted(links, key=lambda x: x[3]):
+            if target not in origin:
+                for n in sorted(names):
+                    if n in origin:
+                        origin[target] = origin[n]
+                        break
+
+    for node in ast.walk(scope):
+        if isinstance(node, ast.Call) and _node_line(node) == sink["line"] and _node_content(node) == sink["content"]:
+            for sub in ast.walk(node):
+                if isinstance(sub, ast.Name) and sub.id in origin:
+                    return origin[sub.id]
+            break
+    return None
+
+
 def analyze_dataflow(material: str, language: str = "python") -> dict:
     """AST-based taint analysis for Python.
 
@@ -205,6 +265,13 @@ def analyze_dataflow(material: str, language: str = "python") -> dict:
             "name": sink["name"],
             "content": sink["content"],
         }
+
+    # P2-7c: report the source that really feeds this sink (a function argument or a source call
+    # assigned on the way), not just the first source call anywhere in the file. Without this a
+    # module-level `DB_PATH = os.environ.get(...)` was shown as the origin of an SQL injection.
+    traced = _trace_origin(tree, tainted_sink, flat_sources)
+    if traced:
+        source = traced
 
     # P2-7b-fix3: synthesize source from function args if no source_call.
     if source is None:
