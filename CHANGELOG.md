@@ -2,6 +2,50 @@
 
 All notable changes to vishap-generator. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.6.0] - 2026-10-28
+
+Checks taken from a review of the "meta-prompt" ideas (STRIDE, STRICT, COVE, self-refine, USC, Reflexion, audit trail).
+Each one was changed to fit a tool that has a way to run code: where the idea was a model opinion, here it is either
+read from the spec (deterministic) or judged by running the code. The command line, the API and the prompts of 0.5.0
+are compatible; new keys and flags were added, none removed.
+
+### Added (no extra model call)
+- **STRIDE table** (`tools/stride.py`): for each of the six threats, whether the spec has a requirement for it
+  (`covered`, `partial`, `not_covered`, `not_applicable`). It reads the spec, never the code. After Verify each row
+  gets `proof`: proven / failed / not proven. Not a gap by default; gate key `require_stride: [T, I]` blocks.
+- **STRICT** (`--strict`, or gate key `strict_missing_pct`): refuses a spec that lacks more than the given share of
+  the key data and says which parts are missing (`spec: Cannot answer reliably. Missing: ...`, exit 2, HTTP 422).
+- **Injection scan** (`tools/injection.py`): phrases aimed at the model are a critical gap `injection`;
+  `INJECTION_STOP` (3) or more stop the run.
+- **Secret in the spec** is now a critical gap `secret` (kinds and counts, never values).
+- **Domain reminders** (`domain:` in a spec, `tools/domains.py`): noted gaps of type `reminder`, never blocking.
+- **Incomplete output**: `loss_pct` (share of planned code and test files the model left out); over
+  `max_loss_pct` (default 30) it is a problem.
+- **Effort**: `--effort quick|standard|deep` sets repairs, candidates, text check, Analyzer and COVE together; a flag
+  given on its own wins. `--repro` asks for temperature 0 and a fixed seed (refused together with several candidates).
+- Audit extras in the trace: `provenance.pii_detected`, `usage.tokens_reported`, `model.repro`, and `effort`,
+  `threats`, `loss_pct`, `candidates`, `cove`, `repair_stopped` (no times, so the trace stays repeatable).
+- Gate keys: `strict_missing_pct`, `require_stride`, `fail_on_cove`, `max_loss_pct`.
+
+### Added (extra model calls, judged by running the code)
+- **Candidates** (`--candidates N`, 1 to 5; `pipeline/candidates.py`): N answers of the model, each built and verified;
+  the one with the most proof wins, ties go to the lowest number. Costs N times the Build tokens.
+- **Round memory**: the repair prompt carries the problems of the earlier rounds; the same problems twice in a row
+  stop the loop early (`repair stopped early` in the notes) instead of spending the remaining rounds.
+- **COVE** (`--cove`, `pipeline/cove.py`, prompt `04_verify_cove`): the model answers from the spec alone what the
+  service should do on unusual values (a letter outside A-Z, `\u0663`, underscore, a leading space); the sandbox runs
+  the code on the same values; differences are notes, and a gate reason only with `fail_on_cove`. "unclear" is never
+  a mismatch.
+
+### Changed
+- `repairs` and `text_check` default to the effort (standard: 2 and on); the API takes `effort`, `candidates`, `cove`,
+  `strict` (a bad value is 400). The web form has the same controls and shows the STRIDE table, the candidates and the
+  COVE comparison; the report has the same sections.
+- The model's `usage` counts calls made from several threads into the same run.
+
+### Not verified
+No real model was run: COVE, candidates and the prompts were exercised with a stub model. Docker and CI were not run.
+
 ## [0.5.0] - 2026-10-28
 
 Every part of the generator now follows the Vishap component that does the same job (mapping table in `docs/ARCHITECTURE.md`).

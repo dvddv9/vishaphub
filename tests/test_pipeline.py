@@ -5,7 +5,7 @@ from pathlib import Path
 
 from tests.helpers import EXAMPLE
 from tests.test_deliver import CLEAN_SPEC, TESTS
-from tests.test_verify import DOLLAR_BUG, GOOD, TODAY
+from tests.test_verify import DOLLAR_BUG, GOOD, LOGS_INPUT, SQL_FSTRING, TODAY
 
 from generator.tools.analyzer import AnalyzerFinding, AnalyzerResult
 from generator.llm import LLMError
@@ -94,11 +94,29 @@ class RepairTests(Base):
         self.assertTrue((self.out / "handlers/user.py").exists())
 
     def test_stops_after_the_limit(self):
-        stub = Stub(answer(DOLLAR_BUG))
+        stub = Stub(answer(DOLLAR_BUG), answer(LOGS_INPUT), answer(SQL_FSTRING))     # a new problem every round
         res = self.run_it(stub, repairs=2)
         self.assertEqual(len(stub.calls), 3)
         self.assertEqual(res.repair_rounds, 2)
         self.assertEqual(res.verify.code_verdict, "failed")
+        self.assertEqual(res.stopped, "")
+
+    def test_the_same_problems_twice_stop_the_loop(self):
+        stub = Stub(answer(DOLLAR_BUG))        # the model "fixes" nothing
+        res = self.run_it(stub, repairs=4)
+        self.assertEqual(len(stub.calls), 2)   # the first answer and one repair; the second verify saw the same problems
+        self.assertEqual(res.repair_rounds, 1)
+        self.assertIn("same problems as round 0", res.stopped)
+        self.assertIn("repair stopped", self.logtext())
+        self.assertIn("repair stopped early", " ".join(res.verify.notes))
+
+    def test_earlier_rounds_go_to_the_model(self):
+        stub = Stub(answer(DOLLAR_BUG), answer(LOGS_INPUT), answer(GOOD))
+        self.run_it(stub, repairs=3)
+        third = stub.calls[2][-1]["content"]
+        self.assertIn("<VG_EARLIER_", third)
+        self.assertIn("round 1:", third)
+        self.assertNotIn("<VG_EARLIER_", stub.calls[1][-1]["content"])
 
     def test_failed_repair_call_keeps_the_last_files(self):
         stub = Stub(answer(DOLLAR_BUG), LLMError("rate limited"))

@@ -95,7 +95,7 @@ class PipelineRecordsTests(unittest.TestCase):
         self.assertIn("usage", d)
         self.assertEqual(d["provenance"]["spec"]["sha256"], d["spec"]["sha256"])
         self.assertEqual(set(d["provenance"]["prompts"]), {"00_rules", "02_design_textcheck", "03_build",
-                                                           "03_build_repair"})
+                                                           "03_build_repair", "04_verify_cove"})
 
     def test_trace_has_provenance_and_no_timings(self):
         self.run_it(Stub(answer(GOOD)))

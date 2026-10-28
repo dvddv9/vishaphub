@@ -28,6 +28,21 @@ class LayoutTests(unittest.TestCase):
         self.assertTrue((PACKAGE_DIR / "api/job_store.py").is_file())
         self.assertIn("job_store", table)
 
+    def test_the_0_6_modules_exist_and_are_documented(self):
+        table = (ROOT / "docs/ARCHITECTURE.md").read_text("utf-8")
+        for module in ("tools/stride.py", "tools/injection.py", "tools/strict.py", "tools/domains.py",
+                       "tools/spec_text.py", "pipeline/effort.py", "pipeline/candidates.py", "pipeline/cove.py"):
+            self.assertTrue((PACKAGE_DIR / module).is_file(), module)
+            self.assertIn(module, table, module)
+        self.assertTrue((PACKAGE_DIR / "prompts/04_verify_cove.md").is_file())
+        self.assertIn("04_verify_cove", (PACKAGE_DIR / "prompts/README.md").read_text("utf-8"))
+
+    def test_the_gate_example_lists_every_key(self):
+        from generator.tools.quality_gate import KNOWN
+        example = (ROOT / ".vishap-generator.yml.example").read_text("utf-8")
+        for key in KNOWN:
+            self.assertIn(key + ":", example, key)
+
     def test_no_old_flat_modules_are_left(self):
         for name in ("spec", "intake", "design", "build", "generate", "verify", "deliver",
                      "textcheck", "analyzer", "sarif", "examples", "server", "llm", "pipeline"):

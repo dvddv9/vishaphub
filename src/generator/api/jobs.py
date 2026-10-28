@@ -17,8 +17,9 @@ from generator.api.job_store import JobStore
 from generator.api.llm_config import client_llm_config
 from generator.api.rate_limit import RUN_LOCK
 from generator.api.reports import http_status, report
-from generator.config import DEFAULT_REPAIRS, MAX_REPAIRS, MAX_SPEC_CHARS
+from generator.config import CANDIDATES_MAX, MAX_REPAIRS, MAX_SPEC_CHARS
 from generator.observability.logging import get_logger
+from generator.pipeline.effort import EFFORTS
 from generator.pipeline.orchestrator import run_pipeline
 
 STAGE_TAG = re.compile(r"^\[(Intake|Design|Build|Verify|Repair|Deliver)\]")
@@ -31,12 +32,28 @@ def _prepare(body: dict, *, check_only: bool, client_llm: bool, loopback: bool) 
         raise ApiError(400, '"spec" must be the text of a spec.yaml')
     if len(spec_text) > MAX_SPEC_CHARS:
         raise ApiError(413, "spec is too long")
-    repairs = body.get("repairs", DEFAULT_REPAIRS)
-    if not isinstance(repairs, int) or isinstance(repairs, bool) or not 0 <= repairs <= MAX_REPAIRS:
-        raise ApiError(400, f'"repairs" must be an integer from 0 to {MAX_REPAIRS}')
-    kwargs: dict = dict(gate=bool(body.get("gate", False)), no_llm=check_only, repairs=repairs,
-                        allow_write=False, require_coverage=bool(body.get("require_coverage", False)),
-                        text_check=bool(body.get("text_check", True)))
+    kwargs: dict = dict(gate=bool(body.get("gate", False)), no_llm=check_only, allow_write=False,
+                        require_coverage=bool(body.get("require_coverage", False)),
+                        strict=bool(body.get("strict", False)))
+    repairs = body.get("repairs")            # absent: the effort decides
+    if repairs is not None:
+        if not isinstance(repairs, int) or isinstance(repairs, bool) or not 0 <= repairs <= MAX_REPAIRS:
+            raise ApiError(400, f'"repairs" must be an integer from 0 to {MAX_REPAIRS}')
+        kwargs["repairs"] = repairs
+    effort = body.get("effort")
+    if effort is not None:
+        if effort not in EFFORTS:
+            raise ApiError(400, f'"effort" must be one of: {", ".join(EFFORTS)}')
+        kwargs["effort"] = effort
+    candidates = body.get("candidates")
+    if candidates is not None:
+        if not isinstance(candidates, int) or isinstance(candidates, bool) or not 1 <= candidates <= CANDIDATES_MAX:
+            raise ApiError(400, f'"candidates" must be an integer from 1 to {CANDIDATES_MAX}')
+        kwargs["candidates"] = candidates
+    if "text_check" in body:
+        kwargs["text_check"] = bool(body["text_check"])
+    if body.get("cove"):
+        kwargs["cove"] = True
     if body.get("llm") is not None:
         if not client_llm:
             raise ApiError(403, "this server does not take model settings from the browser")

@@ -15,12 +15,19 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from generator.pipeline.intake import Source
+from generator.tools.domains import reminders
+from generator.tools.injection import scan as scan_injection
+from generator.tools.redact import redact
 from generator.tools.spec import Spec
+from generator.tools.spec_text import iter_texts
 
 SEVERITY = {
     "missing_input": "critical",
     "contradiction": "critical",
+    "injection": "critical",    # text aimed at the model (tools/injection.py)
+    "secret": "critical",       # a key or password written into the spec (tools/redact.py)
     "assumption": "noted",
+    "reminder": "noted",        # a domain checklist item (tools/domains.py)
 }
 
 # Statuses that answer "what happens on invalid input".
@@ -113,6 +120,26 @@ def collect(spec: Spec) -> list[tuple[str, str, Source | None]]:
                 add("contradiction",
                     f"\"{item['text']}\" is in must_never (line {hit}) and in {field}",
                     Source(field, line))
+
+    for hit in scan_injection(spec):
+        add("injection",
+            f"{hit.field} has text aimed at the model (\"{hit.phrase}\"); it reaches the model only as data, "
+            "but it does not belong in a spec",
+            Source(hit.field, hit.line) if hit.line else None)
+
+    kinds: dict[str, int] = {}
+    for _, _, text in iter_texts(spec):
+        for kind_, n in redact(text).applied:
+            kinds[kind_] = kinds.get(kind_, 0) + n
+    for kind_, n in sorted(kinds.items()):
+        add("secret",
+            f"the spec contains {n} {kind_} value(s); they are cut out before the model, "
+            "but anything written here should be treated as exposed and replaced",
+            _src(spec, "text"))
+
+    domain = data.get("domain")
+    for reminder in reminders(domain) if domain else ():
+        add("reminder", f"domain {domain}: {reminder}?", _src(spec, "domain"))
 
     return found
 

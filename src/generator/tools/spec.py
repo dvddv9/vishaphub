@@ -14,6 +14,8 @@ from pathlib import Path
 
 import yaml
 
+from generator.tools.domains import DOMAINS
+
 SUPPORTED_VERSION = 1
 MAX_TEXT = 20_000
 MAX_RULE_TEXT = 500
@@ -21,7 +23,7 @@ MAX_RULE_TEXT = 500
 KNOWN_KEYS = frozenset({
     "version", "updated", "text", "target", "kind", "output",
     "inputs", "outputs", "profile", "constraints",
-    "must_never", "should", "may", "check", "caller", "route",
+    "must_never", "should", "may", "check", "caller", "route", "domain",
 })
 REQUIREMENT_LISTS = ("inputs", "outputs", "must_never", "should", "may")
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
@@ -122,7 +124,7 @@ def _check_top_level(data: dict, root: yaml.MappingNode) -> None:
                         f"longer than {MAX_TEXT} characters")
 
     for name, allowed in (("profile", PROFILES), ("check", CHECKS), ("kind", KINDS),
-                          ("caller", CALLERS)):
+                          ("caller", CALLERS), ("domain", frozenset(DOMAINS))):
         if name in data and data[name] not in allowed:
             raise SpecError(name, _key_line(root, name),
                             f"must be one of: {', '.join(sorted(allowed))}")

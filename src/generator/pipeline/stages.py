@@ -4,7 +4,9 @@ The analog of Vishap's `pipeline/stages.py`: a registry of the stages, one place
 is parsed (`parse_json_response`), and a clock that records, per stage, how long it took and what the model
 calls cost (`StageClock`, Vishap's `_meta` of each stage).
 
-Intake, Verify and Deliver have no prompt: they are deterministic code on purpose.
+Intake, Verify and Deliver are deterministic code on purpose. Verify has one prompt, `04_verify_cove`, used only
+by the optional COVE check (`--cove`); it never decides a status, it only produces notes and, with
+`fail_on_cove`, a gate reason.
 tests/test_prompts.py keeps this list and the prompts/ folder in step.
 
 Unlike Vishap, a truncated JSON answer is NOT repaired: a file cut off in the middle is a wrong file,
@@ -36,7 +38,7 @@ STAGES = (
     Stage("intake", 1, "Intake", "generator.pipeline.intake"),
     Stage("design", 2, "Design", "generator.pipeline.design", ("02_design_textcheck",)),
     Stage("build", 3, "Build", "generator.pipeline.generate", ("03_build", "03_build_repair")),
-    Stage("verify", 4, "Verify", "generator.pipeline.verify"),
+    Stage("verify", 4, "Verify", "generator.pipeline.verify", ("04_verify_cove",)),
     Stage("deliver", 5, "Deliver", "generator.pipeline.deliver"),
 )
 BY_KEY = {s.key: s for s in STAGES}

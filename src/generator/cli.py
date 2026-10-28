@@ -23,7 +23,8 @@ from pathlib import Path
 
 from generator.observability.logging import setup_logging
 from generator.pipeline.deliver import DeliverError, rollback
-from generator.pipeline.orchestrator import DEFAULT_REPAIRS, run_pipeline
+from generator.config import DEFAULT_REPAIRS
+from generator.pipeline.orchestrator import run_pipeline
 from generator.tools.sarif import to_sarif
 
 
@@ -45,7 +46,10 @@ def cmd_generate(args) -> int:
     print(f"spec        {spec_file}")
     res = run_pipeline(
         spec_file, out_dir=args.out, gate=args.gate, force=args.force, dry_run=args.dry_run,
-        no_llm=args.no_llm, repairs=args.repairs, require_coverage=args.require_coverage, text_check=not args.no_text_check,
+        no_llm=args.no_llm, repairs=args.repairs, require_coverage=args.require_coverage,
+        text_check=False if args.no_text_check else None,
+        effort=args.effort, candidates=args.candidates, cove=True if args.cove else None,
+        strict=args.strict, repro=args.repro,
         analyzer=None if args.no_analyzer else _default_analyzer(),
         log=print)
     if res.error:
@@ -65,6 +69,11 @@ def cmd_generate(args) -> int:
             print("\n" + res.deliver.diff.rstrip())
         if not args.gate and not res.error and (open_items or v.code_verdict != "passed"):
             print("note        without --gate the files are written; the problems stay in the report")
+    if res.threats and any(t["status"] != "not_applicable" for t in res.threats):
+        print("stride      " + stride_line(res.threats))
+    if res.candidates:
+        print("candidates  " + ", ".join(f"{r['index'] + 1}: {r.get('verdict', 'failed')} {r.get('passed', 0)}/"
+                                         f"{r.get('requirements', 0)}{' *' if r['chosen'] else ''}" for r in res.candidates))
     if res.usage["llm_calls"]:
         print("usage       " + usage_line(res.usage))
     if args.json:
@@ -75,6 +84,13 @@ def cmd_generate(args) -> int:
         from generator.tools.report import render_markdown
         _write_file(args.report, render_markdown(res, spec_file.name))
     return res.exit_code
+
+
+def stride_line(threats: list[dict]) -> str:
+    """`S - T covered/proven I partial/not proven ...` for the letters that apply."""
+    return "  ".join(f"{t['letter']} {t['status'].replace('_', ' ')}"
+                     + (f"/{t['proof']}" if t.get("proof") not in (None, "-") else "")
+                     for t in threats if t["status"] != "not_applicable")
 
 
 def usage_line(u: dict) -> str:
@@ -249,7 +265,9 @@ def cmd_batch(args) -> int:
 
     rows = run_batch(specs, args.out, workers=args.workers, again=args.again, on_row=show,
                      gate=args.gate, force=args.force, repairs=args.repairs,
-                     text_check=not args.no_text_check,
+                     text_check=False if args.no_text_check else None,
+                     effort=args.effort, candidates=args.candidates, cove=True if args.cove else None,
+                     strict=args.strict, repro=args.repro,
                      analyzer=None if args.no_analyzer else _default_analyzer())
     counts: dict[str, int] = {}
     for r in rows:
@@ -263,6 +281,20 @@ def cmd_batch(args) -> int:
 def cmd_serve(args) -> int:
     from generator.main import serve
     return serve(args.host, args.port)
+
+
+def _add_depth_flags(p) -> None:
+    p.add_argument("--effort", choices=("quick", "standard", "deep"), default=None,
+                   help="how much work: quick (no text check, no analyzer, 1 repair), standard, deep "
+                        "(3 repairs, 3 candidates, COVE); a flag given on its own wins")
+    p.add_argument("--candidates", type=int, default=None, metavar="N",
+                   help="N answers from the model; Verify picks the one with the most proof (N times the tokens)")
+    p.add_argument("--cove", action="store_true",
+                   help="ask what the spec says on unusual values, run the code on them, compare")
+    p.add_argument("--strict", action="store_true",
+                   help="refuse a spec that lacks more than 50%% of the key data")
+    p.add_argument("--repro", action="store_true",
+                   help="ask the model for temperature 0 and a fixed seed (if the endpoint takes them)")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -282,8 +314,9 @@ def build_parser() -> argparse.ArgumentParser:
     g.add_argument("--no-text-check", action="store_true",
                    help="do not ask the model to compare the free text with the requirements")
     g.add_argument("--no-analyzer", action="store_true", help="skip the Vishap Analyzer")
-    g.add_argument("--repairs", type=int, default=DEFAULT_REPAIRS, metavar="N",
-                   help=f"repair rounds when Verify finds problems (default {DEFAULT_REPAIRS})")
+    g.add_argument("--repairs", type=int, default=None, metavar="N",
+                   help=f"repair rounds when Verify finds problems (default {DEFAULT_REPAIRS}, set by --effort)")
+    _add_depth_flags(g)
     g.add_argument("--require-coverage", action="store_true",
                    help="with --gate: coverage that could not be measured (no `coverage` package) blocks too")
     g.add_argument("--json", metavar="FILE", help="write the full result as JSON")
@@ -322,7 +355,8 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--again", action="store_true", help="run specs that already have a finished run")
     b.add_argument("--gate", action="store_true")
     b.add_argument("--force", action="store_true")
-    b.add_argument("--repairs", type=int, default=DEFAULT_REPAIRS, metavar="N")
+    b.add_argument("--repairs", type=int, default=None, metavar="N")
+    _add_depth_flags(b)
     b.add_argument("--no-text-check", action="store_true")
     b.add_argument("--no-analyzer", action="store_true")
     b.add_argument("--json", metavar="FILE", help="write the rows as JSON")

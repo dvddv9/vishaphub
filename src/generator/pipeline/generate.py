@@ -137,15 +137,26 @@ def feedback_text(check: BuildCheck, verify) -> str:
     return "\n".join(lines)
 
 
+MAX_EARLIER_LINES = 12
+
+
 def repair_code(spec: Spec, requirements: tuple[Requirement, ...], design: DesignResult,
                 files: dict, check: BuildCheck, verify,
                 chat_fn: Callable[..., str] = chat,
-                config: LLMConfig | None = None) -> GenerateResult:
-    """One repair round: show the model its files and the problems, get new files."""
+                config: LLMConfig | None = None,
+                earlier: tuple[str, ...] = ()) -> GenerateResult:
+    """One repair round: show the model its files and the problems, get new files.
+
+    `earlier` is the problem text of the rounds before this one (the analog of Reflexion's memory): the model sees
+    what was already tried and has not worked, so a fix does not undo the one before it.
+    """
     messages = build_messages(spec, requirements, design)
     messages.append({"role": "assistant", "content": json.dumps({"files": files}, ensure_ascii=False)})
-    messages.append({"role": "user", "content": load_prompt(REPAIR_PROMPT).strip() + "\n\nPROBLEMS:\n"
-                     + wrap_material("PROBLEMS", feedback_text(check, verify))})
+    text = load_prompt(REPAIR_PROMPT).strip() + "\n\nPROBLEMS:\n" + wrap_material("PROBLEMS", feedback_text(check, verify))
+    if earlier:
+        rounds = [f"round {n}:\n" + "\n".join(e.splitlines()[:MAX_EARLIER_LINES]) for n, e in enumerate(earlier, 1)]
+        text += "\n\nEARLIER ROUNDS:\n" + wrap_material("EARLIER", "\n\n".join(rounds))
+    messages.append({"role": "user", "content": text})
     answer = chat_fn(messages, config, max_tokens=MAX_TOKENS)
     new = parse_files(answer)
     return GenerateResult(files=new, check=check_build(design, requirements, new))

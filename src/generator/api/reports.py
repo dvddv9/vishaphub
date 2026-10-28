@@ -24,6 +24,8 @@ def http_status(out: dict) -> int:
         return 200
     if err.startswith("spec:"):
         return 422          # the spec itself is wrong
+    if err.startswith(("effort:", "repro:")):
+        return 400          # the request asked for something that cannot be done
     if err.startswith("build:"):
         return 502          # the model failed or answered unusably
     return 500

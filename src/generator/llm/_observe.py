@@ -6,6 +6,7 @@ model call made inside it adds to the counter, so the pipeline can say how much 
 
 from __future__ import annotations
 
+import threading
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
@@ -32,6 +33,7 @@ class Usage:
 
 
 _current: ContextVar[Usage | None] = ContextVar("llm_usage", default=None)
+_lock = threading.Lock()      # candidates run in threads that share one counter
 
 
 @contextmanager
@@ -50,8 +52,9 @@ def observe_llm_result(messages: list[dict], answer: str, tokens_in: int = 0, to
     usage = _current.get()
     if usage is None:
         return
-    usage.calls += 1
-    usage.chars_in += sum(len(str(m.get("content", ""))) for m in messages)
-    usage.chars_out += len(answer)
-    usage.tokens_in += tokens_in
-    usage.tokens_out += tokens_out
+    with _lock:
+        usage.calls += 1
+        usage.chars_in += sum(len(str(m.get("content", ""))) for m in messages)
+        usage.chars_out += len(answer)
+        usage.tokens_in += tokens_in
+        usage.tokens_out += tokens_out

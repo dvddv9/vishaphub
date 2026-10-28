@@ -14,6 +14,7 @@ from pathlib import PurePosixPath
 from generator.tools.gaps import Gap, collect, number
 from generator.pipeline.intake import Requirement, Source, requirements_from
 from generator.tools.spec import Spec
+from generator.tools.stride import Threat, stride_table
 
 LIBRARIES = {
     "python/flask": ("flask",),
@@ -45,6 +46,7 @@ class FilePlan:
 class DesignResult:
     files: tuple[FilePlan, ...]
     gaps: tuple[Gap, ...]
+    threats: tuple[Threat, ...] = ()
 
     @property
     def critical_gaps(self) -> tuple[Gap, ...]:
@@ -54,6 +56,7 @@ class DesignResult:
         return {
             "files": [f.to_dict() for f in self.files],
             "gaps": [g.to_dict() for g in self.gaps],
+            "threats": [t.to_dict() for t in self.threats],
         }
 
 
@@ -135,4 +138,4 @@ def design(spec: Spec, requirements: tuple[Requirement, ...] | None = None) -> D
                 Source("target", spec.key_lines["target"]) if "target" in spec.key_lines else None,
             ))
 
-    return DesignResult(files=tuple(files), gaps=number(found))
+    return DesignResult(files=tuple(files), gaps=number(found), threats=stride_table(spec, reqs))

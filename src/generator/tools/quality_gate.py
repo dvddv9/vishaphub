@@ -13,6 +13,10 @@ Config file `.vishap-generator.yml` (next to the spec, else in the current folde
       fail_on_analyzer: true      # analyzer errors block
       require_coverage: false     # coverage that could not be measured blocks
       baseline: .vishap/baseline.json   # accepted gaps (see tools/baseline.py)
+      strict_missing_pct: 50      # refuse a spec that lacks more than this share of the key data (off when absent)
+      require_stride: [T, I]      # STRIDE letters that must be `covered` (see tools/stride.py); none by default
+      fail_on_cove: false         # a COVE mismatch (--cove) blocks
+      max_loss_pct: 30            # share of planned code/test files the model may leave out
 
 Without a file the defaults above apply. An unknown key is an error, not silently ignored.
 """
@@ -24,7 +28,7 @@ from pathlib import Path
 
 import yaml
 
-from generator.config import COVERAGE_MIN, STALE_DAYS
+from generator.config import COVERAGE_MIN, LOSS_MAX_PCT, STALE_DAYS
 from generator.tools.baseline import DEFAULT_PATH, compute_fingerprint, load_baseline
 
 CONFIG_NAME = ".vishap-generator.yml"
@@ -44,13 +48,19 @@ class Gate:
     fail_on_analyzer: bool = True
     require_coverage: bool = False
     accepted_gaps: frozenset[str] = frozenset()
+    strict_missing_pct: float | None = None
+    require_stride: tuple[str, ...] = ()
+    fail_on_cove: bool = False
+    max_loss_pct: float = LOSS_MAX_PCT
 
     def to_dict(self) -> dict:
         return {"fail_on": list(self.fail_on), "coverage_min": self.coverage_min,
                 "stale_days": self.stale_days, "max_critical_gaps": self.max_critical_gaps,
                 "fail_on_analyzer": self.fail_on_analyzer,
                 "require_coverage": self.require_coverage,
-                "accepted_gaps": sorted(self.accepted_gaps)}
+                "accepted_gaps": sorted(self.accepted_gaps),
+                "strict_missing_pct": self.strict_missing_pct, "require_stride": list(self.require_stride),
+                "fail_on_cove": self.fail_on_cove, "max_loss_pct": self.max_loss_pct}
 
 
 @dataclass(frozen=True)
@@ -65,7 +75,9 @@ class GateResult:
 
 
 KNOWN = {"fail_on", "coverage_min", "stale_days", "max_critical_gaps", "fail_on_analyzer",
-         "require_coverage", "baseline"}
+         "require_coverage", "baseline", "strict_missing_pct", "require_stride", "fail_on_cove",
+         "max_loss_pct"}
+STRIDE_LETTERS = ("S", "T", "R", "I", "D", "E")
 
 
 def _number(cfg: dict, key: str, kind, low, default):
@@ -84,12 +96,22 @@ def parse_gate(cfg: dict, base_dir: Path | None = None) -> Gate:
     if (not isinstance(fail_on, list) or not fail_on
             or any(p not in PRIORITIES for p in fail_on)):
         raise QualityGateError(f"quality_gate.fail_on must be a list of {', '.join(PRIORITIES)}")
-    for key in ("fail_on_analyzer", "require_coverage"):
+    for key in ("fail_on_analyzer", "require_coverage", "fail_on_cove"):
         if key in cfg and not isinstance(cfg[key], bool):
             raise QualityGateError(f"quality_gate.{key} must be true or false")
     cov = _number(cfg, "coverage_min", (int, float), 0, COVERAGE_MIN)
     if cov > 100:
         raise QualityGateError("quality_gate.coverage_min must be at most 100")
+    strict = cfg.get("strict_missing_pct")
+    if strict is not None:
+        if isinstance(strict, bool) or not isinstance(strict, (int, float)) or not 0 <= strict <= 100:
+            raise QualityGateError("quality_gate.strict_missing_pct must be a number from 0 to 100")
+    stride = cfg.get("require_stride", [])
+    if not isinstance(stride, list) or any(x not in STRIDE_LETTERS for x in stride):
+        raise QualityGateError(f"quality_gate.require_stride must be a list of {', '.join(STRIDE_LETTERS)}")
+    loss = _number(cfg, "max_loss_pct", (int, float), 0, LOSS_MAX_PCT)
+    if loss > 100:
+        raise QualityGateError("quality_gate.max_loss_pct must be at most 100")
     base = base_dir or Path.cwd()
     baseline_path = Path(cfg["baseline"]) if cfg.get("baseline") else base / DEFAULT_PATH
     if not baseline_path.is_absolute():
@@ -100,7 +122,9 @@ def parse_gate(cfg: dict, base_dir: Path | None = None) -> Gate:
         max_critical_gaps=int(_number(cfg, "max_critical_gaps", int, 0, 0)),
         fail_on_analyzer=cfg.get("fail_on_analyzer", True),
         require_coverage=cfg.get("require_coverage", False),
-        accepted_gaps=load_baseline(baseline_path))
+        accepted_gaps=load_baseline(baseline_path),
+        strict_missing_pct=None if strict is None else float(strict),
+        require_stride=tuple(stride), fail_on_cove=cfg.get("fail_on_cove", False), max_loss_pct=float(loss))
 
 
 def load_quality_gate(*dirs: Path | str) -> Gate:
@@ -150,6 +174,12 @@ def evaluate_gate(design, build, verify, gate: Gate | None = None) -> GateResult
     if len(open_gaps) > gate.max_critical_gaps:
         for g in open_gaps:
             reasons.append(f"open critical gap {g.id}: {g.text}")
+    for t in design.threats:
+        if t.letter in gate.require_stride and t.status in ("not_covered", "partial"):
+            reasons.append(f"STRIDE {t.letter} ({t.name}) is {t.status}: {t.reason}")
+    if gate.fail_on_cove:
+        for m in getattr(verify, "cove_mismatches", ()):
+            reasons.append(f"COVE: {m}")
     if verify.spec_age_days > gate.stale_days:
         reasons.append(f"spec is stale ({verify.spec_age_days} days since update)")
     for p in verify.problems:

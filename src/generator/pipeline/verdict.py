@@ -57,6 +57,7 @@ class VerifyResult:
     analyzer: AnalyzerResult | None = None
     coverage_min: float = COVERAGE_MIN
     stale_days: int = STALE_DAYS
+    cove_mismatches: tuple[str, ...] = ()      # set by the COVE check (--cove); a note, a gate reason only if asked
 
     @property
     def passed(self) -> int:
@@ -71,6 +72,7 @@ class VerifyResult:
                          "minimum": self.coverage_min, "note": self.coverage_note},
             "problems": list(self.problems),
             "notes": list(self.notes),
+            "cove_mismatches": list(self.cove_mismatches),
             "analyzer": self.analyzer.to_dict() if self.analyzer else None,
             "requirements": [r.to_dict() for r in self.requirements],
         }

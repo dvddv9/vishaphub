@@ -31,8 +31,11 @@ class PromptFilesTests(unittest.TestCase):
 
     def test_deterministic_stages_have_no_prompt(self):
         by_key = {s.key: s for s in STAGES}
-        for key in ("intake", "verify", "deliver"):
+        for key in ("intake", "deliver"):
             self.assertEqual(by_key[key].prompts, ())
+
+    def test_verify_has_only_the_cove_prompt(self):
+        self.assertEqual({s.key: s for s in STAGES}["verify"].prompts, ("04_verify_cove",))
 
     def test_the_code_names_the_same_prompts(self):
         self.assertEqual(generate.BUILD_PROMPT, "03_build")
@@ -51,7 +54,7 @@ class PromptFilesTests(unittest.TestCase):
             self.assertIsNone(re.search(r'SYSTEM\s*=\s*"""', src), path)
 
     def test_every_stage_prompt_has_the_vishap_sections(self):
-        for name in ("02_design_textcheck", "03_build"):
+        for name in ("02_design_textcheck", "03_build", "04_verify_cove"):
             text = load_prompt(name)
             for section in ("## Вход", "## Самопроверка", "## Выход — JSON", "## Что запрещено", "## Тон"):
                 self.assertIn(section, text, (name, section))

@@ -26,6 +26,13 @@ MAX_REPAIRS = 5
 DEFAULT_REPAIRS = 2
 STALE_DAYS = 90                # a spec older than this blocks the gate
 COVERAGE_MIN = 80.0            # percent
+STRICT_MISSING_PCT = 50.0      # --strict: refuse when more than this share of the key data is missing
+INJECTION_STOP = 3             # instruction-like phrases in a spec that stop the run
+LOSS_MAX_PCT = 30.0            # share of planned code/test files the model may leave out before INCOMPLETE
+REPRO_SEED = 42                # --repro: temperature 0 and this seed, if the endpoint takes them
+CANDIDATES_MAX = 5             # --candidates N: at most this many
+CANDIDATE_WORKERS = 3          # candidates generated at the same time
+PROBE_MAX = 12                 # unusual values the COVE check sends
 
 
 def api_token() -> str | None:

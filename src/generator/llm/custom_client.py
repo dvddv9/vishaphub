@@ -66,6 +66,8 @@ class LLMConfig:
     timeout: float = DEFAULT_TIMEOUT
     thinking: str = ""
     reasoning_effort: str = ""
+    temperature: float | None = None     # --repro sets 0 and a seed; None leaves it to the provider
+    seed: int | None = None
 
     @property
     def endpoint(self) -> str:
@@ -133,6 +135,10 @@ class CustomClient:
             payload["thinking"] = {"type": cfg.thinking}
         if cfg.reasoning_effort:
             payload["reasoning_effort"] = cfg.reasoning_effort
+        if cfg.temperature is not None:
+            payload["temperature"] = cfg.temperature
+        if cfg.seed is not None:
+            payload["seed"] = cfg.seed
         body = json.dumps(payload).encode("utf-8")
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
         if cfg.key:

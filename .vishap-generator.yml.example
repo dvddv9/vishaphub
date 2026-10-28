@@ -8,3 +8,7 @@ quality_gate:
   fail_on_analyzer: true             # Vishap Analyzer errors block
   require_coverage: false            # coverage that could not be measured blocks
   baseline: .vishap/baseline.json    # gaps accepted on purpose (`vishap-generator baseline spec.yaml`)
+  strict_missing_pct: 50             # refuse a spec that lacks more than this share of the key data (off when absent)
+  require_stride: [T, I]             # STRIDE letters that must be fully covered by the spec (none by default)
+  fail_on_cove: false                # a mismatch found by `--cove` blocks
+  max_loss_pct: 30                   # share of planned code/test files the model may leave out

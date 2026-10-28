@@ -36,6 +36,8 @@
 | `main.py` | HTTP-сервер: форма и API |
 | `cli.py` | командная строка |
 | `config.py`, `version.py` | пути, пределы, переключатели окружения; версия |
+| `tools/stride.py`, `tools/injection.py`, `tools/strict.py`, `tools/domains.py`, `tools/spec_text.py` | таблица STRIDE по spec; инструкции к модели в spec; STRICT; напоминания по области; тексты spec с номерами строк |
+| `pipeline/effort.py`, `pipeline/candidates.py`, `pipeline/cove.py` | глубина прогона; лучший из N; сверка «что сказано в spec» и «что делает код» |
 | `tools/quality_gate.py`, `tools/baseline.py` | гейт из `.vishap-generator.yml`; принятые дыры |
 | `tools/static_scan.py` | правила по AST с CWE/OWASP |
 | `tools/redact.py`, `tools/provenance.py` | секреты вырезаются до модели; откуда взялся прогон |
@@ -62,6 +64,13 @@
 | `storage/history.py` | `storage/history.py` | файл в папке вывода, не БД |
 | `observability/logging.py` | `observability/logging.py` | стандартный `logging`, не structlog |
 | `pipeline/batch.py` | `pipeline/batch.py` | по папке на spec, поэтому Deliver не нужно сериализовать |
+| `tools/stride.py` | `threat_model` аналитика | таблица покрытия по spec, не рассказ модели; `proof` добавляет Verify |
+| `pipeline/cove.py`, `prompts/04_verify_cove.md` | шаг COVE | независимый ответ модели сверяется не со вторым ответом, а с запуском кода |
+| `pipeline/candidates.py` | USC (несколько проб, самая согласованная) | судья — Verify, не голосование |
+| `tools/strict.py` | режим `[STRICT]`, `STRICT_MISSING_PCT` | выключен по умолчанию; называет недостающие поля |
+| `pipeline/effort.py` | уровни глубины D0–D4 | три имени: quick, standard, deep |
+| `tools/injection.py` | `substitution_seen` | узкие шаблоны EN/RU; spec и так идёт к модели только как данные |
+| `tools/domains.py` | чек-листы областей | напоминания, не требования |
 | `api/job_store*.py`, `api/jobs.py` | асинхронные задачи | в памяти сервера, час |
 | `api/rate_limit.py` | `api/rate_limit.py` | окно на адрес сокета; заголовкам прокси не верим |
 | `tools/report.py` | `static_scan.render_markdown`, `api/reports` | один и тот же прогон даёт один и тот же текст |

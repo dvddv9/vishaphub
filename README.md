@@ -62,7 +62,12 @@
 | `--no-llm` | только Intake и Design (проверка спецификации) |
 | `--no-analyzer` | не запускать Анализатор |
 | `--no-text-check` | не просить модель сверить свободный `text` с требованиями |
-| `--repairs N` | раунды исправления (0 — без них) |
+| `--repairs N` | раунды исправления (0 — без них; без флага решает `--effort`) |
+| `--effort quick\|standard\|deep` | сколько работы: quick — 1 исправление, без сверки текста и Анализатора; standard — как раньше; deep — 3 исправления, 3 кандидата, `--cove`. Отдельный флаг сильнее имени |
+| `--candidates N` | N ответов модели (1–5): каждый собирается и проверяется Verify, остаётся тот, у которого больше доказано; стоит N сборок |
+| `--cove` | ещё один вызов модели: она отвечает только по spec, что сервис должен делать на странных значениях (`é`, арабская цифра, `_`, пробел); код запускается на тех же значениях, расхождения идут в заметки |
+| `--strict` | отказать, если в spec нет больше половины ключевых данных, и назвать, чего нет (код выхода 2) |
+| `--repro` | температура 0 и фиксированный seed; не вместе с несколькими кандидатами |
 | `--json FILE`, `--sarif FILE`, `--report FILE` | полный результат / SARIF 2.1.0 / отчёт Markdown |
 
 После прогона печатается строка `usage`: вызовы модели, токены, время и цена (цена только если заданы `GENERATOR_PRICE_IN` и `GENERATOR_PRICE_OUT`, USD за 1M токенов). Пороги гейта можно задать в `.vishap-generator.yml` (образец: `.vishap-generator.yml.example`).
@@ -70,6 +75,14 @@
 Без `--gate` файлы пишутся всегда, провалы и дыры остаются в отчёте. Коды выхода: 0 готово, 1 гейт заблокировал, 2 ошибка (спецификация, модель, запись).
 
 Откат: `rollback ID` возвращает старые файлы и удаляет созданные. Отказывается, если файл изменён после прогона (`--force` перебивает). Backup и манифест лежат в `<out>/.vishap/runs/<ID>/`.
+
+### Что проверяется сверх Verify (0.6.0)
+
+- **Таблица STRIDE** читает spec, не код: для каждой из шести угроз есть ли требование (`covered`, `partial`, `not_covered`, `not_applicable`). После Verify в строке появляется `proof`: доказаны ли эти требования. Блокирует только по ключу гейта `require_stride`.
+- **Инструкции к модели в spec** («игнорируй предыдущие инструкции») — critical-дыра `injection`; три и больше останавливают прогон. **Секрет в spec** — critical-дыра `secret` (виды и число, не значения). Поле `domain:` (bank, medical, retail и другие) добавляет напоминания «подумали ли о ...», они не блокируют.
+- **Память раундов**: модель при исправлении видит проблемы прошлых раундов; те же проблемы два раза подряд останавливают цикл.
+- **Недодача**: если модель не прислала больше `max_loss_pct` (30) запланированных файлов кода и тестов, это проблема `incomplete`.
+- Пороги в `.vishap-generator.yml`: `strict_missing_pct`, `require_stride`, `fail_on_cove`, `max_loss_pct`.
 
 ## REST API и веб-форма
 
@@ -79,7 +92,7 @@
 - Настройки модели в форме (URL, имя, ключ) живут в `sessionStorage` вкладки и уходят только в запрос; сервер их не хранит и не пишет в лог. Принимаются, когда сервер на loopback или задано `GENERATOR_ALLOW_CLIENT_LLM=1`; иначе используется модель из `CUSTOM_LLM_*` сервера.
 - `GET /health`, `GET /api/status` (какая модель настроена, есть ли Analyzer и coverage, нужен ли токен), `GET /api/examples` (три примера спецификации).
 - `POST /api/check` `{"spec": "<yaml>"}` — Intake и Design.
-- `POST /api/generate` `{"spec": "<yaml>", "gate": false, "repairs": 2, "no_analyzer": false}` — все этапы. Ничего не пишет на диск сервера: файлы, `diff`, `trace`, `log`, `markdown`, `stages` и `usage` приходят в ответе.
+- `POST /api/generate` `{"spec": "<yaml>", "gate": false, "repairs": 2, "no_analyzer": false, "effort": "deep", "candidates": 3, "cove": true, "strict": false}` — все этапы (`effort`, `candidates`, `cove`, `strict` необязательны; неверное значение — 400, отказ `strict` — 422). Ничего не пишет на диск сервера: файлы, `diff`, `trace`, `log`, `markdown`, `stages` и `usage` приходят в ответе.
 - `POST /api/generate/async` (то же тело) → `202 {"job": "<id>"}`; `GET /api/jobs/<id>?since=N` → статус, текущая стадия, новые строки лога, а когда готово, тот же ответ, что у `/api/generate`. Форма использует именно его. Задачи живут в памяти сервера час.
 - `GET /api/providers` — провайдеры, которых может выбрать браузер (URL из запроса сервер не берёт).
 
@@ -113,12 +126,13 @@
       llm/        custom_client client _observe providers _scrub
       pipeline/   intake design build generate verify verdict deliver textcheck batch cost
                   orchestrator (все этапы)  stages (реестр, часы)  prompts (загрузка)
+                  effort candidates cove (глубина, лучший из N, сверка с запуском)
                   sandbox + _sandbox_runner (дочерний процесс)
       tools/      spec gaps analyzer sarif examples static_scan quality_gate baseline
-                  redact provenance report
+                  redact provenance report stride injection strict domains spec_text
       storage/    history
       observability/ logging
-      prompts/    00_rules  02_design_textcheck  03_build  03_build_repair  (.md)
+      prompts/    00_rules  02_design_textcheck  03_build  03_build_repair  04_verify_cove  (.md)
       web/        index.html
     tests/        по файлу на модуль, плюс test_prompts и test_structure
     docs/         ARCHITECTURE FAQ LIMITATIONS ROADMAP VISHAP HISTORY stages

@@ -137,3 +137,13 @@ def check_build(design: DesignResult, requirements: tuple[Requirement, ...],
         for plan in design.files if plan.path in files
     )
     return BuildCheck(files=checks, errors=tuple(errors))
+
+
+def loss_pct(design: DesignResult, files: dict[str, str]) -> tuple[float, list[str]]:
+    """(share in percent, names) of the planned code and test files the model did not send.
+
+    Package markers (`__init__.py`) are not counted: they carry nothing. 0.0 when nothing was planned.
+    """
+    planned = [f.path for f in design.files if f.role in ("code", "test")]
+    missing = [p for p in planned if p not in files]
+    return (round(100.0 * len(missing) / len(planned), 1) if planned else 0.0), missing

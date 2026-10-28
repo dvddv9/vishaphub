@@ -20,11 +20,14 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from generator.tools.analyzer import AnalyzerResult, run_analyzer
-from generator.config import DEFAULT_REPAIRS
-from generator.pipeline.build import BuildCheck
+from generator.config import CANDIDATE_WORKERS, INJECTION_STOP, REPRO_SEED, STRICT_MISSING_PCT
+from generator.pipeline.build import BuildCheck, loss_pct
+from generator.pipeline.candidates import generate_all, pick_best, summarize
+from generator.pipeline.cove import CoveError, run_cove
+from generator.pipeline.effort import EffortError, resolve as resolve_effort
 from generator.pipeline.deliver import DeliverError, DeliverResult, deliver
 from generator.pipeline.design import DesignResult, design
-from generator.pipeline.generate import GenerateError, generate_code, repair_code
+from generator.pipeline.generate import GenerateError, feedback_text, generate_code, repair_code
 from generator.pipeline.intake import Requirement, requirements_from
 from generator.llm import LLMConfig, LLMConfigError, LLMError, chat, config_from_env
 from generator.llm._observe import observe_llm_result
@@ -36,7 +39,10 @@ from generator.pipeline.cost import sum_stage_costs
 from generator.pipeline.stages import StageClock
 from generator.pipeline.verify import verify
 from generator.storage.history import add_entry
+from generator.tools.injection import scan as scan_injection
 from generator.tools.provenance import get_provenance
+from generator.tools.strict import strict_message
+from generator.tools.stride import with_proof
 from generator.tools.redact import redact
 from generator.tools.baseline import compute_fingerprint
 from generator.tools.quality_gate import Gate, QualityGateError, load_quality_gate
@@ -59,6 +65,12 @@ class PipelineResult:
     quality_gate: Gate | None = None
     stages: list = field(default_factory=list)
     provenance: dict = field(default_factory=dict)
+    effort: str = ""
+    threats: list = field(default_factory=list)       # STRIDE table with proof (tools/stride.py)
+    candidates: list = field(default_factory=list)    # best-of-N rows (pipeline/candidates.py), empty for one
+    cove: dict | None = None                          # the COVE check (pipeline/cove.py), None when not run
+    loss_pct: float = 0.0
+    stopped: str = ""                                 # why the repair loop ended early, if it did
 
     @property
     def usage(self) -> dict:
@@ -66,6 +78,7 @@ class PipelineResult:
         return {"llm_calls": sum(s["llm_calls"] for s in self.stages),
                 "tokens_in": sum(s["tokens_in"] for s in self.stages),
                 "tokens_out": sum(s["tokens_out"] for s in self.stages),
+                "tokens_reported": any(s["tokens_in"] or s["tokens_out"] for s in self.stages),
                 "cost_usd": sum_stage_costs(self.stages),
                 "duration_s": round(sum(s["duration_s"] for s in self.stages), 3)}
 
@@ -84,6 +97,16 @@ class PipelineResult:
             d["verify"] = self.verify.to_dict()
         if self.deliver:
             d["deliver"] = self.deliver.to_dict()
+        d["threats"] = self.threats
+        if self.candidates:
+            d["candidates"] = self.candidates
+        if self.cove is not None:
+            d["cove"] = self.cove
+        if self.build or self.files:
+            d["loss_pct"] = self.loss_pct
+        if self.stopped:
+            d["repair_stopped"] = self.stopped
+        d["effort"] = self.effort
         d["stages"] = self.stages
         d["usage"] = self.usage
         if self.provenance:
@@ -130,34 +153,53 @@ def _redaction_counts(spec: Spec, reqs) -> dict[str, int]:
 
 def run_pipeline(spec_path: str | Path, *, out_dir: str | Path | None = None,
                  gate: bool = False, force: bool = False, dry_run: bool = False,
-                 no_llm: bool = False, repairs: int = DEFAULT_REPAIRS,
-                 require_coverage: bool = False, text_check: bool = True,
+                 no_llm: bool = False, repairs: int | None = None,
+                 require_coverage: bool = False, text_check: bool | None = None,
                  quality_gate: Gate | None = None,
                  chat_fn: Callable[..., str] = chat, config: LLMConfig | None = None,
                  analyzer: Callable[[dict], AnalyzerResult] | None = run_analyzer,
                  today: dt.date | None = None, now: dt.datetime | None = None,
                  log: Callable[[str], None] = lambda line: None,
-                 allow_write: bool = True) -> PipelineResult:
+                 allow_write: bool = True, effort: str | None = None,
+                 candidates: int | None = None, cove: bool | None = None,
+                 strict: bool = False, repro: bool = False,
+                 candidate_workers: int | None = None) -> PipelineResult:
     """`allow_write=False` never touches the disk (the API uses it): Deliver runs as a dry run.
+
+    `effort` (quick, standard, deep) sets repairs, candidates, text check, analyzer and COVE together; a knob given
+    on its own (`repairs`, `candidates`, `text_check`, `cove`) wins over it. `strict` refuses a spec that lacks too
+    much of the key data. `repro` asks the model for temperature 0 and a fixed seed.
 
     Every stage is timed and its model calls counted (`PipelineResult.stages`, `.usage`).
     """
     res = PipelineResult(exit_code=0)
     clock = StageClock()
     try:
-        _run(res, clock, spec_path, out_dir=out_dir, gate=gate, force=force, dry_run=dry_run,
-             no_llm=no_llm, repairs=repairs, require_coverage=require_coverage, text_check=text_check,
+        try:
+            eff = resolve_effort(effort, repairs=repairs, candidates=candidates, text_check=text_check, cove=cove)
+        except EffortError as e:
+            res.exit_code, res.error = 2, f"effort: {e}"
+            return res
+        if repro and eff.candidates > 1:
+            res.exit_code, res.error = 2, "repro: temperature 0 gives the same answer every time, so candidates would be identical"
+            return res
+        if not eff.analyzer and analyzer is run_analyzer:
+            analyzer = None
+        res.effort = eff.name
+        _run(res, clock, spec_path, eff, out_dir=out_dir, gate=gate, force=force, dry_run=dry_run,
+             no_llm=no_llm, require_coverage=require_coverage, strict=strict, repro=repro,
              quality_gate=quality_gate, chat_fn=_metered(chat_fn), config=config, analyzer=analyzer,
-             today=today, now=now, log=log, allow_write=allow_write)
+             today=today, now=now, log=log, allow_write=allow_write, candidate_workers=candidate_workers)
     finally:
         res.stages = clock.records()
         clear_context()
     return res
 
 
-def _run(res: PipelineResult, clock: StageClock, spec_path, *, out_dir, gate, force, dry_run, no_llm,
-         repairs, require_coverage, text_check, quality_gate, chat_fn, config, analyzer, today, now,
-         log, allow_write) -> None:
+def _run(res: PipelineResult, clock: StageClock, spec_path, eff, *, out_dir, gate, force, dry_run, no_llm,
+         require_coverage, strict, repro, quality_gate, chat_fn, config, analyzer, today, now,
+         log, allow_write, candidate_workers) -> None:
+    repairs, text_check = eff.repairs, eff.text_check
     logger = get_logger("pipeline")
     try:
         spec = load_spec(spec_path)
@@ -166,6 +208,13 @@ def _run(res: PipelineResult, clock: StageClock, spec_path, *, out_dir, gate, fo
         return
     res.spec = spec
     bind_run_id(spec.sha256[:12])
+    hits = scan_injection(spec)
+    if len(hits) >= INJECTION_STOP:
+        res.exit_code = 2
+        res.error = (f"spec: {len(hits)} phrases aimed at the model (limit {INJECTION_STOP}), "
+                     f"for example \"{hits[0].phrase}\" in {hits[0].field}; the run is stopped")
+        logger.error("spec stopped: %d injection-like phrases", len(hits))
+        return
     logger.info("run started", extra={"fields": {"spec": Path(spec_path).name, "gate": gate}})
 
     if quality_gate is None:
@@ -193,6 +242,22 @@ def _run(res: PipelineResult, clock: StageClock, spec_path, *, out_dir, gate, fo
         f"{len(d.gaps) - len(d.critical_gaps)} other")
     for g in d.gaps:
         log(f"            {g.id} {g.severity}: {g.text}")
+    mark = {"covered": "ok", "partial": "~", "not_covered": "NO", "not_applicable": "-"}
+    log("            STRIDE      " + "  ".join(f"{t.letter} {mark[t.status]}" for t in d.threats))
+    res.threats = with_proof(d.threats, None)
+    limit = quality_gate.strict_missing_pct if quality_gate.strict_missing_pct is not None \
+        else (STRICT_MISSING_PCT if strict else None)
+    refusal = strict_message(spec, limit)
+    if refusal:
+        res.exit_code, res.error = 2, f"spec: {refusal}"
+        return
+
+    if repro and not no_llm:        # every model call of the run, the text check included
+        try:
+            config = replace(config or config_from_env(), temperature=0.0, seed=REPRO_SEED)
+        except LLMConfigError as e:
+            res.exit_code, res.error = 2, f"build: {e}"
+            return
 
     if text_check and not no_llm:
         try:
@@ -224,24 +289,49 @@ def _run(res: PipelineResult, clock: StageClock, spec_path, *, out_dir, gate, fo
     res.provenance = get_provenance(spec, spec_path, _resolve_config(config), redaction)
 
     # 3 Build
-    try:
+    limits = dict(today=today, coverage_min=quality_gate.coverage_min, stale_days=quality_gate.stale_days)
+    use_analyzer = analyzer if spec.data.get("check", "analyzer") == "analyzer" else None
+    n_cand = eff.candidates
+    if n_cand == 1:
+        try:
+            with clock.stage("build"):
+                gen = generate_code(spec, reqs, d, chat_fn=chat_fn, config=config)
+        except (LLMConfigError, LLMError, GenerateError) as e:
+            res.exit_code, res.error = 2, f"build: {e}"
+            logger.error("build failed: %s", e)
+            return
+        files, build = gen.files, gen.check
+    else:
+        def make(i: int):
+            g = generate_code(spec, reqs, d, chat_fn=chat_fn, config=config)
+            return g.files, g.check
         with clock.stage("build"):
-            gen = generate_code(spec, reqs, d, chat_fn=chat_fn, config=config)
-    except (LLMConfigError, LLMError, GenerateError) as e:
-        res.exit_code, res.error = 2, f"build: {e}"
-        logger.error("build failed: %s", e)
-        return
+            cands = generate_all(n_cand, make, candidate_workers or min(n_cand, CANDIDATE_WORKERS))
+        for c in cands:
+            if c.files is not None:
+                with clock.stage("verify"):
+                    c.verify = verify(spec, reqs, d, c.files, **limits)
+        best = pick_best(cands)
+        if best is None:
+            res.exit_code, res.error = 2, f"build: all {n_cand} candidates failed: {cands[0].error}"
+            logger.error("build failed: every candidate")
+            return
+        res.candidates = summarize(cands, best)
+        for row in res.candidates:
+            what = (f"{row['verdict']}, {row['passed']}/{row['requirements']} passed, build "
+                    f"{'ok' if row['build_ok'] else 'errors'}") if "verdict" in row else f"failed: {row['error']}"
+            log(f"[Build]     candidate {row['index'] + 1}/{n_cand}: {what}{'  <- chosen' if row['chosen'] else ''}")
+        files, build = best.files, best.check
     res.llm_used = True
-    files, build = gen.files, gen.check
     tests = sum(len(f.tests_found) for f in build.files)
     log(f"[Build]     {len(files)} files + {tests} tests, check: {'ok' if build.ok else 'errors'}")
 
     # 4 Verify, with repair rounds (a repair round is Build again)
-    use_analyzer = analyzer if spec.data.get("check", "analyzer") == "analyzer" else None
     rounds = 0
+    seen: list[frozenset] = []          # the problems of each finished round: a repeat means no progress
+    earlier: list[str] = []
+    stopped = ""
     while True:
-        limits = dict(today=today, coverage_min=quality_gate.coverage_min,
-                      stale_days=quality_gate.stale_days)
         with clock.stage("verify"):
             v = verify(spec, reqs, d, files, **limits)
             if v.code_verdict == "passed" and build.ok and use_analyzer:
@@ -251,10 +341,19 @@ def _run(res: PipelineResult, clock: StageClock, spec_path, *, out_dir, gate, fo
             f"verdict {v.code_verdict}")
         if done or rounds >= max(0, repairs):
             break
+        problems_now = feedback_text(build, v)
+        signature = frozenset(problems_now.splitlines())
+        if signature in seen:
+            stopped = f"round {rounds} has the same problems as round {seen.index(signature)}; another repair would not help"
+            log(f"            repair stopped: {stopped}")
+            break
+        seen.append(signature)
+        earlier.append(problems_now)
         rounds += 1
         try:
             with clock.stage("build"):
-                gen = repair_code(spec, reqs, d, files, build, v, chat_fn=chat_fn, config=config)
+                gen = repair_code(spec, reqs, d, files, build, v, chat_fn=chat_fn, config=config,
+                                  earlier=tuple(earlier[:-1]))
         except (LLMConfigError, LLMError, GenerateError) as e:
             log(f"            repair round {rounds} failed: {e}")
             logger.warning("repair round %d failed: %s", rounds, e)
@@ -263,7 +362,36 @@ def _run(res: PipelineResult, clock: StageClock, spec_path, *, out_dir, gate, fo
         files, build = gen.files, gen.check
         log(f"[Repair]    round {rounds}: model sent {len(files)} files")
     v = apply_build_errors(v, [*build.errors, *(f"{f.path}: {e}" for f in build.files for e in f.errors)])
+    loss, missing = loss_pct(d, files)
+    res.loss_pct = loss
+    if loss > quality_gate.max_loss_pct:
+        v = replace(v, problems=v.problems + (
+            f"incomplete: the model left out {loss:g}% of the planned code and test files ({', '.join(missing)})",))
+    if stopped:
+        v = replace(v, notes=v.notes + (f"repair stopped early: {stopped}",))
+        res.stopped = stopped
+
+    # COVE: what the spec says against what the code does (optional, one more model call)
+    if eff.cove and not build.errors:
+        try:
+            with clock.stage("verify"):
+                cv = run_cove(spec, reqs, d, files, chat_fn=chat_fn, config=config)
+        except (LLMConfigError, LLMError, CoveError) as e:
+            log(f"            COVE skipped: {e}")
+            logger.warning("COVE skipped: %s", e)
+        else:
+            res.cove = cv.to_dict()
+            if cv.status == "ok":
+                v = replace(v, cove_mismatches=tuple(cv.mismatches),
+                            notes=v.notes + tuple(f"COVE mismatch: {m}" for m in cv.mismatches)
+                            + ((f"COVE: {len(cv.unclear)} value(s) the spec does not decide, see the report",)
+                               if cv.unclear else ()))
+                log(f"            COVE: {len(cv.probes)} values, {len(cv.mismatches)} mismatch(es), "
+                    f"{len(cv.unclear)} undecided by the spec")
+            else:
+                log(f"            COVE skipped: {cv.note}")
     res.files, res.build, res.verify, res.repair_rounds = files, build, v, rounds
+    res.threats = with_proof(d.threats, v)
     cov = (f"{v.coverage_percent:.0f}% (minimum {quality_gate.coverage_min:.0f}%)" if v.coverage_percent is not None
            else f"{v.coverage_status} ({v.coverage_note})")
     log(f"            coverage: {cov}")
@@ -286,13 +414,13 @@ def _run(res: PipelineResult, clock: StageClock, spec_path, *, out_dir, gate, fo
                 out = deliver(spec=spec, requirements=reqs, design=d, files=files, build=build,
                               verify=v, out_root=out_dir, gate=gate, force=force,
                               dry_run=dry_run, quality_gate=quality_gate, now=now,
-                              provenance=res.provenance)
+                              provenance=res.provenance, extra=_trace_extra(res))
             else:   # nothing on disk is read or written: an empty folder stands in for the target
                 with tempfile.TemporaryDirectory(prefix="vg-dry-") as empty:
                     out = deliver(spec=spec, requirements=reqs, design=d, files=files, build=build,
                                   verify=v, out_root=Path(empty) / "out", gate=gate, force=force,
                                   dry_run=True, quality_gate=quality_gate, now=now,
-                                  provenance=res.provenance)
+                                  provenance=res.provenance, extra=_trace_extra(res))
     except DeliverError as e:
         res.exit_code, res.error = 2, f"deliver: {e}"
         logger.error("deliver failed: %s", e)
@@ -319,13 +447,26 @@ def _run(res: PipelineResult, clock: StageClock, spec_path, *, out_dir, gate, fo
     logger.info("run finished", extra={"fields": {"verdict": v.code_verdict, "exit": res.exit_code}})
 
 
+def _trace_extra(res: PipelineResult) -> dict:
+    """What a run adds to the trace besides Verify's evidence: no times, nothing that varies between runs of the same inputs."""
+    extra: dict = {"effort": res.effort, "threats": res.threats, "loss_pct": res.loss_pct}
+    if res.candidates:
+        extra["candidates"] = res.candidates
+    if res.cove is not None:
+        extra["cove"] = res.cove
+    if res.stopped:
+        extra["repair_stopped"] = res.stopped
+    return extra
+
+
 def _record_history(out_dir, res: PipelineResult, spec: Spec, out: DeliverResult) -> None:
     """One line in `<out>/.vishap/history.json`; a history that cannot be written never fails a run."""
     try:
         add_entry(out_dir, {
             "run_id": out.run_id, "spec": Path(spec.path).name, "spec_sha256": spec.sha256,
             "verdict": res.verify.code_verdict, "written": out.written, "blocked": out.blocked,
-            "forced": out.forced, "repair_rounds": res.repair_rounds,
+            "forced": out.forced, "repair_rounds": res.repair_rounds, "effort": res.effort,
+            "candidates": len(res.candidates) or 1,
             "files": [a.path for a in out.actions], "usage": res.usage,
             "model": (res.provenance.get("model") or {}).get("name", "")})
     except OSError as e:

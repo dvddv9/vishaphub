@@ -89,4 +89,4 @@ def check_text(spec: Spec, requirements: tuple[Requirement, ...], design: Design
             text=f'text says "{quote}" but no requirement covers it' + (f" ({why})" if why else ""),
             source=Source("text", line))
         for n, (quote, why) in enumerate(found, 1))
-    return DesignResult(files=design.files, gaps=design.gaps + extra), dropped
+    return DesignResult(files=design.files, gaps=design.gaps + extra, threats=design.threats), dropped

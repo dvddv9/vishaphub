@@ -112,10 +112,10 @@ details p { margin:.25rem 0 .5rem; font-size:.875rem; color:var(--s600); }
 
 /* badges */
 .badge { display:inline-flex; align-items:center; gap:.375rem; border-radius:999px; border:1px solid transparent; font-size:.75rem; font-weight:500; line-height:1; padding:.25rem .625rem; white-space:nowrap; }
-.badge-passed, .badge-pass, .badge-done { background:var(--ok-bg); border-color:rgba(34,197,94,.35); color:var(--ok); }
-.badge-failed, .badge-fail, .badge-error, .badge-critical { background:var(--bad-bg); border-color:rgba(239,68,68,.35); color:var(--bad); }
-.badge-needs_verification, .badge-not_verified, .badge-high, .badge-warning { background:var(--warn-bg); border-color:rgba(234,179,8,.35); color:var(--warn); }
-.badge-neutral, .badge-medium, .badge-note, .badge-skipped { background:var(--neutral-bg); border-color:rgba(100,116,139,.35); color:var(--s700); }
+.badge-passed, .badge-pass, .badge-done, .badge-covered, .badge-proven, .badge-match { background:var(--ok-bg); border-color:rgba(34,197,94,.35); color:var(--ok); }
+.badge-failed, .badge-fail, .badge-error, .badge-critical, .badge-not_covered, .badge-mismatch { background:var(--bad-bg); border-color:rgba(239,68,68,.35); color:var(--bad); }
+.badge-needs_verification, .badge-not_verified, .badge-high, .badge-warning, .badge-partial, .badge-not_proven { background:var(--warn-bg); border-color:rgba(234,179,8,.35); color:var(--warn); }
+.badge-neutral, .badge-medium, .badge-note, .badge-skipped, .badge-not_applicable, .badge-unclear { background:var(--neutral-bg); border-color:rgba(100,116,139,.35); color:var(--s700); }
 
 /* forms */
 .form { display:grid; gap:1.5rem; }
@@ -300,6 +300,8 @@ const FAQ = [
   ["What does it produce?", "Code and tests for the files the spec asks for, a verdict per requirement, and a trace that links each requirement to code, tests and evidence."],
   ["Does this page write files?", "No. The page never writes to the server's disk: files come back here and you download them. The command line writes into a folder you name, with backup and rollback."],
   ["Is the generated code safe to run?", "Verify runs it in a subprocess with a clean environment and a timeout, but that is not isolation: it runs with your rights. Read the code before you use it, and use Docker for specs you do not trust."],
+  ["What is the STRIDE table?", "Six rows (spoofing, tampering, repudiation, information disclosure, denial of service, elevation of privilege). Each says whether the spec has a requirement for that threat. It reads the spec, never the code; after a run the Proof column shows whether Verify proved those requirements."],
+  ["What do effort, candidates and the reading check do?", "Effort sets repair rounds, candidates and checks together: quick, standard or deep. Candidates ask the model several times and keep the answer Verify proves best. The reading check asks the model what the spec says about odd values, then runs the code on them and compares."],
   ["What is a gap?", "Something the spec leaves out or contradicts, for example no answer for invalid input. Critical gaps block a gated write; notes do not."],
   ["Where does the model key go?", "Either the server's environment (CUSTOM_LLM_*), or the settings below. A key typed here stays in this tab only (session storage) and is sent with the request; the server does not store or log it."],
   ["Why does 'passed' not mean 'safe'?", "It means every requirement in the spec has evidence. A requirement the spec never states is not checked. The Gaps tab and the Analyzer tab show what the spec leaves open."],
@@ -427,7 +429,7 @@ function getConstraints(text) { const m = text.match(/^constraints:[ \t]*\[(.*?)
 function pageGenerate(query) {
   const spec = el("textarea", { id: "spec", spellcheck: "false", "aria-label": "spec.yaml" });
   const out = el("div", { id: "gen-out" });
-  const opts = { gate: false, requireCov: false, repairs: 2, noAnalyzer: false, noText: false };
+  const opts = { gate: false, requireCov: false, repairs: "", noAnalyzer: false, noText: false, effort: "", candidates: "", cove: false, strict: false };
   const draft = query.get("example") ? {} : (app.draft || {});
   Object.assign(opts, draft.options || {});
   spec.value = draft.spec || "";
@@ -476,7 +478,12 @@ function pageGenerate(query) {
       note.textContent = stage ? "Stage " + (at + 1) + " of 5: " + STAGE_NAMES[at] + (repairing ? " (repair round)" : "") + ". " : note.textContent;
     };
     app.draft = { spec: spec.value, options: { ...opts } };
-    const body = { spec: spec.value, gate: opts.gate, require_coverage: opts.requireCov, repairs: Number(opts.repairs), no_analyzer: opts.noAnalyzer, text_check: !opts.noText };
+    const body = { spec: spec.value, gate: opts.gate, require_coverage: opts.requireCov, no_analyzer: opts.noAnalyzer, strict: opts.strict };
+    if (String(opts.repairs).trim() !== "") body.repairs = Number(opts.repairs);      // empty: the effort decides
+    if (opts.noText) body.text_check = false;
+    if (opts.effort) body.effort = opts.effort;
+    if (String(opts.candidates).trim() !== "") body.candidates = Number(opts.candidates);
+    if (opts.cove) body.cove = true;
     if (mode === "run") { const l = llmForRequest(); if (l) body.llm = l; }
     let res;
     try {
@@ -530,7 +537,15 @@ function pageGenerate(query) {
           optBox("o-cov", "Require coverage", "With the gate: coverage that could not be measured blocks too.", "requireCov"),
           optBox("o-noan", "Skip the Analyzer", "Do not run the Vishap Analyzer on the code.", "noAnalyzer"),
           optBox("o-notext", "Skip the text check", "Do not ask the model to compare the free text with the requirements.", "noText"),
-          el("div", { class: "field" }, el("label", { class: "l", for: "o-rep" }, "Repair rounds (0 to 5)"),
+          optBox("o-strict", "Strict", "Refuse a spec that lacks more than half of the key data, and say which parts are missing.", "strict"),
+          optBox("o-cove", "Reading check (COVE)", "One more model call: it answers from the spec alone what odd values should do, then the code is run on the same values and the answers are compared.", "cove"),
+          el("div", { class: "field" }, el("label", { class: "l", for: "o-effort" }, "Effort"),
+            el("select", { id: "o-effort", onchange: (e) => (opts.effort = e.target.value) },
+              ...[["", "Standard (default)"], ["quick", "Quick: 1 repair, no text check, no Analyzer"], ["deep", "Deep: 3 repairs, 3 candidates, reading check"]]
+                .map(([v, t]) => el("option", { value: v, selected: opts.effort === v }, t)))),
+          el("div", { class: "field" }, el("label", { class: "l", for: "o-cand" }, "Candidates (1 to 5, empty: by effort)"),
+            el("input", { type: "number", id: "o-cand", min: "1", max: "5", value: String(opts.candidates), oninput: (e) => (opts.candidates = e.target.value) })),
+          el("div", { class: "field" }, el("label", { class: "l", for: "o-rep" }, "Repair rounds (0 to 5, empty: by effort)"),
             el("input", { type: "number", id: "o-rep", min: "0", max: "5", value: String(opts.repairs), oninput: (e) => (opts.repairs = e.target.value) }))),
         sheet)),
     el("div", { class: "sec" }, llmSettings()));
@@ -592,6 +607,42 @@ function pageRun(id) {
     tabsEl, panel);
 }
 
+function strideCard(threats) {
+  const proof = threats.some((t) => t.proof);
+  return el("div", { class: "card", style: "margin-top:1rem" }, el("h3", null, "STRIDE: what the spec says about each threat"),
+    el("p", { class: "muted", style: "font-size:.85rem" }, "Read from the spec, not from the code. " + (proof ? "The last column says whether Verify proved the requirements behind the row." : "Run the generator to see which rows are proven.")),
+    el("div", { class: "scroll" }, el("table", null, el("thead", null, el("tr", null, ["", "Threat", "Spec", "Why", proof ? "Proof" : ""].map((h) => el("th", { scope: "col" }, h)))),
+      el("tbody", null, threats.map((t) => el("tr", null, el("td", { class: "mono" }, t.letter), el("td", null, t.name), el("td", null, badge(t.status)),
+        el("td", null, t.reason + (t.requirements.length ? " (" + t.requirements.join(", ") + ")" : "")),
+        el("td", null, t.proof && t.proof !== "-" ? badge(t.proof.replace(" ", "_"), t.proof) : "")))))));
+}
+
+function extraCards(r, d) {
+  const out = [];
+  const threats = r.threats && r.threats.length ? r.threats : (d && d.threats) || [];
+  if (threats.length) out.push(strideCard(threats));
+  if (r.candidates && r.candidates.length) {
+    out.push(el("div", { class: "card", style: "margin-top:1rem" }, el("h3", null, "Candidates"),
+      el("p", { class: "muted", style: "font-size:.85rem" }, "Each answer of the model was built and verified; the one with the most proof was kept. This costs one Build per candidate."),
+      el("div", { class: "scroll" }, el("table", null, el("thead", null, el("tr", null, ["#", "Build", "Verdict", "Proven", ""].map((h) => el("th", { scope: "col" }, h)))),
+        el("tbody", null, r.candidates.map((c) => el("tr", null, el("td", { class: "mono" }, String(c.index + 1)),
+          el("td", null, c.error ? badge("failed", "no answer") : badge(c.build_ok ? "passed" : "failed", c.build_ok ? "ok" : "errors")),
+          el("td", null, c.error ? c.error : badge(c.verdict)), el("td", null, c.error ? "-" : c.passed + " of " + c.requirements),
+          el("td", null, c.chosen ? badge("passed", "chosen") : "")))))))); 
+  }
+  if (r.cove) {
+    const c = r.cove;
+    out.push(el("div", { class: "card", style: "margin-top:1rem" }, el("h3", null, "Reading check (COVE)"),
+      c.status !== "ok" ? el("p", { class: "muted" }, "Skipped: " + c.note)
+        : el("div", null, el("p", { class: "muted", style: "font-size:.85rem" }, "The model answered from the spec alone; the code was run on the same values. A difference means the code does not do what the spec says, or the spec is ambiguous."),
+          el("div", { class: "scroll" }, el("table", null, el("thead", null, el("tr", null, ["Input", "Value", "Spec reads as", "Code does", ""].map((h) => el("th", { scope: "col" }, h)))),
+            el("tbody", null, c.probes.map((p) => el("tr", null, el("td", { class: "mono" }, p.input), el("td", { class: "mono" }, JSON.stringify(p.value) + " (" + p.label + ")"),
+              el("td", null, badge(p.spec_reading === "unclear" ? "unclear" : "neutral", p.spec_reading)), el("td", null, badge(p.code === "reject" ? "failed" : p.code === "accept" ? "passed" : "warning", p.code)),
+              el("td", null, p.spec_reading === "unclear" ? "" : badge(p.match ? "match" : "mismatch")))))))))); 
+  }
+  return out;
+}
+
 function kvRow(pairs) { return el("dl", { class: "kv" }, pairs.map(([k, val]) => el("div", null, el("dt", null, k), el("dd", null, val)))); }
 
 function tabBody(tab, run) {
@@ -604,13 +655,16 @@ function tabBody(tab, run) {
       nodes.push(kvRow([
         ["Verdict", badge(v.code_verdict)], ["Requirements", passed + " of " + v.requirements.length + " proven"],
         ["Coverage", cov + " (minimum " + v.coverage.minimum + "%)"], ["Spec", v.spec.stale ? "stale, " + v.spec.age_days + " days" : "fresh, " + v.spec.age_days + " days"],
-        ["Repair rounds", String(r.repair_rounds)], ["Analyzer", v.analyzer ? v.analyzer.status : "not run"],
+        ["Repair rounds", String(r.repair_rounds) + (r.repair_stopped ? " (stopped early)" : "")], ["Analyzer", v.analyzer ? v.analyzer.status : "not run"],
+        ["Effort", r.effort || "standard"], ["Candidates", r.candidates && r.candidates.length ? String(r.candidates.length) : "1"],
+        ["Incomplete", r.loss_pct ? r.loss_pct + "% of planned files missing" : "no"],
         ["Gate", r.deliver ? (r.deliver.gate.blocked ? "would block" : "would pass") : "-"]]));
       const buildErrs = r.build ? [...r.build.errors, ...r.build.files.flatMap((f) => f.errors.map((e) => f.path + ": " + e))] : [];
       const concl = v.code_verdict === "passed" ? "Every critical and high requirement has evidence and nothing failed."
         : v.code_verdict === "failed" ? "At least one critical or high requirement failed. See the Requirements tab for the evidence."
         : "Something could not be proven or run. Read the problems below before you trust this code.";
       nodes.push(el("div", { class: "card" }, el("h3", null, "Conclusion"), el("p", null, concl)));
+      nodes.push(...extraCards(r, d));
       if (r.deliver && r.deliver.gate.reasons.length) nodes.push(el("div", { class: "card", style: "margin-top:1rem" }, el("h3", null, "The gate would block because"), el("ul", { class: "tight reasons" }, r.deliver.gate.reasons.map((x) => el("li", null, x)))));
       if (buildErrs.length) nodes.push(el("div", { class: "card", style: "margin-top:1rem" }, el("h3", null, "Build check"), el("ul", { class: "tight" }, buildErrs.map((x) => el("li", { style: "color:var(--bad)" }, x)))));
       if (v.problems.length) nodes.push(el("div", { class: "card", style: "margin-top:1rem" }, el("h3", null, "Problems"), el("ul", { class: "tight" }, v.problems.map((x) => el("li", { style: "color:var(--bad)" }, x)))));
@@ -626,6 +680,7 @@ function tabBody(tab, run) {
       nodes.push(kvRow([["Mode", "Spec check, no model"], ["Requirements", String((r.requirements || []).length)], ["Gaps", String(d ? d.gaps.length : 0)],
         ["Critical gaps", String(d ? d.gaps.filter((g) => g.severity === "critical").length : 0)], ["Files planned", String(d ? d.files.length : 0)]]));
       nodes.push(el("div", { class: "note" }, "No model was called and no code was written. This only shows what Intake and Design make of the spec."));
+      if (d && d.threats) nodes.push(strideCard(d.threats));
     }
     return el("div", null, nodes);
   }
