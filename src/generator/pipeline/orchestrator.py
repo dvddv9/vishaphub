@@ -16,7 +16,7 @@ from __future__ import annotations
 import datetime as dt
 import tempfile
 from collections.abc import Callable
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from generator.tools.analyzer import AnalyzerResult, run_analyzer
@@ -26,11 +26,18 @@ from generator.pipeline.deliver import DeliverError, DeliverResult, deliver
 from generator.pipeline.design import DesignResult, design
 from generator.pipeline.generate import GenerateError, generate_code, repair_code
 from generator.pipeline.intake import Requirement, requirements_from
-from generator.llm import LLMConfig, LLMConfigError, LLMError, chat
+from generator.llm import LLMConfig, LLMConfigError, LLMError, chat, config_from_env
+from generator.llm._observe import observe_llm_result
+from generator.observability.logging import bind_run_id, clear_context, get_logger
 from generator.tools.spec import Spec, SpecError, load_spec
 from generator.pipeline.textcheck import TextCheckError, check_text
 from generator.pipeline.verdict import VerifyResult, apply_build_errors
+from generator.pipeline.cost import sum_stage_costs
+from generator.pipeline.stages import StageClock
 from generator.pipeline.verify import verify
+from generator.storage.history import add_entry
+from generator.tools.provenance import get_provenance
+from generator.tools.redact import redact
 from generator.tools.baseline import compute_fingerprint
 from generator.tools.quality_gate import Gate, QualityGateError, load_quality_gate
 
@@ -50,6 +57,17 @@ class PipelineResult:
     repair_rounds: int = 0
     llm_used: bool = False
     quality_gate: Gate | None = None
+    stages: list = field(default_factory=list)
+    provenance: dict = field(default_factory=dict)
+
+    @property
+    def usage(self) -> dict:
+        """Totals over the stages: model calls, tokens, and the cost (0.0 unless prices are set)."""
+        return {"llm_calls": sum(s["llm_calls"] for s in self.stages),
+                "tokens_in": sum(s["tokens_in"] for s in self.stages),
+                "tokens_out": sum(s["tokens_out"] for s in self.stages),
+                "cost_usd": sum_stage_costs(self.stages),
+                "duration_s": round(sum(s["duration_s"] for s in self.stages), 3)}
 
     def to_dict(self) -> dict:
         d: dict = {"exit_code": self.exit_code, "error": self.error,
@@ -66,6 +84,10 @@ class PipelineResult:
             d["verify"] = self.verify.to_dict()
         if self.deliver:
             d["deliver"] = self.deliver.to_dict()
+        d["stages"] = self.stages
+        d["usage"] = self.usage
+        if self.provenance:
+            d["provenance"] = self.provenance
         return d
 
 
@@ -74,6 +96,36 @@ def _count(reqs) -> str:
     for r in reqs:
         counts[r.priority] = counts.get(r.priority, 0) + 1
     return ", ".join(f"{n} {p}" for p, n in counts.items())
+
+
+def _metered(chat_fn: Callable[..., str]) -> Callable[..., str]:
+    """The real `chat` counts its own calls; a stand-in (tests, a custom caller) is counted here."""
+    if chat_fn is chat:
+        return chat_fn
+
+    def counted(messages, config=None, max_tokens=4096):
+        answer = chat_fn(messages, config, max_tokens=max_tokens)
+        observe_llm_result(messages, answer)
+        return answer
+    return counted
+
+
+def _resolve_config(config: LLMConfig | None) -> LLMConfig | None:
+    if config is not None:
+        return config
+    try:
+        return config_from_env()
+    except LLMConfigError:
+        return None
+
+
+def _redaction_counts(spec: Spec, reqs) -> dict[str, int]:
+    """What `tools.redact` takes out of the text and the requirements before they go to the model."""
+    counts: dict[str, int] = {}
+    for text in (spec.text, *(r.text for r in reqs)):
+        for kind, n in redact(text).applied:
+            counts[kind] = counts.get(kind, 0) + n
+    return counts
 
 
 def run_pipeline(spec_path: str | Path, *, out_dir: str | Path | None = None,
@@ -86,17 +138,35 @@ def run_pipeline(spec_path: str | Path, *, out_dir: str | Path | None = None,
                  today: dt.date | None = None, now: dt.datetime | None = None,
                  log: Callable[[str], None] = lambda line: None,
                  allow_write: bool = True) -> PipelineResult:
-    """`allow_write=False` never touches the disk (the API uses it): Deliver runs as a dry run."""
+    """`allow_write=False` never touches the disk (the API uses it): Deliver runs as a dry run.
+
+    Every stage is timed and its model calls counted (`PipelineResult.stages`, `.usage`).
+    """
     res = PipelineResult(exit_code=0)
+    clock = StageClock()
+    try:
+        _run(res, clock, spec_path, out_dir=out_dir, gate=gate, force=force, dry_run=dry_run,
+             no_llm=no_llm, repairs=repairs, require_coverage=require_coverage, text_check=text_check,
+             quality_gate=quality_gate, chat_fn=_metered(chat_fn), config=config, analyzer=analyzer,
+             today=today, now=now, log=log, allow_write=allow_write)
+    finally:
+        res.stages = clock.records()
+        clear_context()
+    return res
+
+
+def _run(res: PipelineResult, clock: StageClock, spec_path, *, out_dir, gate, force, dry_run, no_llm,
+         repairs, require_coverage, text_check, quality_gate, chat_fn, config, analyzer, today, now,
+         log, allow_write) -> None:
+    logger = get_logger("pipeline")
     try:
         spec = load_spec(spec_path)
-    except SpecError as e:
+    except (SpecError, OSError) as e:
         res.exit_code, res.error = 2, f"spec: {e}"
-        return res
-    except OSError as e:
-        res.exit_code, res.error = 2, f"spec: {e}"
-        return res
+        return
     res.spec = spec
+    bind_run_id(spec.sha256[:12])
+    logger.info("run started", extra={"fields": {"spec": Path(spec_path).name, "gate": gate}})
 
     if quality_gate is None:
         try:     # the API (allow_write=False) never reads a config from the server's disk
@@ -104,16 +174,20 @@ def run_pipeline(spec_path: str | Path, *, out_dir: str | Path | None = None,
                 if allow_write else Gate()
         except QualityGateError as e:
             res.exit_code, res.error = 2, f"spec: {e}"
-            return res
+            return
     if require_coverage:
         quality_gate = replace(quality_gate, require_coverage=True)
     res.quality_gate = quality_gate
 
-    reqs = requirements_from(spec)
+    # 1 Intake
+    with clock.stage("intake"):
+        reqs = requirements_from(spec)
     res.requirements = reqs
     log(f"[Intake]    {len(reqs)} requirements ({_count(reqs)})")
 
-    d = design(spec, reqs)
+    # 2 Design (and the text check, the one model call of this stage)
+    with clock.stage("design"):
+        d = design(spec, reqs)
     res.design = d
     log(f"[Design]    {len(d.files)} files, gaps: {len(d.critical_gaps)} critical, "
         f"{len(d.gaps) - len(d.critical_gaps)} other")
@@ -122,9 +196,11 @@ def run_pipeline(spec_path: str | Path, *, out_dir: str | Path | None = None,
 
     if text_check and not no_llm:
         try:
-            d, dropped = check_text(spec, reqs, d, chat_fn=chat_fn, config=config)
+            with clock.stage("design"):
+                d, dropped = check_text(spec, reqs, d, chat_fn=chat_fn, config=config)
         except (LLMConfigError, LLMError, TextCheckError) as e:
             log(f"            text check skipped: {e}")
+            logger.warning("text check skipped: %s", e)
         else:
             res.design = d
             added = [g for g in d.gaps if g.source and g.source.field == "text"]
@@ -140,28 +216,36 @@ def run_pipeline(spec_path: str | Path, *, out_dir: str | Path | None = None,
                          if compute_fingerprint(g) not in quality_gate.accepted_gaps]
             if len(open_gaps) > quality_gate.max_critical_gaps:
                 res.exit_code = 1
-        return res
+        return
 
-    # Build
+    redaction = _redaction_counts(spec, reqs)
+    if redaction:
+        log("            redacted before the model: " + ", ".join(f"{n} {k}" for k, n in sorted(redaction.items())))
+    res.provenance = get_provenance(spec, spec_path, _resolve_config(config), redaction)
+
+    # 3 Build
     try:
-        gen = generate_code(spec, reqs, d, chat_fn=chat_fn, config=config)
+        with clock.stage("build"):
+            gen = generate_code(spec, reqs, d, chat_fn=chat_fn, config=config)
     except (LLMConfigError, LLMError, GenerateError) as e:
         res.exit_code, res.error = 2, f"build: {e}"
-        return res
+        logger.error("build failed: %s", e)
+        return
     res.llm_used = True
     files, build = gen.files, gen.check
     tests = sum(len(f.tests_found) for f in build.files)
     log(f"[Build]     {len(files)} files + {tests} tests, check: {'ok' if build.ok else 'errors'}")
 
-    # Verify, with repair rounds
+    # 4 Verify, with repair rounds (a repair round is Build again)
     use_analyzer = analyzer if spec.data.get("check", "analyzer") == "analyzer" else None
     rounds = 0
     while True:
         limits = dict(today=today, coverage_min=quality_gate.coverage_min,
                       stale_days=quality_gate.stale_days)
-        v = verify(spec, reqs, d, files, **limits)
-        if v.code_verdict == "passed" and build.ok and use_analyzer:
-            v = verify(spec, reqs, d, files, analyzer=use_analyzer, **limits)
+        with clock.stage("verify"):
+            v = verify(spec, reqs, d, files, **limits)
+            if v.code_verdict == "passed" and build.ok and use_analyzer:
+                v = verify(spec, reqs, d, files, analyzer=use_analyzer, **limits)
         done = v.code_verdict == "passed" and build.ok
         log(f"[Verify]    round {rounds}: {v.passed}/{len(v.requirements)} passed, "
             f"verdict {v.code_verdict}")
@@ -169,9 +253,11 @@ def run_pipeline(spec_path: str | Path, *, out_dir: str | Path | None = None,
             break
         rounds += 1
         try:
-            gen = repair_code(spec, reqs, d, files, build, v, chat_fn=chat_fn, config=config)
+            with clock.stage("build"):
+                gen = repair_code(spec, reqs, d, files, build, v, chat_fn=chat_fn, config=config)
         except (LLMConfigError, LLMError, GenerateError) as e:
             log(f"            repair round {rounds} failed: {e}")
+            logger.warning("repair round %d failed: %s", rounds, e)
             rounds -= 1
             break
         files, build = gen.files, gen.check
@@ -190,23 +276,27 @@ def run_pipeline(spec_path: str | Path, *, out_dir: str | Path | None = None,
     for p in v.problems:
         log(f"            problem: {p}")
 
-    # Deliver
+    # 5 Deliver
     if out_dir is None and allow_write:
         res.exit_code, res.error = 2, "deliver: no output folder (--out)"
-        return res
+        return
     try:
-        if allow_write:
-            out = deliver(spec=spec, requirements=reqs, design=d, files=files, build=build,
-                          verify=v, out_root=out_dir, gate=gate, force=force,
-                          dry_run=dry_run, quality_gate=quality_gate, now=now)
-        else:   # nothing on disk is read or written: an empty folder stands in for the target
-            with tempfile.TemporaryDirectory(prefix="vg-dry-") as empty:
+        with clock.stage("deliver"):
+            if allow_write:
                 out = deliver(spec=spec, requirements=reqs, design=d, files=files, build=build,
-                              verify=v, out_root=Path(empty) / "out", gate=gate, force=force,
-                              dry_run=True, quality_gate=quality_gate, now=now)
+                              verify=v, out_root=out_dir, gate=gate, force=force,
+                              dry_run=dry_run, quality_gate=quality_gate, now=now,
+                              provenance=res.provenance)
+            else:   # nothing on disk is read or written: an empty folder stands in for the target
+                with tempfile.TemporaryDirectory(prefix="vg-dry-") as empty:
+                    out = deliver(spec=spec, requirements=reqs, design=d, files=files, build=build,
+                                  verify=v, out_root=Path(empty) / "out", gate=gate, force=force,
+                                  dry_run=True, quality_gate=quality_gate, now=now,
+                                  provenance=res.provenance)
     except DeliverError as e:
         res.exit_code, res.error = 2, f"deliver: {e}"
-        return res
+        logger.error("deliver failed: %s", e)
+        return
     res.deliver = out
     if out.blocked and not out.written:
         log("[Deliver]   BLOCKED by the gate, nothing written")
@@ -223,4 +313,19 @@ def run_pipeline(spec_path: str | Path, *, out_dir: str | Path | None = None,
         for a in out.actions:
             log(f"            {a.action:<11} {a.path}")
         log(f"            rollback: {out.rollback_hint}")
-    return res
+    if allow_write and out_dir is not None and out.written:    # a blocked run writes nothing, history included
+        _record_history(out_dir, res, spec, out)
+    logger.info("run finished", extra={"fields": {"verdict": v.code_verdict, "exit": res.exit_code}})
+
+
+def _record_history(out_dir, res: PipelineResult, spec: Spec, out: DeliverResult) -> None:
+    """One line in `<out>/.vishap/history.json`; a history that cannot be written never fails a run."""
+    try:
+        add_entry(out_dir, {
+            "run_id": out.run_id, "spec": Path(spec.path).name, "spec_sha256": spec.sha256,
+            "verdict": res.verify.code_verdict, "written": out.written, "blocked": out.blocked,
+            "forced": out.forced, "repair_rounds": res.repair_rounds,
+            "files": [a.path for a in out.actions], "usage": res.usage,
+            "model": (res.provenance.get("model") or {}).get("name", "")})
+    except OSError as e:
+        get_logger("pipeline").warning("history not written: %s", e)

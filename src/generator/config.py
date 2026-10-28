@@ -41,3 +41,35 @@ def allow_client_llm(host: str) -> bool:
 def analyzer_command() -> str:
     """VISHAP_ANALYZER_CMD: how to start the Vishap analyzer (default: vishap)."""
     return os.environ.get("VISHAP_ANALYZER_CMD") or "vishap"
+
+
+def validate_config(env: dict | None = None) -> tuple[list[str], list[str]]:
+    """(errors, warnings) for the current environment. An error means a run cannot work as set up.
+
+    The analog of Vishap's `validate_config`. It reads, never changes, and never prints a key.
+    """
+    import shutil
+    env = os.environ if env is None else env
+    errors: list[str] = []
+    warnings: list[str] = []
+    try:
+        from generator.llm import config_from_env
+        config_from_env(dict(env))
+    except Exception as e:           # LLMConfigError and the provider allow-list errors
+        warnings.append(f"model not configured: {e}")
+    for name in ("GENERATOR_PRICE_IN", "GENERATOR_PRICE_OUT"):
+        raw = env.get(name)
+        if raw:
+            try:
+                if float(raw) < 0:
+                    raise ValueError
+            except ValueError:
+                errors.append(f"{name} must be a non-negative number (USD per 1M tokens)")
+    if env.get("LOG_FORMAT", "pretty") not in ("pretty", "json"):
+        errors.append("LOG_FORMAT must be pretty or json")
+    if env.get("LOG_LEVEL", "WARNING").upper() not in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"):
+        errors.append("LOG_LEVEL must be DEBUG, INFO, WARNING, ERROR or CRITICAL")
+    cmd = env.get("VISHAP_ANALYZER_CMD") or "vishap"
+    if not shutil.which(cmd.split()[0]):
+        warnings.append(f"analyzer command `{cmd}` not found: Verify runs without the Vishap Analyzer")
+    return errors, warnings

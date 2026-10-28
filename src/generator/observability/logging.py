@@ -20,6 +20,7 @@ from contextvars import ContextVar
 _run_id: ContextVar[str | None] = ContextVar("run_id", default=None)
 _request_id: ContextVar[str | None] = ContextVar("request_id", default=None)
 ROOT = "generator"
+logging.getLogger(ROOT).addHandler(logging.NullHandler())     # a library is silent until setup_logging()
 
 
 class _KeyFilter(logging.Filter):

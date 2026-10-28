@@ -160,7 +160,7 @@ def deliver(*, spec: Spec, requirements: tuple[Requirement, ...], design: Design
             files: dict[str, str], build: BuildCheck, verify: VerifyResult,
             out_root: str | os.PathLike, gate: bool = False, force: bool = False,
             dry_run: bool = False, quality_gate: Gate | None = None,
-            now: dt.datetime | None = None) -> DeliverResult:
+            now: dt.datetime | None = None, provenance: dict | None = None) -> DeliverResult:
     now = now or dt.datetime.now().replace(microsecond=0)
     root = Path(out_root).resolve()
     if root.exists() and not root.is_dir():
@@ -177,6 +177,8 @@ def deliver(*, spec: Spec, requirements: tuple[Requirement, ...], design: Design
     trace = build_trace(spec, requirements, design, build, verify, run_id=run_id, now=now,
                         forced=forced, gate=gate_result, gated=gate)
     trace["files"] = {p: {"sha256": _sha(files[p])} for p in planned}
+    if provenance:
+        trace["provenance"] = provenance
 
     # plan: targets, actions, diff
     targets = {p: _target(root, p) for p in planned}
