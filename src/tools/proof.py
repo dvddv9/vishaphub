@@ -195,6 +195,11 @@ def prove(code: str, findings: list | None = None, *, force: bool = False, timeo
                 doc["isolation"] = fdoc.get("isolation", "")
     if findings is not None and not doc.get("error"):
         annotate(findings, doc)
+        try:     # one structured verdict per finding (confirmed / false_positive / suspected), see skeptic.py
+            from src.tools import skeptic
+            skeptic.review(findings, code)
+        except Exception:
+            pass
     doc["enabled"] = not (doc.get("error") or "").startswith(("proof is off", "no containment"))
     return doc
 
@@ -315,6 +320,13 @@ def render_verified_md(findings: list, doc: dict | None = None) -> str:
     for f in refuted:
         out.append(f"- not reproduced: {f['title']} (line {f['line']}): {f['proof']['evidence'][:140]}")
     out.append("")
+    try:
+        from src.tools import skeptic
+        dismissed = skeptic.render_md(findings, include_proof=False)
+        if dismissed:
+            out += [dismissed]
+    except Exception:
+        pass
     return "\n".join(out)
 
 
@@ -347,6 +359,9 @@ def prove_cli(input_path: str, patched: str | None = None, unisolated: bool = Fa
         if pr:
             print(f"  {pr['status']:15} {f['id']:26} line {f['line']:<4} {pr['evidence'][:110]}")
     print(f"confirmed:     {len(confirmed)} of {len(scan['findings'])} findings")
+    from collections import Counter
+    verdicts = Counter((f.get("skeptic") or {}).get("skeptic_verdict", "-") for f in scan["findings"])
+    print("skeptic:       " + ", ".join(f"{n} {v}" for v, n in sorted(verdicts.items())))
     if patched:
         fixed = Path(patched).read_text(encoding="utf-8", errors="replace")
         v = verify_patch(code, fixed)
