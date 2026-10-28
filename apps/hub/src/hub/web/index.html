@@ -212,10 +212,10 @@
 
     <section class="panel">
       <p class="k">run the pipeline</p>
-      <textarea id="material" rows="5" placeholder="paste code, a spec or logs…"></textarea>
+      <textarea id="question" rows="2" placeholder="what do you want: «is this safe», «fix it», «write it from this spec»…"></textarea>
+      <textarea id="material" rows="6" placeholder="paste code, a spec or logs…" style="margin-top:8px"></textarea>
       <div class="row" style="margin-top:10px">
-        <button class="btn" id="run" style="padding:10px 16px">analyse</button>
-        <button class="btn ghost" id="runv" style="padding:10px 16px">validate</button>
+        <button class="btn" id="run" style="padding:10px 16px">run</button>
         <button class="btn ghost" id="hear" style="padding:10px 16px" disabled>🔊 read it</button>
       </div>
       <div class="verdict" id="verdict"></div>
@@ -313,25 +313,48 @@ $("mic").onclick = () => {
 
 let lastSpoken = "";
 
-async function pipeline(intent){
+async function pipeline(){
   const material = $("material").value;
-  if (!material.trim()){ $("verdict").innerHTML = "<b>nothing to check</b>"; return; }
-  $("verdict").textContent = "running…";
+  const question = $("question").value;
+  if (!material.trim() && !question.trim()){ $("verdict").innerHTML = "<b>nothing to work on</b>"; return; }
+  $("verdict").innerHTML = "working…";
+  $("hear").disabled = true;
   try {
     const res = await fetch("/run", {method:"POST", headers:{"content-type":"application/json"},
-      body: JSON.stringify({intent, material})});
+      body: JSON.stringify({material, question, spec: "", api_key: localStorage.getItem("vishap_key") || ""})});
     const data = await res.json();
-    if (data.error){ $("verdict").innerHTML = `<b>refused</b> ${data.error}`; return; }
-    $("verdict").innerHTML = `plan <b>${data.plan.stages.join(" → ")}</b> · verdict <b>${data.result.verdict}</b>`;
-    const steps = (data.result.steps || []).map(s => `${s.stage}: ${s.verdict || (s.ok ? "ok" : "failed")}`);
-    lastSpoken = `The verdict is ${data.result.verdict}. Plan: ${data.plan.stages.join(", ")}. ${steps.join(". ")}.`;
+    if (!data.ok){ $("verdict").innerHTML = `<b>refused</b> ${data.error || "failed"}`; return; }
+
+    const checks = data.checks || {};
+    const bits = [];
+    if (checks.analyser) bits.push(`analyser <b>${checks.analyser.verdict}</b>`);
+    if (checks.validator) bits.push(`validator <b>${checks.validator.verdict}</b>`);
+    $("verdict").innerHTML = `verdict <b>${data.verdict}</b>` + (bits.length ? " · " + bits.join(" · ") : "")
+      + (data.summary ? `<div style="margin-top:6px;color:#cbd5e1">${data.summary}</div>` : "");
+
+    const findings = data.findings || [];
+    if (findings.length){
+      $("verdict").innerHTML += `<div style="margin-top:8px">` + findings.map(f =>
+        `<div style="font:12px var(--mono);color:#cbd5e1;padding:3px 0;border-bottom:1px dotted #1e293b">
+           <b style="color:${/critical|high/i.test(f.severity||"") ? "var(--rose)" : "var(--amber)"}">${f.severity||""}</b>
+           ${f.rule ? "· " + f.rule : ""} — ${f.message||""}</div>`).join("") + `</div>`;
+    }
+    const patch = data.patch || {};
+    const names = Object.keys(patch);
+    if (names.length){
+      $("verdict").innerHTML += `<div style="margin-top:8px;font:12px var(--mono);color:var(--dim-2)">patch: ${names.join(", ")}</div>`;
+    }
+    const proof = data.proof || [];
+    if (proof.length){
+      $("verdict").innerHTML += `<div style="margin-top:6px;font:12px var(--mono);color:var(--dim-2)">proof: ${proof.join(" · ")}</div>`;
+    }
+
+    lastSpoken = `${data.summary || ""} The verdict is ${data.verdict}.`;
     $("hear").disabled = false;
     if (voiceOn.v) sayText(lastSpoken);
   } catch (e) { $("verdict").innerHTML = `<b>error</b> ${e.message}`; }
 }
-$("hear").onclick = () => sayText(lastSpoken);
-$("run").onclick = () => pipeline("analyse");
-$("runv").onclick = () => pipeline("validate");
+$("run").onclick = pipeline;
 
 fetch("/health").then(r=>r.json()).then(d=>{$("ver").textContent = d.version;}).catch(()=>{});
 </script>

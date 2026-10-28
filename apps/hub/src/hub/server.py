@@ -10,11 +10,11 @@ import json
 import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from . import one
 from .chat import reply
 from .pipeline import run_plan
 from .tts import available as tts_available, speak as tts_speak
 from .router import RouteError, plan_for
-from .services import ServiceConfig
 from .version import __version__
 
 MAX_BODY = 4_000_000
@@ -130,21 +130,15 @@ class Handler(BaseHTTPRequestHandler):
             body = self._body()
             if body is None:
                 return
-            try:
-                plan = _plan_for(body)
-            except (ValueError, RouteError) as exc:
-                self._send(400, {"error": str(exc)})
-                return
-            result = run_plan(
-                ServiceConfig(),
-                plan,
+            spec_text = body.get("spec") if isinstance(body.get("spec"), str) else ""
+            result = one.run(
                 material=str(body.get("material") or ""),
-                spec=str(body.get("spec") or ""),
-                filename=str(body.get("filename") or "input.txt"),
-                out_dir=str(body.get("out_dir") or ""),
-                validator_spec=body.get("validator_spec") or {},
+                spec=spec_text,
+                question=str(body.get("question") or ""),
+                api_key=str(body.get("api_key") or ""),
+                model=str(body.get("model") or ""),
             )
-            self._send(200 if result.ok else 502, {"plan": plan.as_dict(), "result": result.as_dict()})
+            self._send(200 if result.get("ok") else 502, result)
             return
 
         self._send(404, {"error": "not found"})

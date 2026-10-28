@@ -1,21 +1,26 @@
 """Pipeline: execute a plan, keep the session, stop when nothing improves.
 
+Everything runs here, in this process. One URL means one deployment: the analyser's
+rules and the validator's six stages are plain functions, so calling them over the
+network would add a cold start and a second place where a key can be wrong, and buy
+nothing.
+
 The rules that make the loop honest:
 
 * a stage that fails stops the run — a generator error cannot become a validator pass;
-* iterations stop early when the analyser verdict stops improving: three identical
-  verdicts in a row mean the fourth pass will spend tokens for the same answer;
+* iterations stop early when no stage changes its answer: the same words twice mean the
+  next pass spends the same tokens for the same result;
 * the final verdict is the strictest one seen, not the last one: a later «SAFE» does
   not erase an earlier «REQUIRES_REVIEW»;
-* every hop is appended to the envelope trace, so the client can replay the run.
+* every hop is appended to the trace, so the client can replay the run.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from . import local
 from .envelope import Envelope, Kind
 from .router import Plan, Stage
-from .services import ServiceConfig, analyse, generate, validate
 
 SEVERITY_ORDER = {"ERROR": 4, "FAIL": 4, "EMERGENCY": 3, "REQUIRES_REVIEW": 2, "NEEDS_REVIEW": 2, "PASS": 1, "SAFE": 0, "": 0}
 
@@ -58,36 +63,33 @@ class RunResult:
         }
 
 
-def run_plan(cfg: ServiceConfig, plan: Plan, material: str, spec: str = "",
-             filename: str = "input.txt", out_dir: str = "", validator_spec: dict | None = None) -> RunResult:
+def run_plan(plan: Plan, material: str = "", files: dict | None = None,
+             spec: dict | None = None, filename: str = "input.txt") -> RunResult:
     """Execute the plan and return one honest verdict."""
-    envelope = Envelope.build("hub", "generator" if Stage.GENERATOR in plan.stages else "analyser",
-                              Kind.QUESTION, {"filename": filename})
+    envelope = Envelope.build("hub", "analyser", Kind.QUESTION, {"filename": filename})
     steps: list[Step] = []
     trace = list(envelope.trace)
     strictest: str | None = None
+    files = files or {}
+    spec = spec or {}
 
     previous: dict[str, str] = {}
     for pass_no in range(1, plan.iterations + 1):
         current: dict[str, str] = {}
+
         for stage in plan.stages:
             if stage is Stage.GENERATOR:
-                if not spec:
-                    steps.append(Step("generator", False, detail="no spec supplied; generation skipped"))
-                    return RunResult(False, "ERROR", steps, envelope.session_id, trace,
-                                     "generation needs a spec")
-                result = generate(cfg, spec, out_dir)
-                if not result["ok"]:
-                    steps.append(Step("generator", False, detail=result["error"]))
-                    return RunResult(False, "ERROR", steps, envelope.session_id, trace,
-                                     "generator failed; later stages would validate nothing")
-                out_dir = result["out_dir"]
-                steps.append(Step("generator", True, detail=f"deliverable at {out_dir}"))
-                trace.append(f"pass {pass_no} generator -> {out_dir}")
-                continue
+                steps.append(Step("generator", False,
+                                  detail="generation needs a model and a workspace; not wired into this process"))
+                return RunResult(False, "ERROR", steps, envelope.session_id, trace,
+                                 "generation is not available in this deployment")
 
             if stage is Stage.VALIDATOR:
-                result = validate(cfg, out_dir, validator_spec or {})
+                if not files:
+                    steps.append(Step("validator", False, detail="no files supplied"))
+                    return RunResult(False, "ERROR", steps, envelope.session_id, trace,
+                                     "validation needs files; nothing was sent")
+                result = local.validate_code(files, spec)
                 if not result["ok"]:
                     steps.append(Step("validator", False, detail=result["error"]))
                     return RunResult(False, "ERROR", steps, envelope.session_id, trace,
@@ -103,23 +105,25 @@ def run_plan(cfg: ServiceConfig, plan: Plan, material: str, spec: str = "",
                 continue
 
             if stage is Stage.ANALYSER:
-                result = analyse(cfg, material, filename)
+                if not material.strip():
+                    steps.append(Step("analyser", False, detail="no material supplied"))
+                    return RunResult(False, "ERROR", steps, envelope.session_id, trace,
+                                     "analysis needs material; nothing was sent")
+                result = local.analyse_static(material)
                 if not result["ok"]:
                     steps.append(Step("analyser", False, detail=result["error"]))
                     return RunResult(False, "ERROR", steps, envelope.session_id, trace,
                                      "analyser failed; no security verdict available")
-                verdict = result.get("verdict") or result.get("risk_verdict") or ""
+                verdict = result.get("verdict") or ""
                 current["analyser"] = verdict
+                found = len(result.get("findings") or [])
                 steps.append(Step("analyser", True, verdict,
-                                  detail=", ".join(result.get("cwe_ids") or []) or "no CWE"))
+                                  detail=f"{found} findings · rules only" if found else "rules only, nothing matched"))
                 trace.append(f"pass {pass_no} analyser -> {verdict}")
                 if strictest is None or _rank(verdict) > _rank(strictest):
                     strictest = verdict
                 continue
 
-        # Stop when every stage repeated its previous answer: the next pass would
-        # spend the same tokens for the same words. Compared per stage, because two
-        # different stages answering "PASS" and "SAFE" is normal, not staleness.
         if plan.iterations > 1 and previous and current == previous:
             trace.append(f"stop after pass {pass_no}: no stage changed its verdict")
             break

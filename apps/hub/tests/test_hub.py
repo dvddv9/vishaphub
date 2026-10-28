@@ -4,7 +4,6 @@ import pytest
 from hub.envelope import Envelope, Kind
 from hub.pipeline import run_plan
 from hub.router import CANONICAL_ORDER, MAX_ITERATIONS, RouteError, Stage, plan_for
-from hub.services import ServiceConfig
 
 
 # envelope -------------------------------------------------------------------
@@ -62,74 +61,87 @@ def test_unknown_intent_raises():
 
 # pipeline -------------------------------------------------------------------
 
-def _cfg():
-    return ServiceConfig(analyser_url="http://analyser", generator_url="http://generator", timeout=1)
+GOOD = {
+    "calc/__init__.py": "def add(a, b):\n    return a + b\n",
+    "test_calc.py": "from calc import add\n\n\ndef test_add():\n    assert add(2, 3) == 5\n",
+}
+SPEC = {"entry": "calc", "files": ["calc/__init__.py", "test_calc.py"],
+        "exports": ["add"], "tests": ["test_calc.py"]}
 
 
-def test_pipeline_stops_when_generation_has_no_spec():
-    result = run_plan(_cfg(), plan_for("generate+validate"), material="x", spec="")
+def test_pipeline_reports_generator_as_unavailable():
+    result = run_plan(plan_for("generate+validate"), material="x", files=GOOD, spec=SPEC)
     assert result.verdict == "ERROR"
-    assert "needs a spec" in result.reason
+    assert "generation is not available" in result.reason
 
 
-def test_pipeline_reports_generator_failure(monkeypatch):
-    monkeypatch.setattr("hub.pipeline.generate", lambda *a, **k: {"ok": False, "error": "down"})
-    result = run_plan(_cfg(), plan_for("generate+analyse"), material="x", spec="s")
+def test_pipeline_needs_material_for_analysis():
+    result = run_plan(plan_for("analyse"), material="")
     assert result.verdict == "ERROR"
-    assert "generator failed" in result.reason
+    assert "needs material" in result.reason
+
+
+def test_pipeline_needs_files_for_validation():
+    result = run_plan(plan_for("validate"), files={})
+    assert result.verdict == "ERROR"
+    assert "needs files" in result.reason
+
+
+def test_pipeline_validates_a_clean_deliverable():
+    result = run_plan(plan_for("validate"), files=GOOD, spec=SPEC)
+    assert result.verdict == "PASS"
+    assert result.ok is True
+    assert result.steps[0].stage == "validator"
+
+
+def test_pipeline_analyses_the_material_in_process():
+    result = run_plan(plan_for("analyse"), material="cur.execute(\"select * from t where a = \" + x)")
+    assert result.verdict in ("SAFE", "REQUIRES_REVIEW")
+    assert result.steps[0].stage == "analyser"
 
 
 def test_pipeline_takes_the_strictest_verdict(monkeypatch):
-    monkeypatch.setattr("hub.pipeline.generate", lambda *a, **k: {"ok": True, "out_dir": "/tmp/x"})
-    monkeypatch.setattr("hub.pipeline.validate", lambda *a, **k: {
+    monkeypatch.setattr("hub.local.validate_code", lambda files, spec: {
         "ok": True, "report": {"verdict": "PASS", "finding_count": 0}})
-    monkeypatch.setattr("hub.pipeline.analyse", lambda *a, **k: {
-        "ok": True, "verdict": "REQUIRES_REVIEW", "cwe_ids": ["CWE-89"]})
-    result = run_plan(_cfg(), plan_for("generate+validate+analyse"), material="x", spec="s")
+    monkeypatch.setattr("hub.local.analyse_static", lambda material: {
+        "ok": True, "verdict": "REQUIRES_REVIEW", "findings": []})
+    result = run_plan(plan_for("validate+analyse"), material="x", files=GOOD, spec=SPEC)
     assert result.verdict == "REQUIRES_REVIEW"
     assert result.ok is True
 
 
 def test_pipeline_fail_beats_review(monkeypatch):
-    monkeypatch.setattr("hub.pipeline.generate", lambda *a, **k: {"ok": True, "out_dir": "/tmp/x"})
-    monkeypatch.setattr("hub.pipeline.validate", lambda *a, **k: {
+    monkeypatch.setattr("hub.local.validate_code", lambda files, spec: {
         "ok": True, "report": {"verdict": "FAIL", "finding_count": 2}})
-    monkeypatch.setattr("hub.pipeline.analyse", lambda *a, **k: {
-        "ok": True, "verdict": "SAFE", "cwe_ids": []})
-    result = run_plan(_cfg(), plan_for("generate+validate+analyse"), material="x", spec="s")
+    monkeypatch.setattr("hub.local.analyse_static", lambda material: {
+        "ok": True, "verdict": "SAFE", "findings": []})
+    result = run_plan(plan_for("validate+analyse"), material="x", files=GOOD, spec=SPEC)
     assert result.verdict == "FAIL"
     assert result.ok is False
 
 
 def test_pipeline_stops_when_no_stage_changes_its_verdict(monkeypatch):
-    calls = {"generate": 0, "validate": 0, "analyse": 0}
+    calls = {"n": 0}
 
-    monkeypatch.setattr("hub.pipeline.generate", lambda *a, **k: (
-        calls.__setitem__("generate", calls["generate"] + 1) or {"ok": True, "out_dir": "/tmp/x"}))
-    monkeypatch.setattr("hub.pipeline.validate", lambda *a, **k: (
-        calls.__setitem__("validate", calls["validate"] + 1) or {
-            "ok": True, "report": {"verdict": "PASS", "finding_count": 0}}))
-    monkeypatch.setattr("hub.pipeline.analyse", lambda *a, **k: (
-        calls.__setitem__("analyse", calls["analyse"] + 1) or {
-            "ok": True, "verdict": "SAFE", "cwe_ids": []}))
+    def validate(*_a, **_k):
+        calls["n"] += 1
+        return {"ok": True, "report": {"verdict": "PASS", "finding_count": 0}}
 
-    result = run_plan(_cfg(), plan_for("generate+validate+analyse", 3), material="x", spec="s")
-    # Two passes: the second one repeats the first, so the third would be waste.
-    assert calls["analyse"] == 2
-    assert calls["generate"] == 2
+    monkeypatch.setattr("hub.local.validate_code", validate)
+    monkeypatch.setattr("hub.local.analyse_static", lambda material: {
+        "ok": True, "verdict": "SAFE", "findings": []})
+    result = run_plan(plan_for("validate+analyse", 3), material="x", files=GOOD, spec=SPEC)
+    assert calls["n"] == 2
     assert any("no stage changed its verdict" in line for line in result.trace)
-    assert result.verdict == "PASS"
 
 
-def test_pipeline_marks_analyser_failure_as_error(monkeypatch):
-    monkeypatch.setattr("hub.pipeline.analyse", lambda *a, **k: {"ok": False, "error": "timeout"})
-    result = run_plan(_cfg(), plan_for("analyse"), material="x")
+def test_pipeline_marks_a_validator_crash_as_error(monkeypatch):
+    monkeypatch.setattr("hub.local.validate_code", lambda *a, **k: {"ok": False, "error": "boom"})
+    result = run_plan(plan_for("validate"), files=GOOD, spec=SPEC)
     assert result.verdict == "ERROR"
-    assert "analyser failed" in result.reason
+    assert "validator failed" in result.reason
 
 
-def test_pipeline_trace_records_every_stage(monkeypatch):
-    monkeypatch.setattr("hub.pipeline.analyse", lambda *a, **k: {
-        "ok": True, "verdict": "SAFE", "cwe_ids": []})
-    result = run_plan(_cfg(), plan_for("analyse"), material="x")
+def test_pipeline_trace_records_every_stage():
+    result = run_plan(plan_for("analyse"), material="x = 1")
     assert any("analyser" in line for line in result.trace)
