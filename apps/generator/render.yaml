@@ -1,0 +1,37 @@
+# One Render service, two uses (GENERATOR_PUBLIC_CHECK=1 with a token):
+#   - everyone: the page and the spec check (no model, no code run),
+#   - you, with the token: the full run (model, Verify, gate, report).
+# The three values marked "sync: false" are asked for in the Render dashboard and never live in this file.
+# Without the token the server refuses to start (the previous deploy keeps serving).
+# The model address and name are the project's defaults (.env.example); change them in the dashboard if you use another.
+# To go back to the check-only demo: remove GENERATOR_PUBLIC_CHECK and set GENERATOR_CHECK_ONLY to "1". See deploy/README.md.
+services:
+  - type: web
+    name: vishap-generator
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: GENERATOR_PUBLIC_CHECK
+        value: "1"
+      - key: GENERATOR_API_TOKEN
+        sync: false
+      - key: CUSTOM_LLM_URL
+        value: https://api.deepseek.com
+      - key: CUSTOM_LLM_MODEL
+        value: deepseek-flash
+      - key: CUSTOM_LLM_THINKING
+        value: disabled
+      - key: CUSTOM_LLM_KEY
+        sync: false
+      - key: PORT
+        value: "8787"
+      - key: GENERATOR_RATE_LIMIT
+        value: "60"
+      - key: LOG_FORMAT
+        value: json
+      - key: PYTHONUNBUFFERED
+        value: "1"

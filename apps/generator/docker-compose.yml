@@ -1,0 +1,32 @@
+# The web form and API in a container.
+#
+#   $env:GENERATOR_API_TOKEN = "<long random string>"
+#   $env:CUSTOM_LLM_KEY = "<key>"
+#   docker compose up -d --build
+#   curl http://localhost:8787/health
+#
+# The port is published on 127.0.0.1 only. The browser sends the token as
+# "Authorization: Bearer ..." (the form has a field for it).
+
+services:
+  generator:
+    build: .
+    image: vishap-generator:local
+    container_name: vishap-generator
+    ports:
+      - "127.0.0.1:8787:8787"
+    environment:
+      - GENERATOR_API_TOKEN=${GENERATOR_API_TOKEN:?set GENERATOR_API_TOKEN}
+      - VISHAP_LLM_PROVIDER=custom
+      - CUSTOM_LLM_URL=${CUSTOM_LLM_URL:-https://api.deepseek.com}
+      - CUSTOM_LLM_MODEL=${CUSTOM_LLM_MODEL:-deepseek-flash}
+      - CUSTOM_LLM_KEY=${CUSTOM_LLM_KEY:-}
+      - CUSTOM_LLM_THINKING=${CUSTOM_LLM_THINKING:-disabled}
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped

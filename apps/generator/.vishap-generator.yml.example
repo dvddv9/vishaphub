@@ -1,0 +1,16 @@
+# Copy to `.vishap-generator.yml` next to your spec (or in the folder you run from).
+# Without the file the defaults below apply. An unknown key is an error.
+quality_gate:
+  fail_on: [critical, high]          # requirement priorities that must be `passed`
+  coverage_min: 80                   # percent of lines the tests must run
+  stale_days: 90                     # a spec not updated for longer than this blocks
+  max_critical_gaps: 0               # open critical gaps tolerated
+  fail_on_analyzer: true             # Vishap Analyzer errors block
+  require_coverage: false            # coverage that could not be measured blocks
+  baseline: .vishap/baseline.json    # gaps accepted on purpose (`vishap-generator baseline spec.yaml`)
+  strict_missing_pct: 50             # refuse a spec that lacks more than this share of the key data (off when absent)
+  require_stride: [T, I]             # STRIDE letters that must be fully covered by the spec (none by default)
+  fail_on_cove: false                # a mismatch found by `--cove` blocks
+  require_analyzer: false            # blocks when the analyzer did not run (skipped, for example when `vishap` is not installed)
+  # min_mutation_score: 70          # percent of changes to the code the model's tests must catch (off when absent)
+  max_loss_pct: 30                   # share of planned code/test files the model may leave out

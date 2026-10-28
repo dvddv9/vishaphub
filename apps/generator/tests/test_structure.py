@@ -1,0 +1,86 @@
+import re
+import unittest
+
+from tests import helpers  # noqa: F401  (puts src on the path)
+from pathlib import Path
+
+from generator import __version__
+from generator.config import PACKAGE_DIR, WEB_INDEX
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+class LayoutTests(unittest.TestCase):
+    def test_the_folders_of_the_package(self):
+        for d in ("api", "llm", "pipeline", "tools", "prompts", "web"):
+            self.assertTrue((PACKAGE_DIR / d).is_dir(), d)
+        for d in ("api", "llm", "pipeline", "tools", "storage", "observability"):
+            self.assertTrue((PACKAGE_DIR / d / "__init__.py").is_file(), d)
+
+    def test_every_vishap_analog_named_in_the_docs_exists(self):
+        table = (ROOT / "docs/ARCHITECTURE.md").read_text("utf-8")
+        for module in ("pipeline/stages.py", "pipeline/verdict.py", "pipeline/cost.py", "pipeline/batch.py",
+                       "tools/quality_gate.py", "tools/baseline.py", "tools/static_scan.py", "tools/redact.py",
+                       "tools/provenance.py", "tools/report.py", "storage/history.py",
+                       "observability/logging.py", "api/rate_limit.py"):
+            self.assertTrue((PACKAGE_DIR / module).is_file(), module)
+            self.assertIn(module, table, module)
+        self.assertTrue((PACKAGE_DIR / "api/job_store.py").is_file())
+        self.assertIn("job_store", table)
+
+    def test_the_0_6_modules_exist_and_are_documented(self):
+        table = (ROOT / "docs/ARCHITECTURE.md").read_text("utf-8")
+        for module in ("tools/stride.py", "tools/injection.py", "tools/strict.py", "tools/domains.py",
+                       "tools/spec_text.py", "pipeline/effort.py", "pipeline/candidates.py", "pipeline/cove.py"):
+            self.assertTrue((PACKAGE_DIR / module).is_file(), module)
+            self.assertIn(module, table, module)
+        self.assertTrue((PACKAGE_DIR / "prompts/04_verify_cove.md").is_file())
+        self.assertIn("04_verify_cove", (PACKAGE_DIR / "prompts/README.md").read_text("utf-8"))
+
+    def test_the_gate_example_lists_every_key(self):
+        from generator.tools.quality_gate import KNOWN
+        example = (ROOT / ".vishap-generator.yml.example").read_text("utf-8")
+        for key in KNOWN:
+            self.assertIn(key + ":", example, key)
+
+    def test_no_old_flat_modules_are_left(self):
+        for name in ("spec", "intake", "design", "build", "generate", "verify", "deliver",
+                     "textcheck", "analyzer", "sarif", "examples", "server", "llm", "pipeline"):
+            self.assertFalse((PACKAGE_DIR / f"{name}.py").exists(), name)
+
+    def test_web_form_is_packaged(self):
+        self.assertTrue(WEB_INDEX.is_file())
+
+    def test_project_files_exist(self):
+        for name in ("LICENSE", "README.md", "AGENTS.md", "SECURITY.md", "CHANGELOG.md",
+                     "CONTRIBUTING.md", "Dockerfile", "docker-compose.yml", ".env.example",
+                     ".dockerignore", ".gitignore", "ruff.toml", "requirements.txt",
+                     "pyproject.toml", "run_tests.py", "run_local.ps1", "start_generator.bat",
+                     ".pre-commit-config.yaml", ".github/workflows/ci.yml",
+                     ".github/PULL_REQUEST_TEMPLATE.md", "deploy/README.md",
+                     "docs/ARCHITECTURE.md", "docs/FAQ.md", "docs/LIMITATIONS.md",
+                     "docs/ROADMAP.md", "docs/VISHAP.md", "docs/HISTORY.md",
+                     ".vishap-generator.yml.example", "render.yaml"):
+            self.assertTrue((ROOT / name).is_file(), name)
+
+
+class VersionTests(unittest.TestCase):
+    def test_version_is_the_same_everywhere(self):
+        toml = re.search(r'^version = "([^"]+)"', (ROOT / "pyproject.toml").read_text("utf-8"), re.M)
+        log = re.search(r"^## \[(\d[^\]]*)\]", (ROOT / "CHANGELOG.md").read_text("utf-8"), re.M)
+        self.assertEqual(toml.group(1), __version__)
+        self.assertEqual(log.group(1), __version__)
+
+    def test_package_data_lists_prompts(self):
+        self.assertIn("prompts/*.md", (ROOT / "pyproject.toml").read_text("utf-8"))
+
+
+class SecretsTests(unittest.TestCase):
+    def test_env_example_holds_no_key(self):
+        text = (ROOT / ".env.example").read_text("utf-8")
+        self.assertRegex(text, r"(?m)^CUSTOM_LLM_KEY=$")
+        self.assertNotRegex(text, r"sk-[A-Za-z0-9]{10,}")
+
+
+if __name__ == "__main__":
+    unittest.main()
