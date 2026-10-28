@@ -370,6 +370,17 @@ def evaluate(chk, ctx):
             return (not ok, f"{label}: expected {chk['expect']!r}, got {actual!r}")
         ok = actual is not None and not (isinstance(actual, float) and math.isnan(actual)) and actual >= chk["min"]
         return (not ok, f"{label}: expected >= {chk['min']!r}, got {actual!r}")
+    if t == "no_lost_update":
+        lost = ctx.get("lost")
+        if not lost:
+            raise ValueError("no baseline")
+        row = HUB.real.cursor().execute(chk["sql"]).fetchone()
+        actual = row[0] if row else None
+        expected = lost["init"] + lost["delta"] + chk["competitor_delta"]
+        label = chk.get("label") or chk["sql"]
+        return (not _same(actual, expected),
+                f"{label}: alone the call changes {lost['init']!r} by {lost['delta']:+g}, another writer adds {chk['competitor_delta']:+g}; "
+                f"expected {expected!r}, got {actual!r}")
     if t == "no_exception":
         e = ctx["exc"]
         return (e is not None, f"raised {type(e).__name__}: {e}" if e is not None else "no exception")
@@ -412,6 +423,43 @@ def call_text(name, args, kwargs):
     return s if len(s) < 140 else s[:137] + "..."
 
 
+def _fixture(h, schema):
+    """Fresh database with the schema and the rows of this hypothesis; an error text or None."""
+    HUB.reset()
+    try:
+        cur = HUB.real.cursor()
+        for s in schema:
+            cur.execute(s)
+        for s in h.get("setup") or []:
+            if not _setup_ok(s):
+                raise ValueError("setup statement not allowed: " + str(s)[:60])
+            cur.execute(s)
+        HUB.real.commit()
+    except Exception as e:
+        return f"fixture could not be built: {type(e).__name__}: {e}"
+    return None
+
+
+def _invoke(fn, args, kwargs):
+    """-> (return value, exception or None, timed_out)."""
+    ret, exc = None, None
+    old = signal.signal(signal.SIGALRM, _alarm) if hasattr(signal, "SIGALRM") else None
+    try:
+        if old is not None:
+            signal.setitimer(signal.ITIMER_REAL, PER_CALL_SECONDS)
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            ret = fn(*args, **kwargs)
+    except Timeout:
+        return None, None, True
+    except BaseException as e:   # noqa: BLE001 - the function under test may raise anything
+        exc = e
+    finally:
+        if old is not None:
+            signal.setitimer(signal.ITIMER_REAL, 0)
+            signal.signal(signal.SIGALRM, old)
+    return ret, exc, False
+
+
 def run_one(h, mod, spans, schema):
     res = {"id": h.get("id"), "function": h.get("function"), "kind": h.get("kind"), "title": h.get("title", ""),
            "invariant": h.get("invariant", ""), "start": spans.get(h.get("function"), (0, 0))[0],
@@ -426,19 +474,30 @@ def run_one(h, mod, spans, schema):
     except TypeError as e:
         res["evidence"] = f"arguments do not fit the signature: {e}"
         return res
-    HUB.reset()
-    try:
-        cur = HUB.real.cursor()
-        for s in schema:
-            cur.execute(s)
-        for s in h.get("setup") or []:
-            if not _setup_ok(s):
-                raise ValueError("setup statement not allowed: " + str(s)[:60])
-            cur.execute(s)
-        HUB.real.commit()
-    except Exception as e:
-        res["evidence"] = f"fixture could not be built: {type(e).__name__}: {e}"
+    bad_fixture = _fixture(h, schema)
+    if bad_fixture:
+        res["evidence"] = bad_fixture
         return res
+    chk_types = {c.get("type") for c in h.get("checks") or []}
+    lost = None
+    if "no_lost_update" in chk_types:
+        # what the function does to the value when nobody else writes: the baseline for the interleaved run
+        lu = next(c for c in h["checks"] if c.get("type") == "no_lost_update")
+        try:
+            init = HUB.real.cursor().execute(lu["sql"]).fetchone()[0]
+            _invoke(fn, args, kwargs)
+            base = HUB.real.cursor().execute(lu["sql"]).fetchone()[0]
+        except Exception as e:
+            res["evidence"] = f"baseline run failed: {type(e).__name__}: {e}"
+            return res
+        if base is None or init is None or _same(base, init):
+            res["evidence"] = f"{call_text(h['function'], args, kwargs)}: the function does not change the value on its own, nothing to compare"
+            return res
+        lost = {"init": init, "delta": base - init}
+        bad_fixture = _fixture(h, schema)
+        if bad_fixture:
+            res["evidence"] = bad_fixture
+            return res
     il = h.get("interleave")
     if il:
         if not _setup_ok(il.get("sql", "")):
@@ -447,25 +506,13 @@ def run_one(h, mod, spans, schema):
         HUB.interleave = {"after": str(il["after"]), "sql": il["sql"], "done": False}
     CMDS.clear()
     before = dump()
-    ret, exc = None, None
-    old = signal.signal(signal.SIGALRM, _alarm) if hasattr(signal, "SIGALRM") else None
-    try:
-        if old is not None:
-            signal.setitimer(signal.ITIMER_REAL, PER_CALL_SECONDS)
-        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-            ret = fn(*args, **kwargs)
-    except Timeout:
+    ret, exc, timed_out = _invoke(fn, args, kwargs)
+    if timed_out:
         res["evidence"] = f"{call_text(h['function'], args, kwargs)} did not finish in {PER_CALL_SECONDS}s"
         return res
-    except BaseException as e:   # noqa: BLE001 - the function under test may raise anything
-        exc = e
-    finally:
-        if old is not None:
-            signal.setitimer(signal.ITIMER_REAL, 0)
-            signal.signal(signal.SIGALRM, old)
     try:
         after = dump()
-        ctx = {"before": before, "after": after, "ret": ret, "exc": exc}
+        ctx = {"before": before, "after": after, "ret": ret, "exc": exc, "lost": lost}
         outcomes = []
         for chk in h.get("checks") or []:
             outcomes.append((chk, *evaluate(chk, ctx)))

@@ -14,6 +14,7 @@ All notable changes to Vishap. Format based on [Keep a Changelog](https://keepac
 - `verify_patch` replays the same function hypotheses on the patch: closed / still_open / regressions / removed functions.
 - Blind `user_service.py`: negative transfer, race overdraft (balance -60), lost update (110 instead of 160), NaN payment row, SQL injection wiping all rows, hard-coded reset token, command injection, crash on a missing row, money vanishing with a missing recipient: all CONFIRMED; guarded code (`process_payment(-5)`, `check_subscription(999)`) NOT_REPRODUCED. Tests: `tests/test_function_probes.py`.
 - Note: the transfer invariant is "stored data unchanged for a bad amount", not "sum of balances unchanged": with amount=-5 the sum stays 200 (105 + 95), the money only flows the wrong way.
+- Function probes, second blind file `wallet_service.py` (W01-W12 in the ground truth): `overdraw` (an amount larger than the balance must not drive it below zero: `withdraw(1, 1000)` -> -900, guarded `create_order`/`transfer_funds` stay NOT_REPRODUCED), and a lost-update check for read-modify-write functions that have no id and no amount parameter (`use_coupon('v1', 1)`: alone the call changes 100 by -1, another writer adds +50, expected 149, got 99; the harness runs a baseline first, a function that does not change the value alone is INCONCLUSIVE). A hard-coded `key` parameter compared with a literal is now recognised as a credential.
 
 
 ### Fixed / Added (a blind `user_service.py` run exposed these, 2026-10-28)

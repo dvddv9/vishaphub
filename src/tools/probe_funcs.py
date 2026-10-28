@@ -29,13 +29,13 @@ MAX_HYPOTHESES = 48
 NAN = {"$float": "nan"}
 
 CHECK_TYPES = {"db_unchanged", "sql_equals", "sql_min", "no_exception", "rejects", "payload_in_sql",
-               "payload_in_cmd", "no_success_without_effect"}
+               "payload_in_cmd", "no_success_without_effect", "no_lost_update"}
 
 _AMOUNT = re.compile(r"(?i)^(amount|sum|total|price|qty|quantity|delta|cost|fee|value|\w+_(amount|total|price|qty|sum|fee))$")
 _ID = re.compile(r"(?i)^(id|uid|\w+_id|(\w+_)?(user|account|acct|customer|owner|sender|recipient|receiver)s?(_\w+)?)$")
-_CRED = re.compile(r"(?i)token|secret|passw|pwd|api_?key|credential|auth|code|pin")
+_CRED = re.compile(r"(?i)token|secret|passw|pwd|key|credential|auth|code|pin")
 _DICTY = re.compile(r"(?i)^(request|req|data|payload|body|params|form)$")
-_MONEYCOL = re.compile(r"(?i)balance|amount|total|price|credit|funds|points|stock|quantity|qty|count|limit")
+_MONEYCOL = re.compile(r"(?i)balance|amount|total|price|credit|funds|points|stock|quantity|qty|count|limit|uses|left|remaining|quota|attempts|seats")
 _CMD_FUNCS = {"os.system", "os.popen", "subprocess.run", "subprocess.call", "subprocess.check_output",
               "subprocess.check_call", "subprocess.Popen"}
 
@@ -44,8 +44,8 @@ KINDS_FOR = {
     "sqli-fstring": ("sqli", "sqli_data"), "sqli-concat": ("sqli", "sqli_data"), "sqli-format": ("sqli", "sqli_data"),
     "sqli-percent": ("sqli", "sqli_data"),
     "cmd-injection-py": ("cmdi",), "shell-true": ("cmdi",), "taint-flow": ("sqli", "sqli_data", "cmdi"),
-    "func-amount-no-bounds": ("negative_amount", "nan_amount"),
-    "func-check-then-act": ("race_overdraft",),
+    "func-amount-no-bounds": ("negative_amount", "nan_amount", "overdraw"),
+    "func-check-then-act": ("race_overdraft", "lost_update"),
     "func-read-modify-write": ("lost_update",),
     "func-unchecked-rowcount": ("missing_target",),
     "logic-fetchone-index": ("missing_row",),
@@ -55,6 +55,7 @@ KINDS_FOR = {
 NEW_FINDING = {
     "negative_amount": ("A negative amount is accepted and changes stored data", "high", "CWE-20", "logic"),
     "nan_amount": ("NaN/inf is accepted as an amount and changes stored data", "high", "CWE-20", "logic"),
+    "overdraw": ("An amount larger than the balance drives it below zero", "high", "CWE-840", "logic"),
     "race_overdraft": ("Check-then-act race: the balance can go below zero", "high", "CWE-362", "logic"),
     "lost_update": ("Lost update: a concurrent write is overwritten", "high", "CWE-362", "logic"),
     "transfer_to_missing": ("Money leaves the sender and arrives nowhere (missing recipient)", "high", "CWE-754", "logic"),
@@ -330,6 +331,10 @@ def _benign(fi: dict, overrides: dict | None = None, id_values: dict | None = No
     return out
 
 
+def _sql_literal(v) -> str:
+    return str(v) if isinstance(v, (int, float)) else "'" + str(v).replace("'", "''") + "'"
+
+
 def _id_params(fi):
     return [p for p, _ in fi["params"] if _ID.match(p)]
 
@@ -391,30 +396,62 @@ def generate(code: str) -> dict:
                              "label": f"sum of {table}.{col}"}]))
             sum_col[fi["name"]] = (table, col)
 
+        # an amount larger than what is there: the balance must not go below zero
+        for w in writes:
+            m = re.match(r"update\s+(\w+)\s+set\s+(\w+)\s*=\s*\2\s*-\s*(?:\?|\{\w+\})\s+where\s+(\w+)\s*=\s*(?:\?|\{\w+\})", w["text"], re.I)
+            if not (m and amounts and _MONEYCOL.search(m.group(2))):
+                continue
+            table, col, wcol = m.groups()
+            key = next((p for p in w["bound"] + w["interp"] if p in ids), None)
+            ov = {amounts[0]: 1000}
+            ov_key = _seed_value(wcol, 1)
+            if key:
+                ov[key] = ov_key
+            hyps.append(_h(fi, "overdraw", "", f"{amounts[0]} larger than the {col}", f"{col} never goes below zero",
+                           _benign(fi, ov), [{"type": "sql_min", "sql": f'SELECT "{col}" FROM "{table}" WHERE "{wcol}" = {_sql_literal(ov_key)}',
+                                              "min": 0, "label": f"{table}.{col} after taking 1000"}]))
+            break
+
         # read -> decide -> write with another writer in between
+        param_names = {n for n, _ in fi["params"]}
         for sel in selects:
             m = re.match(r"select\s+(\w+)\s+from\s+(\w+)\s+where\s+(\w+)\s*=\s*(?:\?|\{\w+\})", sel["text"], re.I)
-            if not m or not amounts:
+            if not m:
                 continue
             col, table, wcol = m.groups()
             later = [w for w in writes if w["kind"] == "update" and w["line"] > sel["line"]
                      and re.match(rf"update\s+{table}\s+set\s+{col}\s*=", w["text"], re.I)]
-            bound = next((p for p in sel["bound"] + sel["interp"] if p in ids), None) or (ids[0] if ids else None)
-            if not later or not bound:
+            if not later:
                 continue
             upd = later[0]["text"]
-            where = f'"{wcol}" = 1'
-            if re.match(rf"update\s+{table}\s+set\s+{col}\s*=\s*{col}\s*-", upd, re.I):
-                hyps.append(_h(fi, "race_overdraft", "", "balance is checked, then written, with another writer in between",
-                               f"{col} never goes below zero",
-                               _benign(fi, {amounts[0]: 80, bound: 1}), [{"type": "sql_min", "sql": f'SELECT "{col}" FROM "{table}" WHERE {where}',
-                                                                         "min": 0, "label": f"{table}.{col} of {bound}=1"}],
-                               interleave={"after": f"select {col}", "sql": f'UPDATE "{table}" SET "{col}" = "{col}" - 80 WHERE {where}'}))
-            elif re.match(rf"update\s+{table}\s+set\s+{col}\s*=\s*(?:\?|\{{)", upd, re.I):
-                hyps.append(_h(fi, "lost_update", "", "value is read, changed in Python, written back, with another writer in between",
-                               f"both changes to {col} survive",
-                               _benign(fi, {amounts[0]: 10, bound: 1}), [{"type": "sql_equals", "sql": f'SELECT "{col}" FROM "{table}" WHERE {where}',
-                                                                         "expect": 160, "label": f"{table}.{col} of {bound}=1 (100 + 10 + 50)"}],
+            relative = re.match(rf"update\s+{table}\s+set\s+{col}\s*=\s*{col}\s*[-+]", upd, re.I)
+            key = next((p for p in sel["bound"] + sel["interp"] if p in param_names), None)
+            bound = key if key in ids else (ids[0] if ids else None)
+            if amounts and bound:
+                where = f'"{wcol}" = 1'
+                if re.match(rf"update\s+{table}\s+set\s+{col}\s*=\s*{col}\s*-", upd, re.I):
+                    hyps.append(_h(fi, "race_overdraft", "", "balance is checked, then written, with another writer in between",
+                                   f"{col} never goes below zero",
+                                   _benign(fi, {amounts[0]: 80, bound: 1}), [{"type": "sql_min", "sql": f'SELECT "{col}" FROM "{table}" WHERE {where}',
+                                                                             "min": 0, "label": f"{table}.{col} of {bound}=1"}],
+                                   interleave={"after": f"select {col}", "sql": f'UPDATE "{table}" SET "{col}" = "{col}" - 80 WHERE {where}'}))
+                elif not relative:
+                    hyps.append(_h(fi, "lost_update", "", "value is read, changed in Python, written back, with another writer in between",
+                                   f"both changes to {col} survive",
+                                   _benign(fi, {amounts[0]: 10, bound: 1}), [{"type": "sql_equals", "sql": f'SELECT "{col}" FROM "{table}" WHERE {where}',
+                                                                             "expect": 160, "label": f"{table}.{col} of {bound}=1 (100 + 10 + 50)"}],
+                                   interleave={"after": f"select {col}", "sql": f'UPDATE "{table}" SET "{col}" = "{col}" + 50 WHERE {where}'}))
+                    hyps.append(_h(fi, "overdraw", "abs", f"{amounts[0]} = -1000", f"{col} never goes below zero",
+                                   _benign(fi, {amounts[0]: -1000, bound: 1}), [{"type": "sql_min", "sql": f'SELECT "{col}" FROM "{table}" WHERE {where}',
+                                                                                 "min": 0, "label": f"{table}.{col} of {bound}=1"}]))
+            elif key and not relative and not amounts:
+                # no amount to steer: let the function change the value alone, then again with a writer in between
+                val = _seed_value(wcol, 1)
+                where = f'"{wcol}" = {_sql_literal(val)}'
+                hyps.append(_h(fi, "lost_update", "", f"'{col}' is read, changed in Python, written back, with another writer in between",
+                               f"a change made by another writer between the read and the write is not overwritten",
+                               _benign(fi, {key: val}), [{"type": "no_lost_update", "sql": f'SELECT "{col}" FROM "{table}" WHERE {where}',
+                                                          "competitor_delta": 50, "label": f"{table}.{col} where {wcol}={val}"}],
                                interleave={"after": f"select {col}", "sql": f'UPDATE "{table}" SET "{col}" = "{col}" + 50 WHERE {where}'}))
 
         # injection: input travels into the statement text
@@ -490,6 +527,12 @@ def validate(h, known_functions: set) -> dict | None:
             if not isinstance(c.get(key), (int, float, str)) or isinstance(c.get(key), bool):
                 return None
             checks.append({"type": t, "sql": str(c["sql"]).strip().rstrip(";"), key: c[key], "label": str(c.get("label") or "")[:80]})
+        elif t == "no_lost_update":
+            if not _one_statement(c.get("sql"), ("select",)) or not isinstance(c.get("competitor_delta"), (int, float)) \
+                    or isinstance(c.get("competitor_delta"), bool):
+                return None
+            checks.append({"type": t, "sql": str(c["sql"]).strip().rstrip(";"), "competitor_delta": c["competitor_delta"],
+                           "label": str(c.get("label") or "")[:80]})
         elif t in ("payload_in_sql", "payload_in_cmd"):
             if not isinstance(c.get("payload"), str) or not 3 <= len(c["payload"]) <= 80:
                 return None

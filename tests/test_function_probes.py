@@ -252,3 +252,59 @@ def test_verify_patch_flags_a_patch_that_changes_nothing_and_one_that_removes_th
     gone = BLIND.replace("def delete_user(", "def _removed(")
     v = proof.verify_patch(BLIND, gone, force=True)
     assert "delete_user" in v["removed_handlers"]
+
+
+# ---- a second blind file: wallet_service.py (coupon race without an id or an amount, overdraw) --------------
+
+WALLET = (Path(__file__).parent / "bench" / "blind" / "wallet_service.py").read_text(encoding="utf-8")
+
+
+@pytest.fixture(scope="module")
+def wallet():
+    return _run(WALLET)
+
+
+def test_withdrawing_more_than_the_balance_is_proven_not_assumed(wallet):
+    r = wallet["withdraw:overdraw"]
+    assert r["status"] == "CONFIRMED" and "got -900" in r["evidence"]
+    assert wallet["create_order:overdraw"]["status"] == "NOT_REPRODUCED"        # `if stock >= qty` stops it
+    assert wallet["create_order:race_overdraft"]["status"] == "CONFIRMED"       # ... but not a concurrent writer
+
+
+def test_coupon_race_is_found_without_an_id_parameter_and_without_an_amount(wallet):
+    r = wallet["use_coupon:lost_update"]
+    assert r["status"] == "CONFIRMED" and "alone the call changes 100 by -1" in r["evidence"] and "expected 149, got 99" in r["evidence"]
+
+
+def test_wallet_literal_key_is_accepted_and_top_up_stays_clean(wallet):
+    assert wallet["admin_reset_wallet:hardcoded_credential:key"]["status"] == "CONFIRMED"
+    assert wallet["top_up:negative_amount"]["status"] == "NOT_REPRODUCED"
+    assert wallet["top_up:nan_amount"]["status"] == "NOT_REPRODUCED"
+    assert wallet["send_receipt:cmdi:email"]["status"] == "CONFIRMED"
+
+
+def test_a_function_that_does_not_change_the_value_alone_is_inconclusive_not_a_lost_update():
+    code = ('import sqlite3\ndef peek(code):\n    c = sqlite3.connect("x").cursor()\n'
+            '    c.execute("SELECT uses_left FROM coupons WHERE code = ?", (code,))\n'
+            '    row = c.fetchone()\n    c.execute("UPDATE coupons SET uses_left = ? WHERE code = ?", (row[0], code))\n')
+    r = _run(code)["peek:lost_update"]
+    assert r["status"] == "INCONCLUSIVE" and "does not change the value on its own" in r["evidence"]
+
+
+def test_validate_accepts_no_lost_update_only_with_a_select_and_a_number():
+    names = {"f"}
+    ok = {"function": "f", "args": [], "checks": [{"type": "no_lost_update", "sql": "SELECT a FROM t WHERE id = 1", "competitor_delta": 5}]}
+    assert pf.validate(ok, names) is not None
+    for bad in ({"type": "no_lost_update", "sql": "DELETE FROM t", "competitor_delta": 5},
+                {"type": "no_lost_update", "sql": "SELECT a FROM t", "competitor_delta": "5"},
+                {"type": "no_lost_update", "sql": "SELECT a FROM t"}):
+        assert pf.validate({**ok, "checks": [bad]}, names) is None
+
+
+def test_wallet_findings_carry_proof_through_prove():
+    scan = scan_material(WALLET, "wallet_service.py")
+    proof.prove(WALLET, scan["findings"], force=True)
+    by = {(f["id"], f["line"]): f for f in scan["findings"]}
+    assert by[("func-check-then-act", 54)]["status"] == "CONFIRMED"           # use_coupon
+    assert by[("func-amount-no-bounds", 30)]["status"] == "CONFIRMED"         # withdraw
+    assert by[("sqli-fstring", 62)]["status"] == "CONFIRMED"
