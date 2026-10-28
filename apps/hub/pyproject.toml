@@ -1,0 +1,24 @@
+[project]
+name = "vishap-hub"
+version = "0.1.0"
+description = "Carries a request between the client, the generator, the validator and the analyser."
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "AGPL-3.0-or-later"}
+dependencies = []
+
+[project.optional-dependencies]
+full = ["pytest>=8", "ruff"]
+
+[project.scripts]
+vishap-hub = "hub.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+hub = ["prompt/*.md"]
