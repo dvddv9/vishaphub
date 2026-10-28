@@ -127,7 +127,8 @@ def feedback_text(check: BuildCheck, verify) -> str:
     for f in check.files:
         for e in f.errors:
             lines.append(f"build: {f.path}: {e}")
-    for r in verify.requirements:
+    order = {"critical": 0, "high": 1, "medium": 2}
+    for r in sorted(verify.requirements, key=lambda x: order.get(x.priority, 3)):   # what matters most first
         if r.status == "passed":
             continue
         lines.append(f"{r.id} [{r.priority}] is {r.status}" + (f" ({r.note})" if r.note else ""))
@@ -150,15 +151,17 @@ def repair_code(spec: Spec, requirements: tuple[Requirement, ...], design: Desig
                 files: dict, check: BuildCheck, verify,
                 chat_fn: Callable[..., str] = chat,
                 config: LLMConfig | None = None,
-                earlier: tuple[str, ...] = ()) -> GenerateResult:
+                earlier: tuple[str, ...] = (), extra: str = "") -> GenerateResult:
     """One repair round: show the model its files and the problems, get new files.
 
     `earlier` is the problem text of the rounds before this one (the analog of Reflexion's memory): the model sees
-    what was already tried and has not worked, so a fix does not undo the one before it.
+    what was already tried and has not worked, so a fix does not undo the one before it. `extra` is more problem
+    text for a round that has nothing failing to show (the mutants the tests did not catch).
     """
     messages = build_messages(spec, requirements, design)
     messages.append({"role": "assistant", "content": json.dumps({"files": files}, ensure_ascii=False)})
-    text = load_prompt(REPAIR_PROMPT).strip() + "\n\nPROBLEMS:\n" + wrap_material("PROBLEMS", feedback_text(check, verify))
+    problems = "\n".join(x for x in (feedback_text(check, verify), extra) if x)
+    text = load_prompt(REPAIR_PROMPT).strip() + "\n\nPROBLEMS:\n" + wrap_material("PROBLEMS", problems)
     if earlier:
         rounds = [f"round {n}:\n" + "\n".join(e.splitlines()[:MAX_EARLIER_LINES]) for n, e in enumerate(earlier, 1)]
         text += "\n\nEARLIER ROUNDS:\n" + wrap_material("EARLIER", "\n\n".join(rounds))

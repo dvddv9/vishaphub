@@ -58,6 +58,7 @@ class VerifyResult:
     coverage_min: float = COVERAGE_MIN
     stale_days: int = STALE_DAYS
     cove_mismatches: tuple[str, ...] = ()      # set by the COVE check (--cove); a note, a gate reason only if asked
+    mutation_score: float | None = None        # share of changes to the code the model's tests caught (pipeline/mutation.py)
 
     @property
     def passed(self) -> int:

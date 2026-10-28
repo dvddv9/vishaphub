@@ -12,4 +12,5 @@ quality_gate:
   require_stride: [T, I]             # STRIDE letters that must be fully covered by the spec (none by default)
   fail_on_cove: false                # a mismatch found by `--cove` blocks
   require_analyzer: false            # blocks when the analyzer did not run (skipped, for example when `vishap` is not installed)
+  # min_mutation_score: 70          # percent of changes to the code the model's tests must catch (off when absent)
   max_loss_pct: 30                   # share of planned code/test files the model may leave out

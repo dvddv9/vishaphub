@@ -132,11 +132,14 @@ def run_tests(plan):
     cov, cov_note, tracer = None, None, None
     paths = [os.path.join(ROOT, p) for p in plan["code_files"]]
     try:
-        if plan.get("coverage") == "builtin":
+        if plan.get("coverage") == "off":
+            cov_note = "coverage was not measured (off)"
+        elif plan.get("coverage") == "builtin":
             raise ImportError
-        import coverage
-        cov = coverage.Coverage(data_file=None, include=paths)
-        cov.start()
+        else:
+            import coverage
+            cov = coverage.Coverage(data_file=None, include=paths)
+            cov.start()
     except ImportError:
         tracer = LineTracer(paths)
         cov_note = "measured with the built-in line tracer (coverage package not installed)"

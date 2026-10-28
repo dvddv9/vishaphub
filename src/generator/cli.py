@@ -48,7 +48,7 @@ def cmd_generate(args) -> int:
         spec_file, out_dir=args.out, gate=args.gate, force=args.force, dry_run=args.dry_run,
         no_llm=args.no_llm, repairs=args.repairs, require_coverage=args.require_coverage,
         text_check=False if args.no_text_check else None,
-        effort=args.effort, candidates=args.candidates, cove=True if args.cove else None,
+        effort=args.effort, candidates=args.candidates, cove=True if args.cove else None, mutants=args.mutants,
         strict=args.strict, repro=args.repro,
         analyzer=None if args.no_analyzer else _default_analyzer(),
         log=print)
@@ -266,7 +266,7 @@ def cmd_batch(args) -> int:
     rows = run_batch(specs, args.out, workers=args.workers, again=args.again, on_row=show,
                      gate=args.gate, force=args.force, repairs=args.repairs,
                      text_check=False if args.no_text_check else None,
-                     effort=args.effort, candidates=args.candidates, cove=True if args.cove else None,
+                     effort=args.effort, candidates=args.candidates, cove=True if args.cove else None, mutants=args.mutants,
                      strict=args.strict, repro=args.repro,
                      analyzer=None if args.no_analyzer else _default_analyzer())
     counts: dict[str, int] = {}
@@ -291,6 +291,9 @@ def _add_depth_flags(p) -> None:
                    help="N answers from the model; Verify picks the one with the most proof (N times the tokens)")
     p.add_argument("--cove", action="store_true",
                    help="ask what the spec says on unusual values, run the code on them, compare")
+    p.add_argument("--mutants", type=int, default=None, metavar="N",
+                   help="change the code in N small ways and see whether the model's tests notice (0 turns it off; "
+                        "default 12, 30 in deep, none in quick)")
     p.add_argument("--strict", action="store_true",
                    help="refuse a spec that lacks more than 50%% of the key data")
     p.add_argument("--repro", action="store_true",

@@ -18,6 +18,7 @@ Config file `.vishap-generator.yml` (next to the spec, else in the current folde
       fail_on_cove: false         # a COVE mismatch (--cove) blocks
       require_analyzer: false     # blocks when the analyzer did not run (skipped or off)
       max_loss_pct: 30            # share of planned code/test files the model may leave out
+      min_mutation_score: 70      # percent of changes to the code the model's tests must catch (off when absent)
 
 Without a file the defaults above apply. An unknown key is an error, not silently ignored.
 """
@@ -54,6 +55,7 @@ class Gate:
     fail_on_cove: bool = False
     max_loss_pct: float = LOSS_MAX_PCT
     require_analyzer: bool = False
+    min_mutation_score: float | None = None
 
     def to_dict(self) -> dict:
         return {"fail_on": list(self.fail_on), "coverage_min": self.coverage_min,
@@ -63,7 +65,7 @@ class Gate:
                 "accepted_gaps": sorted(self.accepted_gaps),
                 "strict_missing_pct": self.strict_missing_pct, "require_stride": list(self.require_stride),
                 "fail_on_cove": self.fail_on_cove, "max_loss_pct": self.max_loss_pct,
-                "require_analyzer": self.require_analyzer}
+                "require_analyzer": self.require_analyzer, "min_mutation_score": self.min_mutation_score}
 
 
 @dataclass(frozen=True)
@@ -79,7 +81,7 @@ class GateResult:
 
 KNOWN = {"fail_on", "coverage_min", "stale_days", "max_critical_gaps", "fail_on_analyzer",
          "require_coverage", "baseline", "strict_missing_pct", "require_stride", "fail_on_cove",
-         "max_loss_pct", "require_analyzer"}
+         "max_loss_pct", "require_analyzer", "min_mutation_score"}
 STRIDE_LETTERS = ("S", "T", "R", "I", "D", "E")
 
 
@@ -112,6 +114,10 @@ def parse_gate(cfg: dict, base_dir: Path | None = None) -> Gate:
     stride = cfg.get("require_stride", [])
     if not isinstance(stride, list) or any(x not in STRIDE_LETTERS for x in stride):
         raise QualityGateError(f"quality_gate.require_stride must be a list of {', '.join(STRIDE_LETTERS)}")
+    mut = cfg.get("min_mutation_score")
+    if mut is not None:
+        if isinstance(mut, bool) or not isinstance(mut, (int, float)) or not 0 <= mut <= 100:
+            raise QualityGateError("quality_gate.min_mutation_score must be a number from 0 to 100")
     loss = _number(cfg, "max_loss_pct", (int, float), 0, LOSS_MAX_PCT)
     if loss > 100:
         raise QualityGateError("quality_gate.max_loss_pct must be at most 100")
@@ -128,7 +134,8 @@ def parse_gate(cfg: dict, base_dir: Path | None = None) -> Gate:
         accepted_gaps=load_baseline(baseline_path),
         strict_missing_pct=None if strict is None else float(strict),
         require_stride=tuple(stride), fail_on_cove=cfg.get("fail_on_cove", False), max_loss_pct=float(loss),
-        require_analyzer=cfg.get("require_analyzer", False))
+        require_analyzer=cfg.get("require_analyzer", False),
+        min_mutation_score=None if mut is None else float(mut))
 
 
 def load_quality_gate(*dirs: Path | str) -> Gate:
@@ -171,6 +178,10 @@ def evaluate_gate(design, build, verify, gate: Gate | None = None) -> GateResult
     if gate.require_analyzer and (verify.analyzer is None or verify.analyzer.status == "skipped"):
         why = f": {verify.analyzer.note}" if verify.analyzer else ""
         reasons.append(f"the analyzer did not run{why}")
+    if gate.min_mutation_score is not None and getattr(verify, "mutation_score", None) is not None \
+            and verify.mutation_score < gate.min_mutation_score:
+        reasons.append(f"the model's tests caught {verify.mutation_score:g}% of the changes made to the code, "
+                       f"under {gate.min_mutation_score:g}%")
     if verify.coverage_status == "below":
         reasons.append(f"coverage {verify.coverage_percent:.0f}% is under {gate.coverage_min:.0f}%")
     if gate.require_coverage and verify.coverage_status == "skipped":

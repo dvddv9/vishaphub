@@ -630,10 +630,29 @@ function strideCard(threats) {
         el("td", null, t.proof && t.proof !== "-" ? badge(t.proof.replace(" ", "_"), t.proof) : "")))))));
 }
 
+function questionsCard(qs) {
+  return el("div", { class: "card", style: "margin-top:1rem" }, el("h3", null, "Questions for the author"),
+    el("p", { class: "muted", style: "font-size:.85rem" }, "Answer these in the spec and the next run has a requirement, a test and an attack where the model had to guess."),
+    el("ul", { class: "tight" }, qs.map((q) => el("li", null, el("span", { class: "mono" }, q.gap + " "), q.question,
+      q.assumed ? el("div", { class: "muted", style: "font-size:.85rem" }, "The model chose: " + q.assumed) : null))));
+}
+
+function mutationCard(m) {
+  if (m.status !== "ok") return el("div", { class: "note", style: "margin-top:1rem" }, "Mutation check skipped: " + m.note);
+  return el("div", { class: "card", style: "margin-top:1rem" }, el("h3", null, "Do the tests notice a bug? " + m.score + "%"),
+    el("p", { class: "muted", style: "font-size:.85rem" }, "The code was changed in " + m.run + " small ways. The model's tests caught " + m.killed + ". A change nobody caught is either harmless or a bug the tests would miss." + (m.stopped ? " " + m.stopped + "." : "")),
+    m.survivors.length ? el("ul", { class: "tight" }, m.survivors.map((s) => el("li", null, el("span", { class: "mono" }, s.file + ":" + s.line + " "), s.change))) : el("p", null, "Every change was caught."));
+}
+
 function extraCards(r, d) {
   const out = [];
   const threats = r.threats && r.threats.length ? r.threats : (d && d.threats) || [];
   if (threats.length) out.push(strideCard(threats));
+  if (r.mutation) out.push(mutationCard(r.mutation));
+  if (r.disagreements && r.disagreements.length) out.push(el("div", { class: "card", style: "margin-top:1rem" }, el("h3", null, "Candidates that disagree"),
+    el("p", { class: "muted", style: "font-size:.85rem" }, "The candidates answered these probes differently, so the spec does not decide them."),
+    el("ul", { class: "tight" }, r.disagreements.map((x) => el("li", null, el("span", { class: "mono" }, x.requirement + " " + x.probe + ": "), x.answers.map((a) => "#" + (a.candidate + 1) + " " + a.answer).join("; "))))));
+  if (r.questions && r.questions.length) out.push(questionsCard(r.questions));
   const libs = r.environment && r.environment.libraries ? Object.entries(r.environment.libraries).filter(([, s]) => s === "missing") : [];
   if (libs.length) out.push(el("div", { class: "note", style: "margin-top:1rem" },
     libs.map(([n]) => n).join(", ") + " is not installed on this server, so the model was told to use the standard library. If you need " + libs[0] + ", run the generator where it is installed."));
@@ -703,6 +722,7 @@ function tabBody(tab, run) {
         ["Critical gaps", String(d ? d.gaps.filter((g) => g.severity === "critical").length : 0)], ["Files planned", String(d ? d.files.length : 0)]]));
       nodes.push(el("div", { class: "note" }, "No model was called and no code was written. This only shows what Intake and Design make of the spec."));
       if (d && d.threats) nodes.push(strideCard(d.threats));
+      if (r.questions && r.questions.length) nodes.push(questionsCard(r.questions));
     }
     return el("div", null, nodes);
   }

@@ -3,7 +3,7 @@
 vishap-generator turns a spec into code by calling a language model, then runs that code to check it.
 Both facts are the risk. This is what is protected, what is not, and how to report a problem.
 
-**Version 0.8.0**
+**Version 0.9.0**
 
 ## Threat model
 

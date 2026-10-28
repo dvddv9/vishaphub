@@ -33,6 +33,8 @@ REPRO_SEED = 42                # --repro: temperature 0 and this seed, if the en
 CANDIDATES_MAX = 5             # --candidates N: at most this many
 CANDIDATE_WORKERS = 3          # candidates generated at the same time
 PROBE_MAX = 12                 # unusual values the COVE check sends
+MUTANTS_MAX = 100              # --mutants N: at most this many changes to the code
+STRENGTHEN_BELOW = 90.0        # deep asks for better tests only when the mutation score is under this percent
 
 
 def api_token() -> str | None:

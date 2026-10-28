@@ -17,7 +17,7 @@ from generator.api.job_store import JobStore
 from generator.api.llm_config import client_llm_config
 from generator.api.rate_limit import RUN_LOCK
 from generator.api.reports import http_status, report
-from generator.config import CANDIDATES_MAX, MAX_REPAIRS, MAX_SPEC_CHARS
+from generator.config import CANDIDATES_MAX, MAX_REPAIRS, MAX_SPEC_CHARS, MUTANTS_MAX
 from generator.observability.logging import get_logger
 from generator.pipeline.effort import EFFORTS
 from generator.pipeline.orchestrator import run_pipeline
@@ -50,6 +50,11 @@ def _prepare(body: dict, *, check_only: bool, client_llm: bool, loopback: bool) 
         if not isinstance(candidates, int) or isinstance(candidates, bool) or not 1 <= candidates <= CANDIDATES_MAX:
             raise ApiError(400, f'"candidates" must be an integer from 1 to {CANDIDATES_MAX}')
         kwargs["candidates"] = candidates
+    mutants = body.get("mutants")
+    if mutants is not None:
+        if not isinstance(mutants, int) or isinstance(mutants, bool) or not 0 <= mutants <= MUTANTS_MAX:
+            raise ApiError(400, f'"mutants" must be an integer from 0 to {MUTANTS_MAX}')
+        kwargs["mutants"] = mutants
     if "text_check" in body:
         kwargs["text_check"] = bool(body["text_check"])
     if body.get("cove"):

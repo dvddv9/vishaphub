@@ -2,6 +2,25 @@
 
 All notable changes to vishap-generator. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.9.0] - 2026-10-28
+
+What the generator should do when the model is a tool, not a judge: check the model's own work by running it, and ask the author instead of letting the model guess.
+
+### Added
+- **Mutation check** (`pipeline/mutation.py`). After a run that passed, the generator changes the code in small ways (`.fullmatch` to `.match`, `==` to `!=`, a status code plus one, a negated `if`, `and` to `or`, `not` removed, a number plus one) and runs the model's tests on each change. A change the tests do not notice is a survivor, listed with file, line and change. The score is the share caught. No model is called. Mutants are picked evenly and repeatably, run four at a time under a time budget (90 s), and the tests must pass on the original first. `--mutants N` (0 off), body key `mutants`, `GENERATOR_MUTANTS` (replaces the effort default), effort defaults quick 0, standard 12, deep 30. Result key `mutation`, trace key `mutation`, a section in the report, a card on the page, a note in Verify's notes.
+- **Strengthening round** (deep only): if the score is under 90%, one repair round gives the model the survivors and asks for tests that catch them, with the code unchanged. The new files are kept only if everything still passes and the score went up; otherwise the earlier files stay.
+- Gate key `min_mutation_score` (off when absent).
+- **Candidates that disagree**: with `--candidates`, probes that the verified candidates answered differently are listed (`disagreements` in the result and the report). The spec does not decide those.
+- **Questions for the author** (`tools/questions.py`): each gap becomes a question, with the model's own `# assumption:` for it beside it when there is one. In the result (`questions`), the trace, the report, the page, and in the spec check without a model.
+
+### Changed
+- The repair feedback lists critical problems first, then high, then medium.
+- The sandbox accepts `coverage: off`, used for the mutants.
+- The repair prompt explains the mutation lines.
+
+### Not verified
+No real model was run with the strengthening round. Survivors can be equivalent mutants (the first test run showed one: a stored id the answer never reads), so a score below 100 is not always a weak test. Only Python targets are mutated.
+
 ## [0.8.0] - 2026-10-28
 
 Changes made after the first real run (Sonnet 5.5 through the Anthropic compatibility layer, on Render): the run passed, and the result showed what it had not proven.

@@ -14,16 +14,18 @@ Exit codes (used by the command line):
 from __future__ import annotations
 
 import datetime as dt
+import sys
 import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from generator.tools.analyzer import AnalyzerResult, run_analyzer
-from generator.config import CANDIDATE_WORKERS, INJECTION_STOP, REPRO_SEED, STRICT_MISSING_PCT
+from generator.config import CANDIDATE_WORKERS, INJECTION_STOP, REPRO_SEED, STRENGTHEN_BELOW, STRICT_MISSING_PCT
 from generator.pipeline.build import BuildCheck, loss_pct
-from generator.pipeline.candidates import generate_all, pick_best, summarize
+from generator.pipeline.candidates import disagreements, generate_all, pick_best, summarize
 from generator.pipeline.cove import CoveError, run_cove
+from generator.pipeline.mutation import MutationResult, run_mutation, survivors_text
 from generator.pipeline.effort import EffortError, resolve as resolve_effort
 from generator.pipeline.deliver import DeliverError, DeliverResult, deliver
 from generator.pipeline.design import DesignResult, design
@@ -43,6 +45,7 @@ from generator.tools.assumptions import find_assumptions
 from generator.tools.environment import environment_for, fallbacks
 from generator.tools.injection import scan as scan_injection
 from generator.tools.provenance import get_provenance
+from generator.tools.questions import questions_for
 from generator.tools.strict import strict_message
 from generator.tools.stride import with_proof
 from generator.tools.redact import redact
@@ -73,6 +76,9 @@ class PipelineResult:
     cove: dict | None = None                          # the COVE check (pipeline/cove.py), None when not run
     loss_pct: float = 0.0
     stopped: str = ""                                 # why the repair loop ended early, if it did
+    questions: list = field(default_factory=list)     # what the spec would have to say, per gap (tools/questions.py)
+    disagreements: list = field(default_factory=list) # probes the candidates answered differently (candidates.disagreements)
+    mutation: MutationResult | None = None            # the mutation check of the tests (pipeline/mutation.py)
     environment: dict = field(default_factory=dict)   # python and the planned libraries on this machine (tools/environment.py)
     assumptions: list = field(default_factory=list)   # the `# assumption:` comments in the code (tools/assumptions.py)
 
@@ -105,12 +111,17 @@ class PipelineResult:
         d["threats"] = self.threats
         if self.candidates:
             d["candidates"] = self.candidates
+            d["disagreements"] = self.disagreements
         if self.cove is not None:
             d["cove"] = self.cove
         if self.build or self.files:
             d["loss_pct"] = self.loss_pct
         if self.stopped:
             d["repair_stopped"] = self.stopped
+        if self.mutation is not None:
+            d["mutation"] = self.mutation.to_dict()
+        if self.design:
+            d["questions"] = self.questions
         if self.environment:
             d["environment"] = self.environment
         if self.build or self.files:
@@ -172,11 +183,11 @@ def run_pipeline(spec_path: str | Path, *, out_dir: str | Path | None = None,
                  allow_write: bool = True, effort: str | None = None,
                  candidates: int | None = None, cove: bool | None = None,
                  strict: bool = False, repro: bool = False,
-                 candidate_workers: int | None = None) -> PipelineResult:
+                 candidate_workers: int | None = None, mutants: int | None = None) -> PipelineResult:
     """`allow_write=False` never touches the disk (the API uses it): Deliver runs as a dry run.
 
     `effort` (quick, standard, deep) sets repairs, candidates, text check, analyzer and COVE together; a knob given
-    on its own (`repairs`, `candidates`, `text_check`, `cove`) wins over it. `strict` refuses a spec that lacks too
+    on its own (`repairs`, `candidates`, `text_check`, `cove`, `mutants`) wins over it. `strict` refuses a spec that lacks too
     much of the key data. `repro` asks the model for temperature 0 and a fixed seed.
 
     Every stage is timed and its model calls counted (`PipelineResult.stages`, `.usage`).
@@ -185,7 +196,8 @@ def run_pipeline(spec_path: str | Path, *, out_dir: str | Path | None = None,
     clock = StageClock()
     try:
         try:
-            eff = resolve_effort(effort, repairs=repairs, candidates=candidates, text_check=text_check, cove=cove)
+            eff = resolve_effort(effort, repairs=repairs, candidates=candidates, text_check=text_check, cove=cove,
+                                mutants=mutants)
         except EffortError as e:
             res.exit_code, res.error = 2, f"effort: {e}"
             return res
@@ -284,6 +296,8 @@ def _run(res: PipelineResult, clock: StageClock, spec_path, eff, *, out_dir, gat
             for g in added:
                 log(f"            {g.id} {g.severity}: {g.text}")
 
+    res.questions = questions_for(res.design.gaps, [])
+
     if no_llm:
         log("            --no-llm: stopping after Design")
         if gate:
@@ -327,6 +341,10 @@ def _run(res: PipelineResult, clock: StageClock, spec_path, eff, *, out_dir, gat
             logger.error("build failed: every candidate")
             return
         res.candidates = summarize(cands, best)
+        res.disagreements = disagreements(cands)
+        for row in res.disagreements:
+            log(f"            candidates disagree on {row['requirement']} '{row['probe']}': "
+                + "; ".join(f"#{a['candidate'] + 1} {a['answer']}" for a in row["answers"]))
         for row in res.candidates:
             what = (f"{row['verdict']}, {row['passed']}/{row['requirements']} passed, build "
                     f"{'ok' if row['build_ok'] else 'errors'}") if "verdict" in row else f"failed: {row['error']}"
@@ -381,6 +399,13 @@ def _run(res: PipelineResult, clock: StageClock, spec_path, eff, *, out_dir, gat
         v = replace(v, notes=v.notes + (f"repair stopped early: {stopped}",))
         res.stopped = stopped
 
+    # Mutation check: do the model's tests notice when the code is changed? In deep, one round asks for better tests.
+    py_target = str(spec.data.get("target", "")).startswith("python/")
+    if eff.mutants and py_target and v.code_verdict == "passed" and build.ok:
+        v, files, build, rounds = _mutation_step(res, v, files, build, rounds, spec=spec, reqs=reqs, d=d, eff=eff,
+                                                 repairs=repairs, earlier=earlier, clock=clock, chat_fn=chat_fn,
+                                                 config=config, limits=limits, use_analyzer=use_analyzer, log=log)
+
     # COVE: what the spec says against what the code does (optional, one more model call)
     if eff.cove and not build.errors:
         try:
@@ -403,6 +428,7 @@ def _run(res: PipelineResult, clock: StageClock, spec_path, eff, *, out_dir, gat
     res.files, res.build, res.verify, res.repair_rounds = files, build, v, rounds
     res.threats = with_proof(d.threats, v)
     res.assumptions = find_assumptions(files)
+    res.questions = questions_for(d.gaps, res.assumptions)
     for lib in fallbacks(res.environment):
         log(f"            environment: {lib} is not installed here; the model was told to use the standard library")
     if res.assumptions:
@@ -462,6 +488,55 @@ def _run(res: PipelineResult, clock: StageClock, spec_path, eff, *, out_dir, gat
     logger.info("run finished", extra={"fields": {"verdict": v.code_verdict, "exit": res.exit_code}})
 
 
+def _mutate(files: dict, d: DesignResult, eff) -> MutationResult:
+    code = [f.path for f in d.files if f.role == "code" and f.path in files]
+    tests = [f.path for f in d.files if f.role == "test" and f.path in files]
+    return run_mutation(files, code, tests, eff.mutants, python=sys.executable)
+
+
+def _mutation_line(m: MutationResult) -> str:
+    return (f"mutation: {m.killed} of {m.run} changes to the code were caught by the model's tests"
+            + (f", {len(m.survivors)} survived" if m.survivors else "") + (f" ({m.stopped})" if m.stopped else ""))
+
+
+def _mutation_step(res, v, files, build, rounds, *, spec, reqs, d, eff, repairs, earlier, clock, chat_fn, config,
+                   limits, use_analyzer, log):
+    """Run the mutation check. In deep effort, if tests missed changes and a repair round is left, ask once for tests
+    that catch them; keep the new files only when everything still passes and the score went up."""
+    logger = get_logger("pipeline")
+    with clock.stage("verify"):
+        mut = _mutate(files, d, eff)
+    if mut.status != "ok":
+        log(f"            mutation check skipped: {mut.note}")
+        res.mutation = mut
+        return replace(v, notes=v.notes + (f"mutation check skipped: {mut.note}",)), files, build, rounds
+    log(f"[Verify]    {_mutation_line(mut)}")
+    if eff.strengthen and mut.survivors and (mut.score or 0) < STRENGTHEN_BELOW and rounds < max(0, repairs):
+        try:
+            with clock.stage("build"):
+                gen = repair_code(spec, reqs, d, files, build, v, chat_fn=chat_fn, config=config,
+                                  earlier=tuple(earlier), extra=survivors_text(mut))
+        except (LLMConfigError, LLMError, GenerateError) as e:
+            log(f"            strengthening round failed: {e}")
+            logger.warning("strengthening round failed: %s", e)
+        else:
+            rounds += 1
+            with clock.stage("verify"):
+                v2 = verify(spec, reqs, d, gen.files, **limits)
+                if v2.code_verdict == "passed" and gen.check.ok and use_analyzer:
+                    v2 = verify(spec, reqs, d, gen.files, analyzer=use_analyzer, **limits)
+                mut2 = _mutate(gen.files, d, eff) if v2.code_verdict == "passed" and gen.check.ok else None
+            if mut2 is not None and mut2.status == "ok" and (mut2.score or 0) > (mut.score or 0):
+                log(f"[Repair]    round {rounds}: tests strengthened, mutation score {mut.score:g}% to {mut2.score:g}%")
+                v, files, build, mut = v2, gen.files, gen.check, mut2
+            else:
+                why = "something else stopped passing" if mut2 is None or mut2.status != "ok" else "the score did not go up"
+                log(f"[Repair]    round {rounds}: new tests not taken ({why}); the earlier files stay")
+    res.mutation = mut
+    note = _mutation_line(mut) + ("; see the report for the changes that were not caught" if mut.survivors else "")
+    return replace(v, mutation_score=mut.score, notes=v.notes + (note,)), files, build, rounds
+
+
 def _trace_extra(res: PipelineResult) -> dict:
     """What a run adds to the trace besides Verify's evidence: no times, nothing that varies between runs of the same inputs."""
     extra: dict = {"effort": res.effort, "threats": res.threats, "loss_pct": res.loss_pct}
@@ -474,6 +549,9 @@ def _trace_extra(res: PipelineResult) -> dict:
     if (res.environment or {}).get("libraries"):
         extra["libraries"] = res.environment["libraries"]
     extra["assumptions"] = res.assumptions
+    extra["questions"] = res.questions
+    if res.mutation is not None:
+        extra["mutation"] = res.mutation.to_dict()
     return extra
 
 

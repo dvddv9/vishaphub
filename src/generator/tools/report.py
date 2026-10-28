@@ -57,6 +57,32 @@ def render_markdown(res, spec_name: str = "spec.yaml") -> str:
         out += [f"| {p['id']} | {_cell(p['input'])} ({_cell(p['label'])}) | `{_cell(p['value'])}` | "
                 f"{p['spec_reading']} | {p['code']}{'' if p['match'] else ' **mismatch**'} |" for p in cv["probes"]]
         out.append("")
+    m = getattr(res, "mutation", None)
+    if m is not None:
+        out += ["## Mutation check", ""]
+        if m.status != "ok":
+            out += [f"Skipped: {_cell(m.note)}", ""]
+        else:
+            out += [f"The code was changed in {m.run} small ways (a status code, a comparison, a regex anchor). "
+                    f"The model's tests caught {m.killed}: **{m.score:g}%**. A change that no test caught may be harmless "
+                    "(then the change was equivalent to the original) or may be a bug the tests would miss.", ""]
+            if m.stopped:
+                out += [f"{_cell(m.stopped)}.", ""]
+            if m.survivors:
+                out += ["| File | Line | Change not caught |", "|---|---|---|"]
+                out += [f"| {s.file} | {s.line} | {_cell(s.change)} |" for s in m.survivors]
+                out.append("")
+    if getattr(res, "disagreements", None):
+        out += ["## Candidates that disagree", "", "Probes the candidates answered differently: the spec does not decide these.", "",
+                "| Requirement | Probe | Answers |", "|---|---|---|"]
+        out += [f"| {d['requirement']} | {_cell(d['probe'])} | " + _cell("; ".join(f"#{a['candidate'] + 1}: {a['answer']}" for a in d["answers"])) + " |"
+                for d in res.disagreements]
+        out.append("")
+    if getattr(res, "questions", None):
+        out += ["## Questions for the author", "", "Answer these in the spec and the next run has a requirement, a test and an "
+                "attack where the model had to guess.", "", "| Gap | Question | The model's own answer |", "|---|---|---|"]
+        out += [f"| {q['gap']} | {_cell(q['question'])} | {_cell(q['assumed']) or '-'} |" for q in res.questions]
+        out.append("")
     libs = (res.environment or {}).get("libraries") or {}
     if libs:
         out += ["## Environment", "", f"- python {res.environment.get('python', '?')}"]

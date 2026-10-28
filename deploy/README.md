@@ -37,6 +37,7 @@ needs your token.
   token. Jobs live in memory, so a restart or the free plan's sleep loses a running job.
 - The image installs Flask, so `target: python/flask` is verified as Flask. Anthropic's compatibility layer ignores `seed`, so `--repro` is not exactly repeatable there.
 - The cost is shown only when `GENERATOR_PRICE_IN` and `GENERATOR_PRICE_OUT` (USD per 1M tokens) are set in Render; the project does not carry model prices.
+- The mutation check adds about a test run per change (12 by default) to a run, under a 90 s budget; on the free plan set `GENERATOR_MUTANTS=0` in Render if runs get too slow, or leave it on for the proof it gives.
 - The Vishap analyzer is not in the image, so the report says the verdict does not include it; set `require_analyzer: true` in the gate to block such runs.
 - A visitor who is not you cannot spend your model key and cannot make the server run code.
 

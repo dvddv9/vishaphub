@@ -58,6 +58,28 @@ def summarize(candidates: list[Candidate], chosen: Candidate | None) -> list[dic
     return rows
 
 
+def disagreements(candidates: list[Candidate]) -> list[dict]:
+    """Where candidates that were both verified answered the same probe differently.
+
+    Every candidate got the same attacks from Verify. A probe that one candidate rejects and another accepts means
+    the spec does not decide that case: each answer is a reading of it. This costs nothing, the runs are done.
+    """
+    seen: dict[tuple, dict[int, str]] = {}
+    for c in candidates:
+        if c.verify is None:
+            continue
+        for r in c.verify.requirements:
+            for e in r.evidence:
+                if e.source == "attack" and e.name != "-" and e.status in ("pass", "fail", "inconclusive"):
+                    seen.setdefault((r.id, e.name), {})[c.index] = e.detail or e.status
+    rows = []
+    for (rid, name), by in sorted(seen.items()):
+        if len(by) > 1 and len(set(by.values())) > 1:
+            rows.append({"requirement": rid, "probe": name,
+                         "answers": [{"candidate": i, "answer": a} for i, a in sorted(by.items())]})
+    return rows
+
+
 def generate_all(n: int, make: Callable[[int], tuple[dict, BuildCheck]], workers: int) -> list[Candidate]:
     """Run `make(i)` for i in 0..n-1, `workers` at a time; a failing candidate is kept with its error."""
     def one(i: int) -> Candidate:
