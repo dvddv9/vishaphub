@@ -28,7 +28,8 @@ from generator.pipeline.build import BuildCheck
 from generator.pipeline.design import DesignResult
 from generator.pipeline.intake import Requirement
 from generator.tools.spec import Spec
-from generator.pipeline.verify import COVERAGE_MIN, VerifyResult
+from generator.config import COVERAGE_MIN
+from generator.pipeline.verify import VerifyResult
 
 META_DIR = ".vishap"
 

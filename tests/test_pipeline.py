@@ -82,7 +82,7 @@ class RepairTests(Base):
         self.assertEqual(res.exit_code, 0)
         feedback = stub.calls[1][-1]["content"]
         self.assertIn("trailing newline", feedback)
-        self.assertIn("<<<PROBLEMS", feedback)
+        self.assertRegex(feedback, r"<VG_PROBLEMS_[0-9a-f]{16}>")
         self.assertEqual(stub.calls[1][-2]["role"], "assistant")
 
     def test_repairs_zero_never_asks_again(self):

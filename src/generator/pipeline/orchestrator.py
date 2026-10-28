@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from generator.tools.analyzer import AnalyzerResult, run_analyzer
+from generator.config import DEFAULT_REPAIRS
 from generator.pipeline.build import BuildCheck
 from generator.pipeline.deliver import DeliverError, DeliverResult, deliver
 from generator.pipeline.design import DesignResult, design
@@ -31,7 +32,6 @@ from generator.tools.spec import Spec, SpecError, load_spec
 from generator.pipeline.textcheck import TextCheckError, check_text
 from generator.pipeline.verify import VerifyResult, verify
 
-DEFAULT_REPAIRS = 2
 
 
 @dataclass

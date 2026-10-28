@@ -11,7 +11,11 @@ from tests.test_pipeline import Stub, answer
 from tests.test_verify import GOOD, TODAY
 
 from generator import main as server
-from generator.main import LOOPBACK, make_handler
+from generator.api.rate_limit import RUN_LOCK
+from generator.api.errors import ApiError
+from generator.api.jobs import handle_generate
+from generator.main import make_handler
+from generator.config import LOOPBACK, MAX_BODY
 
 SPEC_TEXT = CLEAN_SPEC.read_text(encoding="utf-8")
 
@@ -93,7 +97,7 @@ class ApiTests(ServerCase):
     def test_body_rules(self):
         self.assertEqual(self.req("/api/check", raw=b"not json")[0], 400)
         self.assertEqual(self.req("/api/check", raw=b"[1]")[0], 400)
-        self.assertEqual(self.req("/api/check", raw=b"x" * (server.MAX_BODY + 1))[0], 413)
+        self.assertEqual(self.req("/api/check", raw=b"x" * (MAX_BODY + 1))[0], 413)
         self.assertEqual(self.req("/api/check", raw=b"{}", headers={"Content-Type": "text/plain"})[0], 415)
 
     def test_foreign_origin_and_host_are_refused(self):
@@ -104,11 +108,11 @@ class ApiTests(ServerCase):
                                   headers={"Origin": "http://localhost:8787"})[0], 200)
 
     def test_second_run_while_busy_gets_429(self):
-        self.assertTrue(server._RUN_LOCK.acquire(blocking=False))
+        self.assertTrue(RUN_LOCK.acquire(blocking=False))
         try:
             status, out = self.post("/api/generate", {"spec": SPEC_TEXT})
         finally:
-            server._RUN_LOCK.release()
+            RUN_LOCK.release()
         self.assertEqual(status, 429)
 
     def test_gate_example_spec_through_the_api(self):
@@ -170,7 +174,7 @@ class UiSupportTests(ServerCase):
             from generator.pipeline.orchestrator import PipelineResult
             return PipelineResult(exit_code=0)
 
-        out = server.handle_generate(
+        out = handle_generate(
             {"spec": SPEC_TEXT, "llm": {"url": "https://x.example", "model": "m", "key": "k"}},
             check_only=False, run=fake_run)
         self.assertEqual(seen["config"].model, "m")
@@ -178,8 +182,8 @@ class UiSupportTests(ServerCase):
         self.assertNotIn("llm", out)
 
     def test_client_llm_can_be_refused(self):
-        with self.assertRaises(server.ApiError) as cm:
-            server.handle_generate({"spec": SPEC_TEXT, "llm": {"url": "https://x.example", "model": "m", "key": "k"}},
+        with self.assertRaises(ApiError) as cm:
+            handle_generate({"spec": SPEC_TEXT, "llm": {"url": "https://x.example", "model": "m", "key": "k"}},
                                    check_only=False, client_llm=False)
         self.assertEqual(cm.exception.status, 403)
 

@@ -30,19 +30,15 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
+from generator.config import COVERAGE_MIN, STALE_DAYS
 from generator.tools.analyzer import AnalyzerResult
 from generator.pipeline.build import TEST_NAME_RE
+from generator.pipeline.sandbox import DEFAULT_TIMEOUT, run_sandbox
 from generator.pipeline.design import DesignResult
 from generator.pipeline.intake import Requirement
 from generator.tools.spec import REQUIREMENT_LISTS, Spec
 
-STALE_DAYS = 90
-COVERAGE_MIN = 80.0
-DEFAULT_TIMEOUT = 60
-RUNNER = Path(__file__).with_name("_sandbox_runner.py")
 RULE_RE = re.compile(r"^\s*(\d+)\s*-\s*(\d+)\s+(letters and digits|letters|digits)\s*$", re.I)
-ENV_KEEP = {"PATH", "SYSTEMROOT", "SYSTEMDRIVE", "WINDIR", "COMSPEC", "PATHEXT",
-            "TEMP", "TMP", "TMPDIR", "HOME", "USERPROFILE", "LANG", "LC_ALL"}
 ABSENT = object()
 
 
@@ -241,43 +237,6 @@ def log_findings(tree: ast.AST) -> list[str]:
     return found
 
 
-# ---------------------------------------------------------------- sandbox
-
-def _clean_env() -> dict[str, str]:
-    env = {k: v for k, v in os.environ.items() if k.upper() in ENV_KEEP}
-    env["PYTHONDONTWRITEBYTECODE"] = "1"
-    return env
-
-
-def _run_sandbox(files: dict[str, str], mode: str, plan: dict,
-                 timeout: float, python: str) -> dict:
-    with tempfile.TemporaryDirectory(prefix="vg-verify-") as tmp:
-        root = Path(tmp).resolve()
-        for rel, content in files.items():
-            target = (root / rel).resolve()
-            if root not in target.parents:
-                continue
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(content, encoding="utf-8")
-        runner = root / "_vg_runner.py"
-        runner.write_text(RUNNER.read_text(encoding="utf-8"), encoding="utf-8")
-        plan_path, out_path = root / "_vg_plan.json", root / "_vg_out.json"
-        plan_path.write_text(json.dumps(plan), encoding="utf-8")
-        try:
-            proc = subprocess.run(
-                [python, "-X", "utf8", str(runner), mode, str(plan_path), str(out_path)],
-                cwd=tmp, env=_clean_env(), capture_output=True, text=True,
-                encoding="utf-8", errors="replace", timeout=timeout)
-        except subprocess.TimeoutExpired:
-            return {"status": f"timeout after {timeout:g}s"}
-        if not out_path.exists():
-            tail = (proc.stderr or proc.stdout or "").strip()[-600:]
-            return {"status": f"crashed (exit {proc.returncode}): {tail}"}
-        data = json.loads(out_path.read_text(encoding="utf-8"))
-        data["status"] = "ok"
-        return data
-
-
 # ---------------------------------------------------------------- verify
 
 def _items_by_requirement(spec: Spec, reqs) -> dict[str, tuple[str, dict]]:
@@ -401,7 +360,7 @@ def verify(spec: Spec, requirements: tuple[Requirement, ...], design: DesignResu
     # model tests
     coverage_status, coverage_percent, coverage_note = "skipped", None, "no tests ran"
     if python_target and test_files and code_files:
-        run = _run_sandbox(planned, "tests",
+        run = run_sandbox(planned, "tests",
                            {"tests_dir": str(PurePosixPath(test_files[0]).parent),
                             "code_files": code_files, "coverage": coverage}, timeout, python)
         if run["status"] != "ok":
@@ -436,7 +395,7 @@ def verify(spec: Spec, requirements: tuple[Requirement, ...], design: DesignResu
             method = path = None
             if spec.data.get("route"):
                 method, path = spec.data["route"].split(" ", 1)
-            run = _run_sandbox(planned, "attacks",
+            run = run_sandbox(planned, "attacks",
                                {"module": _module_name(code_files[0]), "method": method,
                                 "path": path, "requests": requests}, timeout, python)
             if run["status"] != "ok":
