@@ -23,6 +23,20 @@ STATIC = {
     "/greeting.mp3": ("greeting.mp3", "audio/mpeg"),
 }
 
+#: Headers that cost nothing and close a class of attacks. The site check flags their
+#: absence, so the site should not be the one that fails it.
+SECURITY_HEADERS = {
+    "strict-transport-security": "max-age=31536000; includeSubDomains",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "content-security-policy": (
+        "default-src 'self'; img-src 'self' data:; media-src 'self'; "
+        "style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; "
+        "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'"
+    ),
+}
+
 
 def _plan_for(body: dict):
     intent = str(body.get("intent") or "").strip()
@@ -48,6 +62,8 @@ class Handler(BaseHTTPRequestHandler):
         if "text" in content_type or "json" in content_type:
             content_type = content_type + "; charset=utf-8"
         self.send_response(code)
+        for name, value in SECURITY_HEADERS.items():
+            self.send_header(name, value)
         self.send_header("content-type", content_type)
         self.send_header("content-length", str(len(body)))
         self.end_headers()

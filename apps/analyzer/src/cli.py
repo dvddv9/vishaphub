@@ -161,6 +161,18 @@ def cmd_prove(args):
     sys.exit(prove_cli(args.input, patched=args.patched, unisolated=args.unisolated, answers=args.answers))
 
 
+def cmd_site(args):
+    """Site checks. Shallow on purpose: a few polite requests, no exploitation."""
+    from src.tools import site_scan
+    report = site_scan.scan(args.url)
+    if getattr(args, "json", False):
+        import json as _json
+        print(_json.dumps(report.as_dict(), ensure_ascii=False, indent=2))
+    else:
+        print(report.to_markdown())
+    return 0 if report.verdict == "SAFE" else 1
+
+
 def cmd_scan(args):
     """Scan a directory (or what a diff added) with the built-in rules: no LLM, no network unless --deps."""
     from src.tools.repo_scan import scan_cli
@@ -272,6 +284,11 @@ def main():
     p_scan.add_argument("--exclude", action="append", metavar="REGEX", help="Skip paths matching this regex (repeatable)")
     p_scan.add_argument("--max-files", type=int, default=2000)
     p_scan.set_defaults(func=cmd_scan)
+
+    p_site = sub.add_parser("site", help="Check a deployed site: headers, cookies, exposed paths, certificate (no LLM)")
+    p_site.add_argument("url", help="Site URL")
+    p_site.add_argument("--json", action="store_true", help="Machine-readable report")
+    p_site.set_defaults(func=cmd_site)
 
     p_sbom = sub.add_parser("sbom", help="Generate CycloneDX SBOM")
     p_sbom.add_argument("--output", "-o", default="sbom.json", help="Output SBOM path (default: sbom.json)")
