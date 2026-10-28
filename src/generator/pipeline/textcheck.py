@@ -22,6 +22,7 @@ from collections.abc import Callable
 from generator.pipeline.design import DesignResult
 from generator.tools.gaps import Gap
 from generator.pipeline.intake import Requirement, Source
+from generator.pipeline.stages import parse_json_response
 from generator.pipeline.prompts import system_prompt, wrap_data
 from generator.llm import LLMConfig, chat
 from generator.tools.spec import Spec
@@ -30,7 +31,6 @@ MAX_ITEMS = 8
 MAX_LEN = 200
 MAX_TOKENS = 2000
 PROMPT = "02_design_textcheck"
-FENCE_RE = re.compile(r"^\s*```(?:json)?\s*\n(.*)\n\s*```\s*$", re.DOTALL)
 
 class TextCheckError(RuntimeError):
     """The model answered, but not with a usable list."""
@@ -50,15 +50,11 @@ def build_messages(spec: Spec, requirements: tuple[Requirement, ...]) -> list[di
 
 def parse_uncovered(answer: str, text: str) -> tuple[list[tuple[str, str]], int]:
     """Return ([(quote, why)], number of dropped items)."""
-    body = answer.strip()
-    fenced = FENCE_RE.match(body)
-    if fenced:
-        body = fenced.group(1)
     try:
-        data = json.loads(body)
+        data = parse_json_response(answer)
     except ValueError as e:
-        raise TextCheckError(f"answer is not JSON: {e.msg}") from None
-    items = data.get("uncovered") if isinstance(data, dict) else None
+        raise TextCheckError(str(e)) from None
+    items = data.get("uncovered")
     if not isinstance(items, list):
         raise TextCheckError('answer must be an object with an "uncovered" list')
     haystack = _norm(text)

@@ -25,6 +25,7 @@ from typing import Callable
 from generator.pipeline.build import BuildCheck, check_build
 from generator.pipeline.design import DesignResult
 from generator.pipeline.intake import Requirement
+from generator.pipeline.stages import parse_json_response
 from generator.pipeline.prompts import load_prompt, system_prompt, wrap_data
 from generator.llm import LLMConfig, chat
 from generator.tools.spec import Spec
@@ -32,7 +33,6 @@ from generator.tools.spec import Spec
 MAX_TOKENS = 8000
 BUILD_PROMPT = "03_build"
 REPAIR_PROMPT = "03_build_repair"
-FENCE_RE = re.compile(r"^\s*```(?:json)?\s*\n(.*)\n\s*```\s*$", re.DOTALL)
 
 class GenerateError(RuntimeError):
     """The model answered, but not with usable files."""
@@ -95,15 +95,11 @@ def build_messages(spec: Spec, requirements: tuple[Requirement, ...],
 
 
 def parse_files(answer: str) -> dict[str, str]:
-    text = answer.strip()
-    fenced = FENCE_RE.match(text)
-    if fenced:
-        text = fenced.group(1)
     try:
-        data = json.loads(text)
+        data = parse_json_response(answer)
     except ValueError as e:
-        raise GenerateError(f"answer is not JSON: {e.msg} at line {e.lineno}") from None
-    if not isinstance(data, dict) or not isinstance(data.get("files"), dict):
+        raise GenerateError(str(e)) from None
+    if not isinstance(data.get("files"), dict):
         raise GenerateError('answer must be an object with a "files" object')
     files = data["files"]
     for path, content in files.items():
