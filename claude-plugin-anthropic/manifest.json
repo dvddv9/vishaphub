@@ -2,7 +2,7 @@
   "manifest_version": "0.2",
   "name": "vishap-claude",
   "display_name": "Vishap Claude (Anthropic API)",
-  "version": "7.5.2",
+  "version": "7.5.4",
   "description": "Security and logic analysis: Vishap's rule engine and optional exploit probes, then Claude API (Anthropic SDK).",
   "author": {
     "name": "dvddv9",
