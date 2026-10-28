@@ -110,6 +110,7 @@ class PipelineRecordsTests(unittest.TestCase):
         self.assertEqual(len(entries), 1)
         self.assertEqual(entries[0]["run_id"], res.deliver.run_id)
         self.assertEqual(entries[0]["verdict"], "passed")
+        self.assertEqual(entries[0]["usage"]["llm_calls"], 2)
 
     def test_dry_run_and_api_mode_leave_no_history(self):
         self.run_it(Stub(answer(GOOD)), dry_run=True)

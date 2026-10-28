@@ -314,6 +314,7 @@ def _run(res: PipelineResult, clock: StageClock, spec_path, *, out_dir, gate, fo
             log(f"            {a.action:<11} {a.path}")
         log(f"            rollback: {out.rollback_hint}")
     if allow_write and out_dir is not None and out.written:    # a blocked run writes nothing, history included
+        res.stages = clock.records()                            # the history entry carries the usage so far
         _record_history(out_dir, res, spec, out)
     logger.info("run finished", extra={"fields": {"verdict": v.code_verdict, "exit": res.exit_code}})
 
