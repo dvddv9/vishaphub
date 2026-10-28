@@ -75,16 +75,17 @@ def analyse(cfg: ServiceConfig, material: str, filename: str = "input.txt") -> d
 
 def generate(cfg: ServiceConfig, spec: str, out_dir: str) -> dict:
     """Ask the generator for a deliverable built from the spec."""
+    # The generator speaks a stdlib HTTP API: POST /api/generate with the spec text.
     result = _post(
-        f"{cfg.generator_url.rstrip('/')}/generate",
-        {"spec": spec, "out_dir": out_dir},
+        f"{cfg.generator_url.rstrip('/')}/api/generate",
+        {"spec": spec},
         _headers(cfg),
         cfg.timeout,
     )
     if not result["ok"]:
         return result
     data = result["data"]
-    return {"ok": True, "out_dir": data.get("out_dir", out_dir), "raw": data}
+    return {"ok": True, "out_dir": data.get("out_dir") or out_dir, "raw": data}
 
 
 def validate(cfg: ServiceConfig, root: str, spec: dict) -> dict:
