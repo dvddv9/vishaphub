@@ -4,7 +4,7 @@ Guidance for AI coding agents working in this repository.
 
 ## Project
 
-vishap-generator (v0.6.0): a spec-to-code generator that proves its output. `spec.yaml` goes in; files, tests and
+vishap-generator (v0.6.1): a spec-to-code generator that proves its output. `spec.yaml` goes in; files, tests and
 a trace "requirement -> code -> test -> finding" come out. Five stages: Intake, Design, Build, Verify, Deliver.
 A requirement is `passed`, `failed`, `needs_verification` or `not_verified`; "not proven" is never reported as "passed".
 

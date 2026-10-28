@@ -60,7 +60,7 @@ class LayoutTests(unittest.TestCase):
                      ".github/PULL_REQUEST_TEMPLATE.md", "deploy/README.md",
                      "docs/ARCHITECTURE.md", "docs/FAQ.md", "docs/LIMITATIONS.md",
                      "docs/ROADMAP.md", "docs/VISHAP.md", "docs/HISTORY.md",
-                     ".vishap-generator.yml.example"):
+                     ".vishap-generator.yml.example", "render.yaml"):
             self.assertTrue((ROOT / name).is_file(), name)
 
 

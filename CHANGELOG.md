@@ -2,6 +2,15 @@
 
 All notable changes to vishap-generator. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.6.1] - 2026-10-28
+
+### Added
+- `GENERATOR_CHECK_ONLY=1`: a public demo mode. The server answers only `/api/check` (no model, no code run), refuses `/api/generate*` with 403, ignores client model settings and may listen on a public address without a token. Names it answers to: `RENDER_EXTERNAL_HOSTNAME`, `GENERATOR_PUBLIC_HOSTS`. `/api/status` has `check_only`; the web form hides the run controls and the model settings and says so.
+- `render.yaml`: a Render blueprint for that demo (docker, free plan, port 8787). `deploy/README.md` explains it.
+
+### Not verified
+Not deployed: the blueprint and the Docker image were not run on Render.
+
 ## [0.6.0] - 2026-10-28
 
 Checks taken from a review of the "meta-prompt" ideas (STRIDE, STRICT, COVE, self-refine, USC, Reflexion, audit trail).

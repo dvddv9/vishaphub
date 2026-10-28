@@ -1,0 +1,23 @@
+# Public demo on Render: the page and the spec check only.
+# GENERATOR_CHECK_ONLY=1 means the server calls no model and runs no generated code, so it needs no model key
+# and no token. Generating code stays on your own computer. See deploy/README.md.
+services:
+  - type: web
+    name: vishap-generator
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: GENERATOR_CHECK_ONLY
+        value: "1"
+      - key: PORT
+        value: "8787"
+      - key: GENERATOR_RATE_LIMIT
+        value: "60"
+      - key: LOG_FORMAT
+        value: json
+      - key: PYTHONUNBUFFERED
+        value: "1"

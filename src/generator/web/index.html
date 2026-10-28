@@ -277,7 +277,7 @@ function renderNav() {
     el("div", { class: "spacer" },
       el("button", { class: "iconbtn", "aria-label": dark ? "Switch to light theme" : "Switch to dark theme", onclick: () => {
         const t = dark ? "light" : "dark"; applyTheme(t); store.set("vg:theme", t); renderNav(); }}, dark ? "☀" : "☾"),
-      el("span", { class: "chip" }, app.status && app.status.token_required ? "Token" : "Local")));
+      el("span", { class: "chip" }, app.status && app.status.check_only ? "Demo" : app.status && app.status.token_required ? "Token" : "Local")));
 }
 
 /* ---------- dashboard ---------- */
@@ -360,6 +360,8 @@ function pageDashboard() {
 function statusLine() {
   const s = app.status;
   if (!s) return [el("span", null, "Checking the server…")];
+  if (s.check_only) return [el("span", null, "version: ", el("b", null, s.version)), el("span", null, "mode: ", el("b", null, "spec check only")),
+    el("span", null, "no model is called and no code is run on this server")];
   const bit = (k, v, good) => el("span", null, k + ": ", el("b", { style: good === false ? "color:var(--warn)" : "" }, v));
   return [bit("version", s.version), bit("model", s.llm_from_environment ? "set in environment" : "set it below or in CUSTOM_LLM_*", s.llm_from_environment),
           bit("Analyzer", s.analyzer_found ? "found" : "not found (will be skipped)", s.analyzer_found),
@@ -375,6 +377,7 @@ function jobCard(run) {
 
 /* ---------- model settings ---------- */
 function llmSettings() {
+  if (app.status && app.status.check_only) return null;
   const s = llm(), st = app.status;
   const allowed = !st || st.client_llm_allowed;
   const providers = (st && st.providers) || [];
@@ -458,6 +461,7 @@ function pageGenerate(query) {
   const exBtns = el("div", { class: "pillrow" }, app.examples.map((e) => el("button", { class: "pillbtn", type: "button", title: e.description, onclick: () => { spec.value = e.spec; sync(); out.replaceChildren(); } }, e.title)));
   const optBox = (id, title, desc, key) => el("label", { class: "chk" }, el("input", { type: "checkbox", id, checked: opts[key], onchange: (e) => (opts[key] = e.target.checked) }), el("span", null, el("b", null, title), el("span", { class: "d" }, desc)));
 
+  const demo = !!(app.status && app.status.check_only);
   const runBtn = el("button", { class: "btn primary", type: "button" }, "Generate and verify");
   const checkBtn = el("button", { class: "btn", type: "button" }, "Check the spec (no model)");
 
@@ -522,7 +526,7 @@ function pageGenerate(query) {
       el("div", { class: "form" },
         el("fieldset", null, el("legend", null, "Start with an example"), exBtns),
         el("div", { class: "field" }, el("label", { class: "l", for: "spec" }, "Specification (spec.yaml)"), spec),
-        el("div", { class: "actions", style: "margin:0" }, runBtn, checkBtn),
+        el("div", { class: "actions", style: "margin:0" }, demo ? null : runBtn, checkBtn),
         out),
       el("div", { class: "form" },
         el("div", { class: "card form" },
@@ -531,6 +535,9 @@ function pageGenerate(query) {
             sel("f-profile", "Security profile", PROFILES, "profile"), sel("f-caller", "Caller", CALLERS, "caller"),
             el("div", { class: "field" }, el("label", { class: "l", for: "output" }, "Output file"), outputInput)),
           el("fieldset", { class: "form", style: "gap:.5rem" }, el("legend", null, "Constraints"), ...boxes.map((b) => b.node))),
+        demo ? el("div", { class: "card note" }, el("h3", null, "Spec check only"),
+          el("p", null, "This page checks a spec: the requirements R1..Rn, the planned files, the STRIDE table and the gaps. It calls no model and runs no code. To generate and verify code, run the generator on your own computer: "),
+          el("p", null, el("a", { href: "https://github.com/dvddv9/vishap-generator", target: "_blank", rel: "noopener" }, "github.com/dvddv9/vishap-generator"))) :
         el("div", { class: "card form", style: "gap:.5rem" },
           el("h3", null, "Run options"),
           optBox("o-gate", "Gate", "Block the write on a failed critical or high requirement, low coverage, an open critical gap or a stale spec.", "gate"),

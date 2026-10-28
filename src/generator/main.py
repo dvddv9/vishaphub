@@ -47,13 +47,14 @@ from generator.api.llm_config import status
 from generator.llm.providers import list_providers
 from generator.api.reports import http_status
 from generator.config import (DEFAULT_HOST, DEFAULT_PORT, LOOPBACK, MAX_BODY, WEB_INDEX,
-                              allow_client_llm, api_token)
+                              allow_client_llm, api_token, check_only, public_hosts)
 from generator.pipeline.orchestrator import run_pipeline
 from generator.tools.examples import examples
 
 
 def make_handler(token: str | None, host_names: set[str], run=run_pipeline, run_kwargs=None,
-                 client_llm: bool = True, loopback: bool = True, store=None, limiter=None):
+                 client_llm: bool = True, loopback: bool = True, store=None, limiter=None,
+                 check_only: bool = False):
     run_kwargs = run_kwargs or {}
     store = store if store is not None else MemoryJobStore()
     limiter = limiter if limiter is not None else RateLimiter(per_minute())
@@ -121,7 +122,7 @@ def make_handler(token: str | None, host_names: set[str], run=run_pipeline, run_
             if path == "/health":
                 return self._send(200, {"ok": True})
             if path == "/api/status":
-                return self._send(200, status(token, client_llm, loopback))
+                return self._send(200, status(token, client_llm, loopback, check_only))
             if path == "/api/providers":
                 return self._send(200, {"providers": list_providers(loopback) if client_llm else []})
             if path == "/api/examples":
@@ -142,6 +143,9 @@ def make_handler(token: str | None, host_names: set[str], run=run_pipeline, run_
             path = urlsplit(self.path).path
             if path not in ("/api/generate", "/api/generate/async", "/api/check"):
                 return self._send(404, {"error": "not found"})
+            if check_only and path != "/api/check":
+                return self._send(403, {"error": "this server only checks specs: no model is called and no code is run. "
+                                                 "Run the generator on your own computer to generate code."})
             if self._limited():
                 return
             if (self.headers.get("Content-Type") or "").split(";")[0].strip().lower() != "application/json":
@@ -174,16 +178,19 @@ def make_handler(token: str | None, host_names: set[str], run=run_pipeline, run_
 
 def serve(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT) -> int:
     token = api_token()
-    if host not in LOOPBACK and not token:
-        print("error: a non-loopback host needs GENERATOR_API_TOKEN", flush=True)
+    public = check_only()
+    if host not in LOOPBACK and not token and not public:
+        print("error: a non-loopback host needs GENERATOR_API_TOKEN (or GENERATOR_CHECK_ONLY=1)", flush=True)
         return 2
     setup_logging()
-    names = set(LOOPBACK) | {host.lower()}
+    names = set(LOOPBACK) | {host.lower()} | public_hosts()
     # Model settings from the browser mean the server calls a URL the browser names:
     # fine on this computer, not on a shared server unless the operator says so.
-    client_llm = allow_client_llm(host)
-    httpd = ThreadingHTTPServer((host, port), make_handler(token, names, client_llm=client_llm, loopback=host in LOOPBACK))
-    print(f"vishap-generator on http://{host}:{port}/  (Ctrl+C to stop)", flush=True)
+    client_llm = allow_client_llm(host) and not public
+    httpd = ThreadingHTTPServer((host, port), make_handler(token, names, client_llm=client_llm, loopback=host in LOOPBACK,
+                                                            check_only=public))
+    print(f"vishap-generator on http://{host}:{port}/  (Ctrl+C to stop)"
+          + ("  [check only: no model, no code is run]" if public else ""), flush=True)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

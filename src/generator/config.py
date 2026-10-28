@@ -45,6 +45,20 @@ def allow_client_llm(host: str) -> bool:
     return host in LOOPBACK or os.environ.get("GENERATOR_ALLOW_CLIENT_LLM") == "1"
 
 
+def check_only() -> bool:
+    """GENERATOR_CHECK_ONLY=1: a public demo. The server only checks specs (Intake and Design): no model is
+    called, no generated code is run, no key is needed, so it may listen on a public address without a token."""
+    return os.environ.get("GENERATOR_CHECK_ONLY") == "1"
+
+
+def public_hosts() -> set[str]:
+    """Host names a public server answers to: GENERATOR_PUBLIC_HOSTS (comma separated) and, on Render,
+    RENDER_EXTERNAL_HOSTNAME. The Host and Origin check still rejects every other name."""
+    names = {n.strip().lower() for n in os.environ.get("GENERATOR_PUBLIC_HOSTS", "").split(",") if n.strip()}
+    render = os.environ.get("RENDER_EXTERNAL_HOSTNAME", "").strip().lower()
+    return names | ({render} if render else set())
+
+
 def analyzer_command() -> str:
     """VISHAP_ANALYZER_CMD: how to start the Vishap analyzer (default: vishap)."""
     return os.environ.get("VISHAP_ANALYZER_CMD") or "vishap"
