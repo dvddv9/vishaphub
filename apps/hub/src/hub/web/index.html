@@ -180,11 +180,11 @@
 
       <div>
         <div class="card">
-          <div class="head">▤ pipeline report <span class="right">example</span></div>
+          <div class="head">▤ pipeline report <span class="right" id="cardTag">example</span></div>
           <div class="cells">
-            <div class="cell accent"><k>verdict</k><v>REQUIRES_REVIEW</v></div>
-            <div class="cell"><k>stages</k><v>3 of 3</v></div>
-            <div class="cell"><k>findings</k><v>1</v></div>
+            <div class="cell accent"><k>verdict</k><v id="cardVerdict">REQUIRES_REVIEW</v></div>
+            <div class="cell"><k>checks</k><v id="cardChecks">3 of 3</v></div>
+            <div class="cell"><k>findings</k><v id="cardFindings">1</v></div>
           </div>
           <div class="body">
             <div>
@@ -250,6 +250,7 @@
       </div>
       <div class="progress" id="progress"></div>
       <div class="verdict" id="verdict"></div>
+      <div class="hint" id="waking" style="display:none">the free tier sleeps — the first run wakes it, ~20 s</div>
       <div id="report" style="margin-top:12px"></div>
 
       <p class="k" style="margin-top:18px">your model key</p>
@@ -431,11 +432,12 @@ async function pipeline(){
   setProgress({"model":"run"});
 
   const slow = setTimeout(() => setProgress({"model":"done","rules":"run"}), 4000);
+  const wake = setTimeout(() => { $("waking").style.display = "block"; }, 8000);
 
   try {
     const res = await fetch("/run", {method:"POST", headers:{"content-type":"application/json"},
       body: JSON.stringify({material, question, spec: "", api_key: localStorage.getItem("vishap_key") || ""})});
-    clearTimeout(slow);
+    clearTimeout(slow); clearTimeout(wake); $("waking").style.display = "none";
     const data = await res.json();
 
     if (!data.ok){
@@ -460,13 +462,18 @@ async function pipeline(){
       + ` <span style="color:var(--dim-2)">· ${secs}s</span>`;
 
     renderReport(data);
+    $("cardVerdict").textContent = data.verdict || "—";
+    const doneCount = [checks.analyser, checks.validator].filter(Boolean).length + 1;
+    $("cardChecks").textContent = `${doneCount} of 3`;
+    $("cardFindings").textContent = String((data.findings || []).length);
+    $("cardTag").textContent = "live";
     $("hear").disabled = false;
     $("download").disabled = false;
 
     lastSpoken = `${data.summary || ""} The verdict is ${data.verdict}.`;
     if (voiceOn.v) sayText(lastSpoken);
   } catch (e) {
-    clearTimeout(slow);
+    clearTimeout(slow); clearTimeout(wake); $("waking").style.display = "none";
     setProgress({"model":"fail"});
     $("verdict").innerHTML = `<b>error</b> ${escapeHtml(e.message)}`;
   }
