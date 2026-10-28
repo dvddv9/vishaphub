@@ -16,3 +16,4 @@ out/
 .coverage
 htmlcov/
 *.bak-*
+reports/

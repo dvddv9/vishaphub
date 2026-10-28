@@ -1,0 +1,43 @@
+# Example: POST with a JSON body. Used by scripts/deep_run.ps1.
+version: 1
+updated: 2026-10-28
+
+text: |
+  Add an HTTP endpoint POST /user that creates one user from a JSON body
+  {"username": "..."}. Called by signed-in users; a name that is taken is refused.
+
+target: python/flask
+kind: http-endpoint
+output: handlers/create_user.py
+caller: signed-in
+route: POST /user
+
+inputs:
+  - name: username
+    in: body
+    rule: "3-32 letters and digits"
+
+outputs:
+  - status: 201
+    body: "json: id, username only"
+  - status: 400
+    when: "invalid username"
+  - status: 401
+    when: "no valid session"
+  - status: 409
+    when: "username is taken"
+
+profile: owasp-asvs-2
+constraints: [include-tests, validate-inputs]
+
+must_never:
+  - id: sql-from-input
+    text: "SQL is never built from the input"
+  - id: log-raw-input
+    text: "Raw input is never logged"
+
+should:
+  - id: audit-create
+    text: "Every created user is written to the audit log"
+
+check: analyzer
