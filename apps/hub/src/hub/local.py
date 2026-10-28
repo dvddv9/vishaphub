@@ -38,6 +38,7 @@ def validate_code(files: dict, spec: dict) -> dict:
 
     root = tempfile.mkdtemp(prefix="hub-check-")
     try:
+        written = 0
         for rel, text in files.items():
             if not isinstance(rel, str) or not isinstance(text, str):
                 continue
@@ -48,6 +49,12 @@ def validate_code(files: dict, spec: dict) -> dict:
             os.makedirs(os.path.dirname(target) or root, exist_ok=True)
             with open(target, "w", encoding="utf-8") as fh:
                 fh.write(text)
+            written += 1
+
+        # Nothing written means nothing was checked; reporting PASS here would be
+        # the same fail-open the pipeline refuses one level up.
+        if not written:
+            return {"ok": False, "error": "no usable files after sanitisation"}
 
         report = run_validate(root, Spec(
             language=spec.get("language", "python"),
@@ -78,18 +85,28 @@ def analyse_static(material: str) -> dict:
         return {"ok": False, "error": "nothing to analyse"}
 
     try:
-        findings = scan_material(material)
+        scan = scan_material(material)
     except Exception as exc:  # noqa: BLE001
         return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
 
+    # scan_material returns a report, not a list: findings live under "findings".
+    # Iterating the report itself yields its keys, which looked like a dozen findings
+    # on a file with none — clean material was reported as REQUIRES_REVIEW.
+    if isinstance(scan, dict):
+        raw = scan.get("findings") or []
+    elif isinstance(scan, (list, tuple)):
+        raw = list(scan)
+    else:
+        raw = []
+
     items = []
-    for finding in findings or []:
+    for finding in raw:
         if isinstance(finding, dict):
             items.append({
-                "rule": finding.get("rule") or finding.get("id") or "",
-                "severity": finding.get("severity") or "",
-                "message": finding.get("message") or "",
-                "line": finding.get("line") or 0,
+                "rule": finding.get("rule") or finding.get("id") or finding.get("cwe") or "",
+                "severity": finding.get("severity") or finding.get("priority") or "",
+                "message": finding.get("message") or finding.get("detail") or "",
+                "line": finding.get("line") or finding.get("lineno") or 0,
             })
         else:
             items.append({"rule": str(finding), "severity": "", "message": "", "line": 0})
