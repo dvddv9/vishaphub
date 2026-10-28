@@ -120,6 +120,22 @@
   .pane{font:12px var(--mono);color:#cbd5e1;max-height:32vh;overflow:auto;white-space:pre-wrap;
     border:1px solid var(--line);border-radius:10px;padding:12px;background:#070d18}
   .rowline{padding:5px 0;border-bottom:1px dotted #1e293b}
+  .progress{display:flex;gap:6px;margin:10px 0 2px;flex-wrap:wrap}
+  .step{display:inline-flex;align-items:center;gap:7px;font:11px var(--mono);color:var(--dim-2);
+    border:1px solid var(--line);border-radius:999px;padding:4px 10px}
+  .step .b{width:7px;height:7px;border-radius:50%;background:#334155}
+  .step.run{color:var(--amber);border-color:rgba(251,191,36,.4)}
+  .step.run .b{background:var(--amber);animation:pulse 1s infinite}
+  .step.done{color:var(--emerald);border-color:rgba(52,211,153,.4)}
+  .step.done .b{background:var(--emerald)}
+  .step.fail{color:var(--rose);border-color:rgba(251,113,133,.4)}
+  .step.fail .b{background:var(--rose)}
+  .copy{float:right;font:10px var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--dim);
+    border:1px solid var(--line);border-radius:6px;padding:2px 8px;cursor:pointer;background:transparent}
+  .copy:hover{color:var(--emerald);border-color:rgba(52,211,153,.4)}
+  .q{display:inline-block;margin:4px 6px 0 0;font:12px var(--mono);color:#cbd5e1;border:1px dashed #334155;
+    border-radius:8px;padding:6px 10px;cursor:pointer}
+  .q:hover{border-color:var(--emerald);color:var(--ink)}
   footer{margin-top:30px;border-top:1px solid var(--line);padding-top:14px;color:var(--dim-2);font:11.5px var(--mono);
     display:flex;gap:14px;flex-wrap:wrap}
   a{color:var(--dim);text-decoration:none}
@@ -230,7 +246,9 @@
       <div class="row" style="margin-top:10px">
         <button class="btn" id="run" style="padding:10px 16px">run</button>
         <button class="btn ghost" id="hear" style="padding:10px 16px" disabled>🔊 read it</button>
+        <button class="btn ghost" id="download" style="padding:10px 16px" disabled>↓ json</button>
       </div>
+      <div class="progress" id="progress"></div>
       <div class="verdict" id="verdict"></div>
       <div id="report" style="margin-top:12px"></div>
 
@@ -343,10 +361,14 @@ $("mic").onclick = () => {
 
 let lastSpoken = "";
 
+let lastResult = null;
+
 function renderReport(data){
+  lastResult = data;
   const box = $("report");
   const panes = {
-    summary: (data.summary || "") + ((data.questions || []).length ? "\n\nquestions:\n- " + data.questions.join("\n- ") : ""),
+    summary: (data.summary || "(model returned no summary)")
+      + ((data.questions || []).length ? "" : ""),
     findings: (data.findings || []).length
       ? data.findings.map(f => `${(f.severity||"").toUpperCase()}${f.rule ? " · " + f.rule : ""}${f.line ? " @ " + f.line : ""}\n  ${f.message||""}`).join("\n\n")
       : "nothing matched",
@@ -357,41 +379,123 @@ function renderReport(data){
   };
   const names = Object.keys(panes);
   box.innerHTML = `<div class="tabs">` + names.map((n, i) =>
-      `<span class="tab ${i===0?"on":""}" data-pane="${n}">${n}</span>`).join("") + `</div>
-    <div class="pane" id="pane">${panes[names[0]].replace(/</g,"&lt;")}</div>`;
+      `<span class="tab ${i===0?"on":""}" data-pane="${n}">${n}</span>`).join("")
+    + `<span class="copy" id="copy">copy</span></div>
+    <div class="pane" id="pane"></div>
+    <div id="qs"></div>`;
+
+  const setPane = (name) => {
+    $("pane").textContent = panes[name] || "";
+  };
+  setPane(names[0]);
   box.querySelectorAll(".tab").forEach(tab => tab.onclick = () => {
     box.querySelectorAll(".tab").forEach(x => x.classList.remove("on"));
     tab.classList.add("on");
-    $("pane").textContent = panes[tab.dataset.pane] || "";
+    setPane(tab.dataset.pane);
   });
+  $("copy").onclick = async () => {
+    const text = $("pane").textContent;
+    try { await navigator.clipboard.writeText(text); $("copy").textContent = "copied"; }
+    catch (e) { $("copy").textContent = "no access"; }
+    setTimeout(() => { $("copy").textContent = "copy"; }, 1400);
+  };
+
+  const qs = data.questions || [];
+  if (qs.length){
+    $("qs").innerHTML = `<div style="margin-top:10px;font:11px var(--mono);color:var(--dim-2)">the model needs an answer:</div>`
+      + qs.map((q, i) => `<span class="q" data-q="${escapeHtml(q)}">${escapeHtml(q)}</span>`).join("");
+    $("qs").querySelectorAll(".q").forEach(el => el.onclick = () => ask(el.dataset.q));
+  }
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+function setProgress(states){
+  const names = ["model", "rules", "validator", "verdict"];
+  $("progress").innerHTML = names.map(n =>
+    `<span class="step ${states[n]||""}"><span class="b"></span>${n}</span>`).join("");
 }
 
 async function pipeline(){
   const material = $("material").value;
   const question = $("question").value;
   if (!material.trim() && !question.trim()){ $("verdict").innerHTML = "<b>nothing to work on</b>"; return; }
-  $("verdict").innerHTML = "working…";
+
+  const started = performance.now();
+  $("verdict").textContent = "working…";
+  $("report").innerHTML = "";
   $("hear").disabled = true;
+  $("download").disabled = true;
+  setProgress({"model":"run"});
+
+  const slow = setTimeout(() => setProgress({"model":"done","rules":"run"}), 4000);
+
   try {
     const res = await fetch("/run", {method:"POST", headers:{"content-type":"application/json"},
       body: JSON.stringify({material, question, spec: "", api_key: localStorage.getItem("vishap_key") || ""})});
+    clearTimeout(slow);
     const data = await res.json();
-    if (!data.ok){ $("verdict").innerHTML = `<b>refused</b> ${data.error || "failed"}`; return; }
+
+    if (!data.ok){
+      setProgress({"model":"fail"});
+      $("verdict").innerHTML = `<b>refused</b> ${escapeHtml(data.error || "failed")}`;
+      return;
+    }
 
     const checks = data.checks || {};
+    const states = {"model":"done"};
+    if (checks.analyser) states.rules = "done";
+    if (checks.validator) states.validator = "done";
+    states.verdict = /SAFE|PASS/i.test(data.verdict) ? "done" : "fail";
+    setProgress(states);
+
     const bits = [];
     if (checks.analyser) bits.push(`analyser <b>${checks.analyser.verdict}</b>`);
     if (checks.validator) bits.push(`validator <b>${checks.validator.verdict}</b>`);
-    $("verdict").innerHTML = `verdict <b>${data.verdict}</b>` + (bits.length ? " · " + bits.join(" · ") : "");
-    renderReport(data);
-    lastSpoken = `${data.summary || ""} The verdict is ${data.verdict}.`;
-    $("hear").disabled = false;
-    if (voiceOn.v) sayText(lastSpoken);
-  } catch (e) { $("verdict").innerHTML = `<b>error</b> ${e.message}`; }
-}
-$("run").onclick = pipeline;
+    const secs = ((performance.now() - started) / 1000).toFixed(1);
+    $("verdict").innerHTML = `verdict <b>${data.verdict}</b>`
+      + (bits.length ? " · " + bits.join(" · ") : "")
+      + ` <span style="color:var(--dim-2)">· ${secs}s</span>`;
 
+    renderReport(data);
+    $("hear").disabled = false;
+    $("download").disabled = false;
+
+    lastSpoken = `${data.summary || ""} The verdict is ${data.verdict}.`;
+    if (voiceOn.v) sayText(lastSpoken);
+  } catch (e) {
+    clearTimeout(slow);
+    setProgress({"model":"fail"});
+    $("verdict").innerHTML = `<b>error</b> ${escapeHtml(e.message)}`;
+  }
+}
+
+$("say").onclick = () => {
+  voiceOn.v = true;
+  const a = $("voice"); a.currentTime = 0; a.play().catch(()=>{});
+  $("say").textContent = "♪ voice on";
+};
+$("focusComposer").onclick = () => $("text").focus();
+$("tryExample").onclick = () => {
+  $("material").value = "cur.execute(\"select * from users where name = '\" + name + \"\")";
+  $("material").focus();
+};
+
+$("run").onclick = pipeline;
+$("hear").onclick = () => sayText(lastSpoken);
+$("download").onclick = () => {
+  if (!lastResult) return;
+  const blob = new Blob([JSON.stringify(lastResult, null, 2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "vishap-report.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+setProgress({});
 fetch("/health").then(r=>r.json()).then(d=>{$("ver").textContent = d.version;}).catch(()=>{});
-</script>
-</body>
-</html>
+
+
