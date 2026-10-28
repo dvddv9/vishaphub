@@ -326,6 +326,81 @@ def patch_stdlib():
     socket.getaddrinfo = lambda *a, **k: (_ for _ in ()).throw(OSError("network blocked by proof harness"))
 
 
+
+# ------------------------------------------------------------- stdlib http.server
+def _stdlib_paths(source, method):
+    """Paths a do_* method compares self.path against, read from the source."""
+    import ast as _ast
+    found = []
+    try:
+        tree = _ast.parse(source)
+    except SyntaxError:
+        return ["/"]
+    for node in _ast.walk(tree):
+        if not isinstance(node, _ast.FunctionDef) or node.name != method:
+            continue
+        for cmp in _ast.walk(node):
+            if isinstance(cmp, _ast.Compare) and cmp.comparators:
+                value = getattr(cmp.comparators[0], "value", None)
+                if isinstance(value, str) and value.startswith("/"):
+                    found.append(value)
+            if isinstance(cmp, _ast.Call) and getattr(cmp.func, "attr", "") == "startswith":
+                if cmp.args and isinstance(getattr(cmp.args[0], "value", None), str):
+                    found.append(cmp.args[0].value)
+    return sorted(set(found)) or ["/"]
+
+
+def _stdlib_call(cls, method, path, body):
+    """A zero-argument callable that runs one do_* method against a fake request."""
+    def call():
+        obj = cls.__new__(cls)
+        status = {"code": 200}
+        obj.path = path
+        obj.command = method.replace("do_", "")
+        obj.requestline = obj.command + " " + path + " HTTP/1.1"
+        obj.request_version = "HTTP/1.1"
+        obj.headers = {"Content-Length": str(len(body)), "Content-Type": "application/json",
+                       "Host": "127.0.0.1"}
+        obj.rfile = io.BytesIO(body)
+        obj.wfile = io.BytesIO()
+        obj.client_address = ("127.0.0.1", 40000)
+        obj.server = types.SimpleNamespace(server_name="127.0.0.1", server_port=8000)
+        obj.log_message = lambda *a, **k: None
+        obj.log_error = lambda *a, **k: None
+        obj.send_response = lambda code, message=None: status.update(code=int(code))
+        obj.send_header = lambda *a, **k: None
+        obj.endheaders = lambda: None
+        obj.send_error = lambda code, message=None, explain=None: status.update(code=int(code))
+        obj.close_connection = False
+        getattr(obj, method)()
+        return status["code"]
+    return call
+
+
+def _register_stdlib(ns, source):
+    """Register http.server handlers so prove works on stdlib services too.
+
+    A do_* method is a handler in the same sense a Flask route is: a path, a method
+    and a body that comes from outside. The fake request keeps the same shape the
+    real one has — path, headers, rfile — so the recorded calls look identical.
+    """
+    for _name, obj in list(ns.items()):
+        if not isinstance(obj, type):
+            continue
+        methods = [m for m in ("do_GET", "do_POST", "do_PUT", "do_DELETE", "do_PATCH")
+                   if hasattr(obj, m)]
+        if not methods:
+            continue
+        for method in methods:
+            http_method = method.replace("do_", "")
+            if http_method == "GET":
+                body = b""
+            else:
+                body = json.dumps({"material": MARK, "message": MARK, "question": MARK,
+                                   "text": MARK, "path": MARK}).encode("utf-8")
+            for path in _stdlib_paths(source, method):
+                HANDLERS.append((path, [http_method], _stdlib_call(obj, method, path, body)))
+
 # ----------------------------------------------------------------------------- runner
 def _call(fn, mode):
     sig = inspect.signature(fn)
@@ -406,6 +481,40 @@ MODES = ("auth", "sqli", "cmdi", "traversal", "traversal_abs", "amount")
 PUBLIC = re.compile(r"^/?(login|logout|signin|signup|register|health|healthz|ping|status|docs|redoc|openapi\.json|metrics|favicon\.ico|static.*)?/?$", re.I)
 
 
+
+def _stub_relative_package(source):
+    """Give relative imports something to land on.
+
+    A file that does `from .chat import reply` cannot be exec'd on its own; the harness
+    used to give up with an ImportError and report «no handlers». Stubbing the package
+    keeps the target's own code intact while the neighbours become no-ops — enough to
+    reach the handler bodies, which is all a probe needs.
+    """
+    import ast as _ast
+    names = set()
+    try:
+        tree = _ast.parse(source)
+    except SyntaxError:
+        return None
+    for node in _ast.walk(tree):
+        if isinstance(node, _ast.ImportFrom) and node.level and node.module:
+            names.add(node.module)
+    if not names:
+        return None
+    pkg = "proof_target_pkg"
+    root = types.ModuleType(pkg)
+    root.__path__ = []
+    sys.modules[pkg] = root
+    for name in sorted(names):
+        full = pkg
+        for part in name.split("."):
+            full += "." + part
+            module = types.ModuleType(full)
+            module.__path__ = []
+            module.__getattr__ = lambda attr: (lambda *a, **k: None)
+            sys.modules.setdefault(full, module)
+    return pkg
+
 def main():
     path = sys.argv[1]
     with _real_open(path, "rb") as f:
@@ -431,9 +540,24 @@ def main():
         if have_alarm: signal.alarm(0)
     except BaseException as e:
         out["notes"].append(f"module import raised {type(e).__name__}: {str(e)[:120]}")
+        if isinstance(e, ImportError) and "relative import" in str(e):
+            pkg = _stub_relative_package(source)
+            if pkg:
+                ns = {"__name__": pkg + ".target", "__package__": pkg, "__file__": path}
+                try:
+                    if have_alarm: signal.alarm(4)
+                    exec(compile(source, path, "exec"), ns)
+                    if have_alarm: signal.alarm(0)
+                    out["notes"].append("relative imports were stubbed to reach the handlers")
+                except BaseException as again:
+                    out["notes"].append(f"second import raised {type(again).__name__}: {str(again)[:120]}")
+    if not HANDLERS:
+        _register_stdlib(ns, source)
+        if HANDLERS:
+            out["framework"] = "http.server"
     out["handlers"] = len(HANDLERS)
     if not HANDLERS:
-        out["error"] = "no Flask-style HTTP handlers found"
+        out["error"] = "no Flask-style or http.server handlers found"
     for route, methods, fn in HANDLERS:
         start, end = _span(fn)
         for mode in MODES:
