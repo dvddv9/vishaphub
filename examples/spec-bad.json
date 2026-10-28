@@ -1,0 +1,6 @@
+﻿{
+  "files": ["calc.py", "test_calc.py"],
+  "exports": ["add"],
+  "entry": "calc",
+  "tests": ["test_calc.py"]
+}

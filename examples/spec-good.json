@@ -1,0 +1,7 @@
+﻿{
+  "language": "python",
+  "files": ["calc/__init__.py", "test_calc.py"],
+  "exports": ["add"],
+  "entry": "calc",
+  "tests": ["test_calc.py"]
+}
