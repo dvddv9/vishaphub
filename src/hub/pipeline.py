@@ -19,6 +19,9 @@ from .services import ServiceConfig, analyse, generate, validate
 
 SEVERITY_ORDER = {"ERROR": 4, "FAIL": 4, "EMERGENCY": 3, "REQUIRES_REVIEW": 2, "NEEDS_REVIEW": 2, "PASS": 1, "SAFE": 0, "": 0}
 
+#: Verdicts that describe the analyser; everything else describes the pipeline.
+ANALYSER_VERDICTS = {"SAFE", "REQUIRES_REVIEW", "EMERGENCY"}
+
 
 def _rank(verdict: str) -> int:
     return SEVERITY_ORDER.get((verdict or "").upper(), 2)
@@ -62,10 +65,11 @@ def run_plan(cfg: ServiceConfig, plan: Plan, material: str, spec: str = "",
                               Kind.QUESTION, {"filename": filename})
     steps: list[Step] = []
     trace = list(envelope.trace)
-    strictest = "PASS"
+    strictest: str | None = None
 
+    previous: dict[str, str] = {}
     for pass_no in range(1, plan.iterations + 1):
-        verdicts: list[str] = []
+        current: dict[str, str] = {}
         for stage in plan.stages:
             if stage is Stage.GENERATOR:
                 if not spec:
@@ -90,12 +94,12 @@ def run_plan(cfg: ServiceConfig, plan: Plan, material: str, spec: str = "",
                                      "validator failed; the deliverable is unverified")
                 report = result["report"]
                 verdict = report.get("verdict", "")
-                verdicts.append(verdict)
+                current["validator"] = verdict
                 steps.append(Step("validator", verdict in ("PASS", "NEEDS_REVIEW"), verdict,
                                   detail=f"{report.get('finding_count', 0)} findings"))
                 trace.append(f"pass {pass_no} validator -> {verdict}")
-                if verdict == "FAIL":
-                    strictest = "FAIL"
+                if strictest is None or _rank(verdict) > _rank(strictest):
+                    strictest = verdict
                 continue
 
             if stage is Stage.ANALYSER:
@@ -105,18 +109,23 @@ def run_plan(cfg: ServiceConfig, plan: Plan, material: str, spec: str = "",
                     return RunResult(False, "ERROR", steps, envelope.session_id, trace,
                                      "analyser failed; no security verdict available")
                 verdict = result.get("verdict") or result.get("risk_verdict") or ""
-                verdicts.append(verdict)
+                current["analyser"] = verdict
                 steps.append(Step("analyser", True, verdict,
                                   detail=", ".join(result.get("cwe_ids") or []) or "no CWE"))
                 trace.append(f"pass {pass_no} analyser -> {verdict}")
-                if _rank(verdict) > _rank(strictest):
+                if strictest is None or _rank(verdict) > _rank(strictest):
                     strictest = verdict
                 continue
 
-        if plan.iterations > 1 and len(verdicts) >= 2 and len(set(verdicts)) == 1:
-            trace.append(f"stop after pass {pass_no}: verdicts stopped changing ({verdicts[-1]})")
+        # Stop when every stage repeated its previous answer: the next pass would
+        # spend the same tokens for the same words. Compared per stage, because two
+        # different stages answering "PASS" and "SAFE" is normal, not staleness.
+        if plan.iterations > 1 and previous and current == previous:
+            trace.append(f"stop after pass {pass_no}: no stage changed its verdict")
             break
+        previous = current
 
-    ok = strictest not in ("FAIL", "ERROR", "EMERGENCY")
-    return RunResult(ok, strictest, steps, envelope.session_id, trace,
+    final = strictest or "PASS"
+    ok = final not in ("FAIL", "ERROR", "EMERGENCY")
+    return RunResult(ok, final, steps, envelope.session_id, trace,
                      plan.note or ("strictest verdict across passes" if plan.iterations > 1 else ""))
