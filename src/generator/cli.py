@@ -17,9 +17,9 @@ import json
 import sys
 from pathlib import Path
 
-from .deliver import DeliverError, rollback
-from .pipeline import DEFAULT_REPAIRS, run_pipeline
-from .sarif import to_sarif
+from generator.pipeline.deliver import DeliverError, rollback
+from generator.pipeline.orchestrator import DEFAULT_REPAIRS, run_pipeline
+from generator.tools.sarif import to_sarif
 
 
 def _write_file(path: str, text: str) -> None:
@@ -68,7 +68,7 @@ def cmd_generate(args) -> int:
 
 
 def _default_analyzer():
-    from .analyzer import run_analyzer
+    from generator.tools.analyzer import run_analyzer
     return run_analyzer
 
 
@@ -139,7 +139,7 @@ def cmd_rollback(args) -> int:
 
 
 def cmd_serve(args) -> int:
-    from .server import serve
+    from generator.main import serve
     return serve(args.host, args.port)
 
 

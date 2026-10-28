@@ -10,8 +10,8 @@ from tests.test_deliver import CLEAN_SPEC
 from tests.test_pipeline import Stub, answer
 from tests.test_verify import GOOD, TODAY
 
-from generator import server
-from generator.server import LOOPBACK, make_handler
+from generator import main as server
+from generator.main import LOOPBACK, make_handler
 
 SPEC_TEXT = CLEAN_SPEC.read_text(encoding="utf-8")
 
@@ -167,7 +167,7 @@ class UiSupportTests(ServerCase):
 
         def fake_run(path, **kw):
             seen.update(kw)
-            from generator.pipeline import PipelineResult
+            from generator.pipeline.orchestrator import PipelineResult
             return PipelineResult(exit_code=0)
 
         out = server.handle_generate(

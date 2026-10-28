@@ -22,11 +22,11 @@ import re
 from dataclasses import dataclass
 from typing import Callable
 
-from .build import BuildCheck, check_build
-from .design import DesignResult
-from .intake import Requirement
-from .llm import LLMConfig, chat
-from .spec import Spec
+from generator.pipeline.build import BuildCheck, check_build
+from generator.pipeline.design import DesignResult
+from generator.pipeline.intake import Requirement
+from generator.llm import LLMConfig, chat
+from generator.tools.spec import Spec
 
 MAX_TOKENS = 8000
 FENCE_RE = re.compile(r"^\s*```(?:json)?\s*\n(.*)\n\s*```\s*$", re.DOTALL)

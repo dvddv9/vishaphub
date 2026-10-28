@@ -7,10 +7,10 @@ from tests.helpers import EXAMPLE
 from tests.test_deliver import CLEAN_SPEC, TESTS
 from tests.test_verify import DOLLAR_BUG, GOOD, TODAY
 
-from generator.analyzer import AnalyzerFinding, AnalyzerResult
+from generator.tools.analyzer import AnalyzerFinding, AnalyzerResult
 from generator.llm import LLMError
-from generator.pipeline import run_pipeline
-from generator.sarif import to_sarif
+from generator.pipeline.orchestrator import run_pipeline
+from generator.tools.sarif import to_sarif
 
 
 def answer(code):

@@ -13,7 +13,7 @@ from tests.test_pipeline import Stub, answer
 from tests.test_verify import DOLLAR_BUG, GOOD
 
 from generator import cli
-from generator.pipeline import run_pipeline
+from generator.pipeline.orchestrator import run_pipeline
 
 
 class CliTests(unittest.TestCase):

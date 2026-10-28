@@ -11,13 +11,13 @@ from tests.helpers import EXAMPLE, write_spec
 from tests.test_verify import DOLLAR_BUG, GOOD, TODAY
 from tests.test_verify import TESTS as TESTS_5
 
-from generator import deliver as deliver_mod
-from generator.build import check_build
-from generator.deliver import DeliverError, deliver, gate_check, rollback
-from generator.design import design
-from generator.intake import requirements_from
-from generator.spec import load_spec
-from generator.verify import verify
+from generator.pipeline import deliver as deliver_mod
+from generator.pipeline.build import check_build
+from generator.pipeline.deliver import DeliverError, deliver, gate_check, rollback
+from generator.pipeline.design import design
+from generator.pipeline.intake import requirements_from
+from generator.tools.spec import load_spec
+from generator.pipeline.verify import verify
 
 NOW = dt.datetime(2026, 10, 28, 12, 0, 0)
 

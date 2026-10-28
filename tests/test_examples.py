@@ -5,10 +5,10 @@ from pathlib import Path
 
 import tests.helpers  # noqa: F401  (puts src on the path)
 
-from generator.design import design
-from generator.examples import EXAMPLES, examples
-from generator.intake import requirements_from
-from generator.spec import load_spec
+from generator.pipeline.design import design
+from generator.tools.examples import EXAMPLES, examples
+from generator.pipeline.intake import requirements_from
+from generator.tools.spec import load_spec
 
 
 class ExampleSpecTests(unittest.TestCase):

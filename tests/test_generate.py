@@ -5,11 +5,11 @@ from unittest import mock
 from tests.helpers import EXAMPLE
 from tests.test_build import CODE, TESTS
 
-from generator.design import design
-from generator.generate import (GenerateError, build_messages, generate_code,
+from generator.pipeline.design import design
+from generator.pipeline.generate import (GenerateError, build_messages, generate_code,
                                 parse_files)
-from generator.intake import requirements_from
-from generator.spec import load_spec
+from generator.pipeline.intake import requirements_from
+from generator.tools.spec import load_spec
 
 
 def setup():
@@ -37,7 +37,7 @@ class FakeModel:
         return self.answer
 
 
-@mock.patch("generator.build.shutil.which", return_value=None)
+@mock.patch("generator.pipeline.build.shutil.which", return_value=None)
 class GenerateTests(unittest.TestCase):
     def test_good_answer_passes_the_build_check(self, _w):
         spec, reqs, d = setup()
@@ -113,7 +113,7 @@ class PromptTests(unittest.TestCase):
     def test_model_is_asked_for_enough_tokens(self):
         spec, reqs, d = setup()
         fake = FakeModel(good_answer())
-        with mock.patch("generator.build.shutil.which", return_value=None):
+        with mock.patch("generator.pipeline.build.shutil.which", return_value=None):
             generate_code(spec, reqs, d, chat_fn=fake)
         self.assertEqual(fake.calls[0][2], 8000)
 

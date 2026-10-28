@@ -14,8 +14,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .intake import Source
-from .spec import Spec
+from generator.pipeline.intake import Source
+from generator.tools.spec import Spec
 
 SEVERITY = {
     "missing_input": "critical",

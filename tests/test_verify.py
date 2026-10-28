@@ -7,11 +7,11 @@ from unittest import mock
 
 from tests.helpers import EXAMPLE
 
-from generator.analyzer import AnalyzerResult
-from generator.design import design
-from generator.intake import requirements_from
-from generator.spec import load_spec
-from generator.verify import (input_cases, log_findings, parse_rule,
+from generator.tools.analyzer import AnalyzerResult
+from generator.pipeline.design import design
+from generator.pipeline.intake import requirements_from
+from generator.tools.spec import load_spec
+from generator.pipeline.verify import (input_cases, log_findings, parse_rule,
                               sql_findings, verify)
 
 # A plain WSGI app, so these tests run without Flask installed.

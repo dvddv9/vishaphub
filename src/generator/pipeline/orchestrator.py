@@ -20,16 +20,16 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from .analyzer import AnalyzerResult, run_analyzer
-from .build import BuildCheck
-from .deliver import DeliverError, DeliverResult, deliver
-from .design import DesignResult, design
-from .generate import GenerateError, generate_code, repair_code
-from .intake import Requirement, requirements_from
-from .llm import LLMConfig, LLMConfigError, LLMError, chat
-from .spec import Spec, SpecError, load_spec
-from .textcheck import TextCheckError, check_text
-from .verify import VerifyResult, verify
+from generator.tools.analyzer import AnalyzerResult, run_analyzer
+from generator.pipeline.build import BuildCheck
+from generator.pipeline.deliver import DeliverError, DeliverResult, deliver
+from generator.pipeline.design import DesignResult, design
+from generator.pipeline.generate import GenerateError, generate_code, repair_code
+from generator.pipeline.intake import Requirement, requirements_from
+from generator.llm import LLMConfig, LLMConfigError, LLMError, chat
+from generator.tools.spec import Spec, SpecError, load_spec
+from generator.pipeline.textcheck import TextCheckError, check_text
+from generator.pipeline.verify import VerifyResult, verify
 
 DEFAULT_REPAIRS = 2
 

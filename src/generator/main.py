@@ -39,10 +39,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from . import __version__
-from .examples import examples
-from .llm import LLMConfigError, config_from_env
-from .pipeline import DEFAULT_REPAIRS, run_pipeline
+from generator import __version__
+from generator.tools.examples import examples
+from generator.llm import LLMConfigError, config_from_env
+from generator.pipeline.orchestrator import DEFAULT_REPAIRS, run_pipeline
 
 MAX_BODY = 256 * 1024
 LOOPBACK = {"127.0.0.1", "::1", "localhost"}

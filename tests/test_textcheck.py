@@ -6,12 +6,12 @@ from tests.test_deliver import CLEAN_SPEC
 from tests.test_pipeline import Stub, answer
 from tests.test_verify import GOOD, TODAY
 
-from generator.design import design
-from generator.intake import requirements_from
+from generator.pipeline.design import design
+from generator.pipeline.intake import requirements_from
 from generator.llm import LLMError
-from generator.pipeline import run_pipeline
-from generator.spec import load_spec
-from generator.textcheck import MAX_ITEMS, TextCheckError, build_messages, check_text, parse_uncovered
+from generator.pipeline.orchestrator import run_pipeline
+from generator.tools.spec import load_spec
+from generator.pipeline.textcheck import MAX_ITEMS, TextCheckError, build_messages, check_text, parse_uncovered
 
 TEXT = "Add an HTTP endpoint GET /user that returns one user by name\nfrom the app database. Called by the public web app."
 

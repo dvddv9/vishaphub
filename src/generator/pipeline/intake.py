@@ -6,7 +6,7 @@ import datetime as dt
 from dataclasses import dataclass
 from pathlib import Path
 
-from .spec import REQUIREMENT_LISTS, Spec, load_spec
+from generator.tools.spec import REQUIREMENT_LISTS, Spec, load_spec
 
 PRIORITY = {
     "must_never": "critical",

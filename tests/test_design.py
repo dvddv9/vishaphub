@@ -2,8 +2,8 @@ import unittest
 
 from tests.helpers import BASE, EXAMPLE, write_spec
 
-from generator.design import design
-from generator.spec import load_spec
+from generator.pipeline.design import design
+from generator.tools.spec import load_spec
 
 
 class DesignTests(unittest.TestCase):

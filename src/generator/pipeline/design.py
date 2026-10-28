@@ -11,9 +11,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 
-from .gaps import Gap, collect, number
-from .intake import Requirement, Source, requirements_from
-from .spec import Spec
+from generator.tools.gaps import Gap, collect, number
+from generator.pipeline.intake import Requirement, Source, requirements_from
+from generator.tools.spec import Spec
 
 LIBRARIES = {
     "python/flask": ("flask",),

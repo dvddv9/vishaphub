@@ -24,11 +24,11 @@ import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 
-from .build import BuildCheck
-from .design import DesignResult
-from .intake import Requirement
-from .spec import Spec
-from .verify import COVERAGE_MIN, VerifyResult
+from generator.pipeline.build import BuildCheck
+from generator.pipeline.design import DesignResult
+from generator.pipeline.intake import Requirement
+from generator.tools.spec import Spec
+from generator.pipeline.verify import COVERAGE_MIN, VerifyResult
 
 META_DIR = ".vishap"
 

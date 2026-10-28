@@ -16,10 +16,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from generator.design import design  # noqa: E402
-from generator.generate import generate_code  # noqa: E402
-from generator.intake import requirements_from  # noqa: E402
-from generator.spec import load_spec  # noqa: E402
+from generator.pipeline.design import design  # noqa: E402
+from generator.pipeline.generate import generate_code  # noqa: E402
+from generator.pipeline.intake import requirements_from  # noqa: E402
+from generator.tools.spec import load_spec  # noqa: E402
 
 
 def main(path: str) -> int:

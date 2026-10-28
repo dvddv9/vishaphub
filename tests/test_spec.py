@@ -3,7 +3,7 @@ import unittest
 
 from tests.helpers import BASE, EXAMPLE, write_spec
 
-from generator.spec import SpecError, load_spec
+from generator.tools.spec import SpecError, load_spec
 
 
 class LoadSpecTests(unittest.TestCase):
@@ -137,8 +137,8 @@ if __name__ == "__main__":
 
 class ExamplesTests(unittest.TestCase):
     def test_both_examples_load_and_differ_by_the_400_output(self):
-        from generator.design import design
-        from generator.intake import requirements_from
+        from generator.pipeline.design import design
+        from generator.pipeline.intake import requirements_from
         base = EXAMPLE.parent
         gaps = {}
         for name in ("spec.yaml", "spec-clean.yaml"):

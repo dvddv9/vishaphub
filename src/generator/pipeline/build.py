@@ -23,8 +23,8 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 
-from .design import DesignResult, FilePlan
-from .intake import Requirement
+from generator.pipeline.design import DesignResult, FilePlan
+from generator.pipeline.intake import Requirement
 
 TEST_NAME_RE = re.compile(r"^test_r(\d+)(?:_\w+)?$")
 RUFF_TIMEOUT = 30

@@ -30,11 +30,11 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
-from .analyzer import AnalyzerResult
-from .build import TEST_NAME_RE
-from .design import DesignResult
-from .intake import Requirement
-from .spec import REQUIREMENT_LISTS, Spec
+from generator.tools.analyzer import AnalyzerResult
+from generator.pipeline.build import TEST_NAME_RE
+from generator.pipeline.design import DesignResult
+from generator.pipeline.intake import Requirement
+from generator.tools.spec import REQUIREMENT_LISTS, Spec
 
 STALE_DAYS = 90
 COVERAGE_MIN = 80.0

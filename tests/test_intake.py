@@ -2,7 +2,7 @@ import unittest
 
 from tests.helpers import BASE, EXAMPLE, write_spec
 
-from generator.intake import intake
+from generator.pipeline.intake import intake
 
 
 class IntakeTests(unittest.TestCase):

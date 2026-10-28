@@ -19,11 +19,11 @@ import json
 import re
 from collections.abc import Callable
 
-from .design import DesignResult
-from .gaps import Gap
-from .intake import Requirement, Source
-from .llm import LLMConfig, chat
-from .spec import Spec
+from generator.pipeline.design import DesignResult
+from generator.tools.gaps import Gap
+from generator.pipeline.intake import Requirement, Source
+from generator.llm import LLMConfig, chat
+from generator.tools.spec import Spec
 
 MAX_ITEMS = 8
 MAX_LEN = 200

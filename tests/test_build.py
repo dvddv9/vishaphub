@@ -4,10 +4,10 @@ from unittest import mock
 
 from tests.helpers import EXAMPLE
 
-from generator.build import check_build
-from generator.design import design
-from generator.intake import requirements_from
-from generator.spec import load_spec
+from generator.pipeline.build import check_build
+from generator.pipeline.design import design
+from generator.pipeline.intake import requirements_from
+from generator.tools.spec import load_spec
 
 CODE = '''\
 import re
@@ -63,7 +63,7 @@ def good_files():
     }
 
 
-@mock.patch("generator.build.shutil.which", return_value=None)
+@mock.patch("generator.pipeline.build.shutil.which", return_value=None)
 class BuildCheckTests(unittest.TestCase):
     def test_good_files_pass(self, _which):
         d, reqs = setup()
@@ -147,8 +147,8 @@ class RuffTests(unittest.TestCase):
     def test_ruff_fail_is_an_error(self):
         d, reqs = setup()
         failed = subprocess.CompletedProcess([], 1, stdout="F401 unused import", stderr="")
-        with mock.patch("generator.build.shutil.which", return_value="/usr/bin/ruff"), \
-             mock.patch("generator.build.subprocess.run", return_value=failed):
+        with mock.patch("generator.pipeline.build.shutil.which", return_value="/usr/bin/ruff"), \
+             mock.patch("generator.pipeline.build.subprocess.run", return_value=failed):
             res = check_build(d, reqs, good_files())
         code = [f for f in res.files if f.role == "code"][0]
         self.assertEqual(code.lint, "fail")
@@ -158,8 +158,8 @@ class RuffTests(unittest.TestCase):
     def test_ruff_pass(self):
         d, reqs = setup()
         ok = subprocess.CompletedProcess([], 0, stdout="", stderr="")
-        with mock.patch("generator.build.shutil.which", return_value="/usr/bin/ruff"), \
-             mock.patch("generator.build.subprocess.run", return_value=ok):
+        with mock.patch("generator.pipeline.build.shutil.which", return_value="/usr/bin/ruff"), \
+             mock.patch("generator.pipeline.build.subprocess.run", return_value=ok):
             res = check_build(d, reqs, good_files())
         self.assertTrue(res.ok)
         self.assertEqual({f.lint for f in res.files}, {"pass"})

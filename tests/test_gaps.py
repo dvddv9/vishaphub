@@ -2,8 +2,8 @@ import unittest
 
 from tests.helpers import BASE, EXAMPLE, write_spec
 
-from generator.gaps import find_gaps
-from generator.spec import load_spec
+from generator.tools.gaps import find_gaps
+from generator.tools.spec import load_spec
 
 FULL = BASE + (
     "target: python/flask\n"
