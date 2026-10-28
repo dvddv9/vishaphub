@@ -93,6 +93,7 @@ def apply_fix_and_verify(original_code: str, fixed_code: str, timeout: int = 10)
     result = {
         "ok": False, "ruff_ok": False, "pytest_ok": False, "mypy_ok": False,
         "ruff_out": "", "pytest_out": "", "mypy_out": "", "reason": "",
+        "exploit_check": None,
     }
     try:
         fixed_file.write_text(fixed_code, encoding="utf-8")
@@ -151,6 +152,17 @@ def apply_fix_and_verify(original_code: str, fixed_code: str, timeout: int = 10)
         mypy_skipped = "mypy not installed" in (result.get("mypy_out") or "")
         result["ok"] = result["ruff_ok"] and result["pytest_ok"] and (result["mypy_ok"] or mypy_skipped)
         result["reason"] = "accepted" if result["ok"] else "rejected"
+
+        # Exploit check (opt-in, VISHAP_PROVE=1): a fix is accepted only if the exploits that
+        # worked against the original no longer work against it. Skipped when proof is off.
+        if original_code and original_code.strip():
+            from src.tools.proof import proof_allowed, verify_patch
+            if proof_allowed()[0]:
+                check = verify_patch(original_code, fixed_code, timeout=timeout * 2)
+                result["exploit_check"] = check
+                if check["verdict"] in ("NO_EFFECT", "REGRESSION", "REJECTED", "SUSPICIOUS", "PARTIAL"):
+                    result["ok"] = False
+                    result["reason"] = "rejected: " + check["reason"]
     except Exception as e:
         result["reason"] = f"error: {e}"
     finally:

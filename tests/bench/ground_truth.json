@@ -1,0 +1,326 @@
+{
+ "file": "planted_app.py",
+ "note": "Bugs planted on purpose. 'rules' = ids the built-in engine should raise (any line in 'lines'); 'keywords' = words that show a free-text report (a model answer, a Vishap report) mentions the bug.",
+ "bugs": [
+  {
+   "id": "B01",
+   "title": "SQL injection via f-string in /user",
+   "lines": [
+    17
+   ],
+   "kind": "security",
+   "rules": [
+    "sqli-fstring"
+   ],
+   "keywords": [
+    "sql injection",
+    "sqli",
+    "f-string",
+    "parameteri"
+   ],
+   "provable": true
+  },
+  {
+   "id": "B02",
+   "title": "Hard-coded SECRET_KEY",
+   "lines": [
+    7
+   ],
+   "kind": "security",
+   "rules": [
+    "secret-hardcoded-named"
+   ],
+   "keywords": [
+    "hard-coded",
+    "hardcoded",
+    "secret_key",
+    "secret key"
+   ],
+   "provable": false
+  },
+  {
+   "id": "B03",
+   "title": "Path traversal in /download",
+   "lines": [
+    23
+   ],
+   "kind": "security",
+   "rules": [
+    "path-traversal-sendfile"
+   ],
+   "keywords": [
+    "path traversal",
+    "directory traversal",
+    "../",
+    "send_file",
+    "send_from_directory"
+   ],
+   "provable": true
+  },
+  {
+   "id": "B04",
+   "title": "Passwords hashed with unsalted MD5",
+   "lines": [
+    28
+   ],
+   "kind": "security",
+   "rules": [
+    "weak-hash"
+   ],
+   "keywords": [
+    "md5"
+   ],
+   "provable": false
+  },
+  {
+   "id": "B05",
+   "title": "Hash compared with == (timing)",
+   "lines": [
+    32
+   ],
+   "kind": "logic",
+   "rules": [
+    "logic-timing-compare"
+   ],
+   "keywords": [
+    "timing",
+    "compare_digest",
+    "constant-time",
+    "constant time"
+   ],
+   "provable": false
+  },
+  {
+   "id": "B06",
+   "title": "Token built with SHA-1 over name+secret (forgeable)",
+   "lines": [
+    33
+   ],
+   "kind": "security",
+   "rules": [
+    "weak-hash"
+   ],
+   "keywords": [
+    "sha1",
+    "sha-1",
+    "forg",
+    "hmac"
+   ],
+   "provable": false
+  },
+  {
+   "id": "B07",
+   "title": "No authentication on /transfer (move money)",
+   "lines": [
+    46
+   ],
+   "kind": "security",
+   "rules": [
+    "route-no-auth"
+   ],
+   "keywords": [
+    "authenticat",
+    "authoriz",
+    "no auth",
+    "any user",
+    "anyone"
+   ],
+   "provable": true
+  },
+  {
+   "id": "B08",
+   "title": "Negative or huge amount accepted in /transfer",
+   "lines": [
+    49
+   ],
+   "kind": "logic",
+   "rules": [
+    "route-amount-no-bounds"
+   ],
+   "keywords": [
+    "negative",
+    "amount",
+    "bounds",
+    "range check",
+    "validate"
+   ],
+   "provable": true
+  },
+  {
+   "id": "B09",
+   "title": "Check-then-act race on balance",
+   "lines": [
+    51
+   ],
+   "kind": "logic",
+   "rules": [
+    "route-check-then-act"
+   ],
+   "keywords": [
+    "race",
+    "atomic",
+    "transaction",
+    "toctou",
+    "concurren"
+   ],
+   "provable": false
+  },
+  {
+   "id": "B10",
+   "title": "UPDATE result never checked (missing account silently ignored)",
+   "lines": [
+    51
+   ],
+   "kind": "logic",
+   "rules": [
+    "route-unchecked-rowcount"
+   ],
+   "keywords": [
+    "rowcount",
+    "affected rows",
+    "nonexistent",
+    "does not exist",
+    "missing account"
+   ],
+   "provable": false
+  },
+  {
+   "id": "B11",
+   "title": "Page slice returns size + 1 items",
+   "lines": [
+    41
+   ],
+   "kind": "logic",
+   "rules": [
+    "logic-slice-plus-one"
+   ],
+   "keywords": [
+    "off-by-one",
+    "off by one",
+    "size + 1",
+    "one extra",
+    "extra item"
+   ],
+   "provable": false
+  },
+  {
+   "id": "B12",
+   "title": "Mutable default argument (seen=[]) shared between requests",
+   "lines": [
+    37
+   ],
+   "kind": "logic",
+   "rules": [
+    "logic-mutable-default"
+   ],
+   "keywords": [
+    "mutable default",
+    "seen=[]",
+    "shared between",
+    "memory leak",
+    "grows"
+   ],
+   "provable": false
+  },
+  {
+   "id": "B13",
+   "title": "No upper bound on page size",
+   "lines": [
+    39
+   ],
+   "kind": "logic",
+   "rules": [
+    "logic-unbounded-limit"
+   ],
+   "keywords": [
+    "upper bound",
+    "max size",
+    "unbounded",
+    "limit the size",
+    "dos"
+   ],
+   "provable": false
+  },
+  {
+   "id": "B14",
+   "title": "fetchone()[0] on a missing account crashes",
+   "lines": [
+    48
+   ],
+   "kind": "logic",
+   "rules": [
+    "logic-fetchone-index"
+   ],
+   "keywords": [
+    "none",
+    "typeerror",
+    "fetchone",
+    "500"
+   ],
+   "provable": false
+  },
+  {
+   "id": "B15",
+   "title": "Debug mode on",
+   "lines": [
+    58
+   ],
+   "kind": "security",
+   "rules": [
+    "debug-on"
+   ],
+   "keywords": [
+    "debug"
+   ],
+   "provable": false
+  },
+  {
+   "id": "B16",
+   "title": "Bound to 0.0.0.0",
+   "lines": [
+    58
+   ],
+   "kind": "security",
+   "rules": [
+    "bind-all"
+   ],
+   "keywords": [
+    "0.0.0.0",
+    "all interfaces"
+   ],
+   "provable": false
+  },
+  {
+   "id": "B17",
+   "title": "No authentication on /user (reads any user's email)",
+   "lines": [
+    15
+   ],
+   "kind": "security",
+   "rules": [
+    "route-no-auth"
+   ],
+   "keywords": [
+    "/user",
+    "enumerat",
+    "any user"
+   ],
+   "provable": true
+  },
+  {
+   "id": "B18",
+   "title": "No authentication on /download",
+   "lines": [
+    21
+   ],
+   "kind": "security",
+   "rules": [
+    "route-no-auth"
+   ],
+   "keywords": [
+    "/download"
+   ],
+   "provable": true
+  }
+ ]
+}

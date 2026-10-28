@@ -32,12 +32,14 @@ from src.tools.fallback_check import REQUIRED as REQUIRED_BLOCKS, LOSS_THRESHOLD
 from src.pipeline.cost import sum_stage_costs
 from src.tools.redact import redact_pii  # dogfood P0: pre-LLM PII redaction
 from src.tools.sast import run_sast  # dogfood P1: deterministic SAST
-from src.tools.static_scan import RULES as STATIC_RULES, scan_material, render_markdown as render_static_md  # built-in rules, no LLM
+from src.tools.static_scan import RULES as STATIC_RULES, scan_material, compact_for_llm, render_markdown as render_static_md  # built-in rules, no LLM
 from src.tools.provenance import get_provenance  # dogfood P2: source tracking
 from src.tools.sca import run_sca  # dogfood P1: dependency audit
 from src.tools.patterns import PII_PATTERNS, COMPLIANCE_TRIGGERS
 from src.tools.compliance import enrich_compliance  # P2-8
 from src.tools.runbook import enrich_runbook  # P2-9
+from src.tools.proof import proof_enabled, proof_allowed, prove, render_verified_md  # probes that turn claims into evidence (opt-in)
+from src.tools.report_trim import trim_enabled, trim_noise  # drop placeholder-only report lines
 from src.tools.patterns import cwe_to_owasp
 from src.tools.patterns import detect_exploitability
 from src.tools.reachability import enrich_exploitability  # P2-7
@@ -855,6 +857,8 @@ def run_pipeline(material: str, filename: str, verbose: bool = True, api_key: st
     final_markdown = _timed_stage(log, "stage5", session_id, stage5_transmitter, material, context_5)
     final_markdown = strip_llm_audit_blocks(final_markdown)
     final_markdown = sanitize_session_id(final_markdown, session_id)
+    if trim_enabled():
+        final_markdown = trim_noise(final_markdown)
 
     llm_error = (
         llm_error_of(stage0) or llm_error_of(stage2) or llm_error_of(stage4)
@@ -1088,6 +1092,11 @@ async def run_pipeline_async(material: str, filename: str, verbose: bool = False
     _sast_result = await asyncio.get_running_loop().run_in_executor(
         None, scan_material, _full_material, filename)
     _sca_result = None
+    _proof_doc = None
+    if proof_enabled() and _sast_result.get("findings") and proof_allowed()[0]:
+        # Opt-in: runs the submitted handlers inside bubblewrap with probe values (see src/tools/proof.py).
+        _proof_doc = await asyncio.get_running_loop().run_in_executor(
+            None, lambda: prove(_full_material, _sast_result["findings"]))
     if static_only:
         level = "STATIC"
         route = ["static"]
@@ -1110,7 +1119,9 @@ async def run_pipeline_async(material: str, filename: str, verbose: bool = False
         context_thread["metrics"] = stage1.get("metrics", {}) if isinstance(stage1, dict) else {}
         context_thread["evidence"]["python_run"] = True
         context_thread["evidence"]["ast_parsed"] = True
-        stage2 = await async_stage2_analyst(material, {"stage0": stage0, "stage1": stage1})
+        _hint = compact_for_llm(_sast_result) if _sast_result.get("total_findings") or _sast_result.get("routes") else None
+        stage2 = await async_stage2_analyst(
+            material, {"stage0": stage0, "stage1": stage1, **({"static_checklist": _hint} if _hint else {})})
         # v7.3.11: self-adversarial red team (async)
         _stage2_5 = {"stage0": stage0, "stage1": stage1, "stage2": stage2}
         stage2_5 = _stage2_5  # placeholder (async red team optional; skip to keep cost low)
@@ -1131,6 +1142,12 @@ async def run_pipeline_async(material: str, filename: str, verbose: bool = False
         if _sast_result.get("total_findings"):
             final_markdown += "\n\n" + render_static_md(
                 _sast_result, filename, heading="Static analysis (built-in rules, no LLM)")
+    if trim_enabled():
+        final_markdown = trim_noise(final_markdown)
+    if _proof_doc and not _proof_doc.get("error"):
+        _verified_md = render_verified_md(_sast_result["findings"], _proof_doc)
+        if _verified_md:
+            final_markdown = _verified_md + "\n" + final_markdown
     llm_error = (
         llm_error_of(stage0) or llm_error_of(stage2) or llm_error_of(stage4)
         or llm_error_of(final_markdown) or ""

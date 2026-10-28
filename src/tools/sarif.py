@@ -70,14 +70,16 @@ def to_sarif(audit: dict, sast_result: dict = None, sca_result: dict = None,
                     "priority": str(f.get("severity", "")),
                     "note": str(f.get("msg", ""))[:100],
                 }
-                _fp = compute_fingerprint(_fp_input, source_file)
+                _fp = f.get("fingerprint") or compute_fingerprint(_fp_input, source_file)
+                _props = {k: f[k] for k in ("kind", "status", "evidence") if f.get(k)}
                 results.append({
                     "ruleId": rule_id_full,
                     "level": _severity_to_sarif_level(f.get("severity", "")),
+                    **({"properties": _props} if _props else {}),
                     "message": {"text": f.get("msg", "")},
                     "locations": [{
                         "physicalLocation": {
-                            "artifactLocation": {"uri": source_file},
+                            "artifactLocation": {"uri": f.get("file") or source_file},
                             "region": {"startLine": f.get("line", 1) or 1},
                         }
                     }],

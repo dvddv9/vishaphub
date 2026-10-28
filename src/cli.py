@@ -154,6 +154,24 @@ def cmd_sbom(args):
     print(f"  serial:       {info['serial_number']}")
 
 
+def cmd_prove(args):
+    """Run probes against the handlers in a file (and optionally compare a patched version)."""
+    from src.tools.proof import prove_cli
+
+    sys.exit(prove_cli(args.input, patched=args.patched, unisolated=args.unisolated))
+
+
+def cmd_scan(args):
+    """Scan a directory (or what a diff added) with the built-in rules: no LLM, no network unless --deps."""
+    from src.tools.repo_scan import scan_cli
+
+    sys.exit(scan_cli(
+        args.path, baseline=args.baseline, save_baseline_path=args.save_baseline, diff_file=args.diff,
+        deps=args.deps, sarif=args.sarif, json_out=args.json, output=args.output, fail_on=args.fail_on,
+        prove_handlers=args.prove, exclude=tuple(args.exclude or ()), max_files=args.max_files,
+    ))
+
+
 def cmd_info(args):
     """Show info."""
     print(f"{APP_NAME} {__version__} - 6-stage LLM pipeline")
@@ -162,6 +180,8 @@ def cmd_info(args):
     print()
     print("Commands:")
     print("  vishap analyze <file>   - analyze a file")
+    print("  vishap prove <file>     - run probes against the handlers (needs bubblewrap, or --unisolated)")
+    print("  vishap scan <dir>       - scan a repository or a diff (--baseline, --diff, --deps, --sarif, --fail-on)")
     print("  vishap info             - this help")
     print()
     print("Options for analyze:")
@@ -227,6 +247,29 @@ def main():
         help="Enable inter-file analysis: collect imports under DIR",
     )
     p_analyze.set_defaults(func=cmd_analyze)
+
+    p_prove = sub.add_parser("prove", help="Run probes against the handlers in a file (executes the code, isolated)")
+    p_prove.add_argument("input", help="Path to a Flask-style Python file")
+    p_prove.add_argument("--patched", metavar="PATH", help="Compare with a patched version: did the fix close the exploits?")
+    p_prove.add_argument("--unisolated", action="store_true",
+                         help="Allow running without bubblewrap. Only for code you would run anyway.")
+    p_prove.set_defaults(func=cmd_prove)
+
+    p_scan = sub.add_parser("scan", help="Scan a directory or a diff with the built-in rules (no LLM)")
+    p_scan.add_argument("path", help="Directory to scan")
+    p_scan.add_argument("--baseline", metavar="FILE", help="Compare with a saved baseline: report only what is new/fixed")
+    p_scan.add_argument("--save-baseline", metavar="FILE", help="Save the current findings as the baseline")
+    p_scan.add_argument("--diff", metavar="FILE", help="Unified diff ('-' for stdin): keep only findings on added lines")
+    p_scan.add_argument("--deps", action="store_true", help="Audit pinned dependencies against OSV (needs network)")
+    p_scan.add_argument("--sarif", metavar="FILE", help="Write SARIF (one location per file)")
+    p_scan.add_argument("--json", metavar="FILE", help="Write the full result as JSON")
+    p_scan.add_argument("--output", "-o", metavar="FILE", help="Write the Markdown report to a file")
+    p_scan.add_argument("--fail-on", choices=["critical", "high", "medium", "low"],
+                        help="Exit 1 if a finding at/above this severity exists (only new ones with --baseline)")
+    p_scan.add_argument("--prove", action="store_true", help="Run exploit probes on handler files (executes code, isolated)")
+    p_scan.add_argument("--exclude", action="append", metavar="REGEX", help="Skip paths matching this regex (repeatable)")
+    p_scan.add_argument("--max-files", type=int, default=2000)
+    p_scan.set_defaults(func=cmd_scan)
 
     p_sbom = sub.add_parser("sbom", help="Generate CycloneDX SBOM")
     p_sbom.add_argument("--output", "-o", default="sbom.json", help="Output SBOM path (default: sbom.json)")

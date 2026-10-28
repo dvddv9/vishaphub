@@ -644,6 +644,22 @@ def _log_blast(material: str) -> tuple:
     return "none", triggered
 
 
+_SINK_RULES = (
+    ("exec", "RCE", re.compile(r"\b(eval|exec)\s*\(|os\.system|os\.popen|subprocess\.|child_process")),
+    ("sql", "SQLi", re.compile(r"\.(execute|executemany|query|raw)\s*\(")),
+    ("file", "path traversal", re.compile(r"\b(send_file|send_from_directory|open|readFile|readFileSync|sendFile)\s*\(")),
+    ("http", "SSRF", re.compile(r"\b(requests\.(get|post|put|delete)|urllib\.|httpx\.|fetch\s*\(|axios\.)")),
+)
+
+
+def _route_sink(code: str) -> tuple[str, list]:
+    """Name the dangerous call a route can reach, from the code itself (not a fixed guess)."""
+    found = [(name, label) for name, label, rx in _SINK_RULES if rx.search(code)]
+    if not found:
+        return "handler", []
+    return found[0][0], [label for _, label in found]
+
+
 def detect_exploitability(material: str) -> dict:
     """Detect exploitability: reachability, auth, blast radius.
 
@@ -675,15 +691,21 @@ def detect_exploitability(material: str) -> dict:
             "blast_indicators": ["AWS account", "public S3", "public RDS"],
         }
 
+    # Flask/FastAPI decorators (@app.get(...)) contain the text "app.get(", so Python
+    # must be ruled out before the JS/Express check, or Python gets a "js_route" chain.
+    looks_python = (any(p in stripped for p in ("@app.", "@router.", "Flask(", "FastAPI("))
+                    or re.search(r"^\s*def\s+\w+\s*\(", stripped, re.M) is not None)
+
     # JS/Express
-    if any(p in stripped for p in ("app.get(", "app.post(", "app.put(", "app.delete(", "router.get(", "router.post(", "express(")):
+    if not looks_python and any(p in stripped for p in ("app.get(", "app.post(", "app.put(", "app.delete(", "router.get(", "router.post(", "express(")):
+        sink, indicators = _route_sink(stripped)
         return {
             "reachable": True,
             "auth_required": False,
-            "exploit_path": [{"type": "chain", "path": "js_route -> exec"}],
+            "exploit_path": [{"type": "chain", "path": f"js_route -> {sink}"}],
             "blast_radius": "high",
             "entry_points": ["HTTP route"],
-            "blast_indicators": ["RCE", "SSRF", "SQLi"],
+            "blast_indicators": indicators,
         }
 
     # C (regression guard: the v7.4 exploitability rework dropped this branch —
@@ -718,10 +740,10 @@ def detect_exploitability(material: str) -> dict:
         return {
             "reachable": True,
             "auth_required": False,
-            "exploit_path": [{"type": "chain", "path": "py_route -> exec"}],
+            "exploit_path": [{"type": "chain", "path": f"py_route -> {_route_sink(stripped)[0]}"}],
             "blast_radius": "high",
             "entry_points": ["HTTP route"],
-            "blast_indicators": ["RCE", "SSRF", "SQLi"],
+            "blast_indicators": _route_sink(stripped)[1],
         }
 
     # Fallback
