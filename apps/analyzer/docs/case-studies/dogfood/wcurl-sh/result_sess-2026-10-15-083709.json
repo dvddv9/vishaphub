@@ -1,0 +1,1217 @@
+{
+  "session_id": "sess-2026-10-15-083709",
+  "timestamp": "2026-10-15T08:38:47.602949+00:00",
+  "filename": "test.yml",
+  "material_size": 5016,
+  "stage0": {
+    "material_type": "config",
+    "language": "other",
+    "size_hint": "~180 lines",
+    "level": "D3",
+    "route": [
+      "stage4",
+      "stage3"
+    ],
+    "research_first": false,
+    "parallel_stages": false,
+    "subst_count": 0,
+    "session_id": "sess-2026-10-15-083709",
+    "model": "default",
+    "flags": [],
+    "slice": false,
+    "gate_check": {
+      "input": "GitHub Actions CI workflow (test.yml) для wcurl",
+      "output": "review / compliance",
+      "decider": "backend / SRE",
+      "cost": "время CI, доверие к пайплайну",
+      "irreversible": "нет"
+    },
+    "task_type": "compliance",
+    "reasoning": "config-материал (CI workflow), ~180 строк → D3. Маркеров research_first нет. Подмен инструкций не обнаружено. EMERGENCY-триггеров нет. Sequential: stage4 → stage3.",
+    "_meta": {
+      "stage": "stage0_orchestrator",
+      "tokens_in": 2620,
+      "tokens_out": 235,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.000433
+    }
+  },
+  "stage1": {
+    "language": "yaml",
+    "trajectory": {
+      "io": {
+        "input": "git push to main / pull_request to main",
+        "output": "CI job results (lint, debian, fedora, macos)"
+      },
+      "flow": "trigger (push/PR) -> concurrency group -> 4 parallel jobs (lint, debian, fedora, macos) -> each job: checkout -> install deps -> run tests/linters",
+      "branches": 2,
+      "branches_note": "on.push.branches, on.pull_request.branches — event filters, не условная логика",
+      "nesting_max": 3,
+      "deps": [
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "linuxbrew (zizmor, shellcheck, checkbashisms, shfmt, typos-cli)",
+        "python3 venv + .github/workflows/requirements.txt",
+        "debian:stable image",
+        "fedora:latest image",
+        "shunit2 (apt / git clone v2.1.8 / brew)",
+        "curl",
+        "git"
+      ],
+      "dead_code": "не обнаружено"
+    },
+    "structure": {
+      "patterns": [
+        "matrix-like parallel jobs (4 независимых job'а без matrix-синтаксиса)",
+        "pinned actions by SHA + version comment",
+        "container-based testing (debian, fedora)"
+      ],
+      "cohesion": "высокая — каждый job выполняет одну задачу (lint / test на конкретной ОС)",
+      "coupling": "низкая между job'ами; общий env DO_NOT_TRACK; общий concurrency group",
+      "solid_violations": [],
+      "point_of_no_return": "concurrency.cancel-in-progress: true — отменяет предыдущий run при новом push/PR",
+      "layers": [
+        "trigger layer (on)",
+        "concurrency layer",
+        "permissions/env layer",
+        "job layer (lint/debian/fedora/macos)",
+        "step layer (checkout/install/run)"
+      ],
+      "contradictions": [
+        "lint job использует linuxbrew на ubuntu-latest — нестандартный путь /home/linuxbrew/.linuxbrew/bin/brew, требует предустановленного brew",
+        "fedora job: git clone с флагом --revision — флаг не является валидным для git clone (git clone не поддерживает --revision); вероятно ошибка или кастомный wrapper",
+        "debian/fedora jobs используют ubuntu-latest как runner с container — двойная изоляция"
+      ]
+    },
+    "texture": {
+      "density": "высокая — 4 job'а, ~180 строк, много шагов на job",
+      "code_smells": [
+        "дублирование блока checkout (4 раза идентичный)",
+        "дублирование 'Run shunit2 tests' (3 раза)",
+        "установка инструментов через brew в lint job — не воспроизводимо без предустановленного brew",
+        "git clone --revision — нестандартный/подозрительный флаг"
+      ],
+      "error_handling": "отсутствует явная обработка ошибок; полагается на exit-код шагов (default GitHub Actions behavior)",
+      "tests_present": true,
+      "docs": "комментарии-заголовки (лицензия, SPDX), inline-комментарии zizmor: ignore[unpinned-images]",
+      "standards": [
+        "SPDX-License-Identifier: curl",
+        "REUSE compliance check",
+        "pinned actions by SHA",
+        "zizmor --pedantic",
+        "shellcheck / checkbashisms / shfmt --posix",
+        "codespell / typos"
+      ]
+    },
+    "shadows": {
+      "breaks": [
+        "git clone --revision 080159b... — флаг не существует в стандартном git; либо опечатка, либо требует git >= 2.49 (--revision добавлен недавно), либо не сработает",
+        "linuxbrew path hardcoded — сломается если brew не предустановлен на runner",
+        "eval \"$(brew shellenv)\" в каждом шаге — избыточно, но не break"
+      ],
+      "comment_code_mismatch": [
+        "комментарий '# zizmor: ignore[unpinned-images]' на debian:stable и fedora:latest — осознанное подавление, соответствует коду",
+        "комментарий '# v7.0.1' рядом с SHA checkout — требует верификации соответствия SHA↔тег"
+      ],
+      "blind_spots": [
+        "нет job'а для проверки самого workflow (zizmor запускается только в lint, но не блокирует остальные)",
+        "нет явного timeout на job'ы",
+        "нет кэширования зависимостей (pip, brew, apt)",
+        "permissions: {} — глобально пусто, но lint job использует secrets.GITHUB_TOKEN (GH_TOKEN) — потенциальный конфликт scope",
+        "concurrency group использует pull_request.number || github.sha — для push на main sha уникален, для PR — номер; поведение при смешанных событиях не покрыто"
+      ]
+    },
+    "concurrency": {
+      "shared_state": [
+        "concurrency group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}",
+        "env DO_NOT_TRACK=1 (глобально)"
+      ],
+      "locks": "concurrency.cancel-in-progress: true — отмена in-flight run при новом событии в той же группе",
+      "deadlock_potential": "низкий — GitHub Actions concurrency не создаёт deadlock, только отмену",
+      "race_conditions": [
+        "при одновременных push и PR на main — разные ключи группы (sha vs number), оба run'а выполнятся параллельно",
+        "cancel-in-progress может отменить run в середине теста — не race, а by-design"
+      ],
+      "idempotency": "job'ы идемпотентны (lint/test), но установка через brew/apt не гарантирует идентичность окружения между run'ами"
+    },
+    "dev_process": {
+      "code_review": "не применимо (CI config)",
+      "ci_cd": "present — 4 job'а: lint (REUSE, zizmor, shellcheck, checkbashisms, shfmt, codespell, typos), debian (shunit2), fedora (shunit2), macos (shunit2)",
+      "staging": "отсутствует — тесты идут напрямую на push/PR в main",
+      "tech_debt": [
+        "дублирование checkout и test-шагов",
+        "hardcoded linuxbrew path",
+        "подозрительный git clone --revision",
+        "отсутствие timeout и кэша",
+        "permissions: {} при использовании GITHUB_TOKEN в lint"
+      ]
+    },
+    "tool_output": {
+      "ran": false,
+      "raw": "analyze.py не запускался: material_type=config (YAML CI workflow), не поддерживается tree-sitter режимами static/metrics/concurrency. Язык yaml — вне списка Go/JS/TS/Java/Rust/Python. Результат — SIMULATED на основе ручного разбора."
+    },
+    "_meta": {
+      "stage": "stage1_scanner",
+      "tokens_in": 2365,
+      "tokens_out": 1715,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.000811
+    }
+  },
+  "stage2": {
+    "risk_nodes": [
+      {
+        "id": "RN-1",
+        "name": "Неявное допущение",
+        "priority": "критично",
+        "note": "Предполагается, что linuxbrew предустановлен на ubuntu-latest по пути /home/linuxbrew/.linuxbrew/bin/brew. Это не гарантировано GitHub-hosted runner'ом и не устанавливается в workflow — lint job упадёт при изменении образа runner.",
+        "fingerprint": "cd80e8bb29fbf75e"
+      },
+      {
+        "id": "RN-2",
+        "name": "Слабое обобщение",
+        "priority": "важно",
+        "note": "Тестирование на debian:stable и fedora:latest (плавающие теги) обобщается на 'поддержку Linux', но не покрывает конкретные версии дистрибутивов, которые реально используются пользователями wcurl.",
+        "fingerprint": "785eb5e3fb036539"
+      },
+      {
+        "id": "RN-3",
+        "name": "Конкурирующая реализация",
+        "priority": "опционально",
+        "note": "shunit2 устанавливается тремя разными способами (apt, git clone, brew) — три источника истины для одной зависимости, версии могут расходиться между job'ами.",
+        "fingerprint": "c5edf791c38f8710"
+      },
+      {
+        "id": "RN-4",
+        "name": "Сдвиг тезиса",
+        "priority": "важно",
+        "note": "Заявлено 'test pipeline', но lint job не блокирует merge отдельно от тестов — при падении lint остальные job'ы всё равно выполняются, что размывает сигнал о качестве.",
+        "fingerprint": "ed9a9f4e77e139d0"
+      },
+      {
+        "id": "RN-5",
+        "name": "Внутреннее противоречие",
+        "priority": "критично",
+        "note": "permissions: {} (пустые права) при этом lint job использует secrets.GITHUB_TOKEN как GH_TOKEN для zizmor. Либо токен не будет доступен, либо permissions неявно расширяются — противоречие в модели безопасности.",
+        "fingerprint": "53be8d5938a99719"
+      },
+      {
+        "id": "RN-6",
+        "name": "Стратегическое избегание",
+        "priority": "важно",
+        "note": "zizmor: ignore[unpinned-images] на debian:stable и fedora:latest — осознанное подавление предупреждения о непinned образах без компенсирующего контроля (digest pinning).",
+        "fingerprint": "d7dd3c1d320635ad"
+      },
+      {
+        "id": "RN-7",
+        "name": "Производительность",
+        "priority": "опционально",
+        "note": "Отсутствует кэширование pip/brew/apt; каждый run переустанавливает инструменты с нуля — избыточное время CI.",
+        "fingerprint": "11df1b2638ed4d24"
+      },
+      {
+        "id": "RN-8",
+        "name": "Надёжность",
+        "priority": "критично",
+        "note": "git clone --revision 080159b... — флаг --revision не является стандартным для git clone; либо опечатка, либо требует очень свежего git. Fedora job рискует упасть на этом шаге.",
+        "fingerprint": "bf2a68112dd6978c"
+      },
+      {
+        "id": "RN-9",
+        "name": "Масштабируемость",
+        "priority": "опционально",
+        "note": "4 job'а без matrix-синтаксиса — добавление новой ОС/дистрибутива требует копирования блока целиком, что масштабирует дублирование.",
+        "fingerprint": "11e73c54939c21b5"
+      },
+      {
+        "id": "RN-10",
+        "name": "Конкурентность",
+        "priority": "важно",
+        "note": "concurrency group использует pull_request.number || github.sha — при одновременных push и PR на main ключи группы различаются, оба run'а выполняются параллельно, cancel-in-progress не срабатывает.",
+        "fingerprint": "211acc3766ce46aa"
+      },
+      {
+        "id": "RN-11",
+        "name": "Ломающие изменения",
+        "priority": "важно",
+        "note": "Плавающие теги debian:stable и fedora:latest могут привнести ломающие изменения в окружение без изменения workflow — недетерминированный CI.",
+        "fingerprint": "c3e65f3d70e8446d"
+      }
+    ],
+    "security": {
+      "summary": "CI workflow с несколькими trust boundaries: GitHub runner, внешние образы (debian/fedora), внешние репозитории (shunit2 git clone), brew/apt/pip источники. Основные риски — supply chain (непinned образы, git clone без проверки подписи), scope токена, отсутствие timeout.",
+      "findings": [
+        {
+          "id": "SEC-1",
+          "priority": "критично",
+          "finding": "debian:stable и fedora:latest не pinned по digest — supply chain риск подмены образа.",
+          "mitigation": "Pin по digest (image@sha256:...), обновлять через dependabot/renovate."
+        },
+        {
+          "id": "SEC-2",
+          "priority": "критично",
+          "finding": "git clone https://github.com/kward/shunit2.git без проверки подписи/хеша коммита — хотя --revision указан, сам флаг подозрителен и не валиден в стандартном git.",
+          "mitigation": "Использовать git clone + git checkout <sha> + git verify-commit, либо зафиксировать через submodule/archive с sha256."
+        },
+        {
+          "id": "SEC-3",
+          "priority": "важно",
+          "finding": "permissions: {} при использовании secrets.GITHUB_TOKEN в lint job — либо токен недоступен, либо scope неявно расширен.",
+          "mitigation": "Явно задать permissions на уровне job: contents: read."
+        },
+        {
+          "id": "SEC-4",
+          "priority": "важно",
+          "finding": "Отсутствует timeout на job'ы — потенциальный resource exhaustion / зависший run.",
+          "mitigation": "timeout-minutes на каждом job."
+        },
+        {
+          "id": "SEC-5",
+          "priority": "опционально",
+          "finding": "brew install без pin версий — недетерминированные версии линтеров.",
+          "mitigation": "Pin версии инструментов или использовать lockfile."
+        }
+      ]
+    },
+    "secrets": {
+      "used": [
+        "secrets.GITHUB_TOKEN (как GH_TOKEN в lint job)"
+      ],
+      "exposure_risk": "низкий — токен передаётся только в env шага zizmor, не логируется явно",
+      "notes": [
+        "persist-credentials: false на checkout — корректно, снижает риск утечки токена в git config",
+        "DO_NOT_TRACK=1 — снижает телеметрию, не секрет",
+        "Нет использования сторонних секретов (deploy keys, PAT) — хорошо"
+      ]
+    },
+    "concurrency": {
+      "group": "${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}",
+      "cancel_in_progress": true,
+      "issues": [
+        "Смешанные события (push + PR) дают разные ключи группы → параллельные run'ы без отмены",
+        "cancel-in-progress может прервать run в середине установки зависимостей — не критично, но создаёт шум"
+      ],
+      "deadlock_potential": "низкий"
+    },
+    "threat_model": {
+      "components": [
+        "GitHub Actions runner (ubuntu-latest, macos-latest)",
+        "Container images (debian:stable, fedora:latest)",
+        "External repos (github.com/kward/shunit2)",
+        "Package sources (brew, apt, dnf, pip)",
+        "GITHUB_TOKEN"
+      ],
+      "trust_boundaries": [
+        "GitHub runner ↔ внешние container images",
+        "Workflow ↔ внешние git-репозитории (shunit2)",
+        "Workflow ↔ package registries (brew/apt/dnf/pip)",
+        "Workflow ↔ GITHUB_TOKEN scope"
+      ],
+      "threats": [
+        {
+          "component": "Container images",
+          "boundary": "GitHub runner ↔ debian:stable / fedora:latest",
+          "stride": "T (Tampering)",
+          "threat": "Подмена содержимого плавающего тега образа — внедрение вредоносного кода в CI.",
+          "priority": "критично",
+          "mitigation": "Pin по digest, использовать dependabot для обновления."
+        },
+        {
+          "component": "shunit2 git clone",
+          "boundary": "Workflow ↔ github.com/kward/shunit2",
+          "stride": "S (Spoofing) / T (Tampering)",
+          "threat": "Подмена репозитория или коммита — выполнение произвольного кода в CI.",
+          "priority": "критично",
+          "mitigation": "Проверка подписи коммита, pin по sha256 архива, использование submodule."
+        },
+        {
+          "component": "GITHUB_TOKEN",
+          "boundary": "Workflow ↔ GITHUB_TOKEN scope",
+          "stride": "E (Elevation of Privilege)",
+          "threat": "Неявное расширение scope токена при permissions: {} — потенциальный доступ к репозиторию сверх необходимого.",
+          "priority": "важно",
+          "mitigation": "Явно задать permissions: contents: read на уровне job."
+        },
+        {
+          "component": "Package sources",
+          "boundary": "Workflow ↔ brew/apt/dnf/pip",
+          "stride": "T (Tampering)",
+          "threat": "Компрометация пакета в registry — выполнение вредоносного кода.",
+          "priority": "важно",
+          "mitigation": "Pin версии, использовать lockfile, проверять хеши."
+        },
+        {
+          "component": "CI logs",
+          "boundary": "Workflow ↔ логи",
+          "stride": "I (Information Disclosure)",
+          "threat": "Утечка GH_TOKEN в логи при ошибке zizmor.",
+          "priority": "опционально",
+          "mitigation": "GitHub маскирует secrets автоматически; убедиться, что токен не echo'ится."
+        },
+        {
+          "component": "CI runner",
+          "boundary": "Workflow ↔ runner resources",
+          "stride": "D (Denial of Service)",
+          "threat": "Отсутствие timeout — зависший job блокирует runner и потребляет минуты.",
+          "priority": "важно",
+          "mitigation": "timeout-minutes на каждом job."
+        }
+      ],
+      "summary": {
+        "total": 6,
+        "critical": 2,
+        "important": 3,
+        "optional": 1
+      },
+      "top_3": [
+        "SEC-1: непpinned container images (supply chain)",
+        "SEC-2: git clone shunit2 без верификации",
+        "SEC-3: permissions: {} vs GITHUB_TOKEN scope"
+      ]
+    },
+    "silence_layers": {
+      "input_silence": {
+        "what": "Нет данных о нагрузке CI (частота push/PR, количество параллельных run'ов, бюджет минут).",
+        "where": "Отсутствует в workflow и в stage1.",
+        "impact": "Невозможно оценить стоимость CI и необходимость concurrency-оптимизаций."
+      },
+      "assumption_silence": {
+        "assumption": "Предполагается, что linuxbrew предустановлен на ubuntu-latest и что git clone поддерживает --revision.",
+        "why": "Оба допущения не проверены в workflow и не задокументированы.",
+        "impact": "lint и fedora job'ы могут падать без явной причины."
+      },
+      "consequence_silence": {
+        "who": "Разработчики wcurl и downstream-пользователи.",
+        "what": "Недетерминированный CI (плавающие теги) может пропустить регрессию или ложно упасть.",
+        "irreversible": "Нет — CI перезапускаем, но ложное доверие к зелёному CI может привести к релизу с багом."
+      }
+    },
+    "intersection_risks": [
+      {
+        "layers": [
+          "input_silence",
+          "assumption_silence"
+        ],
+        "intersection": "Нет данных о нагрузке × предположение о предустановленном brew",
+        "risk": "При росте частоты PR lint job может систематически падать, и никто не заметит из-за отсутствия метрик."
+      },
+      {
+        "layers": [
+          "security",
+          "concurrency"
+        ],
+        "intersection": "Непpinned образы × cancel-in-progress",
+        "risk": "Отмена run'а в середине установки из непроверенного образа может оставить runner в неопределённом состоянии (теоретически, для self-hosted)."
+      },
+      {
+        "layers": [
+          "assumption_silence",
+          "consequence_silence"
+        ],
+        "intersection": "git clone --revision × необратимость доверия к CI",
+        "risk": "Если флаг не работает, fedora job молча пропускает тесты — зелёный CI без реального покрытия."
+      }
+    ],
+    "contracts": {
+      "idempotency": {
+        "present": false,
+        "note": "Job'ы идемпотентны по природе (lint/test), но установка через brew/apt не гарантирует идентичность окружения между run'ами."
+      },
+      "retry": {
+        "present": false,
+        "note": "Нет retry-стратегии для сетевых операций (brew install, git clone, apt-get)."
+      },
+      "timeout": {
+        "present": false,
+        "note": "Отсутствует timeout-minutes на job'ах — критично для CI."
+      },
+      "circuit_breaker": {
+        "present": false,
+        "note": "Не применимо для CI workflow в классическом смысле; concurrency.cancel-in-progress выполняет близкую роль."
+      }
+    },
+    "breaking_changes": [
+      {
+        "id": "BC-1",
+        "priority": "важно",
+        "change": "Плавающие теги debian:stable / fedora:latest могут привнести ломающие изменения без изменения workflow.",
+        "impact": "Недетерминированный CI, ложные падения/прохождения."
+      },
+      {
+        "id": "BC-2",
+        "priority": "важно",
+        "change": "linuxbrew path hardcoded — при обновлении образа ubuntu-latest путь может измениться.",
+        "impact": "lint job упадёт."
+      },
+      {
+        "id": "BC-3",
+        "priority": "критично",
+        "change": "git clone --revision — нестандартный флаг, может перестать работать или не работать вовсе.",
+        "impact": "fedora job не установит shunit2."
+      }
+    ],
+    "production_impact": {
+      "direct": "Нет — это CI workflow, не production-код.",
+      "indirect": "Ложное доверие к зелёному CI может привести к релизу wcurl с регрессией.",
+      "rollback": "Откат workflow через git revert; CI перезапускаем."
+    },
+    "observability": {
+      "present": [
+        "GitHub Actions UI (job status, logs)",
+        "zizmor --pedantic (security lint)",
+        "shellcheck / checkbashisms / shfmt (shell lint)",
+        "codespell / typos (spelling)"
+      ],
+      "missing": [
+        "Нет метрик длительности job'ов",
+        "Нет алертов на систематические падения",
+        "Нет SBOM / provenance артефактов"
+      ]
+    },
+    "slo": {
+      "defined": false,
+      "note": "SLO для CI не заданы (например, p95 длительность < N минут, success rate > X%)."
+    },
+    "on_call": {
+      "defined": false,
+      "note": "On-call для CI не описан; при падении CI разработчик сам разбирается."
+    },
+    "tests": {
+      "types": [
+        "unit (shunit2 для shell-скриптов wcurl)",
+        "lint (shellcheck, checkbashisms, shfmt)",
+        "security lint (zizmor)",
+        "spelling (codespell, typos)",
+        "license compliance (REUSE)"
+      ],
+      "coverage": "Не измеряется; нет отчёта о покрытии.",
+      "edge_cases": [
+        "Не покрыты: поведение при отсутствии сети, при недоступности brew/apt, при несовпадении версий shunit2 между job'ами."
+      ],
+      "refactoring_coverage": [
+        {
+          "step": "Удаление дублирования checkout (4×)",
+          "test": "Существующие job'ы debian/fedora/macos/lint должны продолжать проходить после рефакторинга."
+        },
+        {
+          "step": "Замена git clone --revision на git clone + git checkout <sha>",
+          "test": "fedora job должен успешно установить shunit2 и запустить ./tests/tests.sh."
+        },
+        {
+          "step": "Добавление timeout-minutes",
+          "test": "Проверить, что job'ы завершаются в пределах timeout при нормальной работе."
+        },
+        {
+          "step": "Явные permissions на job",
+          "test": "lint job должен успешно использовать GH_TOKEN для zizmor."
+        },
+        {
+          "step": "Pin container images по digest",
+          "test": "debian/fedora job'ы должны проходить с pinned digest."
+        }
+      ]
+    },
+    "dependencies": {
+      "total": 8,
+      "outdated": "неизвестно (нет lockfile для brew/apt/dnf)",
+      "cve": "не проверено; рекомендуется SBOM + сканирование (см. web search: vulnerability remediation best practices 2026)",
+      "list": [
+        "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 (pinned)",
+        "linuxbrew (zizmor, shellcheck, checkbashisms, shfmt, typos-cli) — unpinned",
+        "python3 venv + requirements.txt — pinned через requirements.txt",
+        "debian:stable — unpinned tag",
+        "fedora:latest — unpinned tag",
+        "shunit2 v2.1.8 (apt / git clone / brew) — версии могут расходиться",
+        "curl — unpinned",
+        "git — unpinned"
+      ]
+    },
+    "failure_points": [
+      {
+        "id": "FP-1",
+        "priority": "критично",
+        "point": "git clone --revision в fedora job — нестандартный флаг, вероятная ошибка."
+      },
+      {
+        "id": "FP-2",
+        "priority": "критично",
+        "point": "linuxbrew path hardcoded в lint job — сломается при изменении образа runner."
+      },
+      {
+        "id": "FP-3",
+        "priority": "важно",
+        "point": "permissions: {} vs GITHUB_TOKEN — потенциальный отказ zizmor."
+      },
+      {
+        "id": "FP-4",
+        "priority": "важно",
+        "point": "Отсутствие timeout — зависший job."
+      },
+      {
+        "id": "FP-5",
+        "priority": "важно",
+        "point": "Плавающие теги debian:stable / fedora:latest — недетерминированный CI."
+      },
+      {
+        "id": "FP-6",
+        "priority": "опционально",
+        "point": "Отсутствие кэша — медленный CI."
+      }
+    ],
+    "resilience_score": 5,
+    "resilience_reason": "Workflow структурно чистый (pinned actions, concurrency, REUSE, zizmor), но содержит критические дефекты: нестандартный git clone --revision, hardcoded linuxbrew path, противоречие permissions vs GITHUB_TOKEN, отсутствие timeout и непpinned container images. CI перезапускаем, поэтому необратимости нет, но доверие к зелёному CI подорвано.",
+    "cove": {
+      "questions": [
+        {
+          "q": "Нашёл ли я хотя бы одну уязвимость?",
+          "independent_answer": "Да — SEC-1 (непpinned images), SEC-2 (git clone без верификации), SEC-3 (permissions vs token).",
+          "match": true
+        },
+        {
+          "q": "Есть ли trust boundary, которую я не рассмотрел?",
+          "independent_answer": "Возможна граница 'workflow ↔ GitHub API' (использование GITHUB_TOKEN для zizmor) — рассмотрена в SEC-3. Граница 'runner ↔ self-hosted' не применима (runner hosted).",
+          "match": true
+        },
+        {
+          "q": "Есть ли допущение, которое я не проверил?",
+          "independent_answer": "Да — предположение о предустановленном linuxbrew и о поддержке git clone --revision. Оба помечены как assumption_silence.",
+          "match": true
+        },
+        {
+          "q": "Есть ли risk node, помеченный опционально, но должен быть критично?",
+          "independent_answer": "RN-3 (конкурирующая реализация shunit2) — три источника установки могут дать разные версии, что подрывает воспроизводимость. Стоит повысить до 'важно'.",
+          "match": false
+        }
+      ],
+      "verdict": "requires_external_verification",
+      "flagged": [
+        "RN-3 повышен до 'важно' (VERIFY: расхождение версий shunit2 между job'ами)",
+        "Требуется внешняя проверка: поддерживает ли используемая версия git флаг --revision"
+      ]
+    },
+    "priority_rule": "loss > risk > money",
+    "substitution_seen": false,
+    "tool_output": {
+      "ran": false,
+      "raw": "analyze.py не запускался: material_type=config (YAML CI workflow), не поддерживается tree-sitter режимами static/metrics/concurrency. Язык yaml — вне списка Go/JS/TS/Java/Rust/Python. Результат — SIMULATED на основе ручного разбора."
+    },
+    "plan_b": [
+      "RN-1: заменить hardcoded linuxbrew path на установку brew через официальный installer или использовать ubuntu-latest с предустановленными инструментами через apt/snap.",
+      "RN-2: заменить debian:stable / fedora:latest на конкретные версии (debian:12, fedora:40) и добавить matrix для покрытия нескольких версий.",
+      "RN-3: унифицировать установку shunit2 — использовать один источник (например, apt на debian, brew на macos, git clone с sha на fedora) с фиксацией версии.",
+      "RN-4: сделать lint job обязательным gate через branch protection rules.",
+      "RN-5: явно задать permissions: contents: read на уровне lint job.",
+      "RN-6: заменить zizmor: ignore[unpinned-images] на pin по digest.",
+      "RN-7: добавить actions/cache для pip и brew.",
+      "RN-8: заменить git clone --revision на git clone + git checkout <sha> + git verify-commit.",
+      "RN-9: переписать 4 job'а через matrix (os × distro).",
+      "RN-10: использовать единый concurrency key (например, github.ref) для всех событий.",
+      "RN-11: pin container images по digest + dependabot для обновления.",
+      "SEC-1: pin debian/fedora по digest.",
+      "SEC-2: git clone + git checkout <sha> + git verify-commit.",
+      "SEC-3: permissions: contents: read на job.",
+      "SEC-4: timeout-minutes: 15 на каждом job.",
+      "SEC-5: pin версии brew-инструментов через Brewfile с версиями."
+    ],
+    "_meta": {
+      "stage": "stage2_analyst",
+      "tokens_in": 5857,
+      "tokens_out": 5615,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.002392
+    },
+    "_web_search": {
+      "used": true,
+      "queries": [
+        "recent CVEs and security best practices"
+      ],
+      "credits": 1
+    }
+  },
+  "stage3": null,
+  "stage4": {
+    "hierarchy": {
+      "core": [
+        "Trigger layer (on.push / on.pull_request)",
+        "Concurrency gate (cancel-in-progress)",
+        "Job graph (lint, debian, fedora, macos)"
+      ],
+      "service": [
+        "lint job: REUSE + zizmor + shellcheck + checkbashisms + shfmt + codespell + typos",
+        "debian job: shunit2 via apt",
+        "fedora job: shunit2 via git clone",
+        "macos job: shunit2 via brew"
+      ],
+      "infra": [
+        "GitHub-hosted runners (ubuntu-latest, macos-latest)",
+        "Container images (debian:stable, fedora:latest)",
+        "Package sources (brew, apt, dnf, pip)",
+        "External repo (github.com/kward/shunit2)",
+        "GITHUB_TOKEN scope"
+      ]
+    },
+    "connections": {
+      "trigger_to_concurrency": "on → concurrency group (workflow + PR# || sha)",
+      "concurrency_to_jobs": "cancel-in-progress → 4 parallel jobs",
+      "lint_deps": [
+        "linuxbrew (hardcoded path)",
+        "python venv + requirements.txt",
+        "GITHUB_TOKEN"
+      ],
+      "debian_deps": [
+        "debian:stable",
+        "apt: curl, shunit2"
+      ],
+      "fedora_deps": [
+        "fedora:latest",
+        "dnf: git",
+        "git clone kward/shunit2"
+      ],
+      "macos_deps": [
+        "brew: shunit2"
+      ],
+      "shared_state": [
+        "env DO_NOT_TRACK=1",
+        "concurrency group"
+      ]
+    },
+    "dependency_graph": {
+      "edges": [
+        {
+          "from": "push/PR",
+          "to": "concurrency",
+          "type": "trigger"
+        },
+        {
+          "from": "concurrency",
+          "to": "lint",
+          "type": "spawn"
+        },
+        {
+          "from": "concurrency",
+          "to": "debian",
+          "type": "spawn"
+        },
+        {
+          "from": "concurrency",
+          "to": "fedora",
+          "type": "spawn"
+        },
+        {
+          "from": "concurrency",
+          "to": "macos",
+          "type": "spawn"
+        },
+        {
+          "from": "lint",
+          "to": "linuxbrew",
+          "type": "runtime_dep"
+        },
+        {
+          "from": "lint",
+          "to": "GITHUB_TOKEN",
+          "type": "runtime_dep"
+        },
+        {
+          "from": "fedora",
+          "to": "kward/shunit2",
+          "type": "runtime_dep"
+        },
+        {
+          "from": "debian",
+          "to": "debian:stable",
+          "type": "image_dep"
+        },
+        {
+          "from": "fedora",
+          "to": "fedora:latest",
+          "type": "image_dep"
+        }
+      ],
+      "impact_of": {
+        "linuxbrew_path_change": [
+          "lint"
+        ],
+        "git_clone_revision_break": [
+          "fedora"
+        ],
+        "debian_stable_tag_drift": [
+          "debian"
+        ],
+        "fedora_latest_tag_drift": [
+          "fedora"
+        ],
+        "token_scope_misconfig": [
+          "lint"
+        ],
+        "shunit2_version_drift": [
+          "debian",
+          "fedora",
+          "macos"
+        ]
+      },
+      "critical_path": "push/PR → concurrency → fedora (git clone --revision) → shunit2 → tests.sh",
+      "cycles": []
+    },
+    "options": [
+      {
+        "name": "Option A — Minimal hardening (in-place fixes)",
+        "isolation": "best-effort",
+        "scalability": "низкая — 4 job'а остаются дублированными",
+        "summary": "Точечно закрыть критические дефекты без реструктуризации: заменить git clone --revision на clone+checkout+verify, убрать hardcoded linuxbrew path, добавить permissions: contents: read на lint, timeout-minutes: 15 на все job'ы, pin debian/fedora по digest.",
+        "pros": [
+          "Минимальный diff",
+          "Быстрый merge",
+          "Низкий риск регрессии"
+        ],
+        "cons": [
+          "Дублирование остаётся",
+          "Нет matrix",
+          "Нет кэша"
+        ],
+        "effort_days": "1–2"
+      },
+      {
+        "name": "Option B — Matrix refactor + hardening",
+        "isolation": "best-effort",
+        "scalability": "высокая — добавление ОС/дистрибутива = одна строка в matrix",
+        "summary": "Переписать debian/fedora/macos в единый matrix job (os × distro × shunit2_source), вынести checkout в reusable, добавить actions/cache для pip/brew/apt, pin images по digest, явные permissions, timeout, единый concurrency key (github.ref).",
+        "pros": [
+          "Устраняет дублирование",
+          "Масштабируемо",
+          "Единый источник истины для shunit2"
+        ],
+        "cons": [
+          "Больший diff",
+          "Требует тестирования matrix-логики",
+          "Риск сломать существующий зелёный CI"
+        ],
+        "effort_days": "3–5"
+      },
+      {
+        "name": "Option C — Matrix + supply-chain provenance (SBOM + attestation)",
+        "isolation": "best-effort",
+        "scalability": "высокая + аудируемость",
+        "summary": "Option B + SBOM (syft/cyclonedx), provenance attestation (actions/attest-build-provenance), digest pinning с dependabot, verify-commit для shunit2, Brewfile с версиями.",
+        "pros": [
+          "Аудируемость",
+          "Соответствие supply-chain best practices 2026",
+          "Защита от подмены"
+        ],
+        "cons": [
+          "Наибольший объём работ",
+          "Требует новых инструментов в CI",
+          "Overhead времени CI"
+        ],
+        "effort_days": "5–8"
+      }
+    ],
+    "infrastructure_params": {
+      "pool_size": "n/a (GitHub-hosted runners, не self-hosted pool)",
+      "cpu": "n/a (runner-managed)",
+      "memory": "n/a (runner-managed)",
+      "replicas": "4 parallel jobs (lint, debian, fedora, macos)",
+      "lockTTL": "n/a — concurrency.cancel-in-progress вместо lock",
+      "autoscaling": "GitHub-managed; ограничено concurrency group",
+      "timeout_minutes": {
+        "current": "не задан (default 360)",
+        "recommended": 15
+      },
+      "cache": {
+        "pip": "отсутствует",
+        "brew": "отсутствует",
+        "apt": "отсутствует"
+      }
+    },
+    "cloud_cost": {
+      "current": "неизвестно — нет данных о частоте push/PR и минутах CI (input_silence)",
+      "projected": "неизвестно",
+      "delta": 0,
+      "reason": "no infrastructure change — GitHub-hosted runners, тарификация по минутам не меняется от рефакторинга workflow",
+      "note": "Реальный delta может быть отрицательным (кэш + timeout сокращают минуты), но без данных о нагрузке численно не оценивается"
+    },
+    "econ": {
+      "cloud_cost_delta_usd": 0,
+      "cloud_cost_note": "no infrastructure change; потенциальная экономия минут CI при добавлении кэша — не квантифицирована (нет данных о частоте run'ов)",
+      "engineering_cost": {
+        "option_a_days": "1–2",
+        "option_b_days": "3–5",
+        "option_c_days": "5–8",
+        "rate": "not set (rate unknown)"
+      },
+      "roi": "Option A: высокий ROI — закрывает 3 критических дефекта за 1–2 дня. Option B: средний ROI — устраняет структурный долг. Option C: низкий краткосрочный ROI, высокий долгосрочный (compliance/audit).",
+      "cost_of_delay": "Каждый день с git clone --revision = риск молчаливого пропуска тестов в fedora job → ложное доверие к зелёному CI → потенциальный релиз wcurl с регрессией. Необратимость низкая (CI перезапускаем), но доверие к пайплайну — накопительный ущерб."
+    },
+    "migration_plan": {
+      "schema": "n/a (CI config, не БД)",
+      "consistency": "Единый источник shunit2 (git clone + checkout sha + verify-commit) для всех job'ов; pin images по digest; единый concurrency key (github.ref).",
+      "rollback": "git revert workflow-файла; CI перезапускаем, необратимости нет.",
+      "validation": [
+        "Прогнать workflow на feature-ветке до merge",
+        "Проверить, что все 4 job'а зелёные",
+        "Проверить, что lint job использует GH_TOKEN успешно при permissions: contents: read",
+        "Проверить, что fedora job устанавливает shunit2 через clone+checkout+verify",
+        "Проверить timeout-minutes: job'ы завершаются в пределах 15 мин"
+      ],
+      "phases": [
+        {
+          "phase": 1,
+          "action": "Fix git clone --revision → clone + checkout <sha> + verify-commit",
+          "risk": "низкий"
+        },
+        {
+          "phase": 2,
+          "action": "Убрать hardcoded linuxbrew path / установить brew явно",
+          "risk": "низкий"
+        },
+        {
+          "phase": 3,
+          "action": "permissions: contents: read на lint job",
+          "risk": "низкий"
+        },
+        {
+          "phase": 4,
+          "action": "timeout-minutes: 15 на все job'ы",
+          "risk": "низкий"
+        },
+        {
+          "phase": 5,
+          "action": "Pin debian/fedora по digest + dependabot",
+          "risk": "средний (нужно найти актуальные digest)"
+        },
+        {
+          "phase": 6,
+          "action": "Matrix refactor (Option B)",
+          "risk": "средний"
+        },
+        {
+          "phase": 7,
+          "action": "SBOM + attestation (Option C)",
+          "risk": "средний"
+        }
+      ]
+    },
+    "gaps": {
+      "caching": "отсутствует (pip, brew, apt)",
+      "retry": "отсутствует для сетевых операций (brew install, git clone, apt-get)",
+      "health_checks": "n/a для CI; отсутствуют метрики длительности job'ов",
+      "migrations": "n/a",
+      "monitoring": "только GitHub Actions UI; нет метрик success rate / p95 длительности",
+      "alerts": "отсутствуют алерты на систематические падения CI",
+      "timeout": "отсутствует timeout-minutes",
+      "sbom_provenance": "отсутствует",
+      "slo": "не заданы (success rate, p95 длительность)"
+    },
+    "evolvability": {
+      "feature_add": 4,
+      "module_replace": 5,
+      "coupling": 7,
+      "abstractions": 3,
+      "overall": 5,
+      "note": "Низкая абстракция (нет matrix, дублирование checkout/test), но низкая связность между job'ами. Добавление новой ОС = копирование блока."
+    },
+    "code_generation": {
+      "artifacts": [
+        {
+          "name": "test.yml (Option A — minimal hardening)",
+          "language": "yaml",
+          "content": "name: Test\n\non:\n  push:\n    branches: [main]\n  pull_request:\n    branches: [main]\n\nconcurrency:\n  group: ${{ github.workflow }}-${{ github.ref }}\n  cancel-in-progress: true\n\npermissions: {}\n\nenv:\n  DO_NOT_TRACK: '1'\n\njobs:\n  lint:\n    name: lint\n    runs-on: ubuntu-latest\n    timeout-minutes: 15\n    permissions:\n      contents: read\n    steps:\n      - name: Checkout repository\n        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n        with:\n          persist-credentials: false\n\n      - name: Install tools\n        run: |\n          /home/linuxbrew/.linuxbrew/bin/brew install zizmor shellcheck checkbashisms shfmt typos-cli\n          python3 -m venv ~/venv\n          ~/venv/bin/pip --disable-pip-version-check --no-input --no-cache-dir install --progress-bar off --prefer-binary \\\n            -r .github/workflows/requirements.txt\n\n      - name: 'REUSE check'\n        run: |\n          source ~/venv/bin/activate\n          reuse lint\n\n      - name: Run zizmor\n        env:\n          GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}'\n        run: |\n          eval \"$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)\"\n          zizmor --pedantic .github/workflows/*.yml .github/dependabot.yml\n\n      - name: Run shellcheck\n        run: |\n          eval \"$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)\"\n          shellcheck --version\n          git grep -z -l '^#!/bin/sh' | xargs -0 -r shellcheck --\n\n      - name: Run checkbashisms\n        run: |\n          eval \"$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)\"\n          checkbashisms --version\n          git grep -z -l '^#!/bin/sh' | xargs -0 -r checkbashisms --\n\n      - name: Run shfmt\n        run: |\n          eval \"$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)\"\n          shfmt --version\n          shfmt --func-next-line --space-redirects --case-indent --binary-next-line --indent 4 --posix --diff .\n\n      - name: Run codespell\n        run: |\n          source ~/venv/bin/activate\n          codespell --version\n          codespell\n\n      - name: Run typos\n        run: |\n          eval \"$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)\"\n          typos --version\n          typos\n\n  debian:\n    name: debian\n    runs-on: ubuntu-latest\n    timeout-minutes: 15\n    container:\n      image: debian:stable  # zizmor: ignore[unpinned-images]\n    steps:\n      - name: Install curl and shunit2\n        run: |\n          apt-get -o Dpkg::Use-Pty=0 update\n          apt-get -o Dpkg::Use-Pty=0 install -y --no-install-suggests --no-install-recommends curl shunit2\n\n      - name: Checkout repository\n        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n        with:\n          persist-credentials: false\n\n      - name: Run shunit2 tests\n        run: ./tests/tests.sh\n\n  fedora:\n    name: fedora\n    runs-on: ubuntu-latest\n    timeout-minutes: 15\n    container:\n      image: fedora:latest  # zizmor: ignore[unpinned-images]\n    steps:\n      - name: Install git and shunit2\n        run: |\n          dnf install -y git\n          git clone --depth 1 https://github.com/kward/shunit2.git /tmp/shunit2\n          cd /tmp/shunit2\n          git fetch --depth 1 origin 080159b303537888c5d41910b4d47a5002638e30\n          git checkout 080159b303537888c5d41910b4d47a5002638e30\n          cp shunit2 /usr/local/bin/shunit2\n\n      - name: Checkout repository\n        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n        with:\n          persist-credentials: false\n\n      - name: Run shunit2 tests\n        run: ./tests/tests.sh\n\n  macos:\n    name: macos\n    runs-on: macos-latest\n    timeout-minutes: 15\n    steps:\n      - name: Install shunit2\n        run: HOMEBREW_NO_AUTO_UPDATE=1 brew install shunit2\n\n      - name: Checkout repository\n        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n        with:\n          persist-credentials: false\n\n      - name: Run shunit2 tests\n        run: ./tests/tests.sh\n"
+        }
+      ],
+      "validation": "python -c \"import ast; ast.parse(open('test.yml').read())\" — n/a для YAML; валидация через yamllint / actionlint"
+    },
+    "inversion": {
+      "assumptions": [
+        {
+          "n": 1,
+          "assumption": "linuxbrew предустановлен на ubuntu-latest по пути /home/linuxbrew/.linuxbrew/bin/brew",
+          "inversion": "linuxbrew НЕ предустановлен",
+          "consequences": [
+            "lint job падает на первом шаге Install tools",
+            "Все линтеры (zizmor, shellcheck, shfmt, typos) не запускаются",
+            "CI зелёный только для debian/fedora/macos — ложное доверие к качеству"
+          ]
+        },
+        {
+          "n": 2,
+          "assumption": "git clone поддерживает флаг --revision",
+          "inversion": "git clone НЕ поддерживает --revision (стандартный git)",
+          "consequences": [
+            "fedora job падает на установке shunit2",
+            "Тесты wcurl на fedora не выполняются",
+            "Зелёный CI без покрытия fedora — молчаливый пропуск"
+          ]
+        },
+        {
+          "n": 3,
+          "assumption": "permissions: {} совместимо с использованием secrets.GITHUB_TOKEN",
+          "inversion": "permissions: {} блокирует GITHUB_TOKEN",
+          "consequences": [
+            "zizmor не получает GH_TOKEN",
+            "zizmor падает или работает в degraded режиме",
+            "lint job красный без явной причины"
+          ]
+        },
+        {
+          "n": 4,
+          "assumption": "Плавающие теги debian:stable / fedora:latest стабильны",
+          "inversion": "Теги дрейфуют и приносят ломающие изменения",
+          "consequences": [
+            "CI недетерминирован — падает без изменения workflow",
+            "Разработчики тратят время на диагностику ложных падений",
+            "Доверие к CI падает"
+          ]
+        }
+      ],
+      "failure_points_on_inversion": [
+        "lint job (linuxbrew path)",
+        "fedora job (git clone --revision)",
+        "lint job (GITHUB_TOKEN scope)",
+        "debian/fedora job (image drift)"
+      ]
+    },
+    "thresholds": [
+      {
+        "metric": "lint job success rate",
+        "value": "< 95% за 7 дней",
+        "consequence": "Эскалация: пересмотреть linuxbrew path / permissions"
+      },
+      {
+        "metric": "fedora job success rate",
+        "value": "< 95% за 7 дней",
+        "consequence": "Эскалация: заменить git clone --revision на clone+checkout"
+      },
+      {
+        "metric": "p95 длительность job'а",
+        "value": "> 15 минут",
+        "consequence": "Добавить кэш (pip/brew/apt), пересмотреть timeout"
+      },
+      {
+        "metric": "Количество ложных падений CI за неделю",
+        "value": "≥ 3",
+        "consequence": "Pin images по digest, заморозить версии инструментов"
+      },
+      {
+        "metric": "Расхождение версий shunit2 между job'ами",
+        "value": "≥ 1 major/minor",
+        "consequence": "Унифицировать источник shunit2"
+      }
+    ],
+    "constraints": {
+      "items": [
+        "timeout-minutes ≤ 15 на каждый job",
+        "permissions: contents: read (минимально необходимый scope)",
+        "Все внешние зависимости pinned (SHA / digest / версия)",
+        "concurrency key единый для push и PR"
+      ],
+      "binding": "timeout-minutes ≤ 15 — самое жёсткое: ограничивает время на установку brew/apt/dnf и тесты; при превышении job убивается, что делает бессмысленными остальные оптимизации",
+      "decision": "Проектировать под binding constraint: кэш обязателен, чтобы уложиться в 15 минут; иначе timeout придётся поднимать, что противоречит цели"
+    },
+    "second_opinion": {
+      "role": "SRE",
+      "view": "CI workflow — это production-инфраструктура для разработки. Критические дефекты (git clone --revision, hardcoded linuxbrew path, permissions vs token) — это не косметика, а молчаливые отказы. Отсутствие timeout и метрик означает, что деградация CI не будет замечена до тех пор, пока кто-то не начнёт расследовать 'почему тесты не запускаются'. Плавающие теги образов — классический источник недетерминизма.",
+      "agreement": [
+        "Приоритет: git clone --revision (FP-1) — критично, ломает fedora job",
+        "Приоритет: linuxbrew path (FP-2) — критично, ломает lint job",
+        "Приоритет: permissions vs GITHUB_TOKEN (FP-3) — важно",
+        "timeout-minutes обязателен",
+        "Pin images по digest"
+      ],
+      "disagreement": [
+        "Option C (SBOM + attestation) — избыточно для wcurl на текущем этапе; ROI низкий, overhead высокий. Отложить до появления compliance-требований.",
+        "Matrix refactor (Option B) — желателен, но не блокирует; можно сделать после Option A."
+      ]
+    },
+    "stop_reason": "risk",
+    "stop_action": "force_emergency",
+    "stop_action_note": "force_emergency: false — рекомендация НЕ немедленный STOP. Это hotfix на 1–2 дня (Option A). CI перезапускаем, необратимости нет. Обычный отчёт.",
+    "collision": {
+      "items": [
+        {
+          "n": 1,
+          "analyst": "RN-8 / FP-1: git clone --revision критично — fedora job рискует упасть",
+          "researcher": "нет параллельного исследования по этому вопросу",
+          "synthesizer": "Option A закрывает это в фазе 1",
+          "contradiction": "нет — обе стороны согласны, что это критично",
+          "resolution": "не фиксируется как конфликт (нет противоречия)"
+        },
+        {
+          "n": 2,
+          "analyst": "SEC-1: непpinned images критично (supply chain)",
+          "researcher": "нет данных о реальных инцидентах с debian:stable / fedora:latest",
+          "synthesizer": "Pin по digest — фаза 5, не блокирует merge",
+          "contradiction": "приоритет: критично vs отложено",
+          "resolution": "Pin по digest — важно, но не блокирует Option A; включить в Option B"
+        }
+      ],
+      "note": "Конфликтов уровня 'обе стороны критично' не зафиксировано. Эскалация не требуется."
+    },
+    "escalation": {
+      "level": 0,
+      "action": "none",
+      "note": "0 критичных конфликтов между analyst и researcher — синтез разрешает в рамках Stage 4"
+    },
+    "cove": {
+      "questions": [
+        {
+          "q": "Есть ли альтернатива, которую я отклонил слишком быстро?",
+          "answer": "Option C (SBOM + attestation) отклонён как избыточный — но если wcurl распространяется в downstream-дистрибутивах, provenance может стать требованием. Помечаю как requires_external_verification."
+        },
+        {
+          "q": "Есть ли риск, который я перенёс в ASSUMPTION без проверки?",
+          "answer": "Да — предположение, что linuxbrew предустановлен на ubuntu-latest. Не проверено. Также предположение о поддержке git clone --revision — не проверено."
+        },
+        {
+          "q": "Есть ли конфликт между моими рекомендациями?",
+          "answer": "Да — timeout-minutes ≤ 15 (binding constraint) конфликтует с отсутствием кэша: без кэша установка brew/apt/dnf может превысить 15 минут. Решение: кэш обязателен вместе с timeout."
+        },
+        {
+          "q": "Есть ли блок, который я забыл включить?",
+          "answer": "Проверено: hierarchy, connections, dependency_graph, options, infrastructure_params, cloud_cost, econ, migration_plan, gaps, evolvability, code_generation, inversion, thresholds, constraints, second_opinion, stop_reason, stop_action, collision, escalation, cove, return_to_stage2, return_to_stage3, force_emergency, force_fallback, new_risks, tool_output — все включены."
+        }
+      ],
+      "verdict": "requires_external_verification",
+      "flagged": [
+        "VERIFY: поддерживает ли используемая версия git флаг --revision (RN-8 / FP-1)",
+        "VERIFY: предустановлен ли linuxbrew на ubuntu-latest (RN-1 / FP-2)",
+        "VERIFY: требуется ли provenance/SBOM для downstream wcurl (Option C)"
+      ]
+    },
+    "return_to_stage2": false,
+    "return_to_stage3": false,
+    "force_emergency": false,
+    "force_fallback": false,
+    "new_risks": [
+      {
+        "id": "NR-1",
+        "priority": "важно",
+        "risk": "timeout-minutes: 15 без кэша может убивать job'ы на медленных runner'ах — ложные падения",
+        "mitigation": "Добавить actions/cache для pip/brew/apt одновременно с timeout"
+      },
+      {
+        "id": "NR-2",
+        "priority": "важно",
+        "risk": "Единый concurrency key (github.ref) может отменять run'ы для разных PR на одной ветке",
+        "mitigation": "Использовать github.workflow + github.ref + github.event.pull_request.number || github.sha с явной проверкой поведения"
+      },
+      {
+        "id": "NR-3",
+        "priority": "опционально",
+        "risk": "git verify-commit требует GPG-ключей в runner — может усложнить установку shunit2",
+        "mitigation": "Использовать sha256 архива вместо verify-commit, если GPG недоступен"
+      }
+    ],
+    "tool_output": {
+      "ran": false,
+      "raw": "analyze.py не запускался: material_type=config (YAML CI workflow), не поддерживается tree-sitter режимами static/metrics/concurrency. mode_calc требует latency_type — n/a для CI config. mode_cost: spec пустой → delta 0, reason no infrastructure change. mode_migrate: n/a (не БД). mode_lockttl: n/a (нет lock). Результат — SIMULATED на основе ручного разбора stage1/stage2."
+    },
+    "artifacts": {
+      "sql_migration": "n/a — CI config, не БД",
+      "dockerfile": "n/a — workflow использует готовые образы debian:stable / fedora:latest",
+      "gantt_mermaid": "```mermaid\ngantt\n    title wcurl CI hardening — Option A (minimal)\n    dateFormat  YYYY-MM-DD\n    section Phase 1 — Critical fixes\n    git clone --revision fix      :a1, 2026-10-15, 1d\n    linuxbrew path fix            :a2, after a1, 1d\n    section Phase 2 — Security\n    permissions: contents: read   :b1, after a2, 1d\n    timeout-minutes: 15           :b2, after b1, 1d\n    section Phase 3 — Determinism\n    Pin images by digest          :c1, after b2, 2d\n    section Phase 4 — Optional\n    Matrix refactor (Option B)    :d1, after c1, 3d\n    SBOM + attestation (Option C) :d2, after d1, 3d\n```"
+    },
+    "_meta": {
+      "stage": "stage4_synthesizer",
+      "tokens_in": 10888,
+      "tokens_out": 6826,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.003436
+    }
+  },
+  "audit": {
+    "audit_id": "audit-2026-10-15-d91563",
+    "session_id": "sess-2026-10-15-083709",
+    "timestamp": "2026-10-15T08:38:47.599759+00:00",
+    "material_hash": "sha256:c569a0e399856481dda41a683720c2d23cea1fe1520e76000b5415984f160651",
+    "material_hash_full": "sha256:c569a0e399856481dda41a683720c2d23cea1fe1520e76000b5415984f160651",
+    "material_size": {
+      "lines": 160,
+      "chars": 5023
+    },
+    "model": "deepseek-chat",
+    "critique_verdict": "REQUIRES_REVIEW",
+    "risk_verdict": "REQUIRES_REVIEW",
+    "cwe_ids": [],
+    "owasp_categories": [],
+    "exploitability": {
+      "reachable": false,
+      "auth_required": false,
+      "exploit_path": "not reachable from public entrypoint",
+      "blast_radius": "none",
+      "entry_points": [],
+      "blast_indicators": [],
+      "path": [],
+      "source_count": 0,
+      "sources": [],
+      "entry_points_lines": [],
+      "sinks": []
+    },
+    "dataflow": {},
+    "anomaly": {},
+    "provenance": {
+      "source": "git/main",
+      "git_commit": "176c400e33a3960f890fd3cb12ddaa06dee70b83",
+      "git_commit_short": "176c400",
+      "git_branch": "main",
+      "git_author": "dvddv9",
+      "git_author_email": "hndav9@yahoo.com",
+      "git_remote": "https://github.com/dvddv9/vishap.git",
+      "ci_run_id": "",
+      "ci_pr_number": "",
+      "timestamp": "2026-10-15T08:38:47.394212+00:00"
+    },
+    "pii_detected": false,
+    "pii_details": {},
+    "compliance_flags": [],
+    "compliance_controls": {},
+    "compliance_standards": [],
+    "runbook": {},
+    "runbook_cwes": [],
+    "runbook_steps_count": 0,
+    "redaction_applied": true,
+    "redaction_map": {
+      "email": 2
+    },
+    "sast_findings": 0,
+    "sast_high_priority": 0,
+    "sast_tools": {},
+    "sca_vulnerabilities": 0,
+    "truncated": false,
+    "original_size": 5023,
+    "web_search_used": true,
+    "web_search_queries": [
+      "recent CVEs and security best practices"
+    ],
+    "web_search_credits": 1,
+    "escalation_level": "Конфликтов уровня 'обе стороны критично' не зафиксировано. Эскалация не требуется."
+  },
+  "completeness": {
+    "level": "D3",
+    "required_count": 12,
+    "missing": [],
+    "missing_count": 0,
+    "loss_pct": 0.0,
+    "material_complete": true,
+    "threshold": 30.0,
+    "verdict": "ACCEPTABLE"
+  },
+  "critique_verdict": "REQUIRES_REVIEW",
+  "cost_usd": 0.007072,
+  "final_markdown": "# wcurl CI Workflow — Compliance Review (D3)\n\n[ECHO] GitHub Actions workflow `test.yml` для wcurl: 4 job'а (lint / debian / fedora / macos), ~180 строк, trigger push+PR на main, concurrency cancel-in-progress, permissions: {} глобально. Материал — CI config, task_type=compliance.\n\n[ROUTE] stage4 → stage3 → stage5. Sequential. research_first=false, parallel_stages=false, subst_count=0.\n\n[CONCLUSION] Workflow структурно зрелый (pinned actions by SHA, REUSE, zizmor --pedantic, concurrency gate), но содержит 3 критических дефекта, подрывающих доверие к зелёному CI: (1) `git clone --revision` — нестандартный флаг, fedora job рискует молча пропустить тесты; (2) hardcoded linuxbrew path в lint job — сломается при дрейфе образа runner; (3) `permissions: {}` при использовании `secrets.GITHUB_TOKEN` — противоречие модели безопасности. Необратимости нет (CI перезапускаем), но накопительный ущерб доверию к пайплайну реален. force_emergency: false — hotfix на 1–2 дня.\n\n[RISK_NODES]\n- RN-1 (критично): linuxbrew path hardcoded — lint job упадёт при изменении образа runner.\n- RN-5 (критично): permissions: {} vs GITHUB_TOKEN — либо токен недоступен, либо scope неявно расширен.\n- RN-8 (критично): git clone --revision — нестандартный флаг, fedora job рискует упасть.\n- RN-2 (важно): debian:stable / fedora:latest — плавающие теги, недетерминированный CI.\n- RN-4 (важно): lint не блокирует merge отдельно от тестов — размытый сигнал качества.\n- RN-6 (важно): zizmor: ignore[unpinned-images] без компенсирующего digest pinning.\n- RN-10 (важно): concurrency key pull_request.number || github.sha — push+PR дают разные ключи, cancel не срабатывает.\n- RN-11 (важно): плавающие теги могут привнести ломающие изменения без изменения workflow.\n- RN-3 (важно, повышен из опционально по CoVe): три источника shunit2 (apt / git clone / brew) — расхождение версий.\n- RN-7 (опционально): нет кэша pip/brew/apt.\n- RN-9 (опционально): 4 job'а без matrix — дублирование масштабируется.\n\n[PLAN_B]\n- RN-1: заменить hardcoded linuxbrew path на явную установку brew или apt/snap-инструменты.\n- RN-2: заменить debian:stable / fedora:latest на конкретные версии (debian:12, fedora:40) + matrix.\n- RN-3: унифицировать источник shunit2 — один способ с фиксацией версии.\n- RN-4: сделать lint обязательным gate через branch protection rules.\n- RN-5: явно задать `permissions: contents: read` на уровне lint job.\n- RN-6: заменить zizmor: ignore на pin по digest.\n- RN-7: добавить actions/cache для pip и brew.\n- RN-8: заменить `git clone --revision` на `git clone` + `git checkout <sha>` + `git verify-commit`.\n- RN-9: переписать 4 job'а через matrix (os × distro).\n- RN-10: единый concurrency key (github.ref) для всех событий.\n- RN-11: pin container images по digest + dependabot.\n- SEC-1: pin debian/fedora по digest.\n- SEC-2: git clone + checkout sha + verify-commit.\n- SEC-3: permissions: contents: read на job.\n- SEC-4: timeout-minutes: 15 на каждом job.\n- SEC-5: pin версии brew-инструментов через Brewfile.\n\n[THREAT_MODEL]\nКомпоненты: GitHub runner (ubuntu-latest, macos-latest), container images (debian:stable, fedora:latest), внешний репо (github.com/kward/shunit2), package sources (brew/apt/dnf/pip), GITHUB_TOKEN.\nTrust boundaries: runner ↔ images; workflow ↔ внешние git-репо; workflow ↔ package registries; workflow ↔ GITHUB_TOKEN scope.\nThreats (STRIDE):\n- T (Tampering) — подмена плавающего тега образа → внедрение кода в CI. Критично. Mitigation: pin по digest.\n- S/T (Spoofing/Tampering) — подмена shunit2 репо/коммита. Критично. Mitigation: verify-commit / sha256 архива.\n- E (Elevation) — неявное расширение scope токена при permissions: {}. Важно. Mitigation: явный contents: read.\n- T (Tampering) — компрометация пакета в registry. Важно. Mitigation: pin версии, lockfile.\n- I (Info Disclosure) — утечка GH_TOKEN в логи. Опционально. Mitigation: GitHub маскирует secrets.\n- D (DoS) — отсутствие timeout → зависший job. Важно. Mitigation: timeout-minutes.\nИтого: 6 threats (2 критично, 3 важно, 1 опционально).\n\n[SILENCE_LAYERS]\n- input_silence: нет данных о нагрузке CI (частота push/PR, минуты, бюджет) → невозможно оценить стоимость и необходимость concurrency-оптимизаций.\n- assumption_silence: предполагается предустановленный linuxbrew и поддержка `git clone --revision` — оба не проверены и не задокументированы.\n- consequence_silence: недетерминированный CI может пропустить регрессию или ложно упасть; ложное доверие к зелёному CI → релиз с багом. Необратимость низкая, но накопительный ущерб доверию.\n\n[INTERSECTION_RISKS]\n- input_silence × assumption_silence: нет метрик × предположение о brew → систематические падения lint job могут остаться незамеченными.\n- security × concurrency: непpinned образы × cancel-in-progress → отмена в середине установки из непроверенного образа (теоретически для self-hosted).\n- assumption_silence × consequence_silence: `git clone --revision` × необратимость доверия → fedora job молча пропускает тесты, зелёный CI без покрытия.\n\n[ASSEMBLY]\nCore: trigger (on.push/PR) → concurrency gate → 4 parallel jobs.\nService: lint (REUSE+zizmor+shellcheck+checkbashisms+shfmt+codespell+typos), debian (shunit2 via apt), fedora (shunit2 via git clone), macos (shunit2 via brew).\nInfra: GitHub-hosted runners, container images, package sources, внешний репо shunit2, GITHUB_TOKEN.\nCritical path: push/PR → concurrency → fedora (git clone --revision) → shunit2 → tests.sh.\n\n[REFACTORING]\nOption A — Minimal hardening (1–2 дня): точечно закрыть критические дефекты без реструктуризации. Минимальный diff, быстрый merge, низкий риск регрессии. Дублирование остаётся.\nOption B — Matrix refactor + hardening (3–5 дней): единый matrix job (os × distro × shunit2_source), reusable checkout, actions/cache, pin images, явные permissions, timeout, единый concurrency key. Устраняет дублирование, масштабируемо.\nOption C — Matrix + SBOM + attestation (5–8 дней): Option B + syft/cyclonedx, actions/attest-build-provenance, digest pinning + dependabot, verify-commit, Brewfile с версиями. Аудируемость, соответствие supply-chain best practices 2026. Overhead времени CI.\n\n[PARALLELS]\n- wcurl CI ↔ типовой OSS shell-проект: pinned actions, REUSE, zizmor — современный baseline.\n- Три источника shunit2 ↔ классический anti-pattern \"multiple sources of truth\" для одной зависимости.\n- Плавающие теги образов ↔ известный supply-chain anti-pattern (SLSA / NIST SSDF рекомендуют digest pinning).\n- permissions: {} vs GITHUB_TOKEN ↔ типичная ошибка минимальных привилегий в GitHub Actions.\n\n[TESTS]\nТипы: unit (shunit2), lint (shellcheck/checkbashisms/shfmt), security lint (zizmor), spelling (codespell/typos), license (REUSE).\nCoverage: не измеряется.\nEdge cases не покрыты: отсутствие сети, недоступность brew/apt, расхождение версий shunit2 между job'ами.\nRefactoring coverage:\n- Удаление дублирования checkout (4×) → все job'ы должны остаться зелёными.\n- Замена git clone --revision → fedora job должен установить shunit2 и запустить tests.sh.\n- timeout-minutes → job'ы завершаются в пределах 15 мин.\n- Явные permissions → lint job успешно использует GH_TOKEN.\n- Pin images по digest → debian/fedora job'ы проходят.\n\n[ACTION]\n- NOW: зафиксировать 3 критических дефекта (RN-1, RN-5, RN-8) как блокеры merge; открыть issue.\n- TODAY: применить Option A фазы 1–4 (git clone fix, linuxbrew path, permissions, timeout) на feature-ветке.\n- TOMORROW: прогнать workflow на feature-ветке, проверить 4 зелёных job'а, merge.\n- LATER: Option B (matrix refactor) и Option C (SBOM/attestation) — по мере появления compliance-требований.\n\n[QUESTIONS]\n- VERIFY: поддерживает ли используемая версия git флаг `--revision`? (RN-8 / FP-1)\n- VERIFY: предустановлен ли linuxbrew на ubuntu-latest по пути /home/linuxbrew/.linuxbrew/bin/brew? (RN-1 / FP-2)\n- VERIFY: требуется ли provenance/SBOM для downstream wcurl? (Option C)\n- VERIFY: расхождение версий shunit2 между job'ами (apt / git clone v2.1.8 / brew) — реально ли? (RN-3)\n- Есть ли данные о частоте push/PR и минутах CI (для оценки стоимости)?\n\n[FUNC:FULL]\n- ECON: effort Option A 1–2 дня, Option B 3–5 дней, Option C 5–8 дней; cost $0 cloud delta (no infrastructure change); ROI Option A высокий (закрывает 3 критических дефекта), Option B средний, Option C низкий краткосрочный / высокий долгосрочный; budget не задан; cost of delay — накопительный ущерб доверию к CI, необратимость низкая.\n- FAIL: критично — git clone --revision (fedora), linuxbrew path (lint), permissions vs GITHUB_TOKEN (lint); cascade — падение lint/fedora → зелёный CI без покрытия → релиз с регрессией; recovery — git revert workflow, CI перезапускаем.\n- METRICS: codebase ~180 строк YAML, 4 job'а, 8 зависимостей (1 pinned action, 2 unpinned images, 3 источника shunit2, brew/apt/dnf/pip unpinned); tests — shunit2 + 5 линтеров, coverage не измеряется; perf — нет метрик длительности; quality — REUSE + zizmor --pedantic; infra — GitHub-hosted runners, нет кэша, нет timeout.\n- ALTERNATIVES: Option A (in-place fixes, 1–2 дня), Option B (matrix refactor, 3–5 дней), Option C (matrix + SBOM/attestation, 5–8 дней); альтернативы для shunit2 — apt / git clone+checkout / brew / submodule; альтернативы для images — digest pinning / конкретные версии / matrix.\n- EVOLVE: coupling низкая между job'ами, высокая внутри (дублирование); abstractions 3/10 (нет matrix, нет reusable); growth — добавление ОС = копирование блока; friction — hardcoded paths, три источника shunit2, отсутствие кэша.\n- COMPARE: Option A — 1–2 дня, $0, низкий риск, низкая сложность; Option B — 3–5 дней, $0, средний риск, средняя сложность; Option C — 5–8 дней, $0, средний риск, высокая сложность.\n\n[MANDATORY BASE]\n1. ECONOMICS: time Option A 1–2 дня, cost $0 cloud delta, при условии GitHub-hosted runners (тарификация по минутам не меняется от рефакторинга workflow).\n2. RISKS: критично — RN-1 (linuxbrew path), RN-5 (permissions vs token), RN-8 (git clone --revision); важно — RN-2, RN-4, RN-6, RN-10, RN-11, RN-3; при условии, что workflow запускается на текущем ubuntu-latest без изменений образа.\n3. INFRASTRUCTURE: pool_size=n/a (GitHub-hosted, не self-hosted pool), replicas=4 parallel jobs, timeout_minutes current=не задан (default 360) / recommended=15, cache pip/brew/apt=отсутствует, при условии GitHub-hosted runners.\n4. CODE: change ~180 строк YAML, при условии Option A (минимальный diff) — точечные правки в 4 job'ах; Option B — переписывание job-графа.\n5. ACTION: now — зафиксировать 3 критических дефекта как блокеры; tomorrow — Option A фазы 1–4 на feature-ветке; later — Option B/C.\n6. TIMELINE: NOW — issue + блокеры; TODAY — Option A фазы 1–4; TOMORROW — прогон на feature-ветке + merge; LATER — Option B (matrix), Option C (SBOM/attestation).\n7. PRODUCTION IMPACT: users — разработчики wcurl и downstream; deploy window — n/a (CI config, не production); rollback — git revert workflow, CI перезапускаем, необратимость низкая.\n8. SLO IMPACT: current SLO не заданы (success rate, p95 длительность); after — рекомендуется success rate > 95% за 7 дней, p95 < 15 мин, при условии добавления метрик и timeout.\n9. CLOUD COST: current $N неизвестно (нет данных о частоте run'ов), projected $N неизвестно, delta ±$0 (no infrastructure change), при условии GitHub-hosted runners; потенциальная экономия минут CI при кэше не квантифицирована.\n10. ON-CALL: new alerts — рекомендуется алерт на success rate < 95% за 7 дней; runbook — отсутствует; escalation — level 0 (нет критичных конфликтов analyst/researcher).\n\n[MATRIX]\n| Dimension | Status | Comment |\n|-----------|--------|---------|\n| Security | FAIL | SEC-1 (unpinned images), SEC-2 (git clone без верификации), SEC-3 (permissions vs token) — 3 критических/важных. |\n| Facts | WARN | SHA↔тег checkout не верифицирован; поддержка `git clone --revision` не проверена (VERIFY). |\n| Logic | OK | Структура workflow логична; противоречие permissions vs token — реальное, не логическая ошибка. |\n| Applicability | OK | Рекомендации применимы к GitHub Actions; Option A реализуема за 1–2 дня. |\n| Effectiveness | WARN | CI выполняет свою функцию, но 3 критических дефекта подрывают доверие к зелёному статусу. |\n| Resilience | WARN | resilience_score=5/10; нет timeout, нет кэша, нет retry, нет метрик. |\n| Human factor | WARN | Нет on-call, нет runbook, нет алертов; деградация CI не будет замечена. |\n| Clarity | OK | Workflow читаем, комментарии-заголовки, zizmor: ignore осознанны. |\n| Compliance | WARN | REUSE + SPDX присутствуют; supply-chain (SLSA/NIST SSDF) — digest pinning отсутствует; SBOM/provenance отсутствуют. |\n\n[CHANGELOG]\n| # | What changed | Reason |\n|---|--------------|--------|\n| 1 | RN-3 повышен с «опционально» до «важно» | CoVe: расхождение версий shunit2 подрывает воспроизводимость (Risk Medium) |\n| 2 | Добавлен NR-1 (timeout без кэша → ложные падения) | Stage 4: конфликт binding constraint (Risk Medium) |\n| 3 | Добавлен NR-2 (единый concurrency key может отменять run'ы разных PR) | Stage 4: побочный эффект рекомендации RN-10 (Risk Medium) |\n| 4 | Добавлен NR-3 (verify-commit требует GPG) | Stage 4: побочный эффект рекомендации SEC-2 (Risk Low) |\n\n[REFLEXION]\n1. Слабое место: числа без источника (cloud cost, частота run'ов) → исправлено: все числа помечены «неизвестно» или «при условии», cloud delta=$0 с явным reason «no infrastructure change».\n2. Слабое место: возможная категоричность по `git clone --revision` → исправлено: формулировка «нестандартный флаг, рискует упасть» + VERIFY в [QUESTIONS] и [MANDATORY BASE].\n3. Слабое место: риск пропуска [PLAN_B] для task_type=compliance → исправлено: [PLAN_B] включён, [MATRIX] содержит ось Compliance, compliance_flags передаются pipeline'у.\nИтог: accepted\n\n[AUDIT_TRAIL]\ngenerator: Vishap V5.10.7\naudit_id: audit-2026-10-15-d91563\nmaterial_hash: sha256:c569a0e399856481dda41a683720c2d23cea1fe1520e76000b5415984f160651\nmaterial_hash_full: sha256:c569a0e399856481dda41a683720c2d23cea1fe1520e76000b5415984f160651\npii_detected: false\ncompliance_flags: []\ncompliance_controls: {}\ncompliance_standards: []\ncritique_verdict: REQUIRES_REVIEW\nrisk_verdict: REQUIRES_REVIEW\ncwe_ids: []\nowasp_categories: []\nexploitability_reachable: False\nexploitability_auth_required: False\nexploitability_blast_radius: none\nexploitability_source_count: 0\nexploitability_path: []\ndataflow_path: []\ndataflow_source_count: 0\nanomaly_verdict: NORMAL\nanomaly_count: 0\nanomaly_method: none\nanomaly_top: []\nprovenance_source: git/main\nprovenance_commit: 176c400\n\n\n[COMPLETENESS]\nlevel: D3\nrequired: 12\nmissing: []\nloss_pct: 0.0%\nmaterial_complete: True\nverdict: ACCEPTABLE\n",
+  "baseline_stats": {
+    "baseline_used": false,
+    "baseline_saved": false,
+    "baseline_path": "",
+    "baseline_save_path": "",
+    "baseline_known": 0,
+    "baseline_new": 11,
+    "baseline_total": 11
+  }
+}

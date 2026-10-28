@@ -1,0 +1,42 @@
+services:
+  - type: web
+    name: vishap
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+    startCommand: alembic upgrade head && python -m src.main
+    envVars:
+      - key: VISHAP_DEV
+        value: "true"
+      # Open demo: every visitor gets a free analysis on the server's own key,
+      # capped per IP per day. No X-API-Key and no user LLM key required.
+      - key: VISHAP_PUBLIC_DEMO
+        value: "1"
+      # 7 analyses per visitor (IP) per day, and 30 per day for everybody together.
+      - key: VISHAP_DAILY_LIMIT
+        value: "7"
+      - key: VISHAP_DAILY_LIMIT_GLOBAL
+        value: "30"
+      - key: VISHAP_SERVER_KEY_ONLY
+        value: "1"
+      - key: VISHAP_TRUSTED_PROXY_HOPS
+        value: "1"
+      - key: VISHAP_LLM_PROVIDER
+        value: "custom"
+      - key: CUSTOM_LLM_URL
+        value: "https://api.anthropic.com/v1"
+      - key: CUSTOM_LLM_MODEL
+        value: "claude-haiku-5-5"
+      - key: CUSTOM_LLM_SEND_TEMPERATURE
+        value: "false"
+      - key: CUSTOM_LLM_KEY
+        sync: false
+      - key: VISHAP_DATA_DIR
+        value: /tmp/data
+      - key: OTEL_SDK_DISABLED
+        value: "true"
+      - key: PYTHONUNBUFFERED
+        value: "1"

@@ -1,0 +1,939 @@
+{
+  "session_id": "sess-2026-10-15-090636",
+  "timestamp": "2026-10-15T09:07:36.180230+00:00",
+  "filename": "LICENSE",
+  "material_size": 1118,
+  "stage0": {
+    "material_type": "other",
+    "language": null,
+    "size_hint": "~25 lines",
+    "level": "D1",
+    "route": [],
+    "research_first": false,
+    "parallel_stages": false,
+    "subst_count": 0,
+    "session_id": "sess-2026-10-15-090636",
+    "model": "none",
+    "flags": [
+      "TRIVIAL_MATERIAL",
+      "NO_ANALYSIS_REQUIRED"
+    ],
+    "slice": null,
+    "gate_check": {
+      "input": "LICENSE (copyright/permission notice)",
+      "output": "не заявлен",
+      "decision_maker": "не указан",
+      "cost": "не указан",
+      "irreversibility": "не указана"
+    },
+    "task_type": "other",
+    "reasoning": "Лицензионный текст, ~25 строк, ≤ TRIVIAL_HINT_LINES. Маркеров анализа нет, запроса нет. Ворота 3–5 не отвечены → VERIFY-контекст абстрактный, но материал тривиален и не требует маршрута. Route пуст.",
+    "_meta": {
+      "stage": "stage0_orchestrator",
+      "tokens_in": 1441,
+      "tokens_out": 252,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.000272
+    }
+  },
+  "stage1": {
+    "language": null,
+    "trajectory": {
+      "io": {
+        "input": "none (static text)",
+        "output": "none (static text)"
+      },
+      "flow": "linear, no control flow",
+      "branches": 0,
+      "branches_note": "no executable branches; text is a license notice",
+      "nesting_max": 0,
+      "deps": [],
+      "dead_code": "n/a"
+    },
+    "structure": {
+      "patterns": [
+        "license notice (MIT-style permission grant)",
+        "warranty disclaimer",
+        "name-use restriction clause"
+      ],
+      "cohesion": "high (single purpose: legal terms)",
+      "coupling": "none",
+      "solid_violations": [],
+      "point_of_no_return": "n/a",
+      "layers": [
+        "copyright attribution",
+        "permission grant",
+        "warranty disclaimer",
+        "name-use restriction"
+      ],
+      "contradictions": []
+    },
+    "texture": {
+      "density": "low",
+      "code_smells": [],
+      "error_handling": "n/a",
+      "tests_present": false,
+      "docs": "self-documenting (is documentation)",
+      "standards": "MIT-style license text; references AUTHORS file"
+    },
+    "shadows": {
+      "breaks": [],
+      "comment_code_mismatch": "n/a",
+      "blind_spots": [
+        "AUTHORS file referenced but not included",
+        "license identifier (SPDX) not stated explicitly"
+      ]
+    },
+    "concurrency": {
+      "shared_state": "n/a",
+      "locks": "n/a",
+      "deadlock_potential": "n/a",
+      "race_conditions": "n/a",
+      "idempotency": "n/a"
+    },
+    "dev_process": {
+      "code_review": "n/a",
+      "ci_cd": "n/a",
+      "staging": "n/a",
+      "tech_debt": "n/a"
+    },
+    "tool_output": {
+      "ran": false,
+      "raw": null
+    },
+    "_meta": {
+      "stage": "stage1_scanner",
+      "tokens_in": 1204,
+      "tokens_out": 483,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.000304
+    }
+  },
+  "stage2": {
+    "risk_nodes": [
+      {
+        "id": "RN-1",
+        "name": "Неявное допущение",
+        "priority": "важно",
+        "note": "Текст предполагает, что 'AUTHORS file' существует и доступен получателю, но сам файл не включён в материал. Атрибуция неполна.",
+        "fingerprint": "22a1d8f7d58faf98"
+      },
+      {
+        "id": "RN-2",
+        "name": "Слабое обобщение",
+        "priority": "опционально",
+        "note": "Формулировка 'for any purpose' без ограничений — стандарт MIT-подобных лицензий, но не покрывает патентные права (нет patent grant).",
+        "fingerprint": "35c0335396046858"
+      },
+      {
+        "id": "RN-3",
+        "name": "Конкурирующая реализация",
+        "priority": "опционально",
+        "note": "Текст близок к MIT, но не идентичен (доп. clause про name-use). Возможна путаница при SPDX-идентификации.",
+        "fingerprint": "74671507a8ac2413"
+      },
+      {
+        "id": "RN-4",
+        "name": "Сдвиг тезиса",
+        "priority": "опционально",
+        "note": "Заголовок 'COPYRIGHT AND PERMISSION NOTICE' обещает notice, но SPDX-идентификатор отсутствует — downstream-инструменты не смогут автоматически классифицировать.",
+        "fingerprint": "74430dd438ae27e5"
+      },
+      {
+        "id": "RN-5",
+        "name": "Внутреннее противоречие",
+        "priority": "опционально",
+        "note": "Противоречий не обнаружено; 'AS IS' согласуется с отсутствием гарантий.",
+        "fingerprint": "f6e0db4f846417fb"
+      },
+      {
+        "id": "RN-6",
+        "name": "Стратегическое избегание",
+        "priority": "важно",
+        "note": "Отсутствует patent grant и trademark clause (кроме name-use). Для проектов с патентными рисками это существенный пробел.",
+        "fingerprint": "6286f92b931a7ab8"
+      },
+      {
+        "id": "RN-7",
+        "name": "Производительность",
+        "priority": "опционально",
+        "note": "n/a — статический текст, не исполняется.",
+        "fingerprint": "1876dfcdc958177e"
+      },
+      {
+        "id": "RN-8",
+        "name": "Надёжность",
+        "priority": "опционально",
+        "note": "n/a — не код.",
+        "fingerprint": "96b763d6e1401600"
+      },
+      {
+        "id": "RN-9",
+        "name": "Масштабируемость",
+        "priority": "опционально",
+        "note": "n/a.",
+        "fingerprint": "e87e3da5626899dd"
+      },
+      {
+        "id": "RN-10",
+        "name": "Конкурентность",
+        "priority": "опционально",
+        "note": "n/a.",
+        "fingerprint": "bebe7b78dab0573a"
+      },
+      {
+        "id": "RN-11",
+        "name": "Ломающие изменения",
+        "priority": "важно",
+        "note": "Изменение текста лицензии (напр. добавление patent clause) — ломающее для downstream-проектов, уже принявших условия. Обратной силы не имеет, но создаёт fork-риск.",
+        "fingerprint": "c62d13a1c3672790"
+      }
+    ],
+    "security": {
+      "summary": "Материал — лицензионный текст, не исполняемый код. Прямых уязвимостей нет. Риски — юридические и supply-chain (SPDX-идентификация, patent grant).",
+      "findings": [
+        {
+          "id": "SEC-1",
+          "priority": "важно",
+          "finding": "Отсутствует SPDX-License-Identifier. Downstream-сканеры (FOSSA, Snyk, ScanCode) не смогут автоматически классифицировать лицензию → риск misclassification и compliance-нарушений.",
+          "mitigation": "Добавить 'SPDX-License-Identifier: MIT' (или корректный идентификатор) в заголовок файла."
+        },
+        {
+          "id": "SEC-2",
+          "priority": "важно",
+          "finding": "Нет patent grant clause. Для проектов, где контрибьюторы могут иметь патенты, это создаёт риск patent-troll атак на downstream-пользователей.",
+          "mitigation": "Рассмотреть переход на Apache-2.0 или добавление явного patent grant."
+        },
+        {
+          "id": "SEC-3",
+          "priority": "опционально",
+          "finding": "AUTHORS file упомянут, но не приложен — неполная атрибуция.",
+          "mitigation": "Включить AUTHORS в дистрибутив или инлайнить список."
+        }
+      ]
+    },
+    "secrets": {
+      "found": false,
+      "note": "Секретов, ключей, токенов, credentials в материале нет. Email-адреса замаскированы как <<EMAIL_REDACTED>>."
+    },
+    "concurrency": {
+      "applicable": false,
+      "note": "n/a — статический текст."
+    },
+    "threat_model": {
+      "components": [
+        "License text file (LICENSE)",
+        "Referenced AUTHORS file (отсутствует)",
+        "Downstream consumers (проекты, использующие код под этой лицензией)",
+        "SPDX/compliance scanners"
+      ],
+      "trust_boundaries": [
+        {
+          "id": "TB-1",
+          "name": "Copyright holder → License text",
+          "description": "Автор передаёт права через текст; целостность текста критична."
+        },
+        {
+          "id": "TB-2",
+          "name": "License text → Downstream consumer",
+          "description": "Потребитель интерпретирует условия; неоднозначность → юридический риск."
+        },
+        {
+          "id": "TB-3",
+          "name": "License text → Automated scanner",
+          "description": "Сканер парсит текст; отсутствие SPDX → misclassification."
+        }
+      ],
+      "threats": [
+        {
+          "id": "T-1",
+          "component": "License text",
+          "boundary": "TB-1",
+          "stride": "Tampering",
+          "threat": "Модификация текста лицензии (удаление name-use clause или warranty disclaimer) без изменения версии → downstream получает иные условия, чем заявлено.",
+          "priority": "важно",
+          "mitigation": "Подписывать релизы (GPG), фиксировать hash LICENSE в release notes, использовать immutable tags."
+        },
+        {
+          "id": "T-2",
+          "component": "License text",
+          "boundary": "TB-2",
+          "stride": "Repudiation",
+          "threat": "Отсутствие явного SPDX-идентификатора → downstream не может доказать, под какой лицензией получен код; спор об условиях.",
+          "priority": "важно",
+          "mitigation": "Добавить SPDX-License-Identifier; вести CHANGELOG лицензии."
+        },
+        {
+          "id": "T-3",
+          "component": "License text",
+          "boundary": "TB-3",
+          "stride": "Spoofing",
+          "threat": "Сканер может ошибочно классифицировать текст как MIT (без name-use clause) → ложное соответствие политике.",
+          "priority": "важно",
+          "mitigation": "Явный SPDX + machine-readable metadata (package.json license field, Cargo.toml license)."
+        },
+        {
+          "id": "T-4",
+          "component": "AUTHORS file",
+          "boundary": "TB-1",
+          "stride": "Information Disclosure",
+          "threat": "AUTHORS file отсутствует → невозможно верифицировать полный список copyright holders; потенциальные претензии от неучтённых контрибьюторов.",
+          "priority": "опционально",
+          "mitigation": "Включить AUTHORS в репозиторий и релизные артефакты."
+        },
+        {
+          "id": "T-5",
+          "component": "License text",
+          "boundary": "TB-2",
+          "stride": "Elevation of Privilege",
+          "threat": "Отсутствие patent grant → patent holder может предъявить претензии downstream-пользователям, фактически повышая свои права над предоставленными.",
+          "priority": "важно",
+          "mitigation": "Добавить patent grant clause или мигрировать на Apache-2.0."
+        },
+        {
+          "id": "T-6",
+          "component": "License text",
+          "boundary": "TB-2",
+          "stride": "Denial of Service",
+          "threat": "Юридический DoS: неоднозначность условий → downstream вынужден приостановить использование до юридической проверки.",
+          "priority": "опционально",
+          "mitigation": "Ясный, стандартный текст лицензии; FAQ в README."
+        }
+      ],
+      "summary": {
+        "total": 6,
+        "critical": 0,
+        "important": 4,
+        "optional": 2
+      },
+      "top_3": [
+        "T-2: отсутствие SPDX → repudiation и compliance-риск",
+        "T-5: отсутствие patent grant → EoP для patent holders",
+        "T-1: tampering с текстом лицензии без подписи релиза"
+      ]
+    },
+    "silence_layers": {
+      "input_silence": {
+        "what": "Не указан SPDX-идентификатор лицензии",
+        "where": "Заголовок файла LICENSE",
+        "impact": "Автоматическая классификация невозможна; downstream-сканеры могут ошибиться"
+      },
+      "assumption_silence": {
+        "assumption": "Предполагается, что AUTHORS file существует и доступен получателю",
+        "why": "Файл упомянут в тексте, но не приложен; не проверено, что он публикуется вместе с релизом"
+      },
+      "consequence_silence": {
+        "who": "Downstream-потребители и их юридические отделы",
+        "what": "При споре об условиях лицензии отсутствует machine-readable доказательство",
+        "irreversible": false
+      }
+    },
+    "intersection_risks": [
+      {
+        "layers": [
+          "input_silence (нет SPDX)",
+          "assumption_silence (AUTHORS не приложен)"
+        ],
+        "intersection": "Отсутствие SPDX × отсутствие AUTHORS",
+        "risk": "Полная неверифицируемость лицензии: ни автоматически, ни вручную нельзя подтвердить полный набор правообладателей и точные условия."
+      },
+      {
+        "layers": [
+          "consequence_silence (юридический спор)",
+          "RN-11 (ломающие изменения)"
+        ],
+        "intersection": "Юридический спор × изменение текста лицензии",
+        "risk": "Если лицензия будет изменена (напр. добавлен patent clause) без версионирования, downstream, принявшие старую версию, окажутся в неопределённом правовом статусе."
+      }
+    ],
+    "contracts": {
+      "idempotency": "n/a — не сервис",
+      "retry": "n/a",
+      "timeout": "n/a",
+      "circuit_breaker": "n/a",
+      "note": "Материал — лицензионный текст, контракты неприменимы."
+    },
+    "breaking_changes": [
+      {
+        "id": "BC-1",
+        "priority": "важно",
+        "change": "Изменение текста лицензии (добавление/удаление clause) без bump версии",
+        "impact": "Downstream-проекты, уже принявшие условия, могут оказаться под иными условиями без уведомления",
+        "rollback": "Версионировать лицензию (LICENSE-v1, LICENSE-v2) и фиксировать в CHANGELOG"
+      }
+    ],
+    "production_impact": {
+      "applicable": false,
+      "note": "Лицензионный текст не влияет на runtime. Влияние — юридическое/compliance."
+    },
+    "observability": {
+      "applicable": false,
+      "note": "n/a — статический текст."
+    },
+    "slo": {
+      "applicable": false,
+      "note": "n/a."
+    },
+    "on_call": {
+      "applicable": false,
+      "note": "n/a."
+    },
+    "tests": {
+      "present": false,
+      "types": [],
+      "coverage": "n/a",
+      "edge_cases": [
+        "Проверка наличия SPDX-идентификатора (lint)",
+        "Проверка наличия AUTHORS file в релизном артефакте",
+        "Проверка неизменности LICENSE hash между релизами"
+      ],
+      "note": "Для лицензионного текста применимы compliance-тесты (license linting), а не unit-тесты."
+    },
+    "dependencies": {
+      "total": 0,
+      "outdated": 0,
+      "cve": [],
+      "note": "Материал не содержит манифеста зависимостей. Внешние CVE из web-поиска (Tomcat, MarkLogic, OpenClaw) не относятся к данному материалу."
+    },
+    "failure_points": [
+      {
+        "id": "FP-1",
+        "priority": "важно",
+        "point": "Отсутствие SPDX-идентификатора → misclassification лицензии сканером"
+      },
+      {
+        "id": "FP-2",
+        "priority": "важно",
+        "point": "Отсутствие patent grant → риск patent-troll атак на downstream"
+      },
+      {
+        "id": "FP-3",
+        "priority": "опционально",
+        "point": "AUTHORS file упомянут, но не приложен → неполная атрибуция"
+      },
+      {
+        "id": "FP-4",
+        "priority": "опционально",
+        "point": "Нет версионирования лицензии → неопределённость при изменении текста"
+      }
+    ],
+    "resilience_score": 7,
+    "resilience_reason": "Текст лицензии стандартный, юридически валидный, с явным warranty disclaimer и name-use clause. Снижение с 10 до 7: отсутствие SPDX-идентификатора, отсутствие patent grant, неполная атрибуция (AUTHORS не приложен). Для статического текста это существенные compliance-пробелы, но не блокеры.",
+    "cove": {
+      "questions": [
+        {
+          "q": "Нашёл ли я хотя бы одну уязвимость? Если нет — почему?",
+          "independent_answer": "Прямых уязвимостей нет (не код). Найдены compliance-риски: отсутствие SPDX, отсутствие patent grant, неполная атрибуция.",
+          "match": true
+        },
+        {
+          "q": "Есть ли trust boundary, которую я не рассмотрел?",
+          "independent_answer": "Рассмотрены TB-1 (автор→текст), TB-2 (текст→потребитель), TB-3 (текст→сканер). Потенциально TB-4: текст→форк (derivative work) — не рассмотрена явно.",
+          "match": false
+        },
+        {
+          "q": "Есть ли допущение, которое я не проверил?",
+          "independent_answer": "Допущение, что AUTHORS file публикуется вместе с релизом — не проверено (файл не в материале).",
+          "match": false
+        },
+        {
+          "q": "Есть ли risk node, помеченный опционально, но должен быть критично?",
+          "independent_answer": "RN-6 (стратегическое избегание — отсутствие patent grant) для проектов с патентными рисками должен быть 'важно', не 'опционально'. Повышаю.",
+          "match": false
+        }
+      ],
+      "verdict": "requires_external_verification",
+      "flagged": [
+        "TB-4 (текст→форк) не рассмотрена — VERIFY",
+        "AUTHORS file existence — VERIFY",
+        "RN-6 повышен с опционально до важно"
+      ]
+    },
+    "priority_rule": "loss > risk > money",
+    "substitution_seen": false,
+    "tool_output": {
+      "ran": false,
+      "raw": null,
+      "note": "Инструменты analyze.py не запускались — материал не является кодом/манифестом/директорией тестов."
+    },
+    "plan_b": [
+      "SEC-1: добавить SPDX-License-Identifier в заголовок LICENSE",
+      "SEC-2: мигрировать на Apache-2.0 или добавить явный patent grant clause",
+      "SEC-3: включить AUTHORS file в релизный артефакт",
+      "RN-1: инлайнить список copyright holders или гарантировать публикацию AUTHORS",
+      "RN-6: добавить patent grant (повышен до 'важно')",
+      "RN-11: версионировать лицензию (LICENSE-v1, LICENSE-v2) с CHANGELOG",
+      "T-1: подписывать релизы GPG, фиксировать hash LICENSE",
+      "T-2: machine-readable metadata (package.json license, Cargo.toml license)",
+      "T-3: явный SPDX для корректной классификации сканерами",
+      "T-5: patent grant clause или миграция на Apache-2.0",
+      "FP-1: license linting в CI (напр. reuse-tool)",
+      "FP-2: юридический review перед релизом",
+      "FP-3: автоматическая проверка наличия AUTHORS в артефакте",
+      "FP-4: версионирование лицензии"
+    ],
+    "_meta": {
+      "stage": "stage2_analyst",
+      "tokens_in": 3485,
+      "tokens_out": 4182,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.001659
+    },
+    "_web_search": {
+      "used": true,
+      "queries": [
+        "recent CVEs and security best practices"
+      ],
+      "credits": 1
+    }
+  },
+  "stage3": null,
+  "stage4": {
+    "hierarchy": {
+      "core": "Лицензионный текст (LICENSE) — юридический контракт между copyright holder и downstream-потребителем",
+      "service": "Compliance-слой: SPDX-идентификация, license linting, release signing, machine-readable metadata",
+      "infra": "Репозиторий, релизные артефакты, CI/CD, GPG-инфраструктура, AUTHORS file"
+    },
+    "connections": [
+      {
+        "from": "LICENSE",
+        "to": "Downstream consumer",
+        "type": "legal grant",
+        "criticality": "high"
+      },
+      {
+        "from": "LICENSE",
+        "to": "SPDX scanner",
+        "type": "machine-readable classification",
+        "criticality": "high",
+        "status": "broken (no SPDX identifier)"
+      },
+      {
+        "from": "LICENSE",
+        "to": "AUTHORS file",
+        "type": "reference",
+        "criticality": "medium",
+        "status": "dangling (file not included)"
+      },
+      {
+        "from": "Release artifact",
+        "to": "LICENSE hash",
+        "type": "integrity binding",
+        "criticality": "high",
+        "status": "missing (no GPG signing)"
+      }
+    ],
+    "dependency_graph": {
+      "nodes": [
+        "LICENSE",
+        "AUTHORS",
+        "SPDX metadata",
+        "Release artifact",
+        "Downstream consumer",
+        "Compliance scanner",
+        "CI/CD"
+      ],
+      "edges": [
+        {
+          "from": "LICENSE",
+          "to": "Downstream consumer",
+          "weight": "critical"
+        },
+        {
+          "from": "LICENSE",
+          "to": "Compliance scanner",
+          "weight": "critical"
+        },
+        {
+          "from": "AUTHORS",
+          "to": "LICENSE",
+          "weight": "medium"
+        },
+        {
+          "from": "SPDX metadata",
+          "to": "Compliance scanner",
+          "weight": "critical"
+        },
+        {
+          "from": "CI/CD",
+          "to": "Release artifact",
+          "weight": "high"
+        },
+        {
+          "from": "Release artifact",
+          "to": "Downstream consumer",
+          "weight": "high"
+        }
+      ],
+      "impact_of": {
+        "LICENSE": "Все downstream-потребители и compliance-сканеры",
+        "AUTHORS": "Атрибуция copyright holders",
+        "SPDX metadata": "Автоматическая классификация лицензии"
+      },
+      "critical_path": "LICENSE → SPDX metadata → Compliance scanner → Downstream consumer",
+      "cycles": []
+    },
+    "options": [
+      {
+        "name": "Option A: Minimal fix — добавить SPDX + AUTHORS",
+        "isolation": "best-effort",
+        "scalability": "Достаточно для проектов без патентных рисков. Не решает patent grant gap.",
+        "changes": [
+          "Добавить 'SPDX-License-Identifier: MIT' в заголовок LICENSE",
+          "Включить AUTHORS file в релизный артефакт",
+          "Добавить license field в package manifest"
+        ],
+        "effort_days": "0.5–1",
+        "risk": "low",
+        "reversibility": "high"
+      },
+      {
+        "name": "Option B: Migrate to Apache-2.0",
+        "isolation": "best-effort",
+        "scalability": "Покрывает patent grant, trademark, SPDX-идентификацию. Стандарт для enterprise.",
+        "changes": [
+          "Заменить LICENSE на Apache-2.0",
+          "Обновить SPDX-идентификатор",
+          "Обновить package manifests",
+          "Уведомить downstream через CHANGELOG"
+        ],
+        "effort_days": "2–3",
+        "risk": "medium (breaking change для downstream)",
+        "reversibility": "low (обратной силы нет)"
+      },
+      {
+        "name": "Option C: Dual-license MIT + patent grant addendum",
+        "isolation": "best-effort",
+        "scalability": "Сохраняет MIT-совместимость, добавляет patent grant. Нестандартно → scanner confusion.",
+        "changes": [
+          "Оставить MIT текст",
+          "Добавить patent grant addendum",
+          "Явный SPDX: 'MIT AND LicenseRef-PatentGrant'",
+          "Документировать в README"
+        ],
+        "effort_days": "1–2",
+        "risk": "medium (нестандартный SPDX → scanner issues)",
+        "reversibility": "medium"
+      }
+    ],
+    "infrastructure_params": {
+      "pool_size": "n/a — не сервис",
+      "cpu": "n/a",
+      "memory": "n/a",
+      "replicas": "n/a",
+      "lockTTL": "n/a",
+      "autoscaling": "n/a",
+      "note": "Материал — статический лицензионный текст. Инфраструктурные параметры неприменимы."
+    },
+    "cloud_cost": {
+      "current": 0,
+      "projected": 0,
+      "delta": 0,
+      "reason": "no infrastructure change",
+      "engineering_cost": {
+        "option_a": "0.5–1 day (rate not set)",
+        "option_b": "2–3 days (rate not set)",
+        "option_c": "1–2 days (rate not set)"
+      },
+      "roi": "Compliance-риск снижается; предотвращение misclassification и patent-troll атак. ROI положительный при наличии downstream-потребителей.",
+      "cost_of_delay": "Каждый релиз без SPDX → накопление misclassified downstream-проектов; при юридическом споре — стоимость review + потенциальные претензии."
+    },
+    "migration_plan": {
+      "schema": "n/a — не БД",
+      "consistency": "Версионирование лицензии: LICENSE-v1 (текущая), LICENSE-v2 (после изменений). CHANGELOG фиксирует переход.",
+      "rollback": "Сохранить оригинальный LICENSE hash; при откате — восстановить из git history. Для Option B rollback невозможен для уже принявших Apache-2.0.",
+      "validation": [
+        "reuse-tool lint проходит",
+        "SPDX-идентификатор распознаётся ScanCode/FOSSA",
+        "AUTHORS file присутствует в релизном артефакте",
+        "LICENSE hash зафиксирован в release notes"
+      ]
+    },
+    "gaps": {
+      "caching": "n/a",
+      "retry": "n/a",
+      "health_checks": "n/a",
+      "migrations": "Версионирование лицензии отсутствует (FP-4)",
+      "monitoring": "License linting в CI отсутствует (FP-1)",
+      "alerts": "Нет алертов на изменение LICENSE hash между релизами (T-1)"
+    },
+    "evolvability": {
+      "feature_add": 8,
+      "module_replace": 9,
+      "coupling": 9,
+      "abstractions": 7,
+      "overall": 8,
+      "note": "Лицензионный текст легко заменяется/дополняется. Снижение: отсутствие версионирования и SPDX-абстракции."
+    },
+    "code_generation": {
+      "artifacts": [
+        {
+          "name": "LICENSE (Option A — minimal fix)",
+          "content": "SPDX-License-Identifier: MIT\n\nCOPYRIGHT AND PERMISSION NOTICE\n\nCopyright (C) Samuel Henrique <EMAIL_REDACTED>, Sergio Durigan\nJunior <EMAIL_REDACTED> and many contributors, see the AUTHORS\nfile.\n\nAll rights reserved.\n\nPermission to use, copy, modify, and distribute this software for any purpose\nwith or without fee is hereby granted, provided that the above copyright\nnotice and this permission notice appear in all copies.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF THIRD PARTY RIGHTS. IN\nNO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,\nDAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR\nOTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE\nOR OTHER DEALINGS IN THE SOFTWARE.\n\nExcept as contained in this notice, the name of a copyright holder shall not\nbe used in advertising or otherwise to promote the sale, use or other dealings\nin this Software without prior written authorization of the copyright holder.\n",
+          "validation": "python -c \"import ast; ast.parse(open('LICENSE').read())\" — n/a (не Python). Валидация: reuse lint"
+        }
+      ]
+    },
+    "inversion": {
+      "assumptions": [
+        {
+          "n": 1,
+          "assumption": "AUTHORS file существует и публикуется с релизом",
+          "inversion": "AUTHORS file не существует или не публикуется",
+          "consequences": [
+            "Атрибуция неполна → потенциальные претензии от неучтённых контрибьюторов",
+            "Downstream не может верифицировать полный список copyright holders",
+            "Юридический спор: кто именно предоставил права?"
+          ]
+        },
+        {
+          "n": 2,
+          "assumption": "MIT-подобная лицензия достаточна для downstream",
+          "inversion": "Downstream требует patent grant (enterprise policy)",
+          "consequences": [
+            "Downstream вынужден отказаться от использования или форкнуть",
+            "Compliance-отдел блокирует интеграцию",
+            "Проект теряет enterprise-адопцию"
+          ]
+        },
+        {
+          "n": 3,
+          "assumption": "Текст лицензии не будет изменён",
+          "inversion": "Текст изменён без версионирования",
+          "consequences": [
+            "Downstream, принявшие старую версию, в неопределённом правовом статусе",
+            "Невозможно доказать, какая версия была принята",
+            "Fork-риск: сообщество форкает на старой лицензии"
+          ]
+        }
+      ],
+      "failure_points_on_inversion": [
+        "Отсутствие AUTHORS → неверифицируемая атрибуция",
+        "Отсутствие patent grant → enterprise-блокировка",
+        "Отсутствие версионирования → правовая неопределённость при изменении"
+      ]
+    },
+    "thresholds": [
+      {
+        "metric": "Количество downstream-проектов с misclassified лицензией",
+        "value": "≥ 1",
+        "consequence": "Добавить SPDX немедленно (Option A)"
+      },
+      {
+        "metric": "Enterprise-потребители в downstream",
+        "value": "≥ 1",
+        "consequence": "Мигрировать на Apache-2.0 (Option B)"
+      },
+      {
+        "metric": "Изменение LICENSE без bump версии",
+        "value": "≥ 1 раз",
+        "consequence": "Ввести версионирование лицензии + CHANGELOG"
+      },
+      {
+        "metric": "Patent-troll претензия к downstream",
+        "value": "≥ 1",
+        "consequence": "Немедленный patent grant addendum или миграция"
+      }
+    ],
+    "constraints": {
+      "items": [
+        "SPDX-идентификатор обязателен для автоматической классификации",
+        "AUTHORS file должен быть включён в релизный артефакт",
+        "Изменение лицензии требует версионирования"
+      ],
+      "binding": "SPDX-идентификатор — самое жёсткое: без него все downstream-сканеры не работают, и compliance-риск максимален",
+      "decision": "Приоритет — Option A (SPDX + AUTHORS). Option B — только при наличии enterprise-потребителей."
+    },
+    "second_opinion": {
+      "role": "security engineer",
+      "view": "Лицензионный текст — supply-chain артефакт. Отсутствие SPDX и patent grant — это не юридическая мелочь, а вектор атаки: misclassification → ложное соответствие политике → уязвимый код попадает в production. Tampering с LICENSE без GPG-подписи — реальный риск.",
+      "agreement": "Принимаю приоритет SPDX и GPG-подписи релизов. Принимаю повышение RN-6 до 'важно'.",
+      "disagreement": "Отвергаю Option C (dual-license addendum) — нестандартный SPDX создаёт больше проблем для сканеров, чем решает. Лучше чистый Apache-2.0 или чистый MIT."
+    },
+    "stop_reason": "logic",
+    "stop_action": "return_to_stage2",
+    "collision": {
+      "items": [
+        {
+          "analyst": "RN-6 (patent grant) — 'важно' после повышения",
+          "researcher": "Стандартная MIT-лицензия широко используется без patent grant",
+          "synthesizer": "Option A игнорирует patent grant gap",
+          "contradiction": "Analyst требует patent grant, но MIT-экосистема работает без него десятилетиями",
+          "resolution": "Приоритет — SPDX + AUTHORS (Option A). Patent grant — только при enterprise-потребителях (threshold: ≥1)."
+        },
+        {
+          "analyst": "RN-11 (breaking change при изменении лицензии)",
+          "researcher": "Лицензии редко меняются в зрелых проектах",
+          "synthesizer": "Option B — breaking change для downstream",
+          "contradiction": "Миграция на Apache-2.0 решает patent gap, но создаёт breaking change",
+          "resolution": "Версионирование лицензии (LICENSE-v1/v2) + CHANGELOG. Downstream выбирает версию."
+        }
+      ],
+      "critical_count": 0,
+      "note": "Оба противоречия — не критичные (обе стороны не на 'критично'). Фиксируются, но не требуют эскалации."
+    },
+    "escalation": {
+      "level": 0,
+      "action": "none",
+      "note": "0 критичных конфликтов. Синтез разрешает оба противоречия через thresholds."
+    },
+    "cove": {
+      "questions": [
+        {
+          "q": "Есть ли альтернатива, которую я отклонил слишком быстро?",
+          "answer": "Option C (dual-license) отклонён из-за нестандартного SPDX. Но для проектов, где MIT-совместимость критична, это может быть единственный путь. Flagged."
+        },
+        {
+          "q": "Есть ли риск, который я перенёс в ASSUMPTION без проверки?",
+          "answer": "Допущение, что AUTHORS file публикуется — не проверено. Требует external verification."
+        },
+        {
+          "q": "Есть ли конфликт между моими рекомендациями?",
+          "answer": "Option A (minimal fix) не решает patent gap, но Option B (Apache-2.0) — breaking change. Конфликт разрешён через thresholds."
+        },
+        {
+          "q": "Есть ли блок, который я забыл включить?",
+          "answer": "TB-4 (текст→форк) из stage2 COVE не рассмотрен явно. Добавлен в inversion (assumption 3)."
+        }
+      ],
+      "verdict": "requires_external_verification",
+      "flagged": [
+        "AUTHORS file existence — VERIFY",
+        "Enterprise-потребители в downstream — VERIFY",
+        "TB-4 (текст→форк) — рассмотрен через inversion"
+      ]
+    },
+    "return_to_stage2": false,
+    "return_to_stage3": false,
+    "force_emergency": false,
+    "force_fallback": false,
+    "new_risks": [
+      {
+        "id": "NR-1",
+        "risk": "Option B (Apache-2.0) — breaking change для downstream, уже принявших MIT",
+        "priority": "важно",
+        "mitigation": "Версионирование + CHANGELOG + уведомление downstream"
+      },
+      {
+        "id": "NR-2",
+        "risk": "Option C (dual-license) — нестандартный SPDX ломает сканеры",
+        "priority": "опционально",
+        "mitigation": "Использовать только при явной необходимости MIT-совместимости"
+      }
+    ],
+    "tool_output": {
+      "ran": false,
+      "raw": null,
+      "note": "analyze.py не запускался — материал не является кодом/манифестом/директорией тестов. mode_calc/cost/migrate/lockttl неприменимы."
+    },
+    "artifacts": {
+      "sql_migration": null,
+      "dockerfile": null,
+      "gantt": "```mermaid\ngantt\n    title License Compliance Fix — Option A\n    dateFormat  YYYY-MM-DD\n    section Analysis\n    Verify AUTHORS existence       :a1, 2026-10-15, 1d\n    Check downstream consumers     :a2, after a1, 1d\n    section Implementation\n    Add SPDX identifier            :b1, after a2, 0.5d\n    Include AUTHORS in artifact    :b2, after b1, 0.5d\n    Update package manifests       :b3, after b2, 0.5d\n    section Validation\n    Run reuse-tool lint            :c1, after b3, 0.5d\n    Verify scanner classification  :c2, after c1, 0.5d\n    section Release\n    GPG-sign release               :d1, after c2, 0.5d\n    Update CHANGELOG               :d2, after d1, 0.5d\n```"
+    },
+    "_meta": {
+      "stage": "stage4_synthesizer",
+      "tokens_in": 7051,
+      "tokens_out": 4234,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.002173
+    }
+  },
+  "audit": {
+    "audit_id": "audit-2026-10-15-2b9c7f",
+    "session_id": "sess-2026-10-15-090636",
+    "timestamp": "2026-10-15T09:07:36.180230+00:00",
+    "material_hash": "sha256:ad3b7e69f73b00841998982fdf87388a84ea6a5e4d814f80857e7f2e0cdce552",
+    "material_hash_full": "sha256:ad3b7e69f73b00841998982fdf87388a84ea6a5e4d814f80857e7f2e0cdce552",
+    "material_size": {
+      "lines": 23,
+      "chars": 1125
+    },
+    "model": "deepseek-chat",
+    "critique_verdict": "SAFE",
+    "risk_verdict": "SAFE",
+    "cwe_ids": [],
+    "owasp_categories": [],
+    "exploitability": {
+      "reachable": false,
+      "auth_required": false,
+      "exploit_path": "not reachable from public entrypoint",
+      "blast_radius": "none",
+      "entry_points": [],
+      "blast_indicators": [],
+      "path": [],
+      "source_count": 0,
+      "sources": [],
+      "entry_points_lines": [],
+      "sinks": []
+    },
+    "dataflow": {},
+    "anomaly": {},
+    "provenance": {
+      "source": "git/main",
+      "git_commit": "176c400e33a3960f890fd3cb12ddaa06dee70b83",
+      "git_commit_short": "176c400",
+      "git_branch": "main",
+      "git_author": "dvddv9",
+      "git_author_email": "hndav9@yahoo.com",
+      "git_remote": "https://github.com/dvddv9/vishap.git",
+      "ci_run_id": "",
+      "ci_pr_number": "",
+      "timestamp": "2026-10-15T09:07:36.003577+00:00"
+    },
+    "pii_detected": false,
+    "pii_details": {},
+    "compliance_flags": [],
+    "compliance_controls": {},
+    "compliance_standards": [],
+    "runbook": {},
+    "runbook_cwes": [],
+    "runbook_steps_count": 0,
+    "redaction_applied": true,
+    "redaction_map": {
+      "email": 2
+    },
+    "sast_findings": 0,
+    "sast_high_priority": 0,
+    "sast_tools": {},
+    "sca_vulnerabilities": 0,
+    "truncated": false,
+    "original_size": 1125,
+    "web_search_used": true,
+    "web_search_queries": [
+      "recent CVEs and security best practices"
+    ],
+    "web_search_credits": 1,
+    "escalation_level": "Оба противоречия — не критичные (обе стороны не на 'критично'). Фиксируются, но не требуют эскалации."
+  },
+  "completeness": {
+    "level": "D1",
+    "required_count": 5,
+    "missing": [],
+    "missing_count": 0,
+    "loss_pct": 0.0,
+    "material_complete": true,
+    "threshold": 30.0,
+    "verdict": "ACCEPTABLE"
+  },
+  "critique_verdict": "SAFE",
+  "cost_usd": 0.004408,
+  "final_markdown": "[ECHO] Лицензионный текст (MIT-подобный, с name-use clause), ~25 строк, статический. Не код, не манифест. Уровень D1, task_type=other.\n\n[ROUTE] stage0 → stage1 (scanner) → stage2 (analyst) → stage4 (synthesizer) → stage5 (transmitter). Route пуст, research_first=false, parallel_stages=false.\n\n[CONCLUSION] Материал — юридически валидный MIT-подобный лицензионный текст. Прямых уязвимостей нет (не исполняемый код). Ключевые compliance-пробелы: отсутствие SPDX-идентификатора, отсутствие patent grant, AUTHORS file упомянут но не приложен. Приоритет — Option A (SPDX + AUTHORS), Option B (Apache-2.0) только при наличии enterprise-потребителей.\n\n[RISK] важно — отсутствие SPDX → misclassification сканерами (FOSSA/Snyk/ScanCode). важно — отсутствие patent grant → риск patent-troll атак на downstream. опционально — AUTHORS не приложен → неполная атрибуция. опционально — нет версионирования лицензии → правовая неопределённость при изменении текста.\n\n[ACTION] NOW: добавить `SPDX-License-Identifier: MIT` в заголовок LICENSE. TODAY: включить AUTHORS в релизный артефакт, добавить license field в package manifest. TOMORROW: настроить reuse-tool lint в CI, GPG-подпись релизов. LATER: оценить необходимость миграции на Apache-2.0 (threshold: ≥1 enterprise-потребитель).\n\n[QUESTION] Существует ли AUTHORS file и публикуется ли он с релизом? (VERIFY: не проверено). Есть ли enterprise-потребители в downstream, требующие patent grant? (VERIFY: не проверено). Рассматривалась ли TB-4 (текст→форк/derivative work)? (VERIFY: не рассмотрена явно).\n\n[FUNC:FULL]\n- ECON: effort Option A ~0.5–1 день, Option B ~2–3 дня; cost $0 инфраструктурный; ROI положительный при наличии downstream; cost of delay — накопление misclassified проектов.\n- FAIL: критично — нет (0 critical); важно — SPDX отсутствует → scanner misclassification; patent grant отсутствует → EoP для patent holders; recovery — Option A (SPDX + AUTHORS) за 0.5–1 день.\n- METRICS: ~25 строк, 0 функций, 0 deps, 0 tests, 0 CVE; resilience_score 7/10; evolvability 8/10.\n- ALTERNATIVES: Option A (SPDX + AUTHORS, low risk, high reversibility); Option B (Apache-2.0, medium risk, low reversibility); Option C (dual-license addendum, medium risk, scanner confusion — отклонён).\n- EVOLVE: coupling 9/10, abstractions 7/10, feature_add 8/10, module_replace 9/10; friction — отсутствие версионирования лицензии.\n- COMPARE: Option A — 0.5–1 день, low risk, high reversibility; Option B — 2–3 дня, medium risk, breaking change; Option C — 1–2 дня, medium risk, нестандартный SPDX.\n\n[MANDATORY BASE]\n1. ECONOMICS: time 0.5–1 день (Option A), cost $0 инфраструктурный, при условии отсутствия enterprise-потребителей; Option B — 2–3 дня при наличии enterprise-потребителей.\n2. RISKS: критично — нет; важно — SPDX отсутствует, patent grant отсутствует, при условии downstream-сканеров и patent-рисков; опционально — AUTHORS не приложен, нет версионирования.\n3. INFRASTRUCTURE: pool_size=n/a, при условии что материал — статический текст, не сервис.\n4. CODE: change 0 строк кода, при условии что материал — лицензионный текст; добавление SPDX — 1 строка в LICENSE.\n5. ACTION: now — добавить SPDX; tomorrow — AUTHORS + package manifest + CI lint.\n6. TIMELINE: NOW — SPDX; TODAY — AUTHORS, manifest; TOMORROW — CI lint, GPG; LATER — оценка Apache-2.0.\n7. PRODUCTION IMPACT: users n/a (не runtime), deploy window n/a, rollback n/a — влияние юридическое/compliance.\n8. SLO IMPACT: current n/a, after n/a, при условии что лицензионный текст не влияет на runtime SLO.\n9. CLOUD COST: current $0, projected $0, delta ±$0, при условии отсутствия инфраструктурных изменений.\n10. ON-CALL: new alerts — нет; runbook — license linting в CI; escalation — юридический review при изменении LICENSE.\n\n[PLAN_B]\n- SEC-1: добавить `SPDX-License-Identifier: MIT` в заголовок LICENSE.\n- SEC-2: мигрировать на Apache-2.0 или добавить явный patent grant clause.\n- SEC-3: включить AUTHORS file в релизный артефакт.\n- RN-1: инлайнить список copyright holders или гарантировать публикацию AUTHORS.\n- RN-6: добавить patent grant (повышен до «важно»).\n- RN-11: версионировать лицензию (LICENSE-v1, LICENSE-v2) с CHANGELOG.\n- T-1: подписывать релизы GPG, фиксировать hash LICENSE.\n- T-2: machine-readable metadata (package.json license, Cargo.toml license).\n- T-3: явный SPDX для корректной классификации сканерами.\n- T-5: patent grant clause или миграция на Apache-2.0.\n- FP-1: license linting в CI (reuse-tool).\n- FP-2: юридический review перед релизом.\n- FP-3: автоматическая проверка наличия AUTHORS в артефакте.\n- FP-4: версионирование лицензии.\n\n[MATRIX]\n| Dimension | Status | Comment |\n|-----------|--------|---------|\n| Security | WARN | Нет прямых уязвимостей (не код). Compliance-риски: нет SPDX, нет patent grant. |\n| Facts | OK | Все утверждения опираются на текст лицензии и stage2 findings. |\n| Logic | OK | Option A/B/C согласованы с thresholds и constraints. |\n| Applicability | OK | Рекомендации применимы к любому проекту с MIT-подобной лицензией. |\n| Effectiveness | OK | Option A закрывает 2 из 3 важных рисков за 0.5–1 день. |\n| Resilience | WARN | resilience_score 7/10 — снижение из-за compliance-пробелов. |\n| Human factor | WARN | AUTHORS file existence не проверен (VERIFY); enterprise-потребители не проверены (VERIFY). |\n| Clarity | OK | Текст лицензии ясен, но отсутствие SPDX снижает machine-readability. |\n\n[REFLEXION]\n1. Слабое место: stage2 COVE flagged TB-4 (текст→форк) как нерассмотренную trust boundary → исправлено: TB-4 покрыт через inversion (assumption 3 — изменение текста без версионирования).\n2. Слабое место: RN-6 изначально «опционально», но для проектов с патентными рисками должен быть «важно» → исправлено: RN-6 повышен до «важно» в stage2 COVE и учтён в [RISK] и [PLAN_B].\n3. Слабое место: AUTHORS file existence и enterprise-потребители не проверены → исправлено: помечены как VERIFY в [QUESTION] и [MATRIX] (Human factor WARN), без категоричных утверждений.\nИтог: accepted\n\n[AUDIT_TRAIL]\ngenerator: Vishap V5.10.7\naudit_id: audit-2026-10-15-2b9c7f\nmaterial_hash: sha256:ad3b7e69f73b00841998982fdf87388a84ea6a5e4d814f80857e7f2e0cdce552\nmaterial_hash_full: sha256:ad3b7e69f73b00841998982fdf87388a84ea6a5e4d814f80857e7f2e0cdce552\npii_detected: false\ncompliance_flags: []\ncompliance_controls: {}\ncompliance_standards: []\ncritique_verdict: SAFE\nrisk_verdict: SAFE\ncwe_ids: []\nowasp_categories: []\nexploitability_reachable: False\nexploitability_auth_required: False\nexploitability_blast_radius: none\nexploitability_source_count: 0\nexploitability_path: []\ndataflow_path: []\ndataflow_source_count: 0\nanomaly_verdict: NORMAL\nanomaly_count: 0\nanomaly_method: none\nanomaly_top: []\nprovenance_source: git/main\nprovenance_commit: 176c400\n\n\n[COMPLETENESS]\nlevel: D1\nrequired: 5\nmissing: []\nloss_pct: 0.0%\nmaterial_complete: True\nverdict: ACCEPTABLE\n",
+  "baseline_stats": {
+    "baseline_used": false,
+    "baseline_saved": false,
+    "baseline_path": "",
+    "baseline_save_path": "",
+    "baseline_known": 0,
+    "baseline_new": 11,
+    "baseline_total": 11
+  }
+}

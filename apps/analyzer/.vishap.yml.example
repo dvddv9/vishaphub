@@ -1,0 +1,36 @@
+# Vishap Quality Gates configuration
+# Copy to .vishap.yml in your project root.
+#
+# CI usage:
+#   vishap analyze src/file.py --gate
+#   # exit code 0 = pass, 1 = fail, 2 = error
+#
+# GitHub Action:
+#   - run: vishap analyze src/ --gate
+
+quality_gate:
+  # Severity levels that break the build
+  fail_on: [critical]
+
+  # Severity levels that warn (not fail)
+  warn_on: [high, medium]
+
+  # Severity levels to ignore entirely
+  ignore: [low, info]
+
+  # CWE IDs to skip (e.g. XSS in test files)
+  ignore_rules:
+    - CWE-79
+
+  # Path prefixes to skip
+  ignore_paths:
+    - tests/
+    - examples/
+    - docs/
+
+  # Thresholds: how many of each severity are tolerated
+  max_critical: 0
+  max_high: 10
+
+  # Fail if exploitability.reachable=true in audit
+  fail_on_reachable: false

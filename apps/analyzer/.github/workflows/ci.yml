@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: vishap
+          POSTGRES_PASSWORD: vishap_dev
+          POSTGRES_DB: vishap
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U vishap"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install dev tools
+        run: pip install ruff pytest-asyncio pytest-cov pip-audit
+
+      - name: "Lint (ruff: F + E9)"
+        run: ruff check src/ --config pyproject.toml
+
+      - name: "Dependency audit (pip-audit, informational)"
+        run: pip-audit -r requirements.txt --progress-spinner off
+        continue-on-error: true
+
+      - name: Wait for Postgres
+        run: |
+          for i in {1..30}; do
+            pg_isready -h localhost -U vishap -d vishap && break
+            sleep 2
+          done
+        env:
+          PGPASSWORD: vishap_dev
+
+      - name: Apply Database Migrations
+        run: alembic upgrade head
+        env:
+          DATABASE_URL: postgresql+asyncpg://vishap:vishap_dev@localhost:5432/vishap
+          TEST_POSTGRES_URL: postgresql+asyncpg://vishap:vishap_dev@localhost:5432/vishap
+
+      - name: Run tests (sans e2e)
+        run: python -m pytest tests/ --ignore=tests/test_e2e.py -q --cov=src --cov-report=term:skip-covered
+        env:
+          TEST_POSTGRES_URL: postgresql+asyncpg://vishap:vishap_dev@localhost:5432/vishap
+          VISHAP_DATA_DIR: ${{ github.workspace }}/data
+          OTEL_SDK_DISABLED: "true"
+          # src/main.py is fail-closed at import without CONVEYOR_API_KEY;
+          # tests that import the app do not exercise the API-key gate.
+          VISHAP_ALLOW_NO_KEY: "1"
+
+      - name: Check syntax (ast.parse)
+        run: |
+          python -c "import ast, pathlib; [ast.parse(f.read_text(encoding='utf-8')) for f in pathlib.Path('src').rglob('*.py')]; print('OK: all .py valid')"
+
+  # The UI is not covered by the Python job, and a broken export is invisible
+  # until someone opens the desktop app: `next build` must also pass for the
+  # Tauri variant, which is a static export (`NEXT_PUBLIC_DESKTOP=1`).
+  ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ui-next
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: ui-next/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      - name: Build (web)
+        run: npm run build
+
+      - name: Build (desktop static export)
+        run: npm run build:desktop

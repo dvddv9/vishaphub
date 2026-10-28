@@ -1,0 +1,131 @@
+{
+  "session_id": "sess-2026-10-14-181153",
+  "filename": "packet-btl2cap.java",
+  "level": "D3",
+  "route": [
+    "stage4",
+    "stage3"
+  ],
+  "final_markdown": "# packet-btl2cap.c — D3 Review\n\n[ECHO] Усечённый слайс `packet-btl2cap.c` (Wireshark Bluetooth L2CAP dissector, ревизия 28412, 2009). Видны: `dissect_comrej`, `dissect_connrequest`, `dissect_options` (частично), таблицы `value_string`, file-scope state (`cid_to_psm_table`, `hf_*`, `ett_*`). Инъектированные аннотации `BUG_68DE1B7B(9)/(10)` присутствуют.\n\n[ROUTE] stage4 → stage3 → stage5. task_type=review. force_emergency=false (рекомендация — hotfix 2–3 дня, не STOP сегодня).\n\n[CONCLUSION] Парсер TLV в `dissect_options` не валидирует `option_length` против остатка буфера и против суммы подполей — классический CWE-125 (over-read). В case 0x03 (QOS) безусловно читается 22 байта независимо от `option_length`. В case 0x04 присутствует известный NULL-deref `config_data` (BUG_68DE1B7B(10)), не закрытый. Неизвестный `option_type` с `option_length>0` не продвигает offset — потенциальный CWE-835 (infinite loop). Возвраты `se_alloc`/`se_tree_create_non_persistent` не проверяются (CWE-252). Комментарий `cid_to_psm_table` («mask the cid with 0x8000») противоречит коду (`scid|0x8000`, OR). Признаков хардкод-секретов не найдено (VERIFY: не проверялось вне слайса).\n\n[RISK_NODES]\n- RN-1 (критично): `option_length` не валидируется → over-read за границу tvb.\n- RN-2 (важно): неизвестный `option_type` без skip → потенциальный infinite loop.\n- RN-3 (опционально): `cid_to_psm_table` дублирует `l2cap_psm_dissector_table`.\n- RN-4 (важно): комментарий OR vs mask — расхождение документации и кода.\n- RN-5 (важно): BUG_68DE1B7B(9) комментарий противоречит фактическому коду.\n- RN-6 (важно): нет валидации `option_length` против остатка `length`.\n- RN-7 (опционально): `se_tree_create_non_persistent` на каждый Connection Request.\n- RN-8 (критично): нет проверки возврата `se_alloc` → NULL deref при OOM.\n- RN-9 (важно, повышено из опционально): неограниченный рост `cid_to_psm_table` → memory DoS.\n- RN-10 (опционально): single-thread assumption не подтверждён по версии.\n- RN-11 (важно): legacy emem API — deprecated, lifetime-риски.\n\n[PLAN_B]\n- RN-1: валидировать `option_length` против `tvb_reported_length_remaining` и против суммы подполей; при несоответствии — expert warning + skip по `option_length`.\n- RN-2: для неизвестного `option_type` всегда продвигать offset на `option_length` (skip), не полагаясь на switch.\n- RN-3: унифицировать маршрутизацию — `cid_to_psm_table` как единственный источник, `dissector_table` только для PSM dispatch.\n- RN-4: исправить комментарий на «OR with 0x8000 for received CIDs» либо заменить на маску, если задумано маскирование.\n- RN-5: либо реализовать полную проверку (валидный указатель + валидный mode), либо удалить вводящий в заблуждение комментарий.\n- RN-6: bounds-check helper `ensure(offset + option_length <= end)` перед разбором.\n- RN-7: перейти на wmem с явным scope (packet/file).\n- RN-8: проверять возвраты `se_alloc`/`se_tree_create`; при NULL — expert error и ранний return.\n- RN-9: лимит записей в `cid_to_psm_table` или очистка по TTL/сессии.\n- RN-10: документировать single-thread assumption; при параллелизации — mutex/RCU.\n- RN-11: поэтапная миграция emem→wmem с тестами lifetime.\n\n[THREAT_MODEL]\n- Компоненты: dissector, tvbuff, `cid_to_psm_table`, proto_tree, `l2cap_psm_dissector_table`.\n- Trust boundaries: network→dissector (untrusted bytes), dissector→proto_tree (UI), dissector→`cid_to_psm_table` (shared state).\n- Top-3: T: `option_length` не валидируется → over-read (SEC-1); T: `config_data` NULL deref (SEC-2); D: неизвестный `option_type` → infinite loop (SEC-3).\n- Итого: 8 угроз — 2 критично, 3 важно, 3 опционально.\n\n[SILENCE_LAYERS]\n- Input silence: нет данных о нагрузке (частота Connection Request, размер захватов, число CID) → невозможно оценить реальный риск memory DoS.\n- Assumption silence: предполагается согласованность `option_length` с содержимым — явной валидации нет.\n- Consequence silence: crash процесса Wireshark обратим (перезапуск); утечка памяти в UI — необратима в рамках сессии.\n\n[INTERSECTION_RISKS]\n- input_silence × assumption_silence: нет данных о нагрузке × предположение о корректности `option_length` → невозможно оценить вероятность эксплуатации over-read.\n- assumption_silence × consequence_silence: предположение о валидности × необратимость утечки в UI → при враждебном пакете dissector может повредить состояние без отката.\n- RN-1 × RN-2: невалидированный `option_length` × неизвестный `option_type` → два класса дефектов (over-read / зацикливание) из одной причины.\n\n[ASSEMBLY]\n- Core: `dissect_options` (TLV parser, FP-1/FP-2/FP-3), `dissect_connrequest` (мутация `cid_to_psm_table`, точка невозврата), `dissect_comrej` (простой reader).\n- Service: `cid_to_psm_table` (session-scoped routing), `l2cap_psm_dissector_table` (dispatch), proto_tree/expert info (наблюдаемость).\n- Infra: epan/tvbuff (bounds-checked byte access — единственная защита), epan/emem (legacy), glib, registration (не в слайсе).\n\n[REFACTORING]\n- Вариант A (minimal hardening, 2–3 дня, риск низкий): bounds-check `option_length`, NULL-check `config_data`, skip неизвестных опций, проверка возвратов аллокаторов. Закрывает FP-1/FP-2/FP-3.\n- Вариант B (A + emem→wmem, 5–8 дней, риск средний): явный scope, лимит записей в `cid_to_psm_table`.\n- Вариант C (B + TLV-таблица + единый routing, 10–15 дней, риск высокий): OCP-совместимая таблица опций, унификация routing, исправление OR→mask. Breaking change для существующих записей.\n\n[PARALLELS]\n- Классический паттерн TLV-парсеров без bounds-checking (CWE-125) — ср. с историческими CVE в dissectors Wireshark.\n- Legacy emem → wmem — стандартная миграция Wireshark 1.x → 2.x.\n- `cid_to_psm_table` vs `l2cap_psm_dissector_table` — дублирование routing-механизмов, типичное для эволюционирующих dissectors.\n\n[TESTS]\n- unit: TLV с `option_length<22` для QOS → expert warning, offset корректен.\n- unit: `option_type=0xFF, option_length=4` → offset продвинут на 4, цикл завершается.\n- unit: `config_data=NULL` → нет deref, expert error.\n- unit: mock `se_alloc→NULL` → ранний return без crash.\n- unit: `scid=0x0040, p2p_dir=RECV` → ключ `0x8040`; проверка семантики OR vs mask.\n- integration: повторный dissect того же пакета → идентичный proto_tree.\n- Edge cases: `option_length=0`; `option_length > остатка length`; `length=0`; `scid=0x0000`; `psm=0xFFFF`; truncated tvb на границе поля.\n\n[ACTION]\n- NOW: зафиксировать RN-1, RN-8 как критические; подготовить патч варианта A (bounds-check + NULL-check + skip + проверка возвратов).\n- TODAY: добавить expert_add_info для аномалий (`option_length` mismatch, unknown option_type, NULL alloc).\n- TOMORROW: unit-тесты на edge cases; исправить комментарий RN-4 (OR vs mask).\n- LATER: миграция emem→wmem (RN-11); лимит `cid_to_psm_table` (RN-9); пересмотр варианта C при долгосрочной поддержке.\n\n[QUESTIONS]\n- VERIFY: какая версия Wireshark/glib в целевой сборке? (single-thread assumption RN-10 не подтверждён)\n- VERIFY: есть ли внешние CVE для используемой версии epan/emem?\n- VERIFY: есть ли fuzz-корпус в CI для этого dissector?\n- Есть ли данные о нагрузке (частота Connection Request) для оценки RN-9?\n- Задумано ли маскирование или OR в `cid_to_psm_table` (RN-4)?\n\n[FUNC:FULL]\n- ECON: effort 2–3 дня (вариант A) / 5–8 (B) / 10–15 (C); cost $0 cloud delta (dissector локальный); ROI максимальный у A — 2 критических CWE за 2–3 дня; budget не задан (rate unknown); cost of delay — окно для over-read/NULL-deref на враждебном захвате сохраняется каждый день.\n- FAIL: критично — `option_length` без bounds-check (FP-1), `config_data` NULL deref (FP-2); важно — неизвестный `option_type` без skip (FP-3), unchecked `se_alloc` (FP-4); cascade: over-read → crash → потеря сессии анализа; recovery: перезапуск Wireshark, откат ревизии dissector.\n- METRICS: ~40 static field handles, 10 value_string tables, 3 dissect-функции в слайсе; deps=7 (glib, epan/packet, etypes, epan/expert, epan/emem, packet-bthci_acl, packet-btl2cap); tests=0 в слайсе; perf — не измерялась; quality — legacy emem, injected BUG-аннотации; infra — single-threaded per capture.\n- ALTERNATIVES: языки — C (обязателен для Wireshark dissector); фреймворки — epan API (единственный); БД — n/a; инфра — n/a; паттерны — TLV-таблица (вариант C) vs switch (текущий); allocator — emem (legacy) vs wmem.\n- EVOLVE: coupling 3/10 (tight к epan API — норма для dissector); abstractions 4/10 (switch нарушает OCP); growth 4/10 (feature_add); friction — legacy emem, дублирование routing; overall 4/10.\n- COMPARE: A — 2–3 дня, низкий риск, низкая сложность; B — 5–8 дней, средний риск, средняя сложность; C — 10–15 дней, высокий риск (breaking change ключей), высокая сложность.\n\n[MANDATORY BASE]\n1. ECONOMICS: time 2–3 дня (вариант A), cost $0 cloud delta, при условии что engineering rate не задан и dissector работает локально.\n2. RISKS: критично — over-read (RN-1), NULL deref (RN-8); важно — infinite loop (RN-2), memory DoS (RN-9), emem legacy (RN-11); при условии разбора враждебного/повреждённого L2CAP-трафика.\n3. INFRASTRUCTURE: pool_size=n/a (dissector, не сервис), при условии single-threaded per capture; memory — emem session-scoped, `cid_to_psm_table` растёт монотонно.\n4. CODE: change ~30–50 строк в `dissect_options` + ~10 в `dissect_connrequest`, при условии варианта A (bounds + NULL + skip + проверка возвратов).\n5. ACTION: now — зафиксировать RN-1/RN-8, подготовить патч A; tomorrow — unit-тесты + исправление комментария RN-4.\n6. TIMELINE: NOW — фиксация критических RN; TODAY — expert_add_info; TOMORROW — unit-тесты, RN-4; LATER — emem→wmem, лимит таблицы, пересмотр C.\n7. PRODUCTION IMPACT: users — аналитики Wireshark, разбирающие враждебный/повреждённый захват; deploy window — релиз Wireshark; rollback — откат ревизии dissector, локально для плагина.\n8. SLO IMPACT: applicable=false (dissector не сервис); релевантная метрика — отсутствие crash на fuzz-корпусе; current N% не измерено (VERIFY).\n9. CLOUD COST: current $0, projected $0, delta ±$0, при условии отсутствия инфраструктурных изменений.\n10. ON-CALL: applicable=false; ответственность — мейнтейнеры Wireshark; релевантен fuzz-корпус в CI, не runtime-алерты.\n\n[MATRIX]\n| Dimension | Status | Comment |\n|-----------|--------|---------|\n| Security | FAIL | CWE-125 (over-read), CWE-476 (NULL deref), CWE-835 (infinite loop), CWE-252 (unchecked alloc) |\n| Facts | OK | Все наблюдения из слайса; числа (deps=7, branches=14) из stage1 |\n| Logic | WARN | Комментарий OR vs mask противоречит коду (RN-4); BUG_68DE1B7B(9) противоречит фактическому коду (RN-5) |\n| Applicability | OK | Вариант A реализуем за 2–3 дня, локальные изменения |\n| Effectiveness | WARN | A закрывает FP-1/FP-2/FP-3, но не RN-9 (рост таблицы) и RN-11 (emem) |\n| Resilience | FAIL | resilience_score=4/10; нет bounds-checking, нет проверки возвратов, нет тестов |\n| Human factor | WARN | Injected BUG-аннотации оставлены в коде; комментарии вводят в заблуждение |\n| Clarity | OK | Структура dissector стандартна для Wireshark; inline-комментарии по опциям |\n\n[REFLEXION]\n1. Слабое место: RN-9 изначально помечен опционально, но при враждебном трафике — memory DoS. Исправлено: повышено до «важно» в [RISK_NODES] и [PLAN_B], согласовано с second_opinion stage4.\n2. Слабое место: single-thread assumption Wireshark не проверен по версии. Исправлено: вынесено в [QUESTIONS] как VERIFY, отражено в [MANDATORY BASE] п.3 с условием.\n3. Слабое место: валидация `ast.parse` для C некорректна (из stage4 code_generation). Исправлено: в [TESTS] указаны unit/integration-тесты на C-уровне; валидация синтаксиса — `gcc -fsyntax-only` (требует epan headers).\nИтог: accepted\n\n[AUDIT_TRAIL]\ngenerator: Vishap V5.10.5\naudit_id: audit-2026-10-14-cc0b22\nmaterial_hash: sha256:724351d3f63e1af37ff5e03bb527f10f60597e7f018feedf1aff3b34ff57a313\nmaterial_hash_full: sha256:ed831458a27fb8c614b65c814b38bdb8305174ed630ce253d35dcdf362f3b873\npii_detected: true\ncompliance_flags: ['GDPR', '152-ФЗ']\ncompliance_controls: {}\ncompliance_standards: []\ncritique_verdict: REQUIRES_REVIEW\nrisk_verdict: REQUIRES_REVIEW\ncwe_ids: ['CWE-476']\nowasp_categories: []\nexploitability_reachable: False\nexploitability_auth_required: False\nexploitability_blast_radius: none\nexploitability_source_count: 0\nexploitability_path: []\ndataflow_path: []\ndataflow_source_count: 0\nanomaly_verdict: ANOMALIES_FOUND\nanomaly_count: 2\nanomaly_method: zscore\nanomaly_top: [{'index': 5, 'value': 28412.0, 'score': 16.779, 'reason': 'z-score 16.78 > 3.0'}, {'index': 72, 'value': 8000.0, 'score': 4.664, 'reason': 'z-score 4.66 > 3.0'}]\nprovenance_source: manual\nprovenance_commit: \n\n\n[COMPLETENESS]\nlevel: D3\nrequired: 12\nmissing: []\nloss_pct: 0.0%\nmaterial_complete: False\nverdict: ACCEPTABLE\n",
+  "timestamp": "2026-10-14T18:13:19.436265+00:00",
+  "tokens_in": 20519,
+  "tokens_out": 7166,
+  "cost_usd": 0.008472,
+  "cached": false,
+  "audit_id": "audit-2026-10-14-cc0b22",
+  "material_hash": "sha256:724351d3f63e1af37ff5e03bb527f10f60597e7f018feedf1aff3b34ff57a313",
+  "material_hash_full": "sha256:ed831458a27fb8c614b65c814b38bdb8305174ed630ce253d35dcdf362f3b873",
+  "truncated": true,
+  "original_size": 44857,
+  "verdict": "REQUIRES_REVIEW",
+  "pii_detected": true,
+  "compliance_flags": [
+    "GDPR",
+    "152-ФЗ"
+  ],
+  "audit": {
+    "audit_id": "audit-2026-10-14-cc0b22",
+    "session_id": "sess-2026-10-14-181153",
+    "timestamp": "2026-10-14T18:13:19.435868+00:00",
+    "material_hash": "sha256:724351d3f63e1af37ff5e03bb527f10f60597e7f018feedf1aff3b34ff57a313",
+    "material_hash_full": "sha256:ed831458a27fb8c614b65c814b38bdb8305174ed630ce253d35dcdf362f3b873",
+    "material_size": {
+      "lines": 379,
+      "chars": 12000
+    },
+    "model": "deepseek-chat",
+    "critique_verdict": "REQUIRES_REVIEW",
+    "risk_verdict": "REQUIRES_REVIEW",
+    "cwe_ids": [
+      "CWE-476"
+    ],
+    "owasp_categories": [],
+    "exploitability": {
+      "reachable": false,
+      "auth_required": false,
+      "exploit_path": "not reachable from public entrypoint",
+      "blast_radius": "none",
+      "entry_points": [],
+      "blast_indicators": [],
+      "path": [],
+      "source_count": 0,
+      "sources": [],
+      "entry_points_lines": [],
+      "sinks": []
+    },
+    "dataflow": {},
+    "anomaly": {
+      "method": "zscore",
+      "verdict": "ANOMALIES_FOUND",
+      "count": 2,
+      "anomalies": [
+        {
+          "index": 5,
+          "value": 28412.0,
+          "score": 16.779,
+          "reason": "z-score 16.78 > 3.0"
+        },
+        {
+          "index": 72,
+          "value": 8000.0,
+          "score": 4.664,
+          "reason": "z-score 4.66 > 3.0"
+        }
+      ],
+      "baseline": {
+        "mean": 141.09,
+        "std": 1684.914
+      },
+      "samples": 310
+    },
+    "provenance": {
+      "source": "manual",
+      "git_commit": "",
+      "git_commit_short": "",
+      "git_branch": "",
+      "git_author": "",
+      "git_author_email": "",
+      "git_remote": "",
+      "ci_run_id": "",
+      "ci_pr_number": "",
+      "timestamp": "2026-10-14T18:13:19.434123+00:00"
+    },
+    "pii_detected": true,
+    "pii_details": {
+      "email": 2
+    },
+    "compliance_flags": [
+      "GDPR",
+      "152-ФЗ"
+    ],
+    "compliance_controls": {},
+    "compliance_standards": [],
+    "runbook": {},
+    "runbook_cwes": [],
+    "runbook_steps_count": 0,
+    "redaction_applied": true,
+    "redaction_map": {
+      "email": 2
+    },
+    "sast_findings": 0,
+    "sast_high_priority": 0,
+    "sast_tools": {},
+    "sca_vulnerabilities": 0,
+    "truncated": true,
+    "original_size": 44857,
+    "web_search_used": false,
+    "web_search_queries": [],
+    "web_search_credits": 0,
+    "escalation_level": ""
+  },
+  "completeness": {
+    "level": "D3",
+    "required_count": 12,
+    "missing": [],
+    "missing_count": 0,
+    "loss_pct": 0.0,
+    "material_complete": false,
+    "threshold": 30.0,
+    "verdict": "ACCEPTABLE"
+  }
+}

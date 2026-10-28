@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkdocs_site=self.webpackChunkdocs_site||[]).push([["3220"],{1912(s){s.exports=JSON.parse('{"blogBasePath":"/vishap/blog","blogTitle":"Blog","authorsListPath":"/vishap/blog/authors"}')}}]);

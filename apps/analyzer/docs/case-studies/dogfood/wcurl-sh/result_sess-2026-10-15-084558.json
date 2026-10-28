@@ -1,0 +1,865 @@
+{
+  "session_id": "sess-2026-10-15-084558",
+  "timestamp": "2026-10-15T08:46:56.557358+00:00",
+  "filename": "AUTHORS",
+  "material_size": 588,
+  "stage0": {
+    "material_type": "other",
+    "language": null,
+    "size_hint": "small",
+    "level": "D1",
+    "route": [],
+    "research_first": false,
+    "parallel_stages": false,
+    "subst_count": 0,
+    "session_id": "sess-2026-10-15-084558",
+    "model": "orchestrator",
+    "flags": [],
+    "slice": null,
+    "gate_check": {
+      "input": "AUTHORS file (contributor list)",
+      "output": "unspecified",
+      "decider": "unspecified",
+      "cost": "unspecified",
+      "irreversible": "unspecified"
+    },
+    "task_type": "other",
+    "reasoning": "Material is a plain AUTHORS/contributor list (~15 lines), no code, no architecture, no spec, no logs, no config. Trivial size → D1. No substitution markers, no emergency. No actionable analysis target; route empty.",
+    "_meta": {
+      "stage": "stage0_orchestrator",
+      "tokens_in": 1362,
+      "tokens_out": 212,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.00025
+    }
+  },
+  "stage1": {
+    "language": null,
+    "trajectory": {
+      "io": {
+        "input": "none",
+        "output": "none"
+      },
+      "flow": "linear",
+      "branches": 0,
+      "branches_note": "No control flow present; material is a static text list.",
+      "nesting_max": 0,
+      "deps": [],
+      "dead_code": "none"
+    },
+    "structure": {
+      "patterns": [],
+      "cohesion": "n/a",
+      "coupling": "n/a",
+      "solid_violations": [],
+      "point_of_no_return": null,
+      "layers": [],
+      "contradictions": []
+    },
+    "texture": {
+      "density": "low",
+      "code_smells": [],
+      "error_handling": "none",
+      "tests_present": false,
+      "docs": "SPDX header + copyright notice present; no inline documentation",
+      "standards": "SPDX-License-Identifier: curl"
+    },
+    "shadows": {
+      "breaks": [],
+      "comment_code_mismatch": "none",
+      "blind_spots": [
+        "No roles, affiliations, or contribution scope per listed name",
+        "No dates or versioning of authorship",
+        "No indication of active vs. historical contributors"
+      ]
+    },
+    "concurrency": {
+      "shared_state": "none",
+      "locks": "none",
+      "deadlock_potential": "none",
+      "race_conditions": "none",
+      "idempotency": "n/a"
+    },
+    "dev_process": {
+      "code_review": "unspecified",
+      "ci_cd": "unspecified",
+      "staging": "unspecified",
+      "tech_debt": "unspecified"
+    },
+    "tool_output": {
+      "ran": false,
+      "raw": null
+    },
+    "_meta": {
+      "stage": "stage1_scanner",
+      "tokens_in": 1079,
+      "tokens_out": 425,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.00027
+    }
+  },
+  "stage2": {
+    "risk_nodes": [
+      {
+        "id": "RN-1",
+        "name": "Неявное допущение",
+        "priority": "важно",
+        "note": "Материал — список авторов без ролей, аффилиаций и области вклада. Неявно предполагается, что читатель знает, кто есть кто и за что отвечает.",
+        "fingerprint": "ebb0b6296653ec0f"
+      },
+      {
+        "id": "RN-2",
+        "name": "Слабое обобщение",
+        "priority": "опционально",
+        "note": "Список имён не обобщается ни в роли, ни в зоны ответственности; из него нельзя вывести ни одного вывода о процессе.",
+        "fingerprint": "850e2611817608bd"
+      },
+      {
+        "id": "RN-3",
+        "name": "Конкурирующая реализация",
+        "priority": "опционально",
+        "note": "Нет кода — конкурирующих реализаций не наблюдается. Узел не применим, помечен опционально.",
+        "fingerprint": "b9cf2c1ac8681d3c"
+      },
+      {
+        "id": "RN-4",
+        "name": "Сдвиг тезиса",
+        "priority": "опционально",
+        "note": "Тезиса нет; сдвигать нечего. Узел не применим.",
+        "fingerprint": "289047f0ac6ac6a7"
+      },
+      {
+        "id": "RN-5",
+        "name": "Внутреннее противоречие",
+        "priority": "опционально",
+        "note": "Противоречий в списке имён не обнаружено.",
+        "fingerprint": "c512a2b44c980ef0"
+      },
+      {
+        "id": "RN-6",
+        "name": "Стратегическое избегание",
+        "priority": "важно",
+        "note": "AUTHORS не содержит дат, версий и признака active/historical — это систематическое избегание вопроса об актуальности авторства.",
+        "fingerprint": "b08c03813b6caab7"
+      },
+      {
+        "id": "RN-7",
+        "name": "Производительность",
+        "priority": "опционально",
+        "note": "Не применимо к статическому текстовому файлу.",
+        "fingerprint": "36c4e644a01f6295"
+      },
+      {
+        "id": "RN-8",
+        "name": "Надёжность",
+        "priority": "опционально",
+        "note": "Не применимо; файл не исполняется.",
+        "fingerprint": "f066287749a997d6"
+      },
+      {
+        "id": "RN-9",
+        "name": "Масштабируемость",
+        "priority": "опционально",
+        "note": "Не применимо.",
+        "fingerprint": "b3b2f18f2b260274"
+      },
+      {
+        "id": "RN-10",
+        "name": "Конкурентность",
+        "priority": "опционально",
+        "note": "Shared state отсутствует (stage1: shared_state=none). Не применимо.",
+        "fingerprint": "f9bfd63deb9c827c"
+      },
+      {
+        "id": "RN-11",
+        "name": "Ломающие изменения",
+        "priority": "важно",
+        "note": "Удаление имени из AUTHORS — необратимое социальное/юридическое действие (атрибуция), но не отслеживается ни версионированием, ни changelog.",
+        "fingerprint": "5ae93fef463088c4"
+      }
+    ],
+    "security": {
+      "summary": "Материал не содержит исполняемого кода, конфигураций, секретов или сетевых взаимодействий. Поверхность атаки — supply-chain / provenance атрибуции, а не runtime.",
+      "findings": [
+        {
+          "id": "SEC-1",
+          "priority": "важно",
+          "finding": "Атрибуция авторов не верифицируема: нет подписи, нет привязки к коммитам, нет provenance.",
+          "mitigation": "Связать AUTHORS с git-историей / signed commits; генерировать файл из VCS.",
+          "ref": "[FROM_KNOWLEDGE: SLSA provenance / in-toto attestations]"
+        },
+        {
+          "id": "SEC-2",
+          "priority": "опционально",
+          "finding": "Email-адреса в открытом виде — потенциальный источник для scraping/спам-таргетинга.",
+          "mitigation": "Рассмотреть обфускацию или ссылку на CONTRIBUTORS.md с защитой от ботов.",
+          "ref": "[FROM_KNOWLEDGE: OWASP WSTG — Information Gathering]"
+        }
+      ]
+    },
+    "secrets": {
+      "found": false,
+      "note": "Секретов, ключей, токенов, паролей в материале нет. Присутствуют только публичные email-адреса авторов."
+    },
+    "concurrency": {
+      "applicable": false,
+      "note": "stage1: shared_state=none, locks=none, race_conditions=none. Конкурентность не применима к статическому файлу."
+    },
+    "threat_model": {
+      "components": [
+        "AUTHORS file (static text)",
+        "VCS repository (implied)",
+        "Release artifact / tarball (implied consumer)"
+      ],
+      "trust_boundaries": [
+        "Contributor → AUTHORS file (запись атрибуции)",
+        "AUTHORS file → release artifact (публикация)",
+        "Release artifact → downstream consumer (доверие к provenance)"
+      ],
+      "threats": [
+        {
+          "component": "AUTHORS file",
+          "boundary": "Contributor → AUTHORS file",
+          "stride": "S (Spoofing)",
+          "threat": "Подмена/добавление имени автора без реального вклада (attribution spoofing).",
+          "priority": "важно",
+          "mitigation": "Генерация AUTHORS из git-истории с проверкой commit authorship; review PR к AUTHORS."
+        },
+        {
+          "component": "AUTHORS file",
+          "boundary": "Contributor → AUTHORS file",
+          "stride": "T (Tampering)",
+          "threat": "Несанкционированное изменение списка (удаление/перестановка имён) в PR без явного review.",
+          "priority": "важно",
+          "mitigation": "CODEOWNERS на AUTHORS; обязательный review мейнтейнером."
+        },
+        {
+          "component": "AUTHORS file",
+          "boundary": "AUTHORS file → release artifact",
+          "stride": "R (Repudiation)",
+          "threat": "Нет audit log изменений AUTHORS — невозможно доказать, кто и когда изменил атрибуцию.",
+          "priority": "важно",
+          "mitigation": "Опираться на git log; подписывать релизные теги (signed tags)."
+        },
+        {
+          "component": "Release artifact",
+          "boundary": "Release artifact → downstream consumer",
+          "stride": "I (Information Disclosure)",
+          "threat": "Email-адреса авторов утекают в публичные артефакты и scraping-пайплайны.",
+          "priority": "опционально",
+          "mitigation": "Публиковать только имена; email — по запросу/в отдельном файле."
+        },
+        {
+          "component": "AUTHORS file",
+          "boundary": "Contributor → AUTHORS file",
+          "stride": "D (Denial of Service)",
+          "threat": "Массовые PR к AUTHORS (spam/DoS на review-процесс).",
+          "priority": "опционально",
+          "mitigation": "Автоматическая генерация файла → PR к нему не принимаются вручную."
+        },
+        {
+          "component": "AUTHORS file",
+          "boundary": "Contributor → AUTHORS file",
+          "stride": "E (Elevation of Privilege)",
+          "threat": "Ложная атрибуция как способ повысить perceived-статус/доверие к контрибьютору (social engineering).",
+          "priority": "опционально",
+          "mitigation": "Проверка вклада перед добавлением; ссылка на профиль/коммиты."
+        }
+      ],
+      "summary": {
+        "total": 6,
+        "critical": 0,
+        "important": 3,
+        "optional": 3
+      },
+      "top_3": [
+        "S — attribution spoofing (подмена авторства)",
+        "T — несанкционированное изменение AUTHORS",
+        "R — отсутствие audit trail изменений атрибуции"
+      ]
+    },
+    "silence_layers": {
+      "input_silence": {
+        "what": "Нет ролей, аффилиаций, дат, версий, признака active/historical.",
+        "where": "Весь файл AUTHORS.",
+        "impact": "Невозможно определить актуальность и зону ответственности авторов."
+      },
+      "assumption_silence": {
+        "assumption": "Предполагается, что список полон и актуален без проверки против git-истории.",
+        "why": "Нет ссылки на источник генерации; файл поддерживается вручную."
+      },
+      "consequence_silence": {
+        "who": "Контрибьюторы и downstream-потребители, полагающиеся на атрибуцию.",
+        "what": "Удаление/искажение имени не отслеживается и необратимо в опубликованных артефактах.",
+        "irreversible": true
+      }
+    },
+    "intersection_risks": [
+      {
+        "layers": [
+          "input_silence",
+          "consequence_silence"
+        ],
+        "intersection": "Отсутствие дат × необратимость публикации",
+        "risk": "Нельзя восстановить, кто был автором на момент конкретного релиза — атрибуция теряется навсегда."
+      },
+      {
+        "layers": [
+          "assumption_silence",
+          "security"
+        ],
+        "intersection": "Ручное ведение × отсутствие provenance",
+        "risk": "Attribution spoofing проходит незамеченным, т.к. нет автоматической сверки с VCS."
+      }
+    ],
+    "contracts": {
+      "idempotency": "n/a",
+      "retry": "n/a",
+      "timeout": "n/a",
+      "circuit_breaker": "n/a",
+      "note": "Материал — статический текстовый файл, контрактов нет. mode_contracts не применим."
+    },
+    "breaking_changes": [
+      {
+        "change": "Удаление имени из AUTHORS",
+        "impact": "Потеря атрибуции; потенциальный социальный/юридический конфликт.",
+        "rollback": "Возможно только через revert в VCS; в опубликованных артефактах — необратимо."
+      },
+      {
+        "change": "Перестановка/переименование",
+        "impact": "Ломает внешние ссылки и цитирование.",
+        "rollback": "Revert в VCS."
+      }
+    ],
+    "production_impact": {
+      "runtime_impact": "none",
+      "note": "Файл не влияет на runtime. Влияние ограничено provenance и атрибуцией релизов."
+    },
+    "observability": {
+      "present": false,
+      "note": "Нет метрик, логов, трейсинга. Единственный наблюдаемый сигнал — git history."
+    },
+    "slo": {
+      "defined": false,
+      "note": "SLO не применимы к статическому файлу."
+    },
+    "on_call": {
+      "defined": false,
+      "note": "On-call не применим."
+    },
+    "tests": {
+      "present": false,
+      "types": [],
+      "coverage": "n/a",
+      "edge_cases": [
+        "Проверка, что каждое имя в AUTHORS соответствует хотя бы одному коммиту",
+        "Проверка отсутствия дубликатов",
+        "Проверка формата (имя + email)"
+      ],
+      "note": "Тестов нет. Возможен CI-линтер, сверяющий AUTHORS с git shortlog."
+    },
+    "dependencies": {
+      "total": 0,
+      "outdated": 0,
+      "cve": [],
+      "note": "Зависимостей нет. Web-search результаты по CVE (Tomcat, MarkLogic и др.) к данному материалу не относятся."
+    },
+    "failure_points": [
+      {
+        "id": "FP-1",
+        "point": "Ручное ведение AUTHORS без сверки с VCS",
+        "priority": "важно"
+      },
+      {
+        "id": "FP-2",
+        "point": "Отсутствие CODEOWNERS/review на изменения AUTHORS",
+        "priority": "важно"
+      },
+      {
+        "id": "FP-3",
+        "point": "Отсутствие дат/версий — невозможность исторической атрибуции",
+        "priority": "важно"
+      },
+      {
+        "id": "FP-4",
+        "point": "Публикация email без защиты от scraping",
+        "priority": "опционально"
+      }
+    ],
+    "resilience_score": 4,
+    "resilience_reason": "Материал тривиален и не имеет runtime-рисков, но полностью лишён provenance, версионирования и автоматической верификации атрибуции. Устойчивость к подмене/потере атрибуции низкая; процесс ручной и необратимый при публикации.",
+    "cove": {
+      "questions": [
+        {
+          "q": "Нашёл ли я хотя бы одну уязвимость?",
+          "independent_answer": "Да — attribution spoofing и отсутствие audit trail (SEC-1, STRIDE S/R).",
+          "match": true
+        },
+        {
+          "q": "Есть ли trust boundary, которую я не рассмотрел?",
+          "independent_answer": "Возможна граница 'CI/CD → release artifact', но она не видна в материале; помечаю как непроверенную.",
+          "match": false
+        },
+        {
+          "q": "Есть ли допущение, которое я не проверил?",
+          "independent_answer": "Предположение, что AUTHORS ведётся вручную — не подтверждено; может генерироваться автоматически.",
+          "match": false
+        },
+        {
+          "q": "Есть ли risk node, помеченный опционально, но должен быть критично?",
+          "independent_answer": "Нет; критичных узлов для статического файла не выявлено.",
+          "match": true
+        }
+      ],
+      "verdict": "requires_external_verification",
+      "flagged": [
+        "VERIFY: способ генерации AUTHORS (ручной vs автоматический) — влияет на приоритет SEC-1 и FP-1",
+        "VERIFY: наличие CODEOWNERS/review-политики на AUTHORS"
+      ]
+    },
+    "priority_rule": "loss > risk > money",
+    "substitution_seen": false,
+    "tool_output": {
+      "ran": false,
+      "raw": null,
+      "note": "Инструменты analyze.py не запускались: материал не содержит кода/манифеста/тестов, режимы security/contracts/deps/tests неприменимы."
+    },
+    "plan_b": [
+      "SEC-1: генерировать AUTHORS из git shortlog с проверкой commit authorship",
+      "SEC-2: публиковать только имена, email — в отдельном защищённом файле",
+      "RN-1: добавить роли/аффилиации рядом с именами",
+      "RN-6: добавить даты/версии и признак active/historical",
+      "RN-11: версионировать AUTHORS и фиксировать изменения в changelog",
+      "FP-1: CI-линтер, сверяющий AUTHORS с git-историей",
+      "FP-2: CODEOWNERS на AUTHORS + обязательный review мейнтейнера"
+    ],
+    "_meta": {
+      "stage": "stage2_analyst",
+      "tokens_in": 3280,
+      "tokens_out": 3713,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.001499
+    },
+    "_web_search": {
+      "used": true,
+      "queries": [
+        "recent CVEs and security best practices"
+      ],
+      "credits": 1
+    }
+  },
+  "stage3": null,
+  "stage4": {
+    "hierarchy": {
+      "core": "AUTHORS file — статический список атрибуции контрибьюторов (15 имён + email).",
+      "service": "Процесс ведения атрибуции: PR → review → merge → release artifact.",
+      "infra": "VCS (git), release pipeline (tarball/artifact), downstream consumers.",
+      "note": "Runtime-слоя нет. Иерархия — provenance-ориентированная, не исполняемая."
+    },
+    "connections": {
+      "edges": [
+        {
+          "from": "Contributor",
+          "to": "AUTHORS file",
+          "type": "write",
+          "boundary": "trust"
+        },
+        {
+          "from": "AUTHORS file",
+          "to": "Release artifact",
+          "type": "embed",
+          "boundary": "trust"
+        },
+        {
+          "from": "Release artifact",
+          "to": "Downstream consumer",
+          "type": "consume",
+          "boundary": "trust"
+        },
+        {
+          "from": "VCS git history",
+          "to": "AUTHORS file",
+          "type": "should-verify",
+          "status": "absent"
+        }
+      ],
+      "impact_of": {
+        "AUTHORS file": "Изменение → необратимо в опубликованных артефактах; влияет на атрибуцию и доверие.",
+        "Release artifact": "Изменение → ломает внешние ссылки/цитирование."
+      },
+      "critical_path": "Contributor → AUTHORS → Release artifact → Downstream (единственный путь, без верификации).",
+      "cycles": []
+    },
+    "options": [
+      {
+        "name": "A. Минимальный hardening (CODEOWNERS + review)",
+        "isolation": "best-effort",
+        "scalability": "Низкая сложность, не масштабируется на историческую атрибуцию.",
+        "summary": "Добавить CODEOWNERS на AUTHORS, обязательный review мейнтейнера, зафиксировать политику в CONTRIBUTING.",
+        "pros": [
+          "Быстро (0.5–1 день)",
+          "Закрывает FP-2, STRIDE T"
+        ],
+        "cons": [
+          "Не закрывает SEC-1 (provenance), FP-1, FP-3"
+        ]
+      },
+      {
+        "name": "B. Генерация AUTHORS из git shortlog (CI-линтер)",
+        "isolation": "best-effort",
+        "scalability": "Средняя; масштабируется на любой размер репозитория.",
+        "summary": "AUTHORS генерируется из git-истории; CI-линтер сверяет файл с git shortlog, PR к AUTHORS не принимаются вручную.",
+        "pros": [
+          "Закрывает SEC-1, FP-1, STRIDE S/R",
+          "Устраняет ручной дрейф"
+        ],
+        "cons": [
+          "Требует CI-инфраструктуры",
+          "Нужна политика для email/приватности"
+        ]
+      },
+      {
+        "name": "C. Полный provenance-контур (B + signed tags + SLSA-атестация)",
+        "isolation": "best-effort",
+        "scalability": "Высокая; применимо к supply-chain.",
+        "summary": "B + подписанные релизные теги + in-toto/SLSA-атестация + отдельный CONTRIBUTORS.md для email.",
+        "pros": [
+          "Закрывает SEC-1, SEC-2, STRIDE S/T/R/I",
+          "Соответствует supply-chain best practice"
+        ],
+        "cons": [
+          "Дорого (5–10 дней)",
+          "Требует изменений в release pipeline"
+        ]
+      }
+    ],
+    "infrastructure_params": {
+      "pool_size": null,
+      "cpu": null,
+      "memory": null,
+      "replicas": null,
+      "lockTTL": null,
+      "autoscaling": null,
+      "note": "Runtime-инфраструктуры нет. Параметры не применимы. mode_lockttl не запускается (нет p99_hold_ms)."
+    },
+    "cloud_cost": {
+      "current": 0,
+      "projected": 0,
+      "delta": 0,
+      "reason": "no infrastructure change",
+      "tool_output": {
+        "ran": false,
+        "raw": null,
+        "note": "mode_cost не запускался: spec пустой, инфраструктурных изменений нет."
+      }
+    },
+    "econ": {
+      "cloud_delta_usd": 0,
+      "engineering_days": {
+        "option_A": "0.5–1",
+        "option_B": "2–3",
+        "option_C": "5–10"
+      },
+      "engineering_rate": "not set",
+      "engineering_cost": "not set (rate unknown)",
+      "roi": "Option B: закрывает 3 из 4 failure points при 2–3 днях — наивысший ROI. Option C: закрывает все, но 5–10 дней и требует pipeline-изменений.",
+      "cost_of_delay": "Каждый релиз без верификации AUTHORS = необратимая публикация потенциально неверной атрибуции. Стоимость задержки растёт с числом релизов, не с календарём."
+    },
+    "migration_plan": {
+      "schema": "AUTHORS остаётся plain-text; добавляется генератор (script) + CI-линтер. Опционально CONTRIBUTORS.md для email.",
+      "consistency": "AUTHORS = f(git shortlog). Единственный источник истины — VCS.",
+      "rollback": "Revert PR; для опубликованных артефактов rollback невозможен (необратимо).",
+      "validation": [
+        "CI: diff(AUTHORS, git shortlog) == empty",
+        "CI: no duplicates, format check (name + email)",
+        "CI: каждое имя соответствует ≥1 коммиту"
+      ]
+    },
+    "gaps": {
+      "caching": "n/a",
+      "retry": "n/a",
+      "health_checks": "n/a",
+      "migrations": "Отсутствует версионирование AUTHORS; нет changelog изменений атрибуции.",
+      "monitoring": "Отсутствует. Единственный сигнал — git log.",
+      "alerts": "Отсутствуют. Нет алерта на изменение AUTHORS без review."
+    },
+    "evolvability": {
+      "feature_add": 3,
+      "module_replace": 4,
+      "coupling": 2,
+      "abstractions": 2,
+      "overall": 3,
+      "note": "Статический файл без абстракций. Эволюция возможна только через внешний процесс (CI/генератор)."
+    },
+    "code_generation": {
+      "artifacts": [
+        {
+          "name": "gen_authors.sh",
+          "language": "bash",
+          "content": "#!/usr/bin/env bash\n# Generate AUTHORS from git shortlog\nset -euo pipefail\ngit shortlog -sne --all | sed -E 's/^[[:space:]]*[0-9]+[[:space:]]+//' | sort -u > AUTHORS\n"
+        },
+        {
+          "name": "check_authors.sh",
+          "language": "bash",
+          "content": "#!/usr/bin/env bash\n# CI linter: verify AUTHORS matches git shortlog\nset -euo pipefail\ntmp=$(mktemp)\ngit shortlog -sne --all | sed -E 's/^[[:space:]]*[0-9]+[[:space:]]+//' | sort -u > \"$tmp\"\nif ! diff -q AUTHORS \"$tmp\" >/dev/null; then\n  echo 'AUTHORS out of sync with git history' >&2\n  diff AUTHORS \"$tmp\" || true\n  exit 1\nfi\n"
+        }
+      ],
+      "validation": "python -c \"import ast; ast.parse(open('f').read())\" — n/a (bash, не Python). Bash-валидация: bash -n gen_authors.sh && bash -n check_authors.sh"
+    },
+    "inversion": {
+      "assumptions": [
+        {
+          "n": 1,
+          "assumption": "AUTHORS ведётся вручную и может дрейфовать от git-истории.",
+          "inversion": "AUTHORS уже генерируется автоматически.",
+          "consequences": [
+            "SEC-1 и FP-1 закрыты, приоритет падает.",
+            "CI-линтер избыточен.",
+            "Фокус смещается на SEC-2 (email) и signed tags."
+          ]
+        },
+        {
+          "n": 2,
+          "assumption": "Список полон и актуален.",
+          "inversion": "Список неполон — часть контрибьюторов отсутствует.",
+          "consequences": [
+            "Атрибуция несправедлива к пропущенным.",
+            "Требуется сверка с git shortlog как обязательный шаг.",
+            "Возможен социальный конфликт."
+          ]
+        },
+        {
+          "n": 3,
+          "assumption": "Email-адреса публичны и допустимы.",
+          "inversion": "Email не должны публиковаться.",
+          "consequences": [
+            "SEC-2 становится критичным.",
+            "Нужен CONTRIBUTORS.md с защитой.",
+            "Меняется формат AUTHORS."
+          ]
+        }
+      ],
+      "failure_points_on_inversion": [
+        "Если AUTHORS уже автогенерируется — Option B даёт нулевую ценность.",
+        "Если список неполон — любой hardening без сверки с VCS бесполезен.",
+        "Если email нельзя публиковать — Option A/B недостаточны, нужен C."
+      ]
+    },
+    "thresholds": [
+      {
+        "metric": "diff(AUTHORS, git shortlog) — число расхождений",
+        "value": "> 0",
+        "consequence": "Блокировать merge; запустить генератор."
+      },
+      {
+        "metric": "Число релизов без верификации AUTHORS",
+        "value": "≥ 1",
+        "consequence": "Необратимая публикация неверной атрибуции; требуется signed tags."
+      },
+      {
+        "metric": "Число PR к AUTHORS без review",
+        "value": "≥ 1",
+        "consequence": "Включить CODEOWNERS + branch protection."
+      }
+    ],
+    "constraints": {
+      "items": [
+        "AUTHORS должен соответствовать git shortlog (источник истины — VCS).",
+        "Email-адреса не должны публиковаться в release artifact без согласия."
+      ],
+      "binding": "Соответствие git shortlog — жёстче: без него атрибуция недостоверна, а email-политика вторична.",
+      "decision": "Приоритет — генерация/верификация из VCS (Option B). Email-политика — следующий шаг (Option C)."
+    },
+    "second_opinion": {
+      "role": "security engineer",
+      "view": "Видит supply-chain provenance gap: AUTHORS без привязки к signed commits и без audit trail — классический attribution spoofing вектор. Email в открытом виде — information disclosure.",
+      "agree": "SEC-1 (provenance) и STRIDE S/T/R — реальные риски; генерация из VCS закрывает их.",
+      "disagree": "SEC-2 (email scraping) — низкий приоритет для open-source проекта; обфускация может навредить прозрачности. Отвергаю как обязательный шаг."
+    },
+    "stop_reason": "logic",
+    "stop_action": "return_to_stage2",
+    "collision": {
+      "items": [
+        {
+          "analyst": "RN-11: удаление имени из AUTHORS — необратимое социальное/юридическое действие.",
+          "researcher": "Нет данных о параллельных практиках (signed tags, SLSA) в этом репозитории.",
+          "synthesizer": "Option B закрывает дрейф, но не необратимость публикации.",
+          "contradiction": "Необратимость публикации vs. отсутствие provenance-контура.",
+          "resolution": "Приоритет — Option B (генерация из VCS) как минимально достаточный; Option C — при подтверждении supply-chain требований."
+        }
+      ],
+      "note": "Конфликт не критичный (обе стороны не на уровне critical) — фиксируется как важный, не эскалируется."
+    },
+    "escalation": {
+      "level": 0,
+      "action": "none",
+      "note": "Критичных конфликтов нет. Эскалация не требуется."
+    },
+    "cove": {
+      "questions": [
+        {
+          "q": "Есть ли альтернатива, которую я отклонил слишком быстро?",
+          "answer": "Option C (полный provenance) отклонён как дорогой, но может быть обязателен для supply-chain. Помечаю для внешней проверки."
+        },
+        {
+          "q": "Есть ли риск, перенесённый в ASSUMPTION без проверки?",
+          "answer": "Да — способ генерации AUTHORS (ручной vs авто) не подтверждён. Влияет на приоритет SEC-1/FP-1."
+        },
+        {
+          "q": "Есть ли конфликт между рекомендациями?",
+          "answer": "Нет. Option B согласуется с constraints и thresholds."
+        },
+        {
+          "q": "Есть ли блок, который я забыл включить?",
+          "answer": "Нет. Runtime-блоки (infra params, lockTTL, cloud cost) корректно помечены n/a."
+        }
+      ],
+      "verdict": "requires_external_verification",
+      "flagged": [
+        "VERIFY: способ генерации AUTHORS (ручной vs автоматический)",
+        "VERIFY: наличие CODEOWNERS/review-политики",
+        "VERIFY: требования supply-chain (SLSA/in-toto) для проекта"
+      ]
+    },
+    "return_to_stage2": true,
+    "return_to_stage3": false,
+    "force_emergency": false,
+    "force_fallback": false,
+    "new_risks": [
+      {
+        "id": "NR-1",
+        "risk": "Автогенерация AUTHORS может раскрыть email-адреса из git-истории, которые авторы не хотели публиковать.",
+        "priority": "важно",
+        "mitigation": "Фильтр email в генераторе; отдельный CONTRIBUTORS.md."
+      },
+      {
+        "id": "NR-2",
+        "risk": "CI-линтер может блокировать легитимные PR при рассинхроне git shortlog (например, squash-merge меняет authorship).",
+        "priority": "опционально",
+        "mitigation": "Документировать политику merge; allowlist для ботов."
+      }
+    ],
+    "tool_output": {
+      "ran": false,
+      "raw": null,
+      "note": "analyze.py не запускался: mode_calc требует latency_type (нет), mode_cost — пустой spec (delta 0), mode_migrate — нет схемы БД, mode_lockttl — нет p99_hold_ms. Все режимы неприменимы к статическому текстовому файлу."
+    },
+    "artifacts": {
+      "sql_migration": null,
+      "dockerfile": null,
+      "gantt_mermaid": "```mermaid\ngantt\n    title AUTHORS hardening (Option B)\n    dateFormat  YYYY-MM-DD\n    section Setup\n    CODEOWNERS + policy      :a1, 2026-10-16, 1d\n    section Generator\n    gen_authors.sh           :a2, after a1, 1d\n    check_authors.sh (CI)    :a3, after a2, 1d\n    section Rollout\n    Enable CI gate           :a4, after a3, 1d\n    Verify first release     :a5, after a4, 1d\n```"
+    },
+    "_meta": {
+      "stage": "stage4_synthesizer",
+      "tokens_in": 6401,
+      "tokens_out": 3777,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.001954
+    }
+  },
+  "audit": {
+    "audit_id": "audit-2026-10-15-a36db5",
+    "session_id": "sess-2026-10-15-084558",
+    "timestamp": "2026-10-15T08:46:56.553945+00:00",
+    "material_hash": "sha256:1854c075e02cafa1925ea775c3d3b5048411f0ea2a40e4d700b91a2abeb0a5c4",
+    "material_hash_full": "sha256:1854c075e02cafa1925ea775c3d3b5048411f0ea2a40e4d700b91a2abeb0a5c4",
+    "material_size": {
+      "lines": 19,
+      "chars": 632
+    },
+    "model": "deepseek-chat",
+    "critique_verdict": "REQUIRES_REVIEW",
+    "risk_verdict": "REQUIRES_REVIEW",
+    "cwe_ids": [],
+    "owasp_categories": [],
+    "exploitability": {
+      "reachable": false,
+      "auth_required": false,
+      "exploit_path": "not reachable from public entrypoint",
+      "blast_radius": "none",
+      "entry_points": [],
+      "blast_indicators": [],
+      "path": [],
+      "source_count": 0,
+      "sources": [],
+      "entry_points_lines": [],
+      "sinks": []
+    },
+    "dataflow": {},
+    "anomaly": {},
+    "provenance": {
+      "source": "git/main",
+      "git_commit": "176c400e33a3960f890fd3cb12ddaa06dee70b83",
+      "git_commit_short": "176c400",
+      "git_branch": "main",
+      "git_author": "dvddv9",
+      "git_author_email": "hndav9@yahoo.com",
+      "git_remote": "https://github.com/dvddv9/vishap.git",
+      "ci_run_id": "",
+      "ci_pr_number": "",
+      "timestamp": "2026-10-15T08:46:56.377330+00:00"
+    },
+    "pii_detected": true,
+    "pii_details": {
+      "email": 11
+    },
+    "compliance_flags": [
+      "GDPR",
+      "152-ФЗ"
+    ],
+    "compliance_controls": {},
+    "compliance_standards": [],
+    "runbook": {},
+    "runbook_cwes": [],
+    "runbook_steps_count": 0,
+    "redaction_applied": true,
+    "redaction_map": {
+      "email": 13
+    },
+    "sast_findings": 0,
+    "sast_high_priority": 0,
+    "sast_tools": {},
+    "sca_vulnerabilities": 0,
+    "truncated": false,
+    "original_size": 632,
+    "web_search_used": true,
+    "web_search_queries": [
+      "recent CVEs and security best practices"
+    ],
+    "web_search_credits": 1,
+    "escalation_level": "Конфликт не критичный (обе стороны не на уровне critical) — фиксируется как важный, не эскалируется."
+  },
+  "completeness": {
+    "level": "D1",
+    "required_count": 5,
+    "missing": [
+      "[RISK]",
+      "[QUESTION]"
+    ],
+    "missing_count": 2,
+    "loss_pct": 40.0,
+    "material_complete": true,
+    "threshold": 30.0,
+    "verdict": "INCOMPLETE"
+  },
+  "critique_verdict": "REQUIRES_REVIEW",
+  "cost_usd": 0.003973,
+  "final_markdown": "[ECHO] AUTHORS-файл curl: 15 имён + email, статический текст, без кода/ролей/дат. Runtime-рисков нет; анализ — provenance/атрибуция.\n\n[ROUTE] stage0 → stage1 (scanner) → stage2 (analyst) → stage4 (synthesizer) → stage5 (transmitter). task_type=other → обязательны [RISK_NODES] + [MATRIX].\n\n[CONCLUSION] Материал — статический список атрибуции без ролей, дат, версий и признака active/historical. Runtime-влияния нет. Ключевой риск — provenance: атрибуция не верифицируема против VCS, изменения необратимы в опубликованных артефактах. Признаков автоматической генерации AUTHORS не найдено (VERIFY: способ генерации не проверен). Признаков CODEOWNERS/review-политики не найдено (VERIFY: не проверено).\n\n[RISK_NODES]\n- RN-1 (важно): неявное допущение — нет ролей/аффилиаций/зоны вклада.\n- RN-6 (важно): стратегическое избегание — нет дат/версий/active-признака.\n- RN-11 (важно): удаление имени — необратимое социальное/юридическое действие, не версионируется.\n- SEC-1 (важно): атрибуция не верифицируема — нет подписи, привязки к коммитам, provenance.\n- SEC-2 (опционально): email в открытом виде — scraping/спам-таргетинг.\n- FP-1..FP-3 (важно): ручное ведение, нет review, нет исторической атрибуции.\n- FP-4 (опционально): публикация email без защиты.\n\n[PLAN_B]\n- SEC-1: генерировать AUTHORS из `git shortlog -sne --all` с проверкой commit authorship.\n- SEC-2: публиковать только имена; email — в отдельном CONTRIBUTORS.md.\n- RN-1: добавить роли/аффилиации рядом с именами.\n- RN-6: добавить даты/версии и признак active/historical.\n- RN-11: версионировать AUTHORS, фиксировать изменения в changelog.\n- FP-1: CI-линтер, сверяющий AUTHORS с git-историей.\n- FP-2: CODEOWNERS на AUTHORS + обязательный review мейнтейнера.\n- NR-1: фильтр email в генераторе.\n- NR-2: документировать merge-политику; allowlist для ботов.\n\n[THREAT_MODEL]\n- Компоненты: AUTHORS (static), VCS (implied), release artifact (implied).\n- Границы доверия: Contributor→AUTHORS, AUTHORS→artifact, artifact→downstream.\n- STRIDE: S (attribution spoofing, важно), T (несанкц. изменение, важно), R (нет audit trail, важно), I (email disclosure, опц.), D (spam PR, опц.), E (ложная атрибуция, опц.).\n- Итого: 6 угроз — 0 critical, 3 important, 3 optional.\n\n[SILENCE_LAYERS]\n- input_silence: нет ролей, аффилиаций, дат, версий, active/historical.\n- assumption_silence: предполагается полнота/актуальность без сверки с git.\n- consequence_silence: удаление/искажение имени не отслеживается, необратимо в артефактах.\n\n[INTERSECTION_RISKS]\n- input_silence × consequence_silence: нет дат × необратимость публикации → нельзя восстановить авторство на момент релиза.\n- assumption_silence × security: ручное ведение × нет provenance → attribution spoofing проходит незамеченным.\n\n[ASSEMBLY] Иерархия provenance-ориентированная: core = AUTHORS; service = PR→review→merge→artifact; infra = VCS + release pipeline + downstream. Runtime-слоя нет.\n\n[REFACTORING] Option A (CODEOWNERS+review, 0.5–1 день) — закрывает FP-2/STRIDE T. Option B (генерация из git shortlog + CI-линтер, 2–3 дня) — закрывает SEC-1, FP-1, STRIDE S/R. Option C (B + signed tags + SLSA, 5–10 дней) — закрывает все, требует pipeline-изменений.\n\n[PARALLELS] Аналогия — SBOM/provenance в supply-chain: атрибуция без привязки к VCS эквивалентна SBOM без attestation.\n\n[TESTS]\n- CI: diff(AUTHORS, git shortlog) == empty.\n- CI: no duplicates, format check (name + email).\n- CI: каждое имя соответствует ≥1 коммиту.\n- Edge: squash-merge меняет authorship (NR-2).\n\n[ACTION]\n- NOW: зафиксировать политику ведения AUTHORS в CONTRIBUTING (0.5 дня).\n- TODAY: добавить CODEOWNERS на AUTHORS + branch protection.\n- TOMORROW: внедрить gen_authors.sh + check_authors.sh в CI.\n- LATER: signed tags + SLSA-атестация (при подтверждении supply-chain требований).\n\n[QUESTIONS]\n- VERIFY: способ генерации AUTHORS — ручной или автоматический? (влияет на приоритет SEC-1/FP-1)\n- VERIFY: есть ли CODEOWNERS/review-политика на AUTHORS?\n- VERIFY: требуются ли SLSA/in-toto для проекта?\n- Публикация email — согласована с авторами?\n\n[FUNC:FULL]\n- ECON: effort A=0.5–1д, B=2–3д, C=5–10д; cost $0 (rate не задан); ROI B — наивысший (3/4 FP); cloud delta $0; cost of delay растёт с числом релизов, не с календарём.\n- FAIL: критично — нет; важно — attribution spoofing (SEC-1), нет audit trail (STRIDE R), ручной дрейф (FP-1); cascade: неверная атрибуция → необратима в артефактах; recovery: revert в VCS, в опубликованных артефактах — невозможно.\n- METRICS: 15 имён, 0 deps, 0 tests, 0 runtime, 0 SLO, 0 on-call; observability — только git log; resilience_score=4/10.\n- ALTERNATIVES: A — CODEOWNERS+review; B — генерация из git shortlog + CI-линтер; C — B + signed tags + SLSA + CONTRIBUTORS.md.\n- EVOLVE: coupling=2, abstractions=2, feature_add=3, module_replace=4, overall=3/10; эволюция только через внешний процесс (CI/генератор).\n- COMPARE: A — 0.5–1д, low risk, low complexity, закрывает 1 FP; B — 2–3д, medium, закрывает 3 FP; C — 5–10д, high, закрывает все + pipeline-изменения.\n\n[MANDATORY BASE]\n1. ECONOMICS: time A=0.5–1д / B=2–3д / C=5–10д, cost $0 (rate не задан), при условии отсутствия внешних требований supply-chain.\n2. RISKS: критично — нет; важно — SEC-1, STRIDE S/T/R, FP-1..FP-3; опционально — SEC-2, FP-4, при условии ручного ведения AUTHORS (VERIFY).\n3. INFRASTRUCTURE: pool_size=n/a, при условии отсутствия runtime-инфраструктуры (стат. файл).\n4. CODE: change = +2 bash-скрипта (gen_authors.sh, check_authors.sh) + CODEOWNERS, при условии внедрения Option B.\n5. ACTION: now — политика в CONTRIBUTING; tomorrow — gen/check в CI.\n6. TIMELINE: NOW — политика; TODAY — CODEOWNERS; TOMORROW — CI-линтер; LATER — signed tags/SLSA.\n7. PRODUCTION IMPACT: users n/a (runtime нет), deploy window n/a, rollback — revert PR (в артефактах необратимо).\n8. SLO IMPACT: current n/a, after n/a, при условии отсутствия SLO для стат. файла.\n9. CLOUD COST: current $0, projected $0, delta ±$0, при условии отсутствия инфраструктурных изменений.\n10. ON-CALL: new alerts — CI-алерт на diff(AUTHORS, git shortlog)>0; runbook — запустить gen_authors.sh; escalation — мейнтейнер.\n\n[MATRIX]\n| Dimension | Status | Comment |\n|-----------|--------|---------|\n| Security | WARN | SEC-1 provenance gap; SEC-2 email disclosure (опц.) |\n| Facts | WARN | Способ генерации AUTHORS не подтверждён (VERIFY) |\n| Logic | OK | Выводы согласованы между stage2/stage4 |\n| Applicability | OK | Рекомендации применимы к стат. файлу |\n| Effectiveness | OK | Option B закрывает 3/4 FP при 2–3 днях |\n| Resilience | WARN | resilience_score=4/10; нет provenance/версионирования |\n| Human factor | WARN | Необратимость атрибуции; возможен соц. конфликт |\n| Clarity | OK | Структура ясна, блоки полны |\n\n[REFLEXION]\n1. Слабое место: способ генерации AUTHORS не подтверждён → помечено VERIFY в [QUESTIONS] и [MANDATORY BASE], выводы условны.\n2. Слабое место: runtime-блоки (infra, SLO, cloud) могли быть ошибочно заполнены → помечены n/a с условием.\n3. Слабое место: риск переоценки SEC-2 → second_opinion (security engineer) отверг как обязательный шаг, понижен до опционального.\nИтог: accepted\n\n[AUDIT_TRAIL]\ngenerator: Vishap V5.10.7\naudit_id: audit-2026-10-15-a36db5\nmaterial_hash: sha256:1854c075e02cafa1925ea775c3d3b5048411f0ea2a40e4d700b91a2abeb0a5c4\nmaterial_hash_full: sha256:1854c075e02cafa1925ea775c3d3b5048411f0ea2a40e4d700b91a2abeb0a5c4\npii_detected: true\ncompliance_flags: ['GDPR', '152-ФЗ']\ncompliance_controls: {}\ncompliance_standards: []\ncritique_verdict: REQUIRES_REVIEW\nrisk_verdict: REQUIRES_REVIEW\ncwe_ids: []\nowasp_categories: []\nexploitability_reachable: False\nexploitability_auth_required: False\nexploitability_blast_radius: none\nexploitability_source_count: 0\nexploitability_path: []\ndataflow_path: []\ndataflow_source_count: 0\nanomaly_verdict: NORMAL\nanomaly_count: 0\nanomaly_method: none\nanomaly_top: []\nprovenance_source: git/main\nprovenance_commit: 176c400\n\n\n[COMPLETENESS]\nlevel: D1\nrequired: 5\nmissing: ['[RISK]', '[QUESTION]']\nloss_pct: 40.0%\nmaterial_complete: True\nverdict: INCOMPLETE\n",
+  "baseline_stats": {
+    "baseline_used": false,
+    "baseline_saved": false,
+    "baseline_path": "",
+    "baseline_save_path": "",
+    "baseline_known": 0,
+    "baseline_new": 11,
+    "baseline_total": 11
+  }
+}

@@ -1,0 +1,977 @@
+{
+  "session_id": "sess-2026-10-15-084440",
+  "timestamp": "2026-10-15T08:45:56.594167+00:00",
+  "filename": "REUSE.toml",
+  "material_size": 844,
+  "stage0": {
+    "material_type": "config",
+    "language": "other",
+    "size_hint": "small",
+    "level": "D1",
+    "route": [
+      "stage4"
+    ],
+    "research_first": false,
+    "parallel_stages": false,
+    "subst_count": 0,
+    "session_id": "sess-2026-10-15-084440",
+    "model": "default",
+    "flags": [],
+    "slice": false,
+    "gate_check": {
+      "input": "REUSE.toml licensing metadata file",
+      "output": "unspecified",
+      "decider": "unspecified",
+      "cost": "unspecified",
+      "irreversible": "unspecified"
+    },
+    "task_type": "compliance",
+    "reasoning": "Config file (REUSE.toml) with licensing/copyright annotations. Small size (~30 lines) → D1. No substitution markers, no emergency indicators. Compliance-oriented metadata; routed to stage4 only.",
+    "_meta": {
+      "stage": "stage0_orchestrator",
+      "tokens_in": 1409,
+      "tokens_out": 205,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.000255
+    }
+  },
+  "stage1": {
+    "language": "toml",
+    "trajectory": {
+      "io": {
+        "input": "TOML config file (REUSE.toml) parsed by REUSE tooling",
+        "output": "licensing/copyright metadata annotations for files not directly annotatable"
+      },
+      "flow": [
+        "declare REUSE spec version",
+        "declare SPDX package name and download location",
+        "declare annotation block for wcurl.1",
+        "set precedence rule for closest licensing info"
+      ],
+      "branches": 0,
+      "branches_note": "declarative config; no control flow",
+      "nesting_max": 1,
+      "deps": [
+        "REUSE specification v3.2",
+        "SPDX license identifiers",
+        "curl license"
+      ],
+      "dead_code": "none"
+    },
+    "structure": {
+      "patterns": [
+        "declarative metadata manifest",
+        "path-to-annotation mapping",
+        "precedence override"
+      ],
+      "cohesion": "high — single purpose: licensing annotation",
+      "coupling": "low — external coupling only to REUSE spec and SPDX identifiers",
+      "solid_violations": "not applicable (non-code config)",
+      "point_of_no_return": "none",
+      "layers": [
+        "package-level metadata",
+        "per-path annotation"
+      ],
+      "contradictions": "none detected"
+    },
+    "texture": {
+      "density": "low — ~30 lines, mostly comments and metadata",
+      "code_smells": "none",
+      "error_handling": "not applicable",
+      "tests_present": false,
+      "docs": "inline comments explaining REUSE spec reference and precedence rationale",
+      "standards": [
+        "REUSE spec 3.2",
+        "SPDX"
+      ]
+    },
+    "shadows": {
+      "breaks": "none",
+      "comment_code_mismatch": "none — comments align with declared fields",
+      "blind_spots": [
+        "only wcurl.1 annotated; other uncommentable files (if any) not covered",
+        "precedence=closest semantics depend on REUSE tool implementation"
+      ]
+    },
+    "concurrency": {
+      "shared_state": "not applicable",
+      "locks": "not applicable",
+      "deadlock_potential": "not applicable",
+      "race_conditions": "not applicable",
+      "idempotency": "idempotent — static declarative file"
+    },
+    "dev_process": {
+      "code_review": "unspecified",
+      "ci_cd": "unspecified",
+      "staging": "unspecified",
+      "tech_debt": "none observed"
+    },
+    "tool_output": {
+      "ran": false,
+      "raw": "no tools invoked — material_type=config, language=toml, no tree-sitter parser applicable"
+    },
+    "_meta": {
+      "stage": "stage1_scanner",
+      "tokens_in": 1120,
+      "tokens_out": 640,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.000336
+    }
+  },
+  "stage2": {
+    "risk_nodes": [
+      {
+        "id": "RN-1",
+        "name": "Неявное допущение",
+        "priority": "важно",
+        "note": "Предполагается, что REUSE.toml — единственный источник licensing-метаданных и что все некомментируемые файлы перечислены. Если появится новый бинарный/некомментируемый файл без аннотации, REUSE lint упадёт или файл останется без лицензии.",
+        "fingerprint": "9111909d9a579387"
+      },
+      {
+        "id": "RN-2",
+        "name": "Слабое обобщение",
+        "priority": "опционально",
+        "note": "precedence=\"closest\" обобщает поведение REUSE-тулинга; семантика 'closest' не зафиксирована в самом файле и зависит от версии инструмента.",
+        "fingerprint": "4c611a28fb7235e7"
+      },
+      {
+        "id": "RN-3",
+        "name": "Конкурирующая реализация",
+        "priority": "опционально",
+        "note": "Лицензирование может дублироваться: inline SPDX-заголовки в файлах vs аннотации в REUSE.toml. При расхождении precedence решает, но конфликт не детектируется автоматически.",
+        "fingerprint": "af76039045210b5f"
+      },
+      {
+        "id": "RN-4",
+        "name": "Сдвиг тезиса",
+        "priority": "опционально",
+        "note": "Файл описывает лицензирование, но не описывает, кто и когда обязан обновлять аннотации при добавлении файлов — процессный сдвиг от 'метаданные' к 'процесс'.",
+        "fingerprint": "011f0ef111220b0b"
+      },
+      {
+        "id": "RN-5",
+        "name": "Внутреннее противоречие",
+        "priority": "опционально",
+        "note": "Не обнаружено. Комментарии согласуются с полями.",
+        "fingerprint": "1d03e3528f57f412"
+      },
+      {
+        "id": "RN-6",
+        "name": "Стратегическое избегание",
+        "priority": "важно",
+        "note": "Аннотирован только wcurl.1. Если в репозитории есть другие некомментируемые артефакты (бинарники, изображения, .1 man-страницы), они стратегически не покрыты — REUSE compliance будет неполным.",
+        "fingerprint": "72eda87a7d1e784a"
+      },
+      {
+        "id": "RN-7",
+        "name": "Производительность",
+        "priority": "опционально",
+        "note": "Не применимо — статический декларативный файл, парсится один раз.",
+        "fingerprint": "3c2520a6fafe235b"
+      },
+      {
+        "id": "RN-8",
+        "name": "Надёжность",
+        "priority": "важно",
+        "note": "Нет CI-проверки (reuse lint) в материале. Без автоматической валидации дрейф аннотаций не будет пойман до релиза.",
+        "fingerprint": "c10753aad7f08eca"
+      },
+      {
+        "id": "RN-9",
+        "name": "Масштабируемость",
+        "priority": "опционально",
+        "note": "При росте числа некомментируемых файлов ручное ведение [[annotations]] плохо масштабируется; нужен glob-паттерн или генерация.",
+        "fingerprint": "0b0b52255a0ae78c"
+      },
+      {
+        "id": "RN-10",
+        "name": "Конкурентность",
+        "priority": "опционально",
+        "note": "Не применимо — статический файл, идемпотентен.",
+        "fingerprint": "fad690f53f9b1501"
+      },
+      {
+        "id": "RN-11",
+        "name": "Ломающие изменения",
+        "priority": "важно",
+        "note": "Смена SPDX-License-Identifier или удаление аннотации ломает REUSE compliance и может нарушить условия распространения curl-лицензии. Изменение precedence меняет, какая лицензия применяется к файлу.",
+        "fingerprint": "759b1fb5c0671d14"
+      }
+    ],
+    "security": {
+      "summary": "Материал — декларативный licensing-манифест. Прямых уязвимостей кода нет. Риски лежат в области supply-chain compliance и целостности метаданных.",
+      "findings": [
+        {
+          "id": "SEC-1",
+          "priority": "важно",
+          "finding": "Отсутствие автоматической валидации REUSE compliance в CI позволяет незамеченный дрейф лицензионных аннотаций.",
+          "mitigation": "Добавить `reuse lint` в CI как обязательный gate.",
+          "ref": "[FROM_KNOWLEDGE: REUSE Specification 3.2 — reuse lint]"
+        },
+        {
+          "id": "SEC-2",
+          "priority": "опционально",
+          "finding": "SPDX-PackageDownloadLocation указывает на внешний URL; при компрометации домена curl.se метаданные могут быть подменены.",
+          "mitigation": "Проверять целостность через подписанные релизы / SBOM.",
+          "ref": "[FROM_KNOWLEDGE: SPDX 2.3 PackageDownloadLocation]"
+        }
+      ]
+    },
+    "secrets": {
+      "found": false,
+      "note": "Секретов, ключей, токенов, credentials в материале нет. Email-адреса в SPDX-FileCopyrightText — публичные контактные данные, не секреты."
+    },
+    "concurrency": {
+      "applicable": false,
+      "note": "Статический декларативный TOML. Shared state, locks, race conditions — не применимы. Файл идемпотентен."
+    },
+    "threat_model": {
+      "components": [
+        "REUSE.toml (licensing manifest)",
+        "REUSE tooling (parser/linter)",
+        "wcurl.1 (annotated artifact)",
+        "curl.se (download location)",
+        "CI/CD pipeline (предполагаемый потребитель)"
+      ],
+      "trust_boundaries": [
+        "repo → REUSE tooling (парсинг TOML)",
+        "repo → curl.se (download location)",
+        "contributor → repo (изменение аннотаций)"
+      ],
+      "threats": [
+        {
+          "component": "REUSE.toml",
+          "boundary": "contributor → repo",
+          "stride": "T (Tampering)",
+          "threat": "Злонамеренное или случайное изменение SPDX-License-Identifier / precedence, приводящее к неверной лицензии для wcurl.1.",
+          "priority": "важно",
+          "mitigation": "CODEOWNERS + обязательный review для REUSE.toml; CI-проверка `reuse lint`."
+        },
+        {
+          "component": "REUSE tooling",
+          "boundary": "repo → REUSE tooling",
+          "stride": "T (Tampering)",
+          "threat": "Некорректный парсинг precedence=\"closest\" в разных версиях REUSE может привести к выбору неверной лицензии.",
+          "priority": "опционально",
+          "mitigation": "Пиннинг версии REUSE в CI; тест на ожидаемый результат лицензии."
+        },
+        {
+          "component": "curl.se",
+          "boundary": "repo → curl.se",
+          "stride": "S (Spoofing)",
+          "threat": "Подмена SPDX-PackageDownloadLocation на враждебный домен для распространения подменённого пакета.",
+          "priority": "опционально",
+          "mitigation": "Проверка целостности релизов (GPG/SBOM), мониторинг DNS/сертификата."
+        },
+        {
+          "component": "REUSE.toml",
+          "boundary": "repo → REUSE tooling",
+          "stride": "R (Repudiation)",
+          "threat": "Отсутствие audit trail изменений лицензионных аннотаций — сложно установить, кто и когда изменил лицензию.",
+          "priority": "важно",
+          "mitigation": "Git history + подписанные коммиты (signed commits) для REUSE.toml."
+        },
+        {
+          "component": "CI/CD pipeline",
+          "boundary": "repo → REUSE tooling",
+          "stride": "I (Information Disclosure)",
+          "threat": "Утечка внутренних путей/структуры репозитория через verbose-вывод reuse lint в публичных логах.",
+          "priority": "опционально",
+          "mitigation": "Ограничить verbosity логов CI; не публиковать полный вывод линтера."
+        },
+        {
+          "component": "REUSE.toml",
+          "boundary": "contributor → repo",
+          "stride": "D (Denial of Service)",
+          "threat": "Синтаксически валидный, но семантически ломающий TOML (например, precedence с неверным значением) блокирует релизный pipeline.",
+          "priority": "опционально",
+          "mitigation": "Schema-валидация REUSE.toml в pre-commit hook."
+        },
+        {
+          "component": "REUSE.toml",
+          "boundary": "contributor → repo",
+          "stride": "E (Elevation of Privilege)",
+          "threat": "Изменение лицензии на более разрешительную (например, MIT вместо curl) без согласия правообладателей — фактическая эскалация прав на распространение.",
+          "priority": "важно",
+          "mitigation": "Обязательный review мейнтейнеров; фиксация лицензии в release-процессе."
+        }
+      ],
+      "summary": {
+        "total": 7,
+        "critical": 0,
+        "important": 3,
+        "optional": 4
+      },
+      "top_3": [
+        "T: изменение SPDX-License-Identifier / precedence (важно)",
+        "R: отсутствие audit trail лицензионных изменений (важно)",
+        "E: смена лицензии на более разрешительную без согласия (важно)"
+      ]
+    },
+    "silence_layers": {
+      "input_silence": {
+        "what": "Не указано, какие ещё некомментируемые файлы существуют в репозитории помимо wcurl.1.",
+        "where": "[[annotations]] path = [\"wcurl.1\"]",
+        "impact": "Неполное покрытие REUSE compliance; возможны файлы без лицензии."
+      },
+      "assumption_silence": {
+        "assumption": "Предполагается, что REUSE tooling корректно интерпретирует precedence=\"closest\" и что версия инструмента стабильна.",
+        "why": "Семантика precedence не зафиксирована в файле и зависит от реализации REUSE."
+      },
+      "consequence_silence": {
+        "who": "Пользователи wcurl и downstream-дистрибутивы.",
+        "what": "Неверная лицензионная аннотация может привести к юридическим претензиям или нарушению условий распространения.",
+        "irreversible": "Частично — после релиза с неверной лицензией откат требует нового релиза и уведомления downstream."
+      }
+    },
+    "intersection_risks": [
+      {
+        "layers": [
+          "input_silence",
+          "assumption_silence"
+        ],
+        "intersection": "Неизвестный набор файлов × предположение о корректности precedence",
+        "risk": "Файл, не покрытый аннотацией, может унаследовать лицензию по precedence от ближайшего файла — неверная лицензия без явного сигнала."
+      },
+      {
+        "layers": [
+          "assumption_silence",
+          "consequence_silence"
+        ],
+        "intersection": "Предположение о REUSE tooling × необратимость релиза",
+        "risk": "Ошибка парсинга precedence в конкретной версии REUSE приводит к релизу с неверной лицензией, откат которого требует нового релиза."
+      }
+    ],
+    "contracts": {
+      "idempotency": {
+        "present": true,
+        "note": "Декларативный файл — повторное применение даёт тот же результат."
+      },
+      "retry": {
+        "present": false,
+        "note": "Не применимо к статическому конфигу; retry-логика лежит на потребителе (CI)."
+      },
+      "timeout": {
+        "present": false,
+        "note": "Не применимо."
+      },
+      "circuit_breaker": {
+        "present": false,
+        "note": "Не применимо."
+      },
+      "verdict": "Для compliance-манифеста отсутствие retry/timeout/circuit_breaker не критично. Критично отсутствие CI-валидации (см. SEC-1)."
+    },
+    "breaking_changes": [
+      {
+        "id": "BC-1",
+        "priority": "важно",
+        "change": "Изменение SPDX-License-Identifier для wcurl.1",
+        "impact": "Меняет юридические условия распространения; downstream-дистрибутивы должны пересмотреть compliance."
+      },
+      {
+        "id": "BC-2",
+        "priority": "важно",
+        "change": "Изменение precedence с \"closest\" на другое значение",
+        "impact": "Меняет, какая лицензия применяется к файлу при наличии нескольких источников."
+      },
+      {
+        "id": "BC-3",
+        "priority": "опционально",
+        "change": "Удаление или переименование wcurl.1",
+        "impact": "Аннотация становится висячей; REUSE lint может выдать ошибку."
+      }
+    ],
+    "production_impact": {
+      "runtime_impact": "none — файл не исполняется в runtime",
+      "release_impact": "medium — влияет на compliance-статус релиза и юридическую чистоту артефактов",
+      "rollback": "Простой git revert; но если релиз уже опубликован с неверной лицензией — требуется новый релиз и уведомление downstream."
+    },
+    "observability": {
+      "present": false,
+      "note": "В материале нет observability-механик. Рекомендуется: CI-лог `reuse lint`, отчёт о покрытии аннотаций, алерт при добавлении файла без аннотации."
+    },
+    "slo": {
+      "defined": false,
+      "note": "SLO не применимы к статическому конфигу. Возможный прокси-SLO: 100% REUSE compliance на каждом коммите в main."
+    },
+    "on_call": {
+      "applicable": false,
+      "note": "On-call не применим. Ответственность — мейнтейнеры репозитория при изменении лицензионных аннотаций."
+    },
+    "tests": {
+      "present": false,
+      "types": [],
+      "coverage": "0% — тестов в материале нет",
+      "edge_cases": [
+        "Файл в path не существует",
+        "precedence с невалидным значением",
+        "Конфликт inline SPDX vs annotation",
+        "Пустой path-массив",
+        "Дублирование path между аннотациями"
+      ],
+      "recommendation": "Добавить `reuse lint` в CI + unit-тест на ожидаемую лицензию wcurl.1."
+    },
+    "dependencies": {
+      "total": 3,
+      "list": [
+        "REUSE specification v3.2",
+        "SPDX license identifiers",
+        "curl license"
+      ],
+      "outdated": "unknown — версия REUSE tooling не зафиксирована в материале",
+      "cve": "none applicable — зависимости декларативные (спецификации), не исполняемый код",
+      "note": "Отсутствие пиннинга версии REUSE tooling — риск дрейфа поведения (см. RN-2)."
+    },
+    "failure_points": [
+      {
+        "id": "FP-1",
+        "priority": "важно",
+        "point": "Отсутствие CI-валидации REUSE compliance",
+        "consequence": "Дрейф аннотаций не будет пойман до релиза."
+      },
+      {
+        "id": "FP-2",
+        "priority": "важно",
+        "point": "Неполное покрытие некомментируемых файлов",
+        "consequence": "Файлы без лицензии попадают в релиз."
+      },
+      {
+        "id": "FP-3",
+        "priority": "опционально",
+        "point": "Зависимость от семантики precedence в конкретной версии REUSE",
+        "consequence": "Неверная лицензия при апгрейде инструмента."
+      },
+      {
+        "id": "FP-4",
+        "priority": "опционально",
+        "point": "Внешний SPDX-PackageDownloadLocation",
+        "consequence": "Supply-chain риск при компрометации домена."
+      }
+    ],
+    "resilience_score": 7,
+    "resilience_reason": "Файл простой, идемпотентный, с низким coupling. Снижение с 10 до 7: отсутствие CI-валидации, неполное покрытие файлов, зависимость от семантики REUSE tooling без пиннинга версии. Прямых уязвимостей кода нет.",
+    "cove": {
+      "questions": [
+        {
+          "q": "Нашёл ли я хотя бы одну уязвимость?",
+          "independent_answer": "Прямых уязвимостей кода нет (декларативный конфиг). Найдены compliance/supply-chain риски: отсутствие CI-валидации, неполное покрытие, зависимость от precedence.",
+          "match": true
+        },
+        {
+          "q": "Есть ли trust boundary, которую я не рассмотрел?",
+          "independent_answer": "Рассмотрены: repo→tooling, repo→curl.se, contributor→repo. Потенциально не рассмотрена boundary 'downstream consumer → repo' (как downstream интерпретирует лицензию).",
+          "match": false
+        },
+        {
+          "q": "Есть ли допущение, которое я не проверил?",
+          "independent_answer": "Допущение, что wcurl.1 — единственный некомментируемый файл, не проверено (нет доступа к полному дереву репозитория).",
+          "match": false
+        },
+        {
+          "q": "Есть ли risk node, помеченный опционально, но должен быть критично?",
+          "independent_answer": "RN-11 (ломающие изменения) при смене лицензии может быть критично с юридической точки зрения, но в рамках технического анализа остаётся 'важно'.",
+          "match": false
+        }
+      ],
+      "verdict": "requires_external_verification",
+      "flagged": [
+        "VERIFY: полный список некомментируемых файлов в репозитории (RN-6, FP-2)",
+        "VERIFY: версия REUSE tooling и семантика precedence (RN-2, FP-3)",
+        "VERIFY: наличие CI-проверки reuse lint (SEC-1, FP-1)"
+      ]
+    },
+    "priority_rule": "loss > risk > money",
+    "substitution_seen": false,
+    "tool_output": {
+      "ran": false,
+      "raw": "no tools invoked — material_type=config, language=toml, no tree-sitter parser applicable (per stage1)"
+    },
+    "plan_b": [
+      "RN-1: добавить CI-проверку `reuse lint` + pre-commit hook, чтобы любое неявное допущение о покрытии файлов ловилось автоматически",
+      "RN-2: пиннить версию REUSE tooling в CI и добавить тест на ожидаемую лицензию wcurl.1",
+      "RN-3: ввести правило 'inline SPDX имеет приоритет' и проверять конфликты линтером",
+      "RN-6: провести аудит репозитория на некомментируемые файлы и расширить [[annotations]] или добавить glob-паттерн",
+      "RN-8: сделать `reuse lint` обязательным gate в CI (fail on non-compliance)",
+      "RN-9: перейти на glob-паттерны в path вместо перечисления файлов",
+      "RN-11: зафиксировать лицензию в release-процессе и требовать review мейнтейнеров для изменений REUSE.toml",
+      "SEC-1: добавить `reuse lint` в CI как обязательный шаг",
+      "SEC-2: проверять целостность релизов через GPG/SBOM",
+      "FP-1: настроить алерт при добавлении файла без аннотации",
+      "FP-2: автоматический отчёт о покрытии аннотаций",
+      "FP-3: зафиксировать версию REUSE tooling и добавить regression-тест",
+      "FP-4: мониторинг DNS/сертификата curl.se + проверка целостности"
+    ],
+    "_meta": {
+      "stage": "stage2_analyst",
+      "tokens_in": 3536,
+      "tokens_out": 4932,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.001876
+    },
+    "_web_search": {
+      "used": true,
+      "queries": [
+        "recent CVEs and security best practices"
+      ],
+      "credits": 1
+    }
+  },
+  "stage3": null,
+  "stage4": {
+    "hierarchy": {
+      "core": [
+        "REUSE.toml — декларативный licensing-манифест (SPDX-PackageName=wcurl, version=1)",
+        "[[annotations]] блок для wcurl.1 (SPDX-License-Identifier=curl, precedence=closest)"
+      ],
+      "service": [
+        "REUSE tooling (parser + lint) — потребитель манифеста",
+        "CI/CD pipeline — предполагаемый gate (в материале отсутствует)",
+        "pre-commit hooks — предполагаемый слой валидации (в материале отсутствует)"
+      ],
+      "infra": [
+        "curl.se — SPDX-PackageDownloadLocation (внешний trust boundary)",
+        "Git history / signed commits — audit trail (в материале не задействован)",
+        "CODEOWNERS — контроль изменений REUSE.toml (в материале отсутствует)"
+      ]
+    },
+    "connections": {
+      "internal": [
+        "REUSE.toml → REUSE tooling (парсинг TOML)",
+        "REUSE.toml → wcurl.1 (аннотация по path)",
+        "precedence=closest → разрешение конфликтов inline SPDX vs annotation"
+      ],
+      "external": [
+        "REUSE.toml → REUSE spec v3.2 (контракт формата)",
+        "REUSE.toml → SPDX license identifiers (curl)",
+        "REUSE.toml → curl.se (download location, supply-chain boundary)"
+      ],
+      "coupling": "low — внешний coupling только к спецификациям; внутренний — path→annotation mapping"
+    },
+    "dependency_graph": {
+      "edges": [
+        {
+          "from": "REUSE.toml",
+          "to": "REUSE tooling",
+          "type": "consumed_by"
+        },
+        {
+          "from": "REUSE.toml",
+          "to": "wcurl.1",
+          "type": "annotates"
+        },
+        {
+          "from": "REUSE tooling",
+          "to": "REUSE spec v3.2",
+          "type": "implements"
+        },
+        {
+          "from": "REUSE.toml",
+          "to": "curl.se",
+          "type": "references"
+        },
+        {
+          "from": "CI/CD",
+          "to": "REUSE tooling",
+          "type": "invokes (absent in material)"
+        }
+      ],
+      "impact_of": {
+        "REUSE.toml": "изменение SPDX-License-Identifier или precedence меняет юридический статус wcurl.1 и downstream-дистрибутивов",
+        "REUSE tooling": "смена версии/семантики precedence меняет применяемую лицензию без изменения самого файла",
+        "wcurl.1": "удаление/переименование делает аннотацию висячей → lint fail"
+      },
+      "critical_path": [
+        "contributor edit REUSE.toml → review → merge → CI (reuse lint) → release → downstream consumption"
+      ],
+      "cycles": "none — DAG, декларативный манифест"
+    },
+    "options": [
+      {
+        "name": "A — Minimal hardening (CI gate + pinning)",
+        "isolation": "best-effort",
+        "scalability": "средняя — покрывает текущий набор файлов, но не масштабируется на рост некомментируемых артефактов",
+        "description": "Добавить `reuse lint` как обязательный CI gate, пиннить версию REUSE tooling, добавить pre-commit hook на schema-валидацию REUSE.toml. Минимальные изменения, максимальный эффект на FP-1/FP-3.",
+        "addresses": [
+          "FP-1",
+          "FP-3",
+          "SEC-1",
+          "RN-2",
+          "RN-8"
+        ]
+      },
+      {
+        "name": "B — Coverage audit + glob patterns",
+        "isolation": "best-effort",
+        "scalability": "высокая — glob-паттерны покрывают будущие файлы без ручного перечисления",
+        "description": "Аудит репозитория на некомментируемые файлы, переход с явного path=[\"wcurl.1\"] на glob-паттерны, автоматический отчёт о покрытии аннотаций. Адресует RN-6/RN-9/FP-2.",
+        "addresses": [
+          "RN-6",
+          "RN-9",
+          "FP-2"
+        ]
+      },
+      {
+        "name": "C — Governance + supply-chain integrity",
+        "isolation": "best-effort",
+        "scalability": "высокая — процессный слой, не зависит от числа файлов",
+        "description": "CODEOWNERS на REUSE.toml, signed commits, GPG/SBOM-проверка релизов, мониторинг DNS/сертификата curl.se, фиксация лицензии в release-процессе. Адресует SEC-2/FP-4/BC-1/BC-2.",
+        "addresses": [
+          "SEC-2",
+          "FP-4",
+          "BC-1",
+          "BC-2",
+          "RN-11"
+        ]
+      }
+    ],
+    "infrastructure_params": {
+      "pool_size": "not applicable — статический конфиг, нет runtime-пула",
+      "cpu": "not applicable",
+      "memory": "not applicable",
+      "replicas": "not applicable",
+      "lockTTL": "not applicable — идемпотентный декларативный файл, блокировки не требуются",
+      "autoscaling": "not applicable",
+      "note": "Инфраструктурные параметры не применимы к material_type=config. Единственный релевантный 'параметр' — версия REUSE tooling (должна быть пиннирована)."
+    },
+    "cloud_cost": {
+      "current": 0,
+      "projected": 0,
+      "delta": 0,
+      "reason": "no infrastructure change — статический конфиг, CI-минуты в пределах существующего пайплайна",
+      "engineering_cost": {
+        "days": "2-3",
+        "rate": "not set",
+        "note": "Оценка: 1 день на CI gate + pinning (вариант A), 1-2 дня на coverage audit + glob (вариант B), 0.5-1 день на governance (вариант C). Rate не задан — не выдумываем."
+      },
+      "roi": "высокий — предотвращение compliance-инцидента (юридический риск >> стоимость 2-3 дней инженерных работ)",
+      "cost_of_delay": "средняя — каждый релиз без CI-валидации увеличивает вероятность публикации с неверной/неполной лицензией; откат требует нового релиза + уведомления downstream"
+    },
+    "migration_plan": {
+      "schema": "REUSE.toml v1 → v1 (без изменения схемы); опционально расширение path до glob-паттернов",
+      "consistency": "идемпотентно — повторное применение даёт тот же результат; конфликты inline SPDX vs annotation разрешаются precedence=closest",
+      "rollback": "git revert REUSE.toml + revert CI-конфига; если релиз уже опубликован с неверной лицензией — новый релиз + уведомление downstream (частично необратимо)",
+      "validation": [
+        "reuse lint в CI (fail on non-compliance)",
+        "unit-тест на ожидаемую лицензию wcurl.1",
+        "schema-валидация REUSE.toml в pre-commit",
+        "отчёт о покрытии аннотаций (файлы без лицензии = 0)"
+      ]
+    },
+    "gaps": {
+      "caching": "not applicable",
+      "retry": "not applicable к конфигу; retry-логика на стороне CI",
+      "health_checks": "отсутствуют — нет проверки, что все некомментируемые файлы покрыты",
+      "migrations": "отсутствует процесс обновления аннотаций при добавлении файлов (RN-4)",
+      "monitoring": "отсутствует — нет отчёта о покрытии, нет алерта на файл без аннотации",
+      "alerts": "отсутствуют — нет сигнала при дрейфе лицензионных аннотаций",
+      "ci_validation": "отсутствует — критичный gap (SEC-1, FP-1)",
+      "audit_trail": "отсутствует — signed commits не задействованы (R: Repudiation)"
+    },
+    "evolvability": {
+      "feature_add": 8,
+      "module_replace": 9,
+      "coupling": 9,
+      "abstractions": 7,
+      "overall": 8,
+      "note": "Декларативный манифест легко расширяется новыми [[annotations]] блоками. Снижение: ручное перечисление path плохо масштабируется (RN-9), отсутствие glob-паттернов."
+    },
+    "code_generation": {
+      "files": [
+        {
+          "path": ".github/workflows/reuse.yml",
+          "content": "name: REUSE Compliance\non:\n  push:\n    branches: [main]\n  pull_request:\n\njobs:\n  reuse:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - name: Install REUSE tool (pinned)\n        run: pip install reuse==5.0.2\n      - name: Run reuse lint\n        run: reuse lint\n      - name: Verify wcurl.1 license\n        run: |\n          reuse spdx | grep -q 'wcurl.1' || (echo 'wcurl.1 not annotated' && exit 1)\n"
+        },
+        {
+          "path": ".pre-commit-config.yaml",
+          "content": "repos:\n  - repo: https://github.com/fsfe/reuse-tool\n    rev: v5.0.2\n    hooks:\n      - id: reuse\n"
+        },
+        {
+          "path": "REUSE.toml",
+          "content": "# SPDX-License-Identifier: curl\n# SPDX-FileCopyrightText: Daniel Stenberg, <daniel@haxx.se>, et al.\n\nversion = 1\nSPDX-PackageName = \"wcurl\"\nSPDX-PackageDownloadLocation = \"https://curl.se/wcurl/\"\n\n[[annotations]]\npath = [\n  \"wcurl.1\",\n]\nSPDX-FileCopyrightText = \"Copyright (C) Samuel Henrique <samueloph@debian.org>, Sergio Durigan Junior <sergiodj@debian.org> and many contributors, see the AUTHORS file.\"\nSPDX-License-Identifier = \"curl\"\nprecedence = \"closest\"\n"
+        }
+      ],
+      "validation": "python -c \"import ast; ast.parse(open('REUSE.toml').read())\" — not applicable (TOML, not Python). Use: python -c \"import tomllib; tomllib.load(open('REUSE.toml','rb'))\""
+    },
+    "inversion": {
+      "assumptions": [
+        {
+          "n": 1,
+          "assumption": "wcurl.1 — единственный некомментируемый файл в репозитории",
+          "inversion": "В репозитории есть другие некомментируемые артефакты (бинарники, изображения, .1 man-страницы)",
+          "consequences": [
+            "REUSE compliance неполный — файлы без лицензии попадают в релиз",
+            "downstream-дистрибутивы получают юридически нечистый пакет",
+            "откат требует нового релиза + уведомления downstream"
+          ]
+        },
+        {
+          "n": 2,
+          "assumption": "REUSE tooling корректно интерпретирует precedence=\"closest\"",
+          "inversion": "Семантика precedence меняется между версиями REUSE",
+          "consequences": [
+            "апгрейд инструмента меняет применяемую лицензию без изменения файла",
+            "релиз с неверной лицензией не детектируется до публикации",
+            "regression-тест на ожидаемую лицензию отсутствует"
+          ]
+        },
+        {
+          "n": 3,
+          "assumption": "CI-валидация не требуется, достаточно ручного review",
+          "inversion": "CI-валидация отсутствует, review пропускает дрейф",
+          "consequences": [
+            "дрейф аннотаций не ловится до релиза (FP-1)",
+            "изменение SPDX-License-Identifier проходит без сигнала (BC-1)",
+            "audit trail отсутствует (R: Repudiation)"
+          ]
+        }
+      ],
+      "failure_points_on_inversion": [
+        "FP-1: отсутствие CI-валидации → дрейф до релиза",
+        "FP-2: неполное покрытие → файлы без лицензии",
+        "FP-3: зависимость от семантики precedence → неверная лицензия при апгрейде",
+        "FP-4: внешний download location → supply-chain риск"
+      ]
+    },
+    "thresholds": {
+      "items": [
+        {
+          "metric": "reuse lint exit code",
+          "value": "!= 0",
+          "consequence": "блокировать merge/release; вернуть на доработку аннотаций"
+        },
+        {
+          "metric": "coverage of uncommentable files",
+          "value": "< 100%",
+          "consequence": "аудит репозитория, расширение [[annotations]] или glob-паттерн"
+        },
+        {
+          "metric": "REUSE tooling version drift",
+          "value": "любое изменение без regression-теста",
+          "consequence": "пиннинг версии + тест на ожидаемую лицензию wcurl.1"
+        },
+        {
+          "metric": "изменение SPDX-License-Identifier или precedence",
+          "value": "любое",
+          "consequence": "обязательный review мейнтейнеров + signed commit + фиксация в release-процессе"
+        }
+      ],
+      "rule": "не 'проверить ≥ X', а 'при каком X идём' — пороги задают действие, не наблюдение"
+    },
+    "constraints": {
+      "items": [
+        "1. reuse lint должен проходить на каждом коммите в main (fail on non-compliance)",
+        "2. версия REUSE tooling должна быть пиннирована",
+        "3. изменения SPDX-License-Identifier / precedence требуют review мейнтейнеров"
+      ],
+      "binding": "constraint 1 (reuse lint gate) — самое жёсткое: без него остальные не имеют силы, дрейф не детектируется",
+      "decision": "реализовать constraint 1 первым (CI gate), затем 2 (pinning), затем 3 (governance)"
+    },
+    "second_opinion": {
+      "role": "security engineer",
+      "view": "Материал — декларативный licensing-манифест, прямых уязвимостей кода нет. Ключевые риски: (1) отсутствие CI-валидации → незамеченный дрейф лицензий; (2) supply-chain через SPDX-PackageDownloadLocation (curl.se); (3) отсутствие audit trail изменений лицензионных аннотаций (Repudiation). Trust boundaries: repo→tooling, repo→curl.se, contributor→repo. Наиболее критично — boundary contributor→repo: изменение лицензии на более разрешительную без согласия правообладателей = Elevation of Privilege.",
+      "agreement": "Принимаю: CI gate `reuse lint` как обязательный (SEC-1), пиннинг версии REUSE (RN-2), CODEOWNERS + signed commits для REUSE.toml (R: Repudiation), GPG/SBOM-проверка релизов (SEC-2).",
+      "disagreement": "Отвергаю: трактовку RN-11 как 'важно' — с юридической точки зрения смена лицензии на более разрешительную без согласия правообладателей ближе к критичному (E: Elevation of Privilege). Также отвергаю идею 'достаточно ручного review' — без CI-валидации review не масштабируется и пропускает дрейф."
+    },
+    "stop_reason": "risk",
+    "stop_action": "force_emergency",
+    "stop_note": "Risk stop: необратимость частичная — релиз с неверной лицензией требует нового релиза + уведомления downstream. НО рекомендация — не немедленный STOP сегодня, а hotfix на 2-3 дня (CI gate + pinning). Согласно правилу: 'Если рекомендация — hotfix на 2+ дня → force_emergency: false (обычный отчёт)'. Следовательно force_emergency = false.",
+    "force_emergency": false,
+    "collision": {
+      "items": [
+        {
+          "analyst": "RN-11 (ломающие изменения при смене лицензии) — 'важно'",
+          "researcher": "SEC-1 (отсутствие CI-валидации) — 'важно'",
+          "synthesizer": "Оба риска разрешаются одним действием — CI gate `reuse lint` + pinning",
+          "contradiction": "нет — оба 'важно', не 'критично'; конфликт не фиксируется",
+          "resolution": "не требуется — риски комплементарны, не противоречат"
+        },
+        {
+          "analyst": "RN-6 (неполное покрытие файлов) — 'важно'",
+          "researcher": "FP-2 (файлы без лицензии попадают в релиз) — 'важно'",
+          "synthesizer": "Оба указывают на необходимость coverage audit + glob-паттернов",
+          "contradiction": "нет — согласованы",
+          "resolution": "не требуется"
+        }
+      ],
+      "note": "Критичных конфликтов (обе стороны 'критично') не обнаружено. Collision не фиксируется как блокирующий."
+    },
+    "escalation": {
+      "level": 0,
+      "action": "none",
+      "note": "0 критичных конфликтов → разрешимо в синтезе. return_to_stage2: false, force_fallback: false."
+    },
+    "cove": {
+      "questions": [
+        {
+          "q": "Есть ли альтернатива, которую я отклонил слишком быстро?",
+          "answer": "Вариант 'ничего не делать' (status quo) отклонён быстро — но обоснованно: отсутствие CI-валидации = незамеченный дрейф лицензий, юридический риск. Однако стоит рассмотреть: возможно, в репозитории уже есть CI-проверка, не видимая в материале (материал — только REUSE.toml)."
+        },
+        {
+          "q": "Есть ли риск, который я перенёс в ASSUMPTION без проверки?",
+          "answer": "Да — допущение, что wcurl.1 единственный некомментируемый файл (RN-6, FP-2). Не проверено: полный список файлов репозитория недоступен. Также не проверено наличие CI-проверки reuse lint (SEC-1)."
+        },
+        {
+          "q": "Есть ли конфликт между моими рекомендациями?",
+          "answer": "Нет. Варианты A/B/C комплементарны: A (CI gate) — фундамент, B (coverage) — расширение, C (governance) — процессный слой. Порядок реализации: A → B → C."
+        },
+        {
+          "q": "Есть ли блок, который я забыл включить?",
+          "answer": "Проверено: hierarchy, connections, dependency_graph, options, infrastructure_params, cloud_cost, migration_plan, gaps, evolvability, code_generation, inversion, thresholds, constraints, second_opinion, stop_reason, stop_action, collision, escalation, cove, return_to_stage2, return_to_stage3, force_emergency, force_fallback, new_risks, tool_output — все включены. ECON-компоненты: cloud delta (0), engineering cost (2-3 дня, rate not set), ROI (высокий), cost of delay (средняя) — включены."
+        }
+      ],
+      "verdict": "requires_external_verification",
+      "flagged": [
+        "VERIFY: полный список некомментируемых файлов в репозитории (RN-6, FP-2)",
+        "VERIFY: версия REUSE tooling и семантика precedence (RN-2, FP-3)",
+        "VERIFY: наличие CI-проверки reuse lint в репозитории (SEC-1, FP-1)",
+        "VERIFY: наличие CODEOWNERS / signed commits для REUSE.toml (R: Repudiation)"
+      ]
+    },
+    "return_to_stage2": false,
+    "return_to_stage3": false,
+    "force_fallback": false,
+    "new_risks": [
+      {
+        "id": "NR-1",
+        "risk": "Пиннинг версии REUSE tooling может заблокировать получение security-фиксов инструмента",
+        "mitigation": "Регулярный (ежемесячный) review версии + regression-тест на ожидаемую лицензию"
+      },
+      {
+        "id": "NR-2",
+        "risk": "Переход на glob-паттерны может случайно захватить файлы, не предназначенные для аннотации",
+        "mitigation": "Тестовый прогон reuse lint на ветке перед merge; явный exclude-список"
+      },
+      {
+        "id": "NR-3",
+        "risk": "CI gate `reuse lint` может блокировать срочные security-фиксы при дрейфе аннотаций",
+        "mitigation": "Возможность bypass с обязательным post-merge follow-up issue"
+      }
+    ],
+    "tool_output": {
+      "ran": false,
+      "raw": "no tools invoked — material_type=config, language=toml. analyze.py modes (calc/cost/migrate/lockttl) не применимы: нет latency_type, нет инфраструктурных изменений, нет миграции схемы, нет lockTTL (идемпотентный статический файл)."
+    },
+    "artifacts": {
+      "sql_migration": "not applicable — material_type=config, нет БД",
+      "dockerfile": "not applicable — статический конфиг, нет runtime-контейнера",
+      "gantt_mermaid": "```mermaid\ngantt\n    title REUSE.toml Hardening — 2-3 дня\n    dateFormat  YYYY-MM-DD\n    section Вариант A (CI gate)\n    Добавить reuse lint в CI       :a1, 2026-10-15, 1d\n    Пиннинг версии REUSE tooling   :a2, after a1, 0.5d\n    section Вариант B (Coverage)\n    Аудит некомментируемых файлов  :b1, after a2, 1d\n    Переход на glob-паттерны       :b2, after b1, 0.5d\n    section Вариант C (Governance)\n    CODEOWNERS + signed commits    :c1, after b2, 0.5d\n    GPG/SBOM проверка релизов      :c2, after c1, 0.5d\n```"
+    },
+    "econ": {
+      "cloud_cost_delta": 0,
+      "engineering_cost": {
+        "days": "2-3",
+        "rate": "not set",
+        "note": "Rate не задан — не выдумываем. Оценка трудозатрат: вариант A (1-1.5 дня), B (1-1.5 дня), C (0.5-1 день)."
+      },
+      "roi": "высокий — предотвращение compliance-инцидента; юридический риск (нарушение условий распространения curl-лицензии) >> стоимость 2-3 дней инженерных работ",
+      "cost_of_delay": "средняя — каждый релиз без CI-валидации увеличивает вероятность публикации с неверной/неполной лицензией; откат требует нового релиза + уведомления downstream (частично необратимо)"
+    },
+    "_meta": {
+      "stage": "stage4_synthesizer",
+      "tokens_in": 7876,
+      "tokens_out": 5770,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.002718
+    }
+  },
+  "audit": {
+    "audit_id": "audit-2026-10-15-cd4b09",
+    "session_id": "sess-2026-10-15-084440",
+    "timestamp": "2026-10-15T08:45:56.594167+00:00",
+    "material_hash": "sha256:44c1be7d8e3da83b8d6163616186013729059fa1c1039f1b0089774431bca71e",
+    "material_hash_full": "sha256:44c1be7d8e3da83b8d6163616186013729059fa1c1039f1b0089774431bca71e",
+    "material_size": {
+      "lines": 21,
+      "chars": 849
+    },
+    "model": "deepseek-chat",
+    "critique_verdict": "SAFE",
+    "risk_verdict": "SAFE",
+    "cwe_ids": [],
+    "owasp_categories": [],
+    "exploitability": {
+      "reachable": false,
+      "auth_required": false,
+      "exploit_path": "not reachable from public entrypoint",
+      "blast_radius": "none",
+      "entry_points": [],
+      "blast_indicators": [],
+      "path": [],
+      "source_count": 0,
+      "sources": [],
+      "entry_points_lines": [],
+      "sinks": []
+    },
+    "dataflow": {},
+    "anomaly": {},
+    "provenance": {
+      "source": "git/main",
+      "git_commit": "176c400e33a3960f890fd3cb12ddaa06dee70b83",
+      "git_commit_short": "176c400",
+      "git_branch": "main",
+      "git_author": "dvddv9",
+      "git_author_email": "hndav9@yahoo.com",
+      "git_remote": "https://github.com/dvddv9/vishap.git",
+      "ci_run_id": "",
+      "ci_pr_number": "",
+      "timestamp": "2026-10-15T08:45:56.392907+00:00"
+    },
+    "pii_detected": false,
+    "pii_details": {},
+    "compliance_flags": [],
+    "compliance_controls": {},
+    "compliance_standards": [],
+    "runbook": {},
+    "runbook_cwes": [],
+    "runbook_steps_count": 0,
+    "redaction_applied": true,
+    "redaction_map": {
+      "email": 3
+    },
+    "sast_findings": 0,
+    "sast_high_priority": 0,
+    "sast_tools": {},
+    "sca_vulnerabilities": 0,
+    "truncated": false,
+    "original_size": 849,
+    "web_search_used": true,
+    "web_search_queries": [
+      "recent CVEs and security best practices"
+    ],
+    "web_search_credits": 1,
+    "escalation_level": "Критичных конфликтов (обе стороны 'критично') не обнаружено. Collision не фиксируется как блокирующий."
+  },
+  "completeness": {
+    "level": "D1",
+    "required_count": 5,
+    "missing": [
+      "[RISK]",
+      "[QUESTION]"
+    ],
+    "missing_count": 2,
+    "loss_pct": 40.0,
+    "material_complete": true,
+    "threshold": 30.0,
+    "verdict": "INCOMPLETE"
+  },
+  "critique_verdict": "SAFE",
+  "cost_usd": 0.005185,
+  "final_markdown": "# REUSE.toml — Compliance Analysis (D1)\n\n[ECHO] REUSE.toml — декларативный licensing-манифест для пакета wcurl (SPDX-PackageName=wcurl, version=1). Аннотирует wcurl.1 как SPDX-License-Identifier=\"curl\" с precedence=\"closest\". ~30 строк, TOML, без control flow.\n\n[ROUTE] stage0 → stage4 (compliance, D1). Прямых уязвимостей кода нет; риски — supply-chain compliance и целостность метаданных.\n\n[CONCLUSION] Файл синтаксически и семантически корректен как REUSE-манифест. Критичных дефектов не обнаружено. Ключевые пробелы: отсутствие CI-валидации `reuse lint` (SEC-1, FP-1), неполное покрытие некомментируемых файлов (RN-6, FP-2), зависимость от семантики precedence без пиннинга версии REUSE (RN-2, FP-3). Признаков наличия CI-проверки в материале не найдено (VERIFY: не проверено). Признаков наличия CODEOWNERS/signed commits не найдено (VERIFY: не проверено).\n\n[RISK_NODES]\n- RN-6 (важно): аннотирован только wcurl.1; другие некомментируемые артефакты могут остаться без лицензии.\n- RN-8 (важно): нет CI-проверки `reuse lint` в материале — дрейф аннотаций не ловится до релиза.\n- RN-11 (важно): смена SPDX-License-Identifier или precedence меняет юридический статус wcurl.1 и downstream.\n- SEC-1 (важно): отсутствие автоматической валидации REUSE compliance в CI.\n- FP-1/FP-2 (важно): дрейф аннотаций и файлы без лицензии попадают в релиз.\n- RN-2/FP-3 (опционально): семантика precedence=\"closest\" зависит от версии REUSE tooling.\n- SEC-2/FP-4 (опционально): внешний SPDX-PackageDownloadLocation (curl.se) — supply-chain boundary.\n\n[PLAN_B]\n- RN-6: аудит репозитория на некомментируемые файлы + расширение [[annotations]] или glob-паттерн.\n- RN-8: `reuse lint` как обязательный CI gate (fail on non-compliance).\n- RN-11: CODEOWNERS + обязательный review мейнтейнеров для REUSE.toml; фиксация лицензии в release-процессе.\n- SEC-1: добавить `reuse lint` в CI (pinned version).\n- SEC-2: GPG/SBOM-проверка релизов + мониторинг DNS/сертификата curl.se.\n- FP-1: алерт при добавлении файла без аннотации.\n- FP-2: автоматический отчёт о покрытии аннотаций.\n- FP-3: пиннинг версии REUSE tooling + regression-тест на ожидаемую лицензию wcurl.1.\n- FP-4: проверка целостности релизов через GPG/SBOM.\n\n[MATRIX]\n| Dimension | Status | Comment |\n|-----------|--------|---------|\n| Security | WARN | Прямых уязвимостей нет; supply-chain boundary (curl.se) и отсутствие CI-валидации — WARN. |\n| Facts | OK | Все поля TOML валидны; SPDX-идентификаторы корректны. |\n| Logic | OK | Комментарии согласуются с полями; противоречий не найдено. |\n| Applicability | OK | Файл применим как REUSE-манифест; рекомендации реализуемы за 2-3 дня. |\n| Effectiveness | WARN | Без CI gate эффект аннотаций не гарантирован на каждом коммите. |\n| Resilience | WARN | resilience_score=7; снижение из-за отсутствия CI-валидации и неполного покрытия. |\n| Human factor | WARN | Изменение лицензии без review = Elevation of Privilege (E: STRIDE). |\n| Clarity | OK | Inline-комментарии объясняют REUSE spec и precedence. |\n| Compliance | WARN | REUSE compliance не гарантирован без CI-проверки; покрытие файлов не подтверждено (VERIFY). |\n\n[INTERSECTION_RISKS]\n- input_silence × assumption_silence: неизвестный набор файлов × предположение о корректности precedence → файл без аннотации может унаследовать неверную лицензию без явного сигнала.\n- assumption_silence × consequence_silence: предположение о REUSE tooling × необратимость релиза → ошибка парсинга precedence приводит к релизу с неверной лицензией; откат требует нового релиза.\n\n[ASSEMBLY] Манифест состоит из: (1) package-level метаданных (version, SPDX-PackageName, SPDX-PackageDownloadLocation); (2) одного [[annotations]] блока для wcurl.1 с SPDX-FileCopyrightText, SPDX-License-Identifier=\"curl\", precedence=\"closest\". Сборка корректна, coupling низкий (только к REUSE spec и SPDX).\n\n[REFACTORING] Рекомендуется: (1) переход с явного path=[\"wcurl.1\"] на glob-паттерны для масштабируемости (RN-9); (2) добавление CI-конфига `.github/workflows/reuse.yml` с pinned `reuse==5.0.2`; (3) pre-commit hook на schema-валидацию REUSE.toml.\n\n[PARALLELS] Аналогичная практика — SPDX-манифесты в крупных OSS-проектах (Linux kernel, systemd): аннотации для некомментируемых файлов + обязательный `reuse lint` в CI. Отличие: в wcurl CI-проверка в материале не зафиксирована (VERIFY).\n\n[TESTS] Тестов в материале нет (coverage 0%). Рекомендуемые edge cases: файл в path не существует; precedence с невалидным значением; конфликт inline SPDX vs annotation; пустой path-массив; дублирование path между аннотациями. Рекомендация: `reuse lint` в CI + unit-тест на ожидаемую лицензию wcurl.1.\n\n[ACTION]\n- NOW: зафиксировать текущее состояние как baseline; проверить наличие CI-проверки `reuse lint` в репозитории (VERIFY).\n- TODAY: добавить `reuse lint` как обязательный CI gate (вариант A, ~1 день).\n- TOMORROW: пиннинг версии REUSE tooling + regression-тест на лицензию wcurl.1.\n- LATER: coverage audit + glob-паттерны (вариант B); CODEOWNERS + signed commits + GPG/SBOM (вариант C).\n\n[QUESTIONS]\n- VERIFY: полный список некомментируемых файлов в репозитории (RN-6, FP-2) — не проверено.\n- VERIFY: версия REUSE tooling и семантика precedence=\"closest\" (RN-2, FP-3) — не проверено.\n- VERIFY: наличие CI-проверки `reuse lint` в репозитории (SEC-1, FP-1) — не проверено.\n- VERIFY: наличие CODEOWNERS / signed commits для REUSE.toml (R: Repudiation) — не проверено.\n\n[FUNC:FULL]\n- ECON: effort 2-3 дня (rate not set), cloud delta $0, ROI высокий (предотвращение compliance-инцидента), cost of delay средняя (каждый релиз без CI-валидации повышает риск публикации с неверной лицензией).\n- FAIL: критичных точек нет; важно — FP-1 (нет CI-валидации → дрейф до релиза), FP-2 (неполное покрытие → файлы без лицензии); recovery — git revert + новый релиз + уведомление downstream (частично необратимо).\n- METRICS: ~30 строк TOML, 0 функций, 3 декларативные зависимости (REUSE spec v3.2, SPDX, curl license), 0 тестов, coverage 0%, resilience_score=7.\n- ALTERNATIVES: A — CI gate + pinning (адресует FP-1/FP-3/SEC-1); B — coverage audit + glob (RN-6/RN-9/FP-2); C — governance + supply-chain integrity (SEC-2/FP-4/BC-1/BC-2).\n- EVOLVE: coupling 9/10, abstractions 7/10, feature_add 8/10, module_replace 9/10, overall 8/10; friction — ручное перечисление path плохо масштабируется (RN-9).\n- COMPARE: A — 1-1.5 дня, низкий риск, максимальный эффект; B — 1-1.5 дня, средний риск (glob может захватить лишнее, NR-2); C — 0.5-1 день, низкий риск, процессный слой.\n\n[MANDATORY BASE]\n1. ECONOMICS: time 2-3 дня, cost $0 cloud delta, при условии rate not set (не выдумываем); ROI высокий при условии, что юридический риск нарушения curl-лицензии > стоимости работ.\n2. RISKS: критично — не обнаружено; важно — RN-6, RN-8, RN-11, SEC-1, FP-1, FP-2, при условии, что CI-валидация отсутствует (VERIFY: не проверено); опционально — RN-2, SEC-2, FP-3, FP-4.\n3. INFRASTRUCTURE: pool_size=N/A, при условии material_type=config (статический декларативный файл, runtime-пул не применим); единственный релевантный параметр — версия REUSE tooling (должна быть пиннирована).\n4. CODE: change 0 строк в REUSE.toml (файл корректен), при условии, что рекомендации — добавление CI-конфига и pre-commit hook, а не правка манифеста.\n5. ACTION: now — baseline + VERIFY наличия CI; tomorrow — CI gate `reuse lint` + pinning; later — coverage audit + governance.\n6. TIMELINE: NOW — фиксация baseline; TODAY — CI gate (вариант A); TOMORROW — pinning + regression-тест; LATER — варианты B и C.\n7. PRODUCTION IMPACT: users N/A (файл не исполняется в runtime), deploy window — не применимо, rollback — git revert (простой), при условии, что релиз ещё не опубликован; если опубликован — новый релиз + уведомление downstream.\n8. SLO IMPACT: current N/A (SLO не определены), after N/A, при условии, что прокси-SLO = 100% REUSE compliance на каждом коммите в main.\n9. CLOUD COST: current $0, projected $0, delta ±$0, при условии, что CI-минуты в пределах существующего пайплайна.\n10. ON-CALL: new alerts — алерт при добавлении файла без аннотации (рекомендуется), runbook — отсутствует (gap), escalation — мейнтейнеры репозитория при изменении лицензионных аннотаций.\n\n[REFLEXION]\n1. Слабое место: не проверено наличие CI-проверки `reuse lint` в репозитории (материал — только REUSE.toml) → исправлено: помечено как VERIFY в [QUESTIONS] и [MANDATORY BASE], в [CONCLUSION] использована формулировка \"признаков не найдено (VERIFY)\".\n2. Слабое место: rate не задан для engineering cost → исправлено: в [FUNC:FULL] и [MANDATORY BASE] указано \"rate not set\", числа не выдуманы.\n3. Слабое место: force_emergency=false при stop_reason=risk → исправлено: в [ACTION] рекомендации распределены по NOW/TODAY/TOMORROW/LATER, немедленного STOP нет, что согласуется с force_emergency=false.\nИтог: accepted\n\n[AUDIT_TRAIL]\ngenerator: Vishap V5.10.7\naudit_id: audit-2026-10-15-cd4b09\nmaterial_hash: sha256:44c1be7d8e3da83b8d6163616186013729059fa1c1039f1b0089774431bca71e\nmaterial_hash_full: sha256:44c1be7d8e3da83b8d6163616186013729059fa1c1039f1b0089774431bca71e\npii_detected: false\ncompliance_flags: []\ncompliance_controls: {}\ncompliance_standards: []\ncritique_verdict: SAFE\nrisk_verdict: SAFE\ncwe_ids: []\nowasp_categories: []\nexploitability_reachable: False\nexploitability_auth_required: False\nexploitability_blast_radius: none\nexploitability_source_count: 0\nexploitability_path: []\ndataflow_path: []\ndataflow_source_count: 0\nanomaly_verdict: NORMAL\nanomaly_count: 0\nanomaly_method: none\nanomaly_top: []\nprovenance_source: git/main\nprovenance_commit: 176c400\n\n\n[COMPLETENESS]\nlevel: D1\nrequired: 5\nmissing: ['[RISK]', '[QUESTION]']\nloss_pct: 40.0%\nmaterial_complete: True\nverdict: INCOMPLETE\n",
+  "baseline_stats": {
+    "baseline_used": false,
+    "baseline_saved": false,
+    "baseline_path": "",
+    "baseline_save_path": "",
+    "baseline_known": 0,
+    "baseline_new": 11,
+    "baseline_total": 11
+  }
+}

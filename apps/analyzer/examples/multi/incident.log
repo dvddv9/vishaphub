@@ -1,0 +1,13 @@
+2026-10-10 14:32:01 ERROR [db-pool] Connection pool exhausted (max=20, active=20, waiting=47)
+2026-10-10 14:32:01 WARN  [api] Request queue depth 1520 (threshold 500)
+2026-10-10 14:32:01 ERROR [api] 500 GET /orders — timeout after 30000ms
+2026-10-10 14:32:02 ERROR [api] 500 POST /payments — upstream DB unavailable
+2026-10-10 14:32:02 ERROR [db-pool] Cannot acquire connection in 5000ms
+2026-10-10 14:32:03 ERROR [payments] Stripe API timeout — circuit breaker OPEN
+2026-10-10 14:32:04 ERROR [api] 503 GET /health — DB ping failed
+2026-10-10 14:32:05 FATAL [healthcheck] /health failed 3x in 10s — pod restart initiated
+2026-10-10 14:32:05 INFO  [k8s] Liveness probe failed, restarting container app-7d4f9
+2026-10-10 14:32:08 ERROR [db-pool] Reconnect storm: 47 clients retrying simultaneously
+2026-10-10 14:32:15 WARN  [db] Slow query: SELECT * FROM orders WHERE status='pending' (8.2s, 1.2M rows scanned)
+2026-10-10 14:32:22 INFO  [db] Connection pool recovered (active=3, waiting=0)
+2026-10-10 14:32:25 WARN  [api] Error rate 18% over 1min (SLO threshold 1%)

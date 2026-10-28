@@ -1,0 +1,27 @@
+[
+  {
+    "session_id": "sess-2026-10-14-174403",
+    "filename": "Untitled-1.java",
+    "level": "D3",
+    "route": [
+      "stage4",
+      "stage3"
+    ],
+    "material_size": 12000,
+    "verdict": "SAFE",
+    "pii_detected": false,
+    "material_hash": "sha256:0998cf7414e5f78fcc6eb73f674d154b72535e29c96d3dac226f4eb81407fa91",
+    "timestamp": "2026-10-14T17:45:30.434629"
+  },
+  {
+    "session_id": "sess-2026-10-14-174447",
+    "filename": "test.py",
+    "level": "D0",
+    "route": [],
+    "material_size": 17,
+    "verdict": "SAFE",
+    "pii_detected": false,
+    "material_hash": "sha256:24dee553c1bf9725ba10fbc3ae97ed5f1e22bae9c1ad86c03c7cbbfc16ff30ca",
+    "timestamp": "2026-10-14T17:45:32.185338"
+  }
+]

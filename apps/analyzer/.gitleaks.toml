@@ -1,0 +1,29 @@
+# Gitleaks configuration
+title = "Vishap secrets policy"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Global allowlist"
+paths = [
+    "tests/.*",
+    "docs/case-studies/.*",
+    "examples/.*",
+    "src/tools/patterns.py",
+    "src/tools/redact.py",
+]
+
+regexes = [
+    "<[A-Z_]+_REDACTED>",
+    "sk-your-deepseek-key-here",
+    "test-key-12345",
+]
+
+[[rules]]
+id = "generic-api-key"
+[rules.allowlist]
+regexes = [
+    "<[A-Z_]+_REDACTED>",
+    "sk-your-deepseek-key-here",
+]

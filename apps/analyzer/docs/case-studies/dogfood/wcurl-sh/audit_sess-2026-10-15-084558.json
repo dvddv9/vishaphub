@@ -1,0 +1,72 @@
+{
+  "audit_id": "audit-2026-10-15-a36db5",
+  "session_id": "sess-2026-10-15-084558",
+  "timestamp": "2026-10-15T08:46:56.553945+00:00",
+  "material_hash": "sha256:1854c075e02cafa1925ea775c3d3b5048411f0ea2a40e4d700b91a2abeb0a5c4",
+  "material_hash_full": "sha256:1854c075e02cafa1925ea775c3d3b5048411f0ea2a40e4d700b91a2abeb0a5c4",
+  "material_size": {
+    "lines": 19,
+    "chars": 632
+  },
+  "model": "deepseek-chat",
+  "critique_verdict": "REQUIRES_REVIEW",
+  "risk_verdict": "REQUIRES_REVIEW",
+  "cwe_ids": [],
+  "owasp_categories": [],
+  "exploitability": {
+    "reachable": false,
+    "auth_required": false,
+    "exploit_path": "not reachable from public entrypoint",
+    "blast_radius": "none",
+    "entry_points": [],
+    "blast_indicators": [],
+    "path": [],
+    "source_count": 0,
+    "sources": [],
+    "entry_points_lines": [],
+    "sinks": []
+  },
+  "dataflow": {},
+  "anomaly": {},
+  "provenance": {
+    "source": "git/main",
+    "git_commit": "176c400e33a3960f890fd3cb12ddaa06dee70b83",
+    "git_commit_short": "176c400",
+    "git_branch": "main",
+    "git_author": "dvddv9",
+    "git_author_email": "hndav9@yahoo.com",
+    "git_remote": "https://github.com/dvddv9/vishap.git",
+    "ci_run_id": "",
+    "ci_pr_number": "",
+    "timestamp": "2026-10-15T08:46:56.377330+00:00"
+  },
+  "pii_detected": true,
+  "pii_details": {
+    "email": 11
+  },
+  "compliance_flags": [
+    "GDPR",
+    "152-ФЗ"
+  ],
+  "compliance_controls": {},
+  "compliance_standards": [],
+  "runbook": {},
+  "runbook_cwes": [],
+  "runbook_steps_count": 0,
+  "redaction_applied": true,
+  "redaction_map": {
+    "email": 13
+  },
+  "sast_findings": 0,
+  "sast_high_priority": 0,
+  "sast_tools": {},
+  "sca_vulnerabilities": 0,
+  "truncated": false,
+  "original_size": 632,
+  "web_search_used": true,
+  "web_search_queries": [
+    "recent CVEs and security best practices"
+  ],
+  "web_search_credits": 1,
+  "escalation_level": "Конфликт не критичный (обе стороны не на уровне critical) — фиксируется как важный, не эскалируется."
+}

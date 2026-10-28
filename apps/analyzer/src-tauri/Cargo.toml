@@ -1,0 +1,29 @@
+[package]
+name = "vishap-desktop"
+version = "7.3.17"
+description = "Vishap вЂ” desktop shell for the local FastAPI backend"
+authors = ["Vishap"]
+edition = "2021"
+rust-version = "1.77"
+publish = false
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# `devtools` compiles the DevTools backend into release builds: without it Tauri
+# disables WebView2's DevTools, so F12 does nothing in a packaged app even when
+# `app.windows[].devtools` is true.
+tauri = { version = "2", features = ["devtools"] }
+# `tauri::command` needs serde for its arguments and return types; already in the
+# tree via Tauri, declared here so our own commands can derive `Serialize`.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true
+

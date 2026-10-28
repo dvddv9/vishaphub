@@ -1,0 +1,9 @@
+﻿# SARD 501270-v1.0.1 — metadata (no code)
+
+Test Case ID: 501270-v1.0.1
+CWE: CWE-126 (Buffer Over-read) + CWE-190 (Integer Overflow)
+Link: https://samate.nist.gov/SARD/test-cases/501270/versions/1.0.1
+Language: other (metadata only)
+Source code: NOT PROVIDED
+
+Instruction: Run Conveyor on SARD 501270-v1.0.1.

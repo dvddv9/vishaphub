@@ -1,0 +1,73 @@
+{
+  "audit_id": "audit-2026-10-14-91b845",
+  "session_id": "sess-2026-10-14-174403",
+  "timestamp": "2026-10-14T17:45:30.431018+00:00",
+  "material_hash": "sha256:0998cf7414e5f78fcc6eb73f674d154b72535e29c96d3dac226f4eb81407fa91",
+  "material_hash_full": "sha256:08710f0b6779787bc6a9c467f9f1448fc844a0ba8de6511ad292c6111d592890",
+  "material_size": {
+    "lines": 221,
+    "chars": 12000
+  },
+  "model": "deepseek-chat",
+  "critique_verdict": "SAFE",
+  "risk_verdict": "SAFE",
+  "cwe_ids": [],
+  "owasp_categories": [],
+  "exploitability": {
+    "reachable": false,
+    "auth_required": false,
+    "exploit_path": "not reachable from public entrypoint",
+    "blast_radius": "none",
+    "entry_points": [],
+    "blast_indicators": [],
+    "path": [],
+    "source_count": 0,
+    "sources": [],
+    "entry_points_lines": [],
+    "sinks": []
+  },
+  "dataflow": {},
+  "anomaly": {
+    "method": "zscore",
+    "verdict": "NORMAL",
+    "count": 0,
+    "anomalies": [],
+    "baseline": {
+      "mean": 645.136,
+      "std": 794.003
+    },
+    "samples": 22
+  },
+  "provenance": {
+    "source": "manual",
+    "git_commit": "",
+    "git_commit_short": "",
+    "git_branch": "",
+    "git_author": "",
+    "git_author_email": "",
+    "git_remote": "",
+    "ci_run_id": "",
+    "ci_pr_number": "",
+    "timestamp": "2026-10-14T17:45:30.426620+00:00"
+  },
+  "pii_detected": false,
+  "pii_details": {},
+  "compliance_flags": [],
+  "compliance_controls": {},
+  "compliance_standards": [],
+  "runbook": {},
+  "runbook_cwes": [],
+  "runbook_steps_count": 0,
+  "redaction_applied": false,
+  "redaction_map": {},
+  "sast_findings": 0,
+  "sast_high_priority": 0,
+  "sast_tools": {},
+  "sca_vulnerabilities": 0,
+  "truncated": true,
+  "original_size": 57396,
+  "web_search_used": false,
+  "web_search_queries": [],
+  "web_search_credits": 0,
+  "escalation_level": "Оба конфликта критичны, но разрешимы в синтезе через проверку конфига/кода. Не требуют return_to_stage2."
+}

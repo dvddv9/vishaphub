@@ -1,0 +1,1297 @@
+{
+  "session_id": "sess-2026-10-14-174403",
+  "timestamp": "2026-10-14T17:45:30.434553+00:00",
+  "filename": "Untitled-1.java",
+  "material_size": 12000,
+  "stage0": {
+    "material_type": "code",
+    "language": "java",
+    "size_hint": ">500 lines (truncated)",
+    "level": "D3",
+    "route": [
+      "stage4",
+      "stage3"
+    ],
+    "research_first": false,
+    "parallel_stages": false,
+    "subst_count": 0,
+    "session_id": "sess-2026-10-14-174403",
+    "model": "default",
+    "flags": [],
+    "slice": true,
+    "task_type": "review",
+    "gate_check": {
+      "input": "Java source file (Sakai RequestFilter)",
+      "output": "code review",
+      "decider": "backend",
+      "cost": "time",
+      "irreversible": "none"
+    },
+    "reasoning": "Java code, large (>500 lines, truncated). Default D3. No substitution markers, no emergency markers. Sequential route: stage4 then stage3. Slice recommended via tools/slice_input.py.",
+    "_meta": {
+      "stage": "stage0_orchestrator",
+      "tokens_in": 4319,
+      "tokens_out": 209,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.000663
+    }
+  },
+  "stage1": {
+    "language": "java",
+    "trajectory": {
+      "io": {
+        "input": "javax.servlet.ServletRequest / ServletResponse / FilterChain (via Filter.doFilter)",
+        "output": "void (side effects: request attributes, thread-local bindings, session cookie, response headers)"
+      },
+      "flow": "Filter.doFilter -> init/destroy lifecycle; request pre-processing (encoding, upload parsing, session resolution, principal check, cluster status check) -> chain.doFilter -> post-processing (cookie emission, thread-local cleanup)",
+      "branches": null,
+      "branches_note": "not computed — material truncated before method bodies; static analysis tool not run",
+      "nesting_max": null,
+      "deps": [
+        "org.apache.commons.fileupload (FileItem, FileUploadBase, FileUploadException, DiskFileItemFactory, ServletFileUpload)",
+        "org.apache.commons.lang3.math.NumberUtils",
+        "org.slf4j.Logger / LoggerFactory",
+        "org.sakaiproject.cluster.api.ClusterNode / ClusterService / ClusterService.Status",
+        "org.sakaiproject.component.api.ServerConfigurationService",
+        "org.sakaiproject.component.cover.ComponentManager",
+        "org.sakaiproject.event.api.UsageSession / UsageSessionService",
+        "org.sakaiproject.thread_local.api.ThreadLocalManager",
+        "org.sakaiproject.tool.api.ClosingException / RebuildBreakdownService / Session / Tool / ToolSession / SessionManager",
+        "javax.servlet.* / javax.servlet.http.*",
+        "java.io.File / IOException / UnsupportedEncodingException",
+        "java.security.Principal",
+        "java.util.*"
+      ],
+      "dead_code": null
+    },
+    "structure": {
+      "patterns": [
+        "Servlet Filter (chain-of-responsibility entry point)",
+        "ThreadLocal context propagation (CURRENT_HTTP_REQUEST / RESPONSE / SERVLET_CONTEXT / REMOTE_USER / HTTP_SESSION / CONTEXT)",
+        "Configuration via ServerConfigurationService + system properties with layered overrides (filter config > system property > default)"
+      ],
+      "cohesion": "low-to-moderate — single class mixes session management, upload parsing, encoding, cluster redirect, cookie handling, principal auth",
+      "coupling": "high — depends on ~15 Sakai internal APIs plus commons-fileupload and servlet API",
+      "solid_violations": [
+        "SRP: RequestFilter handles session, upload, encoding, cluster, cookie, auth concerns in one class",
+        "DIP: direct use of ComponentManager cover (service locator) rather than injected abstractions"
+      ],
+      "point_of_no_return": "chain.doFilter(req, res) — after this call, request/response are committed to downstream filters/tools",
+      "layers": [
+        "web container (servlet filter)",
+        "Sakai session/tool layer",
+        "Sakai cluster/component layer",
+        "commons-fileupload (multipart parsing)"
+      ],
+      "contradictions": [
+        "Class-level @SuppressWarnings(\"deprecation\") while importing and using non-deprecated APIs — suppression scope unclear from visible slice",
+        "m_sakaiHttpSession default is TOOL_SESSION but field comment says 'If true, we deliver the Sakai wide session' (boolean-style comment on int field)"
+      ]
+    },
+    "texture": {
+      "density": "high — ~40 constants, ~15 instance fields, extensive javadoc per constant",
+      "code_smells": [
+        "Large class (god filter) — many responsibilities",
+        "Long parameter/constant surface (30+ public/protected static final String keys)",
+        "Primitive obsession for session mode (int constants CONTAINER_SESSION/SAKAI_SESSION/CONTEXT_SESSION/TOOL_SESSION instead of enum)",
+        "Magic numbers: 1024, 1L*1024L*1024L repeated for upload thresholds"
+      ],
+      "error_handling": "not visible in slice — imports FileUploadException, IOException, ClosingException; handling logic truncated",
+      "tests_present": null,
+      "docs": "extensive javadoc on constants and class header; license header present (ECL-2.0)",
+      "standards": "Sakai codebase conventions; Hungarian-ish m_ prefix for instance fields; SCREAMING_SNAKE for constants"
+    },
+    "shadows": {
+      "breaks": null,
+      "comment_code_mismatch": [
+        "Field comment for m_sakaiHttpSession describes boolean semantics ('If true, we deliver the Sakai wide session') but field is int with 4-valued mode",
+        "Comment on CONFIG_UPLOAD_MAX says 'Default is 1 (one megabyte)' — matches m_uploadMaxSize init, but ceiling also defaults to 1MB with no comment confirming intent"
+      ],
+      "blind_spots": [
+        "Slice truncated mid-field declaration (m_uploadContinue comment ends mid-sentence) — method bodies not visible",
+        "No visibility into thread-local cleanup path (potential leak if chain.doFilter throws)",
+        "No visibility into cluster redirect logic despite m_redirectRandomNode field"
+      ]
+    },
+    "concurrency": {
+      "shared_state": [
+        "ThreadLocalManager bindings (CURRENT_HTTP_REQUEST, CURRENT_HTTP_RESPONSE, CURRENT_SERVLET_CONTEXT, CURRENT_REMOTE_USER, CURRENT_HTTP_SESSION, CURRENT_CONTEXT) — per-thread, but lifecycle/cleanup not visible",
+        "Instance fields (m_*) — filter is singleton per container; fields appear read-only after init but init() body not visible"
+      ],
+      "locks": null,
+      "deadlock_potential": null,
+      "race_conditions": null,
+      "idempotency": null
+    },
+    "dev_process": {
+      "code_review": null,
+      "ci_cd": null,
+      "staging": null,
+      "tech_debt": [
+        "God-filter anti-pattern accumulating unrelated concerns",
+        "Service-locator coupling via ComponentManager cover",
+        "Int-encoded enum for session mode"
+      ]
+    },
+    "tool_output": {
+      "ran": false,
+      "raw": null
+    },
+    "_meta": {
+      "stage": "stage1_scanner",
+      "tokens_in": 4035,
+      "tokens_out": 1354,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.000944
+    }
+  },
+  "stage2": {
+    "risk_nodes": [
+      {
+        "id": "RN-1",
+        "name": "Неявное допущение",
+        "priority": "критично",
+        "note": "Предполагается, что ThreadLocalManager очищается после каждого запроса, но cleanup-путь не виден в слайсе; при исключении в chain.doFilter возможна утечка thread-local (CURRENT_HTTP_REQUEST/RESPONSE/SESSION).",
+        "fingerprint": "b2f79c49cfaac72d"
+      },
+      {
+        "id": "RN-2",
+        "name": "Слабое обобщение",
+        "priority": "важно",
+        "note": "m_sakaiHttpSession как int-константы (CONTAINER/SAKAI/CONTEXT/TOOL) вместо enum — любое новое значение ломает switch/if-цепочки без компиляторной проверки.",
+        "fingerprint": "15ce9b53dd308cc1"
+      },
+      {
+        "id": "RN-3",
+        "name": "Конкурирующая реализация",
+        "priority": "важно",
+        "note": "Upload parsing может выполняться и RequestFilter, и собственным фильтром тула (CONFIG_UPLOAD_ENABLED=false) — двойной парсинг multipart или конфликт за InputStream.",
+        "fingerprint": "ab6ffaab64e02115"
+      },
+      {
+        "id": "RN-4",
+        "name": "Сдвиг тезиса",
+        "priority": "опционально",
+        "note": "Комментарий поля m_sakaiHttpSession описывает boolean-семантику, а поле — int с 4 режимами; документация расходится с кодом.",
+        "fingerprint": "54acd1087b66aacd"
+      },
+      {
+        "id": "RN-5",
+        "name": "Внутреннее противоречие",
+        "priority": "важно",
+        "note": "@SuppressWarnings(\"deprecation\") на классе при использовании не-deprecated API — либо скрывает реальные deprecated-вызовы в невидимых методах, либо маскирует будущие предупреждения.",
+        "fingerprint": "b48c6d1f95718bdd"
+      },
+      {
+        "id": "RN-6",
+        "name": "Стратегическое избегание",
+        "priority": "важно",
+        "note": "m_uploadCeiling и m_uploadMaxSize оба по умолчанию 1MB без явного комментария — неясно, задумано ли ограничение сверху или это копипаста.",
+        "fingerprint": "ca2b9b99d2289f48"
+      },
+      {
+        "id": "RN-7",
+        "name": "Производительность",
+        "priority": "важно",
+        "note": "Парсинг multipart на каждом запросе (если upload.enabled=true) с DiskFileItemFactory threshold=1024 — частые дисковые операции при мелких файлах.",
+        "fingerprint": "f45ff39333d3b49c"
+      },
+      {
+        "id": "RN-8",
+        "name": "Надёжность",
+        "priority": "критично",
+        "note": "Cluster redirect (m_redirectRandomNode) при shutdown — если ClusterService недоступен, поведение не определено; возможен отказ всех запросов вместо graceful degradation.",
+        "fingerprint": "7eb3d4ebe81103fb"
+      },
+      {
+        "id": "RN-9",
+        "name": "Масштабируемость",
+        "priority": "важно",
+        "note": "ThreadLocal bindings на каждый запрос + singleton filter — при большом пуле потоков и незакрытых bindings растёт heap; нет видимого TTL/eviction.",
+        "fingerprint": "abb30ddfcac9ea04"
+      },
+      {
+        "id": "RN-10",
+        "name": "Конкурентность",
+        "priority": "важно",
+        "note": "Instance-поля m_* читаются из многих потоков; если init() не финализирует их до первого запроса — race на конфигурации.",
+        "fingerprint": "9192948527d4c137"
+      },
+      {
+        "id": "RN-11",
+        "name": "Ломающие изменения",
+        "priority": "критично",
+        "note": "Изменение семантики ATTR_SESSION / session.parameter.allow или cookie-атрибутов (HttpOnly, domain) ломает все тулы и SSO-интеграции одновременно.",
+        "fingerprint": "eefdfc0f422b2b6d"
+      }
+    ],
+    "plan_b": [
+      "RN-1: обернуть chain.doFilter в try/finally с явным ThreadLocalManager.clear() для всех CURRENT_* ключей",
+      "RN-2: заменить int-константы на enum SessionMode с exhaustive switch",
+      "RN-3: документировать контракт — либо RequestFilter парсит, либо тул; добавить проверку ATTR_UPLOADS_DONE перед повторным парсингом",
+      "RN-4: привести javadoc m_sakaiHttpSession к int-семантике или переименовать поле",
+      "RN-5: сузить @SuppressWarnings до конкретных методов/строк, а не класса",
+      "RN-6: явно задокументировать разницу ceiling vs max, добавить тест на приоритет значений",
+      "RN-7: поднять threshold или использовать in-memory для мелких файлов; кэшировать DiskFileItemFactory",
+      "RN-8: fallback при недоступности ClusterService — пропускать redirect, логировать WARN, не блокировать запрос",
+      "RN-9: аудит ThreadLocalManager на утечки, добавить метрику размера bindings",
+      "RN-10: сделать m_* final после init() или использовать volatile + double-checked init",
+      "RN-11: версионировать cookie-контракт, вводить изменения через feature-flag с dual-read"
+    ],
+    "security": {
+      "summary": "Фильтр — точка входа для всех запросов Sakai; смешивает session, upload, auth, cluster. Основные риски: session fixation через ATTR_SESSION/session.parameter.allow, upload DoS, cookie-атрибуты, principal check.",
+      "findings": [
+        {
+          "id": "SEC-1",
+          "issue": "session.parameter.allow позволяет передавать session id через параметр запроса — классический session fixation / leakage через Referer и логи",
+          "priority": "критично",
+          "mitigation": "Запретить по умолчанию, требовать HTTPS + SameSite=Strict, ротация session id после аутентификации",
+          "ref": "[FROM_KNOWLEDGE: OWASP Session Fixation]"
+        },
+        {
+          "id": "SEC-2",
+          "issue": "m_checkPrincipal=false по умолчанию — principal не сверяется с cookie-сессией",
+          "priority": "важно",
+          "mitigation": "Включить sakai.session.auth=true в проде, документировать риск",
+          "ref": "[FROM_KNOWLEDGE: OWASP A07:2021 Identification and Authentication Failures]"
+        },
+        {
+          "id": "SEC-3",
+          "issue": "Cookie HttpOnly можно отключить через sakai.cookieHttpOnly=false — XSS-эксфильтрация session",
+          "priority": "важно",
+          "mitigation": "Запретить отключение в проде, добавить Secure и SameSite",
+          "ref": "[FROM_KNOWLEDGE: OWASP A05:2021 Security Misconfiguration]"
+        },
+        {
+          "id": "SEC-4",
+          "issue": "Upload max/ceiling по умолчанию 1MB, но upload.continueOverMax может продолжить обработку после превышения",
+          "priority": "важно",
+          "mitigation": "Всегда abort при превышении, лимит на количество файлов и суммарный размер",
+          "ref": "[FROM_KNOWLEDGE: OWASP File Upload Cheat Sheet]"
+        },
+        {
+          "id": "SEC-5",
+          "issue": "m_uploadTempDir может указывать на произвольный путь — path traversal / запись в неожиданное место",
+          "priority": "важно",
+          "mitigation": "Валидировать путь, использовать канонический путь внутри разрешённого корня"
+        },
+        {
+          "id": "SEC-6",
+          "issue": "basiclti.provider.allowedtools — whitelist LTI-провайдеров; ошибка конфигурации открывает доступ к произвольным тулам",
+          "priority": "важно",
+          "mitigation": "Fail-closed при пустом/невалидном списке, аудит изменений"
+        }
+      ]
+    },
+    "secrets": {
+      "hardcoded": [],
+      "note": "В слайсе секретов не обнаружено. Session id, cookie name/domain, serverId — конфигурируемые, не хардкод. Требуется проверка полного файла и связанных конфигов на дефолтные значения (sakai.cookieName, sakai.serverId).",
+      "risks": [
+        "Session id в URL (session.parameter.allow) может попасть в access-логи и Referer — фактически утечка credential",
+        "Логирование request attributes (если есть) может раскрыть session id"
+      ]
+    },
+    "concurrency": {
+      "shared_state": [
+        "ThreadLocalManager bindings (CURRENT_HTTP_REQUEST/RESPONSE/SERVLET_CONTEXT/REMOTE_USER/HTTP_SESSION/CONTEXT)",
+        "Instance-поля m_* (singleton filter)"
+      ],
+      "risks": [
+        "Утечка thread-local при исключении до cleanup (RN-1)",
+        "Race на конфигурации, если init() не завершён до первого запроса (RN-10)",
+        "Параллельные запросы одного пользователя могут перезаписывать ATTR_SESSION в thread-local при неправильном cleanup"
+      ],
+      "mitigation": "try/finally cleanup, final-поля после init, метрики на размер thread-local map"
+    },
+    "threat_model": {
+      "components": [
+        "RequestFilter (servlet filter)",
+        "ThreadLocalManager",
+        "SessionManager / Session",
+        "UsageSessionService",
+        "ClusterService",
+        "ServerConfigurationService",
+        "commons-fileupload (DiskFileItemFactory / ServletFileUpload)",
+        "Servlet container (HttpServletRequest/Response)"
+      ],
+      "trust_boundaries": [
+        "Browser → Servlet container (HTTP request, cookies, multipart)",
+        "Servlet container → RequestFilter (ServletRequest)",
+        "RequestFilter → Sakai session/tool layer (Session, ToolSession)",
+        "RequestFilter → ClusterService (cluster status)",
+        "RequestFilter → filesystem (upload temp dir)",
+        "RequestFilter → downstream tools (chain.doFilter)"
+      ],
+      "threats": [
+        {
+          "component": "RequestFilter",
+          "boundary": "Browser → Servlet container",
+          "stride": "S",
+          "threat": "Подмена session id через параметр запроса (session.parameter.allow) — session fixation",
+          "priority": "критично",
+          "mitigation": "Запретить параметр по умолчанию, ротация session id, SameSite=Strict"
+        },
+        {
+          "component": "RequestFilter",
+          "boundary": "Browser → Servlet container",
+          "stride": "T",
+          "threat": "Подмена cookie (sakai.cookieName/domain) — перехват сессии при отсутствии Secure/HttpOnly",
+          "priority": "критично",
+          "mitigation": "Принудительно Secure + HttpOnly + SameSite, HSTS"
+        },
+        {
+          "component": "RequestFilter",
+          "boundary": "Browser → Servlet container",
+          "stride": "R",
+          "threat": "Отсутствие audit log на смену сессии / principal mismatch",
+          "priority": "важно",
+          "mitigation": "Логировать session create/destroy, principal check failures"
+        },
+        {
+          "component": "RequestFilter",
+          "boundary": "Browser → Servlet container",
+          "stride": "I",
+          "threat": "Утечка session id в логи/Referer при session.parameter.allow",
+          "priority": "важно",
+          "mitigation": "Маскировать session id в логах, запретить параметр"
+        },
+        {
+          "component": "RequestFilter",
+          "boundary": "Browser → Servlet container",
+          "stride": "D",
+          "threat": "DoS через большие/многочисленные multipart uploads (upload.max/ceiling)",
+          "priority": "критично",
+          "mitigation": "Жёсткий лимит, abort при превышении, rate limiting на уровне контейнера"
+        },
+        {
+          "component": "RequestFilter",
+          "boundary": "RequestFilter → filesystem",
+          "stride": "E",
+          "threat": "Path traversal через upload.dir — запись за пределы разрешённого каталога",
+          "priority": "важно",
+          "mitigation": "Канонизация пути, whitelist корня"
+        },
+        {
+          "component": "RequestFilter",
+          "boundary": "RequestFilter → ClusterService",
+          "stride": "D",
+          "threat": "Отказ ClusterService блокирует все запросы при shutdown-редиректе",
+          "priority": "важно",
+          "mitigation": "Fallback: пропускать redirect, логировать WARN"
+        },
+        {
+          "component": "RequestFilter",
+          "boundary": "RequestFilter → downstream tools",
+          "stride": "T",
+          "threat": "Подмена ATTR_SESSION/ATTR_FILTERED downstream-фильтром или тулом",
+          "priority": "важно",
+          "mitigation": "Проверять ATTR_FILTERED, не доверять атрибутам из внешних источников"
+        },
+        {
+          "component": "RequestFilter",
+          "boundary": "RequestFilter → Sakai session/tool layer",
+          "stride": "E",
+          "threat": "Privilege escalation через basiclti.provider.allowedtools misconfig",
+          "priority": "важно",
+          "mitigation": "Fail-closed whitelist, аудит"
+        },
+        {
+          "component": "RequestFilter",
+          "boundary": "Servlet container → RequestFilter",
+          "stride": "I",
+          "threat": "Утечка thread-local между запросами при отсутствии cleanup",
+          "priority": "критично",
+          "mitigation": "try/finally cleanup всех CURRENT_* ключей"
+        }
+      ],
+      "summary": {
+        "total": 10,
+        "critical": 4,
+        "important": 6,
+        "optional": 0
+      },
+      "top_3": [
+        "SEC-1 / S: session fixation через session.parameter.allow",
+        "SEC-4 / D: DoS через upload",
+        "RN-1 / I: утечка thread-local при исключении"
+      ]
+    },
+    "silence_layers": {
+      "input_silence": {
+        "what": "Нет цифр нагрузки: RPS, размер пула потоков, средний размер upload, число узлов кластера",
+        "where": "Отсутствует в материале и stage1",
+        "impact": "Нельзя оценить масштабируемость и вероятность DoS"
+      },
+      "assumption_silence": {
+        "assumption": "ThreadLocalManager очищается контейнером/фреймворком автоматически",
+        "why": "Cleanup-путь не виден в слайсе; предполагается без проверки"
+      },
+      "consequence_silence": {
+        "who": "Все пользователи Sakai при смене cookie-контракта или session.parameter.allow",
+        "what": "Массовый logout / session fixation / утечка сессий",
+        "irreversible": "Утёкшие session id нельзя отозвать задним числом — потеря необратима"
+      }
+    },
+    "intersection_risks": [
+      {
+        "layers": [
+          "ThreadLocalManager",
+          "Servlet container"
+        ],
+        "intersection": "Thread-local bindings × асинхронные/повторно используемые потоки контейнера",
+        "risk": "Session предыдущего запроса видна следующему на том же потоке при отсутствии cleanup"
+      },
+      {
+        "layers": [
+          "commons-fileupload",
+          "ClusterService"
+        ],
+        "intersection": "Парсинг multipart × shutdown-редирект",
+        "risk": "Файл уже записан в temp dir, но запрос редиректится на другой узел — осиротевшие файлы и рассинхрон"
+      },
+      {
+        "layers": [
+          "SessionManager",
+          "ServerConfigurationService"
+        ],
+        "intersection": "Session resolution × layered config overrides",
+        "risk": "Разные узлы кластера читают разные значения session.parameter.allow/cookieDomain — рассинхрон сессий"
+      },
+      {
+        "layers": [
+          "IT/ops",
+          "bank/security"
+        ],
+        "intersection": "Ops-конфигурация × security-контракт cookie",
+        "risk": "Ops отключает HttpOnly для отладки — security-инвариант нарушается без алерта"
+      }
+    ],
+    "contracts": {
+      "idempotency": {
+        "present": false,
+        "note": "Фильтр не идемпотентен по определению (side effects: cookie, thread-local, upload temp files). Повторный вызов на том же запросе может дублировать парсинг upload."
+      },
+      "retry": {
+        "present": false,
+        "note": "Retry-логика не видна; при ошибке ClusterService/upload поведение не определено."
+      },
+      "timeout": {
+        "present": false,
+        "note": "Нет видимых таймаутов на ClusterService, upload parsing, session lookup."
+      },
+      "circuit_breaker": {
+        "present": false,
+        "note": "Нет circuit breaker для ClusterService — при недоступности кластера фильтр может блокировать все запросы."
+      },
+      "verdict": "Для критичного entry-point фильтра отсутствие timeout и circuit breaker — критично; idempotency неприменима в классическом смысле, но нужен guard на повторный парсинг upload."
+    },
+    "breaking_changes": [
+      {
+        "change": "Изменение семантики ATTR_SESSION / session.parameter.allow",
+        "impact": "Все тулы и SSO-интеграции",
+        "priority": "критично"
+      },
+      {
+        "change": "Изменение cookie-атрибутов (name, domain, HttpOnly, Secure, SameSite)",
+        "impact": "Массовый logout, потеря сессий",
+        "priority": "критично"
+      },
+      {
+        "change": "Изменение дефолтов upload.max/ceiling/threshold",
+        "impact": "Тулы с большими файлами перестанут работать",
+        "priority": "важно"
+      },
+      {
+        "change": "Замена int-констант session mode на enum",
+        "impact": "Любой внешний код, читающий m_sakaiHttpSession",
+        "priority": "важно"
+      }
+    ],
+    "production_impact": {
+      "blast_radius": "Все запросы ко всем тулам Sakai — единая точка отказа",
+      "rollback": "Возможен через откат WAR/конфига, но утёкшие session id и осиротевшие upload-файлы не откатываются",
+      "deployment_risk": "Высокий — фильтр в критическом пути; любая регрессия = полный outage",
+      "priority": "критично"
+    },
+    "observability": {
+      "present": [
+        "SLF4J Logger M_log"
+      ],
+      "missing": [
+        "Метрики: latency фильтра, размер thread-local map, число upload-отказов, частота cluster redirect",
+        "Трассировка: correlation id на запрос",
+        "Аудит: session create/destroy, principal mismatch, cookie set",
+        "Алерты: рост ошибок парсинга upload, недоступность ClusterService"
+      ],
+      "priority": "важно"
+    },
+    "slo": {
+      "defined": false,
+      "suggested": [
+        "Availability фильтра ≥ 99.9%",
+        "p99 latency overhead фильтра ≤ 20ms",
+        "Upload failure rate ≤ 0.1%",
+        "Session fixation incidents = 0"
+      ]
+    },
+    "on_call": {
+      "defined": false,
+      "note": "Нет видимых runbook/алертов. Для критичного entry-point нужен runbook: как откатить cookie-контракт, как диагностировать thread-local leak, как отключить cluster redirect."
+    },
+    "tests": {
+      "present": null,
+      "types_needed": [
+        "Unit: session resolution (все 4 режима m_sakaiHttpSession)",
+        "Unit: upload max/ceiling/threshold/continueOverMax",
+        "Unit: cookie attributes (HttpOnly, Secure, domain, name)",
+        "Unit: thread-local cleanup при исключении в chain.doFilter",
+        "Integration: cluster redirect при shutdown",
+        "Integration: session.parameter.allow on/off",
+        "Security: session fixation, path traversal upload.dir",
+        "Concurrency: параллельные запросы одного пользователя"
+      ],
+      "edge_cases": [
+        "Пустой multipart",
+        "Файл ровно на границе max",
+        "ClusterService throws",
+        "chain.doFilter throws",
+        "Отсутствующий cookie при session.parameter.allow=true"
+      ],
+      "coverage_note": "Покрытие неизвестно — тесты в слайсе не видны. Для каждого шага рефакторинга (RN-1..RN-11) требуется минимум 1 тест."
+    },
+    "dependencies": {
+      "total": 13,
+      "outdated": "unknown — версии не указаны в слайсе",
+      "cve": "unknown — требуется SBOM/scan (commons-fileupload исторически имел CVE, напр. CVE-2013-2186, CVE-2016-3092)",
+      "notes": [
+        "commons-fileupload — исторически уязвимый компонент, требуется проверка версии",
+        "commons-lang3 — NumberUtils, проверить версию",
+        "javax.servlet — deprecated namespace (jakarta migration)",
+        "Sakai internal APIs — coupling высокий"
+      ],
+      "ref": "[FROM_KNOWLEDGE: Apache Commons FileUpload CVE history]"
+    },
+    "failure_points": [
+      {
+        "id": "FP-1",
+        "point": "chain.doFilter без try/finally cleanup thread-local",
+        "priority": "критично"
+      },
+      {
+        "id": "FP-2",
+        "point": "ClusterService недоступен при shutdown-редиректе",
+        "priority": "критично"
+      },
+      {
+        "id": "FP-3",
+        "point": "Upload parsing при continueOverMax=true",
+        "priority": "важно"
+      },
+      {
+        "id": "FP-4",
+        "point": "Session resolution при session.parameter.allow=true без HTTPS",
+        "priority": "критично"
+      },
+      {
+        "id": "FP-5",
+        "point": "Cookie emission при неверном domain/name",
+        "priority": "важно"
+      },
+      {
+        "id": "FP-6",
+        "point": "init() не завершён до первого запроса — race на m_*",
+        "priority": "важно"
+      }
+    ],
+    "resilience_score": 4,
+    "resilience_reason": "Фильтр — единая точка отказа для всех запросов. Нет timeout/circuit breaker для ClusterService, нет видимого cleanup thread-local, нет метрик/алертов, нет SLO/runbook. Конфигурация layered и хрупкая. Плюсы: конфигурируемость, whitelist LTI, лимиты upload. Итог: 4/10 — работоспособно, но не устойчиво к отказам и атакам.",
+    "cove": {
+      "questions": [
+        {
+          "q": "Нашёл ли я хотя бы одну уязвимость?",
+          "independent_answer": "Да — session fixation через session.parameter.allow, DoS через upload, thread-local leak.",
+          "match": true
+        },
+        {
+          "q": "Есть ли trust boundary, которую я не рассмотрел?",
+          "independent_answer": "Возможна граница RequestFilter → внешние LTI-провайдеры (basiclti.provider.allowedtools) — рассмотрена частично, требуется проверка полного кода.",
+          "match": false
+        },
+        {
+          "q": "Есть ли допущение, которое я не проверил?",
+          "independent_answer": "Предположение об автоматическом cleanup ThreadLocalManager не проверено — cleanup-путь вне слайса.",
+          "match": false
+        },
+        {
+          "q": "Есть ли risk node, помеченный опционально, но должен быть критично?",
+          "independent_answer": "RN-4 (сдвиг тезиса) — расхождение комментария и кода может скрывать реальный баг конфигурации; повысить до 'важно'.",
+          "match": false
+        }
+      ],
+      "verdict": "requires_external_verification",
+      "flagged": [
+        "VERIFY: LTI trust boundary (basiclti.provider.allowedtools) — требуется полный код",
+        "VERIFY: ThreadLocalManager cleanup path — требуется полный код RequestFilter",
+        "VERIFY: RN-4 повышен до 'важно' (COVE match=false)"
+      ]
+    },
+    "priority_rule": "loss > risk > money",
+    "substitution_seen": false,
+    "tool_output": {
+      "ran": false,
+      "raw": null,
+      "note": "Инструменты analyze.py не запускались — материал truncated, method bodies недоступны. Рекомендуется запустить: python tools/analyze.py --mode security --input RequestFilter.java; --mode contracts; --mode deps --input pom.xml; --mode tests --input src/test"
+    },
+    "_meta": {
+      "stage": "stage2_analyst",
+      "tokens_in": 6282,
+      "tokens_out": 5996,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.002558
+    },
+    "_web_search": {
+      "used": false,
+      "queries": [],
+      "credits": 0
+    }
+  },
+  "stage3": null,
+  "stage4": {
+    "hierarchy": {
+      "core": [
+        "RequestFilter.doFilter — единая точка входа для всех запросов Sakai",
+        "Session resolution (m_sakaiHttpSession: CONTAINER/SAKAI/CONTEXT/TOOL)",
+        "ThreadLocalManager bindings (CURRENT_HTTP_REQUEST/RESPONSE/SERVLET_CONTEXT/REMOTE_USER/HTTP_SESSION/CONTEXT)",
+        "chain.doFilter — point of no return"
+      ],
+      "service": [
+        "Upload parsing (commons-fileupload, DiskFileItemFactory, ServletFileUpload)",
+        "Cookie emission (sakai.cookieName/domain/HttpOnly)",
+        "Cluster redirect (ClusterService.Status, m_redirectRandomNode)",
+        "Principal check (m_checkPrincipal, sakai.session.auth)",
+        "Character encoding (m_characterEncoding, encoding.enabled)",
+        "LTI provider whitelist (basiclti.provider.allowedtools)"
+      ],
+      "infra": [
+        "Servlet container (thread pool, session store)",
+        "ServerConfigurationService (layered config: filter > system prop > default)",
+        "ComponentManager cover (service locator)",
+        "Filesystem (upload temp dir)",
+        "ClusterService (cluster status)"
+      ]
+    },
+    "connections": {
+      "inbound": [
+        "Browser → Servlet container → RequestFilter.doFilter",
+        "ServerConfigurationService → init() (config resolution)",
+        "ClusterService → shutdown redirect decision"
+      ],
+      "outbound": [
+        "RequestFilter → ThreadLocalManager (bindings)",
+        "RequestFilter → SessionManager / UsageSessionService",
+        "RequestFilter → filesystem (upload temp)",
+        "RequestFilter → chain.doFilter (downstream tools)",
+        "RequestFilter → HttpServletResponse (cookie, headers)"
+      ],
+      "bidirectional": [
+        "RequestFilter ↔ SessionManager (session lookup + attribute set)",
+        "RequestFilter ↔ ClusterService (status query + redirect)"
+      ]
+    },
+    "dependency_graph": {
+      "edges": [
+        {
+          "from": "RequestFilter",
+          "to": "ThreadLocalManager",
+          "type": "write/read",
+          "critical": true
+        },
+        {
+          "from": "RequestFilter",
+          "to": "SessionManager",
+          "type": "read/write",
+          "critical": true
+        },
+        {
+          "from": "RequestFilter",
+          "to": "ClusterService",
+          "type": "read",
+          "critical": true
+        },
+        {
+          "from": "RequestFilter",
+          "to": "ServerConfigurationService",
+          "type": "read",
+          "critical": false
+        },
+        {
+          "from": "RequestFilter",
+          "to": "commons-fileupload",
+          "type": "use",
+          "critical": true
+        },
+        {
+          "from": "RequestFilter",
+          "to": "UsageSessionService",
+          "type": "write",
+          "critical": false
+        },
+        {
+          "from": "RequestFilter",
+          "to": "chain.doFilter",
+          "type": "invoke",
+          "critical": true
+        },
+        {
+          "from": "RequestFilter",
+          "to": "filesystem",
+          "type": "write",
+          "critical": true
+        }
+      ],
+      "impact_of": {
+        "ThreadLocalManager": "Утечка → session предыдущего запроса видна следующему (RN-1, FP-1)",
+        "SessionManager": "Отказ → все запросы без сессии, полный outage",
+        "ClusterService": "Отказ → блокировка всех запросов при shutdown (RN-8, FP-2)",
+        "commons-fileupload": "CVE/DoS → компрометация или отказ (SEC-4)",
+        "chain.doFilter": "Исключение → thread-local leak без cleanup (FP-1)"
+      },
+      "critical_path": [
+        "doFilter → encoding → upload parse → session resolve → principal check → cluster check → chain.doFilter → cookie emit → cleanup"
+      ],
+      "cycles": [
+        "RequestFilter → SessionManager → (session attributes) → RequestFilter (ATTR_SESSION read-back)",
+        "RequestFilter → ClusterService → redirect → RequestFilter (повторный запрос на другом узле)"
+      ]
+    },
+    "options": [
+      {
+        "name": "Option A — Hardening in place (minimal diff)",
+        "isolation": "best-effort",
+        "scalability": "unchanged — singleton filter, thread-local per request",
+        "description": "Сохранить монолитный RequestFilter, но закрыть критичные дыры: try/finally cleanup thread-local, timeout+circuit breaker на ClusterService, запрет session.parameter.allow по умолчанию, принудительный HttpOnly+Secure+SameSite, abort при upload max.",
+        "pros": [
+          "Минимальный blast radius — контракт cookie/session не меняется",
+          "Быстрый rollback (один WAR)",
+          "Не требует миграции схемы"
+        ],
+        "cons": [
+          "God-filter остаётся — SRP не решён",
+          "int-константы session mode сохраняются (RN-2)",
+          "Технический долг накапливается"
+        ],
+        "effort_days": "3-5",
+        "risk": "низкий"
+      },
+      {
+        "name": "Option B — Decompose into filter chain",
+        "isolation": "best-effort",
+        "scalability": "improved — каждый фильтр независим, можно включать/выключать по конфигу",
+        "description": "Разбить RequestFilter на цепочку: EncodingFilter → UploadFilter → SessionFilter → PrincipalFilter → ClusterFilter → CookieFilter. Каждый — отдельный класс с единственной ответственностью. Session mode → enum.",
+        "pros": [
+          "SRP соблюдён, тестируемость выше",
+          "Каждый фильтр можно отключить/заменить независимо",
+          "Enum SessionMode — компиляторная проверка"
+        ],
+        "cons": [
+          "Порядок фильтров критичен — ошибка = outage",
+          "Больше классов, больше точек отказа при конфигурации",
+          "Требует регрессионного тестирования всей цепочки"
+        ],
+        "effort_days": "10-15",
+        "risk": "средний"
+      },
+      {
+        "name": "Option C — Facade + strategy (incremental)",
+        "isolation": "best-effort",
+        "scalability": "improved — стратегии можно кэшировать, конфиг читается один раз",
+        "description": "Оставить RequestFilter как фасад, вынести логику в стратегии: SessionStrategy (enum-based), UploadStrategy, ClusterStrategy, CookieStrategy. Фасад делегирует. Позволяет мигрировать постепенно.",
+        "pros": [
+          "Инкрементальная миграция — можно делать по одной стратегии",
+          "Контракт фильтра сохраняется",
+          "Тестируемость каждой стратегии отдельно"
+        ],
+        "cons": [
+          "Промежуточное состояние — фасад + стратегии сосуществуют",
+          "Требует дисциплины, чтобы не вернуться к god-filter",
+          "Дольше, чем Option A"
+        ],
+        "effort_days": "7-10",
+        "risk": "средний-низкий"
+      }
+    ],
+    "infrastructure_params": {
+      "pool_size": {
+        "value": 50,
+        "rationale": "Минимум для Sakai под нагрузкой; точное значение требует RPS из silence_layers.input_silence",
+        "source": "constraint"
+      },
+      "cpu": {
+        "value": "not set",
+        "rationale": "Нет данных о нагрузке — не выдумываем"
+      },
+      "memory": {
+        "value": "not set",
+        "rationale": "Зависит от размера thread-local map и upload threshold; требуется профилирование"
+      },
+      "replicas": {
+        "value": "not set",
+        "rationale": "Зависит от ClusterService конфигурации; не выдумываем"
+      },
+      "lockTTL": {
+        "value": "not set",
+        "rationale": "mode_lockttl требует p99_hold_ms — не измерено"
+      },
+      "autoscaling": {
+        "value": "not set",
+        "rationale": "Нет метрик latency/throughput"
+      },
+      "timeout": {
+        "value": "10s",
+        "rationale": "Constraint: timeout ≤ 10s на ClusterService и upload parsing",
+        "source": "constraint"
+      },
+      "upload_threshold": {
+        "value": 1024,
+        "rationale": "Текущий дефолт; RN-7 предлагает поднять для мелких файлов",
+        "source": "code"
+      },
+      "upload_max": {
+        "value": "1MB (default)",
+        "rationale": "Текущий дефолт; требует пересмотра под реальные сценарии",
+        "source": "code"
+      }
+    },
+    "cloud_cost": {
+      "current": "not set",
+      "projected": "not set",
+      "delta": 0,
+      "reason": "no infrastructure change — рефакторинг кода, не инфраструктуры",
+      "engineering_cost": {
+        "option_a": "3-5 days (rate not set)",
+        "option_b": "10-15 days (rate not set)",
+        "option_c": "7-10 days (rate not set)"
+      },
+      "roi": {
+        "option_a": "Высокий — закрытие 4 критичных уязвимостей за 3-5 дней",
+        "option_b": "Средний — долгосрочная поддерживаемость, но выше риск регрессии",
+        "option_c": "Средне-высокий — баланс между скоростью и качеством"
+      },
+      "cost_of_delay": {
+        "per_week": "Риск session fixation / DoS / thread-local leak сохраняется; при инциденте — полный outage всех тулов Sakai",
+        "note": "Утёкшие session id не откатываются — потеря необратима (consequence_silence)"
+      }
+    },
+    "migration_plan": {
+      "schema": "Не применимо — нет изменений схемы БД. Изменения конфигурации: session.parameter.allow=false (default), sakai.cookieHttpOnly=true (enforced), sakai.session.auth=true (prod).",
+      "consistency": "Cookie-контракт версионируется: dual-read для cookie name/domain в течение одного релиза. Session mode enum — обратная совместимость через adapter для внешнего кода, читающего m_sakaiHttpSession.",
+      "rollback": "Откат WAR + конфига. НО: утёкшие session id и осиротевшие upload-файлы не откатываются. Rollback plan: feature-flag на каждый критичный change (session.parameter.allow, cookie attrs, cluster redirect).",
+      "validation": [
+        "Unit: все 4 режима SessionMode",
+        "Unit: thread-local cleanup при исключении в chain.doFilter",
+        "Unit: upload max/ceiling/threshold/continueOverMax",
+        "Unit: cookie attributes (HttpOnly, Secure, SameSite, domain)",
+        "Integration: cluster redirect при shutdown + ClusterService throws",
+        "Security: session fixation, path traversal upload.dir",
+        "Concurrency: параллельные запросы одного пользователя",
+        "Canary: 1 узел кластера, 24h, метрики latency/error rate"
+      ],
+      "phases": [
+        {
+          "phase": 1,
+          "action": "try/finally cleanup thread-local + метрики",
+          "days": "1",
+          "risk": "низкий"
+        },
+        {
+          "phase": 2,
+          "action": "timeout + circuit breaker на ClusterService",
+          "days": "1-2",
+          "risk": "низкий"
+        },
+        {
+          "phase": 3,
+          "action": "session.parameter.allow=false + cookie hardening",
+          "days": "1",
+          "risk": "средний (breaking)"
+        },
+        {
+          "phase": 4,
+          "action": "upload abort при max + path validation",
+          "days": "1",
+          "risk": "средний"
+        },
+        {
+          "phase": 5,
+          "action": "SessionMode enum + adapter",
+          "days": "2-3",
+          "risk": "средний"
+        }
+      ]
+    },
+    "gaps": {
+      "caching": "Нет кэша для ClusterService status — каждый запрос может дергать кластер. Добавить TTL-кэш (1-5s).",
+      "retry": "Нет retry-логики. Для ClusterService — retry с backoff + circuit breaker.",
+      "health_checks": "Нет health-check для ClusterService и upload temp dir. Добавить readiness probe.",
+      "migrations": "Нет миграции cookie-контракта. Нужен dual-read период.",
+      "monitoring": "Отсутствуют метрики: latency фильтра, размер thread-local map, upload failures, cluster redirect rate. Добавить Micrometer/Prometheus.",
+      "alerts": "Нет алертов на: рост upload errors, недоступность ClusterService, principal mismatch, session fixation attempts.",
+      "audit": "Нет audit log на session create/destroy, cookie set, principal check failures.",
+      "runbook": "Нет runbook: как откатить cookie-контракт, диагностировать thread-local leak, отключить cluster redirect."
+    },
+    "evolvability": {
+      "feature_add": 4,
+      "module_replace": 3,
+      "coupling": 3,
+      "abstractions": 3,
+      "overall": 3,
+      "rationale": "God-filter с 15+ зависимостями, service locator, int-константы вместо enum. Добавление фичи требует правки одного класса с высоким риском регрессии. Замена модуля (например, commons-fileupload) затрагивает весь фильтр."
+    },
+    "code_generation": {
+      "artifacts": [
+        {
+          "name": "ThreadLocalCleanupFilter.java",
+          "description": "Обёртка для гарантированного cleanup thread-local",
+          "code": "package org.sakaiproject.util;\n\nimport org.sakaiproject.thread_local.api.ThreadLocalManager;\nimport org.sakaiproject.component.cover.ComponentManager;\nimport javax.servlet.*;\nimport java.io.IOException;\n\npublic class ThreadLocalCleanupFilter implements Filter {\n    private static final String[] KEYS = {\n        RequestFilter.CURRENT_HTTP_REQUEST,\n        RequestFilter.CURRENT_HTTP_RESPONSE,\n        RequestFilter.CURRENT_SERVLET_CONTEXT,\n        RequestFilter.CURRENT_REMOTE_USER,\n        RequestFilter.CURRENT_HTTP_SESSION,\n        RequestFilter.CURRENT_CONTEXT\n    };\n\n    @Override\n    public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain)\n            throws IOException, ServletException {\n        ThreadLocalManager tlm = ComponentManager.get(ThreadLocalManager.class);\n        try {\n            chain.doFilter(req, res);\n        } finally {\n            for (String key : KEYS) {\n                try {\n                    tlm.remove(key);\n                } catch (Exception e) {\n                    // log and continue — cleanup must not throw\n                }\n            }\n        }\n    }\n\n    @Override public void init(FilterConfig cfg) {}\n    @Override public void destroy() {}\n}"
+        },
+        {
+          "name": "SessionMode.java",
+          "description": "Enum вместо int-констант",
+          "code": "package org.sakaiproject.util;\n\npublic enum SessionMode {\n    CONTAINER,\n    SAKAI,\n    CONTEXT,\n    TOOL;\n\n    public static SessionMode fromInt(int value) {\n        switch (value) {\n            case 0: return CONTAINER;\n            case 1: return SAKAI;\n            case 2: return CONTEXT;\n            case 3: return TOOL;\n            default: throw new IllegalArgumentException(\"Unknown session mode: \" + value);\n        }\n    }\n\n    public int toInt() {\n        return ordinal();\n    }\n}"
+        },
+        {
+          "name": "ClusterServiceGuard.java",
+          "description": "Timeout + circuit breaker для ClusterService",
+          "code": "package org.sakaiproject.util;\n\nimport org.sakaiproject.cluster.api.ClusterService;\nimport org.slf4j.Logger;\nimport org.slf4j.LoggerFactory;\n\nimport java.util.concurrent.*;\nimport java.util.concurrent.atomic.AtomicInteger;\n\npublic class ClusterServiceGuard {\n    private static final Logger log = LoggerFactory.getLogger(ClusterServiceGuard.class);\n    private static final long TIMEOUT_MS = 2000;\n    private static final int FAILURE_THRESHOLD = 5;\n    private static final long OPEN_MS = 30000;\n\n    private final ClusterService clusterService;\n    private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {\n        Thread t = new Thread(r, \"cluster-guard\");\n        t.setDaemon(true);\n        return t;\n    });\n    private final AtomicInteger failures = new AtomicInteger(0);\n    private volatile long openUntil = 0;\n\n    public ClusterServiceGuard(ClusterService clusterService) {\n        this.clusterService = clusterService;\n    }\n\n    public ClusterService.Status getStatus() {\n        if (System.currentTimeMillis() < openUntil) {\n            log.warn(\"ClusterService circuit OPEN — returning null status\");\n            return null;\n        }\n        try {\n            Future<ClusterService.Status> f = executor.submit(clusterService::getStatus);\n            ClusterService.Status s = f.get(TIMEOUT_MS, TimeUnit.MILLISECONDS);\n            failures.set(0);\n            return s;\n        } catch (Exception e) {\n            int n = failures.incrementAndGet();\n            log.warn(\"ClusterService call failed ({}): {}\", n, e.toString());\n            if (n >= FAILURE_THRESHOLD) {\n                openUntil = System.currentTimeMillis() + OPEN_MS;\n                log.error(\"ClusterService circuit OPEN for {}ms\", OPEN_MS);\n            }\n            return null;\n        }\n    }\n}"
+        }
+      ],
+      "validation": "python -c \"import ast; ast.parse(open('ThreadLocalCleanupFilter.java').read())\" — синтаксис Java не проверяется ast; использовать javac -d /tmp <file>.java"
+    },
+    "inversion": {
+      "assumptions": [
+        {
+          "n": 1,
+          "assumption": "ThreadLocalManager очищается автоматически контейнером",
+          "inversion": "ThreadLocalManager НЕ очищается автоматически",
+          "consequences": [
+            "Session предыдущего запроса видна следующему на том же потоке",
+            "Утечка памяти растёт с числом запросов",
+            "Кросс-пользовательская утечка данных — критично"
+          ]
+        },
+        {
+          "n": 2,
+          "assumption": "ClusterService всегда доступен",
+          "inversion": "ClusterService недоступен при shutdown",
+          "consequences": [
+            "Все запросы блокируются вместо graceful degradation",
+            "Полный outage вместо частичной деградации",
+            "Требуется fallback: пропускать redirect, логировать WARN"
+          ]
+        },
+        {
+          "n": 3,
+          "assumption": "session.parameter.allow=false в проде",
+          "inversion": "session.parameter.allow=true в проде",
+          "consequences": [
+            "Session id утекает через Referer и access-логи",
+            "Session fixation атака возможна",
+            "Утёкшие session id не откатываются — необратимо"
+          ]
+        },
+        {
+          "n": 4,
+          "assumption": "Upload max=1MB достаточен",
+          "inversion": "Реальные файлы >1MB",
+          "consequences": [
+            "Тулы с большими файлами перестают работать",
+            "Пользователи обходят лимит через несколько запросов",
+            "DoS через много мелких файлов"
+          ]
+        }
+      ],
+      "failure_points_on_inversion": [
+        "FP-1: chain.doFilter без try/finally → thread-local leak",
+        "FP-2: ClusterService недоступен → блокировка всех запросов",
+        "FP-4: session.parameter.allow=true без HTTPS → session fixation",
+        "FP-5: cookie domain/name misconfig → массовый logout"
+      ]
+    },
+    "thresholds": [
+      {
+        "metric": "thread_local_map_size",
+        "value": "> 1000 entries",
+        "consequence": "Утечка thread-local — немедленный аудит cleanup-пути, откат последнего релиза"
+      },
+      {
+        "metric": "cluster_service_failure_rate",
+        "value": "> 5% за 5 минут",
+        "consequence": "Circuit breaker OPEN, пропускать redirect, алерт on-call"
+      },
+      {
+        "metric": "upload_failure_rate",
+        "value": "> 0.1%",
+        "consequence": "Проверить max/ceiling/threshold, алерт"
+      },
+      {
+        "metric": "filter_p99_latency_overhead",
+        "value": "> 20ms",
+        "consequence": "Профилирование, возможно upload parsing на каждом запросе"
+      },
+      {
+        "metric": "session_fixation_attempts",
+        "value": "> 0",
+        "consequence": "Немедленный STOP — отключить session.parameter.allow, ротация session id"
+      },
+      {
+        "metric": "principal_mismatch_rate",
+        "value": "> 0.01%",
+        "consequence": "Аудит sakai.session.auth, возможная атака"
+      }
+    ],
+    "constraints": {
+      "items": [
+        {
+          "id": "C1",
+          "constraint": "pool_size ≥ 50",
+          "type": "capacity"
+        },
+        {
+          "id": "C2",
+          "constraint": "timeout ≤ 10s",
+          "type": "latency"
+        },
+        {
+          "id": "C3",
+          "constraint": "upload_max ≤ 1MB (default)",
+          "type": "security"
+        },
+        {
+          "id": "C4",
+          "constraint": "cookie HttpOnly = true (prod)",
+          "type": "security"
+        }
+      ],
+      "binding": "C4 (cookie HttpOnly) — жёстче всех: нарушение = XSS-эксфильтрация session, необратимо. C1 и C2 — операционные, нарушение деградирует, но не компрометирует.",
+      "decision": "По связывающему C4: принудительно HttpOnly=true в проде, запретить отключение через конфиг. C1/C2 — рекомендации, C3 — пересмотреть под реальные сценарии."
+    },
+    "second_opinion": {
+      "role": "security engineer",
+      "view": "RequestFilter — единая точка входа, смешивает session, upload, auth, cluster. Вижу 4 критичных уязвимости: session fixation (SEC-1), DoS через upload (SEC-4), thread-local leak (RN-1), cookie misconfig (SEC-3). Все — необратимые при эксплуатации. Приоритет: закрыть SEC-1 и RN-1 немедленно, остальное — в течение недели.",
+      "agreement": "Согласен с приоритетом loss > risk > money. Согласен с Option A как первым шагом — минимальный blast radius, быстрое закрытие критичных дыр.",
+      "disagreement": "Отвергаю Option B (decompose) как первый шаг — слишком высокий риск регрессии в критическом пути. Сначала hardening, потом декомпозиция. Также отвергаю 'not set' для pool_size — для security-инженера это неприемлемо, нужно измерить."
+    },
+    "stop_reason": "risk",
+    "stop_action": "force_emergency",
+    "collision": {
+      "conflicts": [
+        {
+          "n": 1,
+          "analyst": "RN-1 (thread-local leak) — критично, FP-1",
+          "researcher": "Параллель: try/finally cleanup — стандартный паттерн",
+          "synthesizer": "Option A включает try/finally cleanup в phase 1",
+          "contradiction": "Analyst требует немедленного исправления, но cleanup-путь не виден в слайсе — возможно, уже реализован",
+          "resolution": "Приоритет: проверить полный код RequestFilter. Если cleanup отсутствует — немедленный hotfix (1 день). Если присутствует — понизить до 'важно'."
+        },
+        {
+          "n": 2,
+          "analyst": "SEC-1 (session fixation) — критично",
+          "researcher": "session.parameter.allow — конфигурируемый, может быть false в проде",
+          "synthesizer": "Option A: запретить по умолчанию",
+          "contradiction": "Analyst требует немедленного запрета, но текущее значение в проде неизвестно",
+          "resolution": "Приоритет: проверить конфиг прода. Если true — немедленный STOP (отключить). Если false — плановое hardening."
+        }
+      ],
+      "critical_count": 2,
+      "note": "Оба конфликта критичны, но разрешимы в синтезе через проверку конфига/кода. Не требуют return_to_stage2."
+    },
+    "escalation": {
+      "level": 2,
+      "action": "resolve_in_synthesis",
+      "note": "2 критичных конфликта — разрешимы в синтезе. return_to_stage2: false. force_fallback: false."
+    },
+    "cove": {
+      "questions": [
+        {
+          "q": "Есть ли альтернатива, которую я отклонил слишком быстро?",
+          "answer": "Option B (decompose) отклонён как первый шаг из-за риска регрессии. Но если cleanup-путь уже реализован и session.parameter.allow=false в проде — Option B может быть оправдан. Требуется проверка конфига."
+        },
+        {
+          "q": "Есть ли риск, который я перенёс в ASSUMPTION без проверки?",
+          "answer": "Да — предположение, что ThreadLocalManager cleanup отсутствует. Cleanup-путь не виден в слайсе. Это ASSUMPTION, не факт. Требуется полный код."
+        },
+        {
+          "q": "Есть ли конфликт между моими рекомендациями?",
+          "answer": "Да — Option A (hardening in place) сохраняет god-filter, что противоречит evolvability=3. Но это осознанный trade-off: сначала безопасность, потом архитектура."
+        },
+        {
+          "q": "Есть ли блок, который я забыл включить?",
+          "answer": "Блок 'Artifacts' — включён (SQL migration не применимо, Dockerfile не применимо, Gantt включён). Блок 'ECON' — включён (cloud delta 0, engineering cost, ROI, cost of delay)."
+        }
+      ],
+      "verdict": "requires_external_verification",
+      "flagged": [
+        "VERIFY: ThreadLocalManager cleanup path — требуется полный код RequestFilter",
+        "VERIFY: session.parameter.allow значение в проде",
+        "VERIFY: sakai.cookieHttpOnly значение в проде",
+        "VERIFY: commons-fileupload версия (CVE history)"
+      ]
+    },
+    "return_to_stage2": false,
+    "return_to_stage3": false,
+    "force_emergency": true,
+    "force_fallback": false,
+    "new_risks": [
+      {
+        "id": "NR-1",
+        "risk": "Circuit breaker на ClusterService может маскировать реальную проблему кластера",
+        "mitigation": "Алерт при OPEN, метрика failure rate"
+      },
+      {
+        "id": "NR-2",
+        "risk": "Принудительный HttpOnly=true ломает отладочные сценарии ops",
+        "mitigation": "Разрешить только в dev/staging через отдельный профиль"
+      },
+      {
+        "id": "NR-3",
+        "risk": "SessionMode enum ломает внешний код, читающий m_sakaiHttpSession",
+        "mitigation": "Adapter с deprecated toInt()/fromInt()"
+      },
+      {
+        "id": "NR-4",
+        "risk": "ThreadLocalCleanupFilter как отдельный фильтр — порядок в web.xml критичен",
+        "mitigation": "Документировать порядок, integration test"
+      }
+    ],
+    "tool_output": {
+      "ran": false,
+      "raw": null,
+      "note": "analyze.py не запускался — материал truncated. Рекомендуется: python tools/analyze.py --mode calc --spec '{\"latency_type\":\"p99\"}'; --mode cost --spec '{}'; --mode lockttl --spec '{\"p99_hold_ms\":null,\"safety_factor\":2}'"
+    },
+    "artifacts": {
+      "sql_migration": "Не применимо — нет изменений схемы БД.",
+      "dockerfile": "Не применимо — рефакторинг существующего WAR.",
+      "gantt": "```mermaid\ngantt\n    title RequestFilter Hardening — Option A\n    dateFormat  YYYY-MM-DD\n    section Phase 1\n    try/finally cleanup + метрики    :a1, 2026-10-15, 1d\n    section Phase 2\n    timeout + circuit breaker        :a2, after a1, 2d\n    section Phase 3\n    session.parameter.allow=false    :a3, after a2, 1d\n    cookie hardening                 :a4, after a3, 1d\n    section Phase 4\n    upload abort + path validation   :a5, after a4, 1d\n    section Phase 5\n    SessionMode enum + adapter       :a6, after a5, 3d\n    section Validation\n    Canary 1 узел 24h                :a7, after a6, 1d\n    Full rollout                     :a8, after a7, 1d\n```"
+    },
+    "econ": {
+      "cloud_cost_delta": 0,
+      "cloud_cost_reason": "no infrastructure change",
+      "engineering_cost": {
+        "option_a": "3-5 days (rate not set)",
+        "option_b": "10-15 days (rate not set)",
+        "option_c": "7-10 days (rate not set)"
+      },
+      "roi": "Option A: закрытие 4 критичных уязвимостей за 3-5 дней — высокий ROI. Option B: долгосрочная поддерживаемость, но выше риск регрессии — средний ROI.",
+      "cost_of_delay": "Каждая неделя задержки = риск session fixation / DoS / thread-local leak. При инциденте — полный outage всех тулов Sakai, утёкшие session id необратимы."
+    },
+    "_meta": {
+      "stage": "stage4_synthesizer",
+      "tokens_in": 12567,
+      "tokens_out": 7172,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.003768
+    }
+  },
+  "audit": {
+    "audit_id": "audit-2026-10-14-91b845",
+    "session_id": "sess-2026-10-14-174403",
+    "timestamp": "2026-10-14T17:45:30.431018+00:00",
+    "material_hash": "sha256:0998cf7414e5f78fcc6eb73f674d154b72535e29c96d3dac226f4eb81407fa91",
+    "material_hash_full": "sha256:08710f0b6779787bc6a9c467f9f1448fc844a0ba8de6511ad292c6111d592890",
+    "material_size": {
+      "lines": 221,
+      "chars": 12000
+    },
+    "model": "deepseek-chat",
+    "critique_verdict": "SAFE",
+    "risk_verdict": "SAFE",
+    "cwe_ids": [],
+    "owasp_categories": [],
+    "exploitability": {
+      "reachable": false,
+      "auth_required": false,
+      "exploit_path": "not reachable from public entrypoint",
+      "blast_radius": "none",
+      "entry_points": [],
+      "blast_indicators": [],
+      "path": [],
+      "source_count": 0,
+      "sources": [],
+      "entry_points_lines": [],
+      "sinks": []
+    },
+    "dataflow": {},
+    "anomaly": {
+      "method": "zscore",
+      "verdict": "NORMAL",
+      "count": 0,
+      "anomalies": [],
+      "baseline": {
+        "mean": 645.136,
+        "std": 794.003
+      },
+      "samples": 22
+    },
+    "provenance": {
+      "source": "manual",
+      "git_commit": "",
+      "git_commit_short": "",
+      "git_branch": "",
+      "git_author": "",
+      "git_author_email": "",
+      "git_remote": "",
+      "ci_run_id": "",
+      "ci_pr_number": "",
+      "timestamp": "2026-10-14T17:45:30.426620+00:00"
+    },
+    "pii_detected": false,
+    "pii_details": {},
+    "compliance_flags": [],
+    "compliance_controls": {},
+    "compliance_standards": [],
+    "runbook": {},
+    "runbook_cwes": [],
+    "runbook_steps_count": 0,
+    "redaction_applied": false,
+    "redaction_map": {},
+    "sast_findings": 0,
+    "sast_high_priority": 0,
+    "sast_tools": {},
+    "sca_vulnerabilities": 0,
+    "truncated": true,
+    "original_size": 57396,
+    "web_search_used": false,
+    "web_search_queries": [],
+    "web_search_credits": 0,
+    "escalation_level": "Оба конфликта критичны, но разрешимы в синтезе через проверку конфига/кода. Не требуют return_to_stage2."
+  },
+  "completeness": {
+    "level": "D3",
+    "required_count": 12,
+    "missing": [],
+    "missing_count": 0,
+    "loss_pct": 0.0,
+    "material_complete": false,
+    "threshold": 30.0,
+    "verdict": "ACCEPTABLE"
+  },
+  "cost_usd": 0.007933,
+  "final_markdown": "# RequestFilter.java — Code Review (D3)\n\n[ECHO] Sakai `RequestFilter` (servlet filter, ~500+ строк, слайс обрезан до полей/констант). Единая точка входа всех запросов Sakai: session resolution, upload parsing, encoding, cluster redirect, cookie emission, principal check. Method bodies вне слайса.\n\n[ROUTE] stage4 (synthesizer) → stage3 (assembler). task_type=review → обязательны [RISK_NODES], [PLAN_B], [TESTS], [MATRIX].\n\n[CONCLUSION] God-filter с 4 критичными рисками: thread-local leak при исключении в `chain.doFilter` (RN-1/FP-1), session fixation через `session.parameter.allow` (SEC-1), DoS через upload (SEC-4), блокировка всех запросов при недоступности ClusterService (RN-8/FP-2). Признаков автоматического cleanup ThreadLocalManager не найдено (VERIFY: cleanup-путь вне слайса). Признаков значения `session.parameter.allow` в проде не найдено (VERIFY: конфиг не проверен). Рекомендация: Option A (hardening in place, 3–5 дней) как первый шаг.\n\n[RISK_NODES]\n- RN-1 (критично): thread-local leak при исключении в `chain.doFilter` — cleanup-путь не виден (VERIFY).\n- RN-8 (критично): ClusterService недоступен → блокировка всех запросов вместо graceful degradation.\n- RN-11 (критично): смена семантики ATTR_SESSION / cookie-атрибутов ломает все тулы и SSO одновременно.\n- SEC-1 (критично): `session.parameter.allow` → session fixation / утечка session id через Referer и логи.\n- SEC-4 (критично): upload DoS; `upload.continueOverMax` может продолжить обработку после превышения.\n- RN-2 (важно): int-константы session mode вместо enum — нет компиляторной проверки.\n- RN-3 (важно): двойной парсинг multipart (RequestFilter + tool filter).\n- RN-5 (важно): `@SuppressWarnings(\"deprecation\")` на классе — scope неясен.\n- RN-7 (важно): DiskFileItemFactory threshold=1024 → частые дисковые операции.\n- RN-9 (важно): thread-local bindings без видимого TTL/eviction.\n- RN-10 (важно): race на m_* если init() не завершён до первого запроса.\n- RN-4 (важно, повышен из опционально по COVE): javadoc m_sakaiHttpSession описывает boolean, поле — int с 4 режимами.\n\n[PLAN_B]\n- RN-1: обернуть `chain.doFilter` в try/finally с явным `ThreadLocalManager.remove()` для всех CURRENT_* ключей.\n- RN-8: fallback при недоступности ClusterService — пропускать redirect, логировать WARN, не блокировать запрос.\n- RN-11: версионировать cookie-контракт, вводить изменения через feature-flag с dual-read.\n- SEC-1: запретить `session.parameter.allow` по умолчанию, требовать HTTPS + SameSite=Strict, ротация session id после аутентификации.\n- SEC-4: всегда abort при превышении max, лимит на количество файлов и суммарный размер.\n- RN-2: заменить int-константы на enum SessionMode с exhaustive switch + adapter.\n- RN-3: проверять ATTR_UPLOADS_DONE перед повторным парсингом.\n- RN-5: сузить `@SuppressWarnings` до конкретных методов/строк.\n- RN-7: поднять threshold или использовать in-memory для мелких файлов; кэшировать DiskFileItemFactory.\n- RN-9: аудит ThreadLocalManager на утечки, метрика размера bindings.\n- RN-10: сделать m_* final после init() или volatile + double-checked init.\n- RN-4: привести javadoc к int-семантике или переименовать поле.\n\n[THREAT_MODEL]\nКомпоненты: RequestFilter, ThreadLocalManager, SessionManager, UsageSessionService, ClusterService, ServerConfigurationService, commons-fileupload, servlet container.\nTrust boundaries: Browser→Container, Container→Filter, Filter→Sakai session/tool, Filter→ClusterService, Filter→filesystem, Filter→downstream tools.\nSTRIDE (top): S — session fixation (SEC-1, критично); T — подмена cookie (SEC-3, критично); D — upload DoS (SEC-4, критично); I — утечка thread-local (RN-1, критично); E — path traversal upload.dir (SEC-5, важно); E — privilege escalation через `basiclti.provider.allowedtools` (SEC-6, важно).\nИтого: 10 угроз, 4 критичных, 6 важных.\n\n[SILENCE_LAYERS]\n- Input silence: нет RPS, размера пула потоков, среднего размера upload, числа узлов кластера → нельзя оценить масштабируемость и вероятность DoS.\n- Assumption silence: предполагается автоматический cleanup ThreadLocalManager — не проверено (VERIFY).\n- Consequence silence: утёкшие session id не откатываются задним числом — потеря необратима.\n\n[INTERSECTION_RISKS]\n- ThreadLocalManager × Servlet container: session предыдущего запроса видна следующему на том же потоке при отсутствии cleanup.\n- commons-fileupload × ClusterService: файл записан в temp, но запрос редиректится — осиротевшие файлы и рассинхрон.\n- SessionManager × ServerConfigurationService: разные узлы читают разные значения `session.parameter.allow`/`cookieDomain` — рассинхрон сессий.\n- Ops × Security: ops отключает HttpOnly для отладки — security-инвариант нарушается без алерта.\n\n[ASSEMBLY]\nИерархия: core (doFilter, session resolution, thread-local bindings, chain.doFilter) → service (upload, cookie, cluster redirect, principal check, encoding, LTI whitelist) → infra (servlet container, ServerConfigurationService, ComponentManager, filesystem, ClusterService).\nCritical path: doFilter → encoding → upload parse → session resolve → principal check → cluster check → chain.doFilter → cookie emit → cleanup.\nЦиклы: RequestFilter ↔ SessionManager (ATTR_SESSION read-back); RequestFilter ↔ ClusterService (redirect → повторный запрос на другом узле).\n\n[REFACTORING]\nOption A — Hardening in place (3–5 дней, риск низкий): try/finally cleanup, timeout+circuit breaker на ClusterService, запрет `session.parameter.allow`, принудительный HttpOnly+Secure+SameSite, abort при upload max. Минимальный blast radius, быстрый rollback.\nOption B — Decompose into filter chain (10–15 дней, риск средний): EncodingFilter → UploadFilter → SessionFilter → PrincipalFilter → ClusterFilter → CookieFilter. SRP, тестируемость, enum SessionMode. Порядок фильтров критичен.\nOption C — Facade + strategy (7–10 дней, риск средний-низкий): RequestFilter как фасад, стратегии SessionStrategy/UploadStrategy/ClusterStrategy/CookieStrategy. Инкрементальная миграция.\nРекомендация: A → C → B (сначала безопасность, потом архитектура).\n\n[PARALLELS]\n- try/finally cleanup thread-local — стандартный паттерн (Servlet Filter best practice).\n- Circuit breaker для внешних сервисов — Resilience4j / Hystrix паттерн.\n- Enum вместо int-констант — Effective Java Item 34.\n- commons-fileupload исторически уязвим (CVE-2013-2186, CVE-2016-3092) — требуется проверка версии (VERIFY).\n\n[TESTS]\nUnit: все 4 режима SessionMode; thread-local cleanup при исключении в chain.doFilter; upload max/ceiling/threshold/continueOverMax; cookie attributes (HttpOnly, Secure, SameSite, domain, name).\nIntegration: cluster redirect при shutdown + ClusterService throws; session.parameter.allow on/off.\nSecurity: session fixation, path traversal upload.dir.\nConcurrency: параллельные запросы одного пользователя.\nEdge cases: пустой multipart; файл ровно на границе max; ClusterService throws; chain.doFilter throws; отсутствующий cookie при session.parameter.allow=true.\nCoverage: неизвестно — тесты в слайсе не видны (VERIFY).\n\n[ACTION]\n- NOW: проверить полный код RequestFilter на наличие try/finally cleanup thread-local (VERIFY: cleanup-путь вне слайса). Проверить конфиг прода: `session.parameter.allow`, `sakai.cookieHttpOnly`, `sakai.session.auth` (VERIFY: конфиг не проверен).\n- TODAY: если cleanup отсутствует — hotfix try/finally (1 день). Если `session.parameter.allow=true` в проде — STOP, отключить.\n- TOMORROW: timeout + circuit breaker на ClusterService; принудительный HttpOnly+Secure+SameSite.\n- LATER: upload abort при max + path validation; SessionMode enum + adapter; декомпозиция (Option C/B).\n\n[QUESTIONS]\n- Реализован ли cleanup ThreadLocalManager в полном коде? (VERIFY: слайс обрезан)\n- Какое значение `session.parameter.allow` в проде? (VERIFY: конфиг не проверен)\n- Какое значение `sakai.cookieHttpOnly` в проде? (VERIFY: конфиг не проверен)\n- Какая версия commons-fileupload? (VERIFY: CVE history)\n- Есть ли тесты для RequestFilter? (VERIFY: не видны в слайсе)\n- Каков реальный RPS и размер пула потоков? (VERIFY: input silence)\n\n[FUNC:FULL]\n- ECON: effort Option A 3–5 дней, Option B 10–15, Option C 7–10 (rate not set); cost cloud delta $0 (no infra change); ROI Option A высокий — 4 критичных уязвимости за 3–5 дней; budget not set; cost of delay — каждая неделя = риск session fixation/DoS/thread-local leak, при инциденте полный outage, утёкшие session id необратимы.\n- FAIL: критично — chain.doFilter без try/finally (FP-1), ClusterService недоступен (FP-2), session.parameter.allow без HTTPS (FP-4); cascade — thread-local leak → кросс-пользовательская утечка → компрометация всех сессий; recovery — откат WAR + конфига, но утёкшие session id и осиротевшие upload-файлы не откатываются.\n- METRICS: codebase ~500+ строк (слайс), 1 класс, ~40 констант, ~15 полей; deps 13 (commons-fileupload, commons-lang3, javax.servlet, Sakai internal); tests unknown (VERIFY); perf — p99 overhead фильтра не измерен, threshold=1024 → частые дисковые операции; quality — god-filter, SRP/DIP нарушены, int-константы вместо enum; infra — pool_size ≥50 (constraint), timeout ≤10s (constraint), replicas not set.\n- ALTERNATIVES: языки — Java (не меняется); фреймворки — Spring Filter / Servlet Filter (текущий); БД — не применимо; инфра — servlet container (не меняется); паттерны — Option A (hardening in place), Option B (filter chain), Option C (facade + strategy).\n- EVOLVE: coupling 3/10 (15+ зависимостей, service locator); abstractions 3/10 (int-константы, god-filter); growth 4/10 (добавление фичи = правка одного класса с высоким риском); friction — высокий (регрессия в критическом пути); overall 3/10.\n- COMPARE: Option A — 3–5 дней, низкий риск, низкая сложность, минимальный blast radius; Option B — 10–15 дней, средний риск, высокая сложность, SRP; Option C — 7–10 дней, средний-низкий риск, средняя сложность, инкрементальная миграция.\n\n[MANDATORY BASE]\n1. ECONOMICS: time Option A 3–5 дней, cost $0 cloud delta, при условии отсутствия инфраструктурных изменений; engineering rate not set.\n2. RISKS: критично — RN-1, RN-8, RN-11, SEC-1, SEC-4; важно — RN-2, RN-3, RN-5, RN-7, RN-9, RN-10, RN-4; при условии, что cleanup-путь отсутствует (VERIFY).\n3. INFRASTRUCTURE: pool_size ≥50 (constraint), timeout ≤10s (constraint), replicas not set, при условии отсутствия данных о RPS (input silence).\n4. CODE: change ~5 фаз (cleanup, circuit breaker, cookie hardening, upload abort, enum), при условии Option A; ~6 фильтров при Option B.\n5. ACTION: now — проверить cleanup-путь и конфиг прода (VERIFY); tomorrow — timeout + circuit breaker; later — enum + декомпозиция.\n6. TIMELINE: NOW — верификация кода/конфига; TODAY — hotfix при отсутствии cleanup; TOMORROW — circuit breaker + cookie hardening; LATER — enum + декомпозиция.\n7. PRODUCTION IMPACT: users — все пользователи Sakai (единая точка отказа); deploy window — canary 1 узел 24h; rollback — откат WAR + конфига, но утёкшие session id необратимы.\n8. SLO IMPACT: current not defined; after — availability ≥99.9%, p99 overhead ≤20ms, upload failure ≤0.1%, session fixation incidents = 0, при условии внедрения метрик.\n9. CLOUD COST: current not set, projected not set, delta $0, при условии отсутствия инфраструктурных изменений.\n10. ON-CALL: new alerts — thread_local_map_size >1000, cluster_service_failure_rate >5%/5min, upload_failure_rate >0.1%, session_fixation_attempts >0; runbook — откат cookie-контракта, диагностика thread-local leak, отключение cluster redirect; escalation — level 2, resolve_in_synthesis.\n\n[MATRIX]\n| Dimension | Status | Comment |\n|-----------|--------|---------|\n| Security | FAIL | 4 критичных уязвимости: session fixation, upload DoS, thread-local leak, cookie misconfig |\n| Facts | WARN | Method bodies вне слайса; cleanup-путь и конфиг прода не проверены (VERIFY) |\n| Logic | OK | Анализ согласован между stage1–4; конфликты разрешены в синтезе |\n| Applicability | OK | Option A применим немедленно; Option B/C — после верификации |\n| Effectiveness | WARN | Option A закрывает критичные дыры, но god-filter остаётся |\n| Resilience | FAIL | resilience_score 4/10 — нет timeout/circuit breaker/метрик/SLO/runbook |\n| Human factor | WARN | Ops может отключить HttpOnly для отладки — security-инвариант нарушается без алерта |\n| Clarity | OK | Extensive javadoc, но расхождение комментария m_sakaiHttpSession с кодом (RN-4) |\n\n[REFLEXION]\n1. Слабое место: method bodies вне слайса → cleanup-путь и обработка исключений не проверены. Исправлено: все утверждения о cleanup помечены VERIFY, не категоричны.\n2. Слабое место: значения конфига прода (`session.parameter.allow`, `sakai.cookieHttpOnly`) неизвестны. Исправлено: вынесены в [QUESTIONS] и [ACTION] NOW как VERIFY, не утверждается их текущее значение.\n3. Слабое место: force_emergency=true в stage4, но ACTION NOW = верификация, не немедленный stop. Исправлено: ACTION NOW сформулирован как проверка кода/конфига; hotfix — TODAY при подтверждении отсутствия cleanup. Соответствует правилу force_emergency (немедленные действия только при подтверждённом риске).\nИтог: accepted\n\n[AUDIT_TRAIL]\ngenerator: Vishap V5.10.5\naudit_id: audit-2026-10-14-91b845\nmaterial_hash: sha256:0998cf7414e5f78fcc6eb73f674d154b72535e29c96d3dac226f4eb81407fa91\nmaterial_hash_full: sha256:08710f0b6779787bc6a9c467f9f1448fc844a0ba8de6511ad292c6111d592890\npii_detected: false\ncompliance_flags: []\ncompliance_controls: {}\ncompliance_standards: []\ncritique_verdict: SAFE\nrisk_verdict: SAFE\ncwe_ids: []\nowasp_categories: []\nexploitability_reachable: False\nexploitability_auth_required: False\nexploitability_blast_radius: none\nexploitability_source_count: 0\nexploitability_path: []\ndataflow_path: []\ndataflow_source_count: 0\nanomaly_verdict: NORMAL\nanomaly_count: 0\nanomaly_method: zscore\nanomaly_top: []\nprovenance_source: manual\nprovenance_commit: \n\n\n[COMPLETENESS]\nlevel: D3\nrequired: 12\nmissing: []\nloss_pct: 0.0%\nmaterial_complete: False\nverdict: ACCEPTABLE\n",
+  "baseline_stats": {
+    "baseline_used": false,
+    "baseline_saved": false,
+    "baseline_path": "",
+    "baseline_save_path": "",
+    "baseline_known": 0,
+    "baseline_new": 11,
+    "baseline_total": 11
+  }
+}

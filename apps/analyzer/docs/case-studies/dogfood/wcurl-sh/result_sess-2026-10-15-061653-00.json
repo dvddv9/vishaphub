@@ -1,0 +1,1234 @@
+{
+  "session_id": "sess-2026-10-15-061653-00",
+  "timestamp": "2026-10-15T06:18:20.708539+00:00",
+  "filename": "CHANGELOG.md",
+  "material_size": 5621,
+  "stage0": {
+    "material_type": "other",
+    "language": "other",
+    "size_hint": "~120 lines",
+    "level": "D3",
+    "route": [
+      "stage4",
+      "stage3"
+    ],
+    "research_first": false,
+    "parallel_stages": false,
+    "subst_count": 0,
+    "session_id": "sess-2026-10-15-061653-00",
+    "model": "default",
+    "flags": [],
+    "slice": false,
+    "gate_check": {
+      "input": "CHANGELOG.md (wcurl project)",
+      "output": "unspecified",
+      "decider": "unspecified",
+      "cost": "unspecified",
+      "irreversible": "unspecified"
+    },
+    "task_type": "other",
+    "reasoning": "Material is a changelog file — not code, architecture, spec, logs, or config. No explicit request stated. Size ~120 lines exceeds D2_HINT_LINES (50) and lacks trivial markers, so D3 default. No substitution attempts detected. No emergency markers. Gates 3–5 unanswered by material; proceeding in abstract context.",
+    "_meta": {
+      "stage": "stage0_orchestrator",
+      "tokens_in": 2688,
+      "tokens_out": 240,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.000444
+    }
+  },
+  "stage1": {
+    "language": "other",
+    "material_type": "changelog",
+    "trajectory": {
+      "io": {
+        "input": "CHANGELOG.md (wcurl project)",
+        "output": "unspecified"
+      },
+      "flow": "reverse-chronological release entries; each entry is a bullet list of changes",
+      "branches": null,
+      "branches_note": "not applicable — changelog, no control flow",
+      "nesting_max": 1,
+      "deps": [
+        "curl",
+        "shunit2 (>=2.1.8)",
+        "shfmt",
+        "pyspelling",
+        "GitHub Actions"
+      ],
+      "dead_code": null
+    },
+    "structure": {
+      "patterns": [
+        "reverse-chronological release log",
+        "semantic-versioned sections (vYYYY.MM.DD)",
+        "bullet-list change entries"
+      ],
+      "cohesion": "high — single project (wcurl), single artifact type (changelog)",
+      "coupling": "low — no cross-references to external modules",
+      "solid_violations": [],
+      "point_of_no_return": "v2024-07-07 — drop getopt, replace -o/--opts with --curl-options, stop auto-resume, default no-overwrite; breaking CLI change",
+      "layers": [
+        "release metadata (version headers)",
+        "change descriptions",
+        "attribution (AUTHORS, thanks)"
+      ],
+      "contradictions": [
+        "v2025.11.04 claims 'Fix CVE-2025-11563'; v2025.11.09 states the prior patch 'did not fix the CVE and the unit test verifying it was broken'",
+        "v2025.05.26 states retries were 'always did only 3' while showing a higher number — prior behavior contradicted its own output"
+      ]
+    },
+    "texture": {
+      "density": "~120 lines, ~14 release entries, ~90 bullet items",
+      "code_smells": [],
+      "error_handling": "not applicable — changelog",
+      "tests_present": "referenced (shunit2 testsuite, unit test for CVE-2025-11563, GitHub workflow for tests and linting)",
+      "docs": "referenced (manpage, README.md, help output, AUTHORS, LICENSE)",
+      "standards": [
+        "SPDX-License-Identifier: curl",
+        "curl documentation format",
+        "shfmt formatting",
+        "pyspelling",
+        "curl 'badwords' checker (drops 'simply', 'just')"
+      ]
+    },
+    "shadows": {
+      "breaks": [
+        "v2024-07-07: -o/--opts= removed in favor of --curl-options",
+        "v2024-07-07: auto-resume downloads removed; no-overwrite default",
+        "v2024-07-10: versioning scheme changed from dashes to dots",
+        "v2024-07-02: bash dependency removed, rewritten as POSIX shell",
+        "v2024-07-10: minimum curl version raised to 7.46.0"
+      ],
+      "comment_code_mismatch": null,
+      "blind_spots": [
+        "no explicit statement of what 'unspecified' output means for this material",
+        "CVE-2025-11563 details not described (only referenced)",
+        "no rollback/migration notes for the v2024-07-07 CLI break"
+      ]
+    },
+    "concurrency": {
+      "shared_state": null,
+      "locks": null,
+      "deadlock_potential": null,
+      "race_conditions": null,
+      "idempotency": "referenced indirectly — v2024-07-07 'Prevent silent overwrite with --output on older curl' and 'do not overwrite files instead by default'"
+    },
+    "dev_process": {
+      "code_review": "not stated",
+      "ci_cd": "referenced — GitHub Actions workflow for tests and linting (v2025.02.24); multiple improvements to GitHub Actions (v2025.11.04)",
+      "staging": "not stated",
+      "tech_debt": [
+        "v2025.11.09: prior CVE fix was incomplete and its unit test broken",
+        "v2025.05.26: retry count mismatch between reported and actual behavior",
+        "v2025.01.05: ROOTDIR definition in tests could invoke wrong wcurl script"
+      ]
+    },
+    "tool_output": {
+      "ran": false,
+      "raw": null
+    },
+    "_meta": {
+      "stage": "stage1_scanner",
+      "tokens_in": 2437,
+      "tokens_out": 1043,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.000633
+    }
+  },
+  "stage2": {
+    "risk_nodes": [
+      {
+        "id": "RN-1",
+        "name": "Неявное допущение",
+        "priority": "важно",
+        "note": "Предполагается, что percent-decoding имён файлов безопасен после фикса CVE-2025-11563, но v2025.11.09 показывает, что предыдущий фикс был неполным — допущение о полноте патча не проверено.",
+        "fingerprint": "a067b52e01ad36c6"
+      },
+      {
+        "id": "RN-2",
+        "name": "Слабое обобщение",
+        "priority": "важно",
+        "note": "Фикс 'Do not percent-decode / and \\' обобщён на path traversal, но не покрывает другие опасные последовательности (NUL, .., unicode-нормализация).",
+        "fingerprint": "6aae28842a13955c"
+      },
+      {
+        "id": "RN-3",
+        "name": "Конкурирующая реализация",
+        "priority": "опционально",
+        "note": "wcurl оборачивает curl; поведение --no-clobber/--parallel зависит от версии curl (7.46+, 7.66+, 7.83+, 8.16+), что создаёт расхождение поведения между окружениями.",
+        "fingerprint": "8c0d862ed401b0dd"
+      },
+      {
+        "id": "RN-4",
+        "name": "Сдвиг тезиса",
+        "priority": "важно",
+        "note": "v2025.11.04 заявлен как 'Fix CVE-2025-11563', v2025.11.09 признаёт, что фикс не работал — тезис о закрытии CVE был ложным.",
+        "fingerprint": "75c571a99624edd5"
+      },
+      {
+        "id": "RN-5",
+        "name": "Внутреннее противоречие",
+        "priority": "критично",
+        "note": "Прямое противоречие между записями v2025.11.04 и v2025.11.09 о статусе CVE-2025-11563; также v2025.05.26 о retry-логике, противоречащей собственному выводу.",
+        "fingerprint": "1ba51f0bf84e51cc"
+      },
+      {
+        "id": "RN-6",
+        "name": "Стратегическое избегание",
+        "priority": "важно",
+        "note": "Changelog не описывает детали CVE-2025-11563, не указывает вектор атаки, не даёт migration/rollback для breaking CLI-изменения v2024-07-07.",
+        "fingerprint": "227377726a54c805"
+      },
+      {
+        "id": "RN-7",
+        "name": "Производительность",
+        "priority": "опционально",
+        "note": "parallel-max-host=5 при curl>=8.16.0 — жёстко зашитое значение без обоснования; retry 5 (32 сек) может блокировать CI.",
+        "fingerprint": "0c7cc04f2039538b"
+      },
+      {
+        "id": "RN-8",
+        "name": "Надёжность",
+        "priority": "важно",
+        "note": "История неполных фиксов (CVE, retry, ROOTDIR в тестах) указывает на слабую верификацию изменений перед релизом.",
+        "fingerprint": "e01fd4e814bf99a5"
+      },
+      {
+        "id": "RN-9",
+        "name": "Масштабируемость",
+        "priority": "опционально",
+        "note": "POSIX shell + параллельные загрузки; нет данных о поведении при большом числе URL или при ограниченных ресурсах.",
+        "fingerprint": "4ad28fa70239add2"
+      },
+      {
+        "id": "RN-10",
+        "name": "Конкурентность",
+        "priority": "важно",
+        "note": "Параллельные загрузки в один output-каталог; 'Prevent silent overwrite' и 'no-clobber' — попытка решить race, но без явных гарантий атомарности.",
+        "fingerprint": "c369d7c7ba617c93"
+      },
+      {
+        "id": "RN-11",
+        "name": "Ломающие изменения",
+        "priority": "критично",
+        "note": "v2024-07-07 удалил -o/--opts=, отключил auto-resume, изменил default на no-overwrite; v2024-07-10 сменил схему версионирования — без migration guide.",
+        "fingerprint": "9ca9144f559399ac"
+      }
+    ],
+    "plan_b": [
+      {
+        "risk_id": "RN-1",
+        "plan_b": "Повторный независимый аудит percent-decoding с fuzzing-тестами на имена файлов (NUL, .., unicode, mixed separators)."
+      },
+      {
+        "risk_id": "RN-2",
+        "plan_b": "Whitelist-подход: разрешать только [A-Za-z0-9._-] в output filename, всё остальное — percent-encode."
+      },
+      {
+        "risk_id": "RN-3",
+        "plan_b": "Матрица совместимости curl-версий в CI; явный feature-detect и graceful degradation."
+      },
+      {
+        "risk_id": "RN-4",
+        "plan_b": "Публичная errata к v2025.11.04 с указанием, что фикс был неполным; ссылка на v2025.11.09."
+      },
+      {
+        "risk_id": "RN-5",
+        "plan_b": "Ввести обязательный regression-тест на CVE перед релизом; gate в CI, блокирующий релиз без зелёного теста."
+      },
+      {
+        "risk_id": "RN-6",
+        "plan_b": "Добавить в changelog секцию 'Security' с CVE-ID, вектором, affected versions, mitigation."
+      },
+      {
+        "risk_id": "RN-7",
+        "plan_b": "Вынести parallel-max-host и retry в конфигурируемые переменные окружения с документированными дефолтами."
+      },
+      {
+        "risk_id": "RN-8",
+        "plan_b": "Ввести pre-release checklist: тесты, lint, CVE-regression, ручная проверка changelog."
+      },
+      {
+        "risk_id": "RN-9",
+        "plan_b": "Бенчмарк на 100/1000 URL; документировать лимиты."
+      },
+      {
+        "risk_id": "RN-10",
+        "plan_b": "Использовать O_EXCL / mktemp для атомарного создания output-файла."
+      },
+      {
+        "risk_id": "RN-11",
+        "plan_b": "MIGRATION.md с таблицей 'было → стало' для v2024-07-07 и v2024-07-10."
+      }
+    ],
+    "security": {
+      "findings": [
+        {
+          "id": "SEC-1",
+          "title": "Path traversal через percent-decoding имени файла",
+          "priority": "критично",
+          "detail": "CVE-2025-11563: percent-decoding / и \\ в output filename позволял запись вне целевого каталога. Фикс v2025.11.04 был неполным (v2025.11.09).",
+          "ref": "[FROM_KNOWLEDGE: OWASP A01:2021 Broken Access Control — Path Traversal]"
+        },
+        {
+          "id": "SEC-2",
+          "title": "Неполный фикс CVE и сломанный unit-тест",
+          "priority": "критично",
+          "detail": "v2025.11.09 явно указывает: патч не закрыл CVE, а тест, его проверяющий, был сломан. Это означает окно уязвимости между v2025.11.04 и v2025.11.09."
+        },
+        {
+          "id": "SEC-3",
+          "title": "Shell glob expansion и URL globbing",
+          "priority": "важно",
+          "detail": "Отключение glob expansion и curl URL globbing — защита от инъекции через {} и []. Требует регрессионного теста."
+        },
+        {
+          "id": "SEC-4",
+          "title": "Инъекция через --curl-options",
+          "priority": "важно",
+          "detail": "Пользовательские опции передаются в curl; без строгой валидации возможно расширение поверхности атаки (например, --output вне ожидаемого контекста)."
+        }
+      ]
+    },
+    "secrets": {
+      "findings": [
+        {
+          "id": "SEC-S1",
+          "title": "Секреты в changelog",
+          "priority": "опционально",
+          "detail": "В материале секретов не обнаружено. Email-адреса авторов замаскированы как <<EMAIL_REDACTED>>."
+        },
+        {
+          "id": "SEC-S2",
+          "title": "Секреты в CI",
+          "priority": "важно",
+          "detail": "GitHub Actions упоминаются многократно; changelog не описывает управление секретами (tokens, deploy keys). Требует проверки вне материала."
+        }
+      ]
+    },
+    "concurrency": {
+      "findings": [
+        {
+          "id": "CONC-1",
+          "title": "Параллельные загрузки в общий output-каталог",
+          "priority": "важно",
+          "detail": "--parallel + --no-clobber: race между проверкой существования файла и его созданием. Возможен silent overwrite на старых curl."
+        },
+        {
+          "id": "CONC-2",
+          "title": "Отсутствие атомарной записи",
+          "priority": "важно",
+          "detail": "Changelog не упоминает temp-file + rename; при прерывании возможен частично записанный файл."
+        }
+      ]
+    },
+    "threat_model": {
+      "components": [
+        "wcurl (POSIX shell wrapper)",
+        "curl (external binary)",
+        "filesystem (output directory)",
+        "CI (GitHub Actions)",
+        "user shell environment"
+      ],
+      "trust_boundaries": [
+        "user input (URL, --curl-options, --output) → wcurl",
+        "wcurl → curl (argv)",
+        "curl → filesystem (output filename)",
+        "CI → repository (workflow secrets)"
+      ],
+      "threats": [
+        {
+          "component": "wcurl",
+          "boundary": "user input → wcurl",
+          "stride": "T",
+          "threat": "Подмена/инъекция через --curl-options (например, добавление --output вне ожидаемого контекста).",
+          "priority": "важно",
+          "mitigation": "Строгая валидация и whitelist допустимых опций; запрет на --output/--remote-name внутри --curl-options."
+        },
+        {
+          "component": "wcurl",
+          "boundary": "user input → wcurl",
+          "stride": "S",
+          "threat": "Подмена URL/имени файла для записи в неожиданное место (path traversal).",
+          "priority": "критично",
+          "mitigation": "Whitelist символов в output filename; отказ от percent-decoding / и \\; canonicalize и проверка префикса каталога."
+        },
+        {
+          "component": "filesystem",
+          "boundary": "curl → filesystem",
+          "stride": "T",
+          "threat": "Silent overwrite существующего файла при race с --no-clobber.",
+          "priority": "важно",
+          "mitigation": "O_EXCL / mktemp + rename; явный отказ при существующем файле."
+        },
+        {
+          "component": "filesystem",
+          "boundary": "curl → filesystem",
+          "stride": "I",
+          "threat": "Утечка содержимого через частично записанные файлы или логи.",
+          "priority": "опционально",
+          "mitigation": "Запись в temp + atomic rename; не логировать содержимое."
+        },
+        {
+          "component": "CI",
+          "boundary": "CI → repository",
+          "stride": "E",
+          "threat": "Privilege escalation через workflow (pull_request_target, небезопасные actions).",
+          "priority": "важно",
+          "mitigation": "Pin actions по SHA; минимальные permissions; запрет pull_request_target без review."
+        },
+        {
+          "component": "CI",
+          "boundary": "CI → repository",
+          "stride": "R",
+          "threat": "Отсутствие audit log для релизов и изменений workflow.",
+          "priority": "опционально",
+          "mitigation": "Signed commits/tags; protected branches; release audit trail."
+        },
+        {
+          "component": "wcurl",
+          "boundary": "wcurl → curl",
+          "stride": "D",
+          "threat": "DoS через большое число URL / retry 5×32s блокирует CI.",
+          "priority": "опционально",
+          "mitigation": "Конфигурируемые лимиты; timeout на общий прогон."
+        },
+        {
+          "component": "wcurl",
+          "boundary": "user input → wcurl",
+          "stride": "T",
+          "threat": "Tampering с curl binary через PATH (подмена curl).",
+          "priority": "опционально",
+          "mitigation": "Документировать требование доверенного PATH; опционально — проверка версии/подписи."
+        }
+      ],
+      "summary": {
+        "total": 8,
+        "critical": 1,
+        "important": 4,
+        "optional": 3
+      },
+      "top_3": [
+        "SEC-1 / threat #2: path traversal через percent-decoding (критично)",
+        "SEC-2: неполный фикс CVE-2025-11563 и сломанный тест (критично)",
+        "threat #1: инъекция через --curl-options (важно)"
+      ]
+    },
+    "silence_layers": {
+      "input_silence": {
+        "what": "Нет данных о нагрузке, числе пользователей, частоте релизов, размере CI-матрицы.",
+        "where": "Весь changelog — только bullet-описания изменений.",
+        "impact": "Невозможно оценить реальный риск DoS, приоритеты SLO, ёмкость CI."
+      },
+      "assumption_silence": {
+        "assumption": "Предполагается, что фикс v2025.11.04 закрыл CVE-2025-11563 — без независимой верификации.",
+        "why": "v2025.11.09 показывает, что допущение было ложным; тест был сломан."
+      },
+      "consequence_silence": {
+        "who": "Пользователи wcurl, скачивающие файлы с недоверенных URL.",
+        "what": "Возможна запись файла вне целевого каталога (path traversal) в окне v2025.11.04–v2025.11.09.",
+        "irreversible": "Да — перезапись/создание файла в произвольной директории необратима без бэкапа."
+      }
+    },
+    "intersection_risks": [
+      {
+        "layers": [
+          "input_silence",
+          "assumption_silence"
+        ],
+        "intersection": "Нет данных о нагрузке × допущение о полноте фикса CVE",
+        "risk": "Невозможно оценить, сколько пользователей затронуто окном уязвимости; приоритет остаётся критичным по умолчанию."
+      },
+      {
+        "layers": [
+          "assumption_silence",
+          "consequence_silence"
+        ],
+        "intersection": "Допущение о закрытии CVE × необратимая запись файла",
+        "risk": "Ложное чувство безопасности → пользователи не применяют обходные меры → необратимая запись вне каталога."
+      },
+      {
+        "layers": [
+          "concurrency",
+          "security"
+        ],
+        "intersection": "Параллельные загрузки × path traversal",
+        "risk": "Race между проверкой имени и записью усиливает окно для traversal-атаки."
+      },
+      {
+        "layers": [
+          "breaking_changes",
+          "ops"
+        ],
+        "intersection": "Удаление -o/--opts= × отсутствие migration guide",
+        "risk": "Пользователи на старых скриптах ломаются молча; нет rollback-инструкций."
+      }
+    ],
+    "contracts": {
+      "idempotency": {
+        "present": "partial",
+        "detail": "no-clobber / no-overwrite — попытка идемпотентности, но без атомарности (O_EXCL)."
+      },
+      "retry": {
+        "present": "yes",
+        "detail": "5 retries, 32 сек total (v2025.05.26). Ранее — расхождение между заявленным и фактическим числом."
+      },
+      "timeout": {
+        "present": "no",
+        "detail": "Changelog не упоминает timeout на curl-вызовы или общий прогон."
+      },
+      "circuit_breaker": {
+        "present": "no",
+        "detail": "Не применимо к CLI-утилите в строгом смысле, но отсутствует ограничение на каскадные retry при недоступном хосте."
+      },
+      "verdict": "Для CLI-утилиты отсутствие timeout — важно; отсутствие circuit_breaker — опционально."
+    },
+    "breaking_changes": [
+      {
+        "version": "v2024-07-07",
+        "change": "Удалены -o/--opts=, заменены на --curl-options; отключён auto-resume; default — no-overwrite.",
+        "impact": "Ломает существующие скрипты и пайплайны.",
+        "rollback": "Не описан в changelog."
+      },
+      {
+        "version": "v2024-07-10",
+        "change": "Схема версионирования: dashes → dots (2024-07-07 → 2024.07.10).",
+        "impact": "Ломает парсинг версий в downstream-скриптах.",
+        "rollback": "Не описан."
+      },
+      {
+        "version": "v2024-07-02",
+        "change": "Удалена зависимость от bash; переписано на POSIX shell.",
+        "impact": "Возможны различия поведения в не-POSIX окружениях.",
+        "rollback": "Не описан."
+      },
+      {
+        "version": "v2024-07-10",
+        "change": "Минимальная версия curl поднята до 7.46.0.",
+        "impact": "Отсекает старые дистрибутивы.",
+        "rollback": "Не описан."
+      }
+    ],
+    "production_impact": {
+      "summary": "wcurl — CLI-утилита; прод-влияние ограничено пользовательскими скриптами и CI. Критично: окно уязвимости CVE-2025-11563 между v2025.11.04 и v2025.11.09.",
+      "affected": [
+        "Пользователи, скачивающие файлы с недоверенных URL",
+        "CI-пайплайны, использующие wcurl",
+        "Downstream-скрипты, зависящие от CLI-флагов"
+      ],
+      "rollback": "Не документирован; для CVE-фикса откат нежелателен — нужен forward-fix."
+    },
+    "observability": {
+      "logging": "Не описано в changelog.",
+      "metrics": "Не описано.",
+      "tracing": "Не применимо (CLI).",
+      "gaps": [
+        "Нет данных о том, как пользователь узнаёт о неудачной загрузке (кроме --fail).",
+        "Нет structured output для CI-парсинга."
+      ]
+    },
+    "slo": {
+      "defined": false,
+      "note": "Changelog не содержит SLO. Для CLI-утилиты SLO нестандартны, но retry-бюджет (32 сек) фактически играет роль таймаут-бюджета."
+    },
+    "on_call": {
+      "defined": false,
+      "note": "Не применимо к CLI-проекту; однако CVE-окно показывает отсутствие процесса быстрого реагирования на security-инциденты."
+    },
+    "tests": {
+      "types": [
+        "unit (shunit2 >= 2.1.8)",
+        "integration (GitHub Actions workflow)",
+        "lint (shfmt, pyspelling)"
+      ],
+      "coverage_gaps": [
+        "Unit-тест для CVE-2025-11563 был сломан (v2025.11.09) — регрессия не поймана.",
+        "ROOTDIR в тестах мог вызывать неверный wcurl (v2025.01.05).",
+        "Нет упоминания fuzz-тестов для имён файлов.",
+        "Нет тестов на race при --parallel + --no-clobber."
+      ],
+      "edge_cases": [
+        "Имена файлов с /, \\, :, DEL, backslash, unicode",
+        "URL без имени файла → index.html",
+        "URL с fragment (#)",
+        "Множественные URL с одинаковым basename",
+        "curl версии 7.46 / 7.66 / 7.83 / 8.16 / 9.0+"
+      ],
+      "refactoring_coverage": [
+        {
+          "step": "v2024-07-07 drop getopt → --curl-options",
+          "test": "тест на парсинг --curl-options и --curl-options="
+        },
+        {
+          "step": "v2024-07-07 no-overwrite default",
+          "test": "тест на отказ перезаписи существующего файла"
+        },
+        {
+          "step": "v2024-07-02 POSIX shell rewrite",
+          "test": "тест в POSIX-only окружении (dash)"
+        },
+        {
+          "step": "v2024-07-10 versioning dots",
+          "test": "тест парсинга версии 9.0+"
+        },
+        {
+          "step": "v2025.11.04 CVE fix",
+          "test": "regression-тест на path traversal (был сломан — переписать)"
+        },
+        {
+          "step": "v2025.11.09 re-fix CVE",
+          "test": "новый unit-тест + fuzz на имена файлов"
+        },
+        {
+          "step": "v2025.05.26 retry=5",
+          "test": "тест на фактическое число retry и общее время"
+        },
+        {
+          "step": "v2025.09.27 parallel-max-host=5",
+          "test": "тест feature-detect curl>=8.16.0"
+        }
+      ]
+    },
+    "dependencies": {
+      "total": 5,
+      "list": [
+        {
+          "name": "curl",
+          "min_version": "7.46.0",
+          "note": "feature-gated: 7.66+, 7.83+, 8.16+"
+        },
+        {
+          "name": "shunit2",
+          "min_version": "2.1.8",
+          "note": "тестовая зависимость"
+        },
+        {
+          "name": "shfmt",
+          "note": "линтер"
+        },
+        {
+          "name": "pyspelling",
+          "note": "линтер документации"
+        },
+        {
+          "name": "GitHub Actions",
+          "note": "CI"
+        }
+      ],
+      "outdated": "неизвестно из материала",
+      "cve": "CVE-2025-11563 (сам проект); CVE в зависимостях не указаны"
+    },
+    "failure_points": [
+      {
+        "id": "FP-1",
+        "point": "Percent-decoding output filename",
+        "priority": "критическая",
+        "detail": "Path traversal; фикс дважды неполный."
+      },
+      {
+        "id": "FP-2",
+        "point": "Отсутствие атомарной записи файла",
+        "priority": "важная",
+        "detail": "Race при --parallel + --no-clobber; частичные файлы."
+      },
+      {
+        "id": "FP-3",
+        "point": "Отсутствие timeout",
+        "priority": "важная",
+        "detail": "Retry 5×32s может блокировать CI."
+      },
+      {
+        "id": "FP-4",
+        "point": "Breaking CLI change без migration guide",
+        "priority": "важная",
+        "detail": "v2024-07-07 ломает downstream-скрипты."
+      },
+      {
+        "id": "FP-5",
+        "point": "Сломанный regression-тест CVE",
+        "priority": "критическая",
+        "detail": "Тест не поймал регрессию — процесс верификации не работает."
+      },
+      {
+        "id": "FP-6",
+        "point": "Инъекция через --curl-options",
+        "priority": "важная",
+        "detail": "Пользовательские опции передаются в curl без строгой валидации."
+      }
+    ],
+    "resilience_score": 4,
+    "resilience_reason": "Проект имеет тесты, CI, линтеры и активный changelog — это плюс. Однако: (1) критическая CVE была закрыта неполно дважды, (2) regression-тест был сломан, (3) отсутствует timeout и атомарная запись, (4) breaking changes без migration guide, (5) нет данных о нагрузке и SLO. Совокупно — ниже среднего для security-чувствительной утилиты.",
+    "cove": {
+      "questions": [
+        {
+          "q": "Нашёл ли я хотя бы одну уязвимость?",
+          "independent_answer": "Да — CVE-2025-11563 (path traversal через percent-decoding), плюс неполный фикс и сломанный тест.",
+          "match": true
+        },
+        {
+          "q": "Есть ли trust boundary, которую я не рассмотрел?",
+          "independent_answer": "Возможна граница 'curl → внешний DNS/HTTP-сервер' (SSRF-подобные сценарии), но для CLI-утилиты это ожидаемое поведение. Также граница 'CI secrets → workflow' рассмотрена поверхностно.",
+          "match": false
+        },
+        {
+          "q": "Есть ли допущение, которое я не проверил?",
+          "independent_answer": "Допущение, что v2025.11.09 действительно закрыл CVE — не проверено независимо; changelog сам по себе не доказательство.",
+          "match": false
+        },
+        {
+          "q": "Есть ли risk node, помеченный опционально, но должен быть критично?",
+          "independent_answer": "RN-10 (конкурентность) при пересечении с path traversal усиливает SEC-1 — возможно, должен быть 'важно' вместо 'важно' (уже важно). RN-3 (конкурирующая реализация curl-версий) может быть 'важно' из-за security-регрессий на старых curl.",
+          "match": false
+        }
+      ],
+      "verdict": "requires_external_verification",
+      "flagged": [
+        "VERIFY: фактический статус CVE-2025-11563 после v2025.11.09 — требуется независимая проверка (NVD, upstream curl).",
+        "VERIFY: наличие timeout и атомарной записи в текущем коде wcurl — changelog не отражает.",
+        "VERIFY: управление секретами в GitHub Actions — вне материала."
+      ]
+    },
+    "priority_rule": "loss > risk > money",
+    "substitution_seen": false,
+    "tool_output": {
+      "ran": false,
+      "raw": null,
+      "note": "Инструменты analyze.py не запускались — материал является changelog, не код/манифест/директория тестов. Анализ выполнен по тексту."
+    },
+    "_meta": {
+      "stage": "stage2_analyst",
+      "tokens_in": 4373,
+      "tokens_out": 6478,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.002426
+    },
+    "_web_search": {
+      "used": false,
+      "queries": [],
+      "credits": 0
+    }
+  },
+  "stage3": null,
+  "stage4": {
+    "hierarchy": {
+      "core": [
+        "wcurl (POSIX shell wrapper) — парсинг аргументов, формирование argv для curl, вывод",
+        "output filename derivation (percent-decode / encode, fragment strip, index.html fallback)"
+      ],
+      "service": [
+        "curl (external binary, feature-gated 7.46/7.66/7.83/8.16+)",
+        "filesystem (output directory, atomicity, no-clobber)",
+        "user shell environment (PATH, glob expansion, CURL_OPTIONS)"
+      ],
+      "infra": [
+        "GitHub Actions (tests, lint, release)",
+        "shunit2 >= 2.1.8 (unit tests)",
+        "shfmt, pyspelling (lint)",
+        "manpage / README / AUTHORS / LICENSE (docs)"
+      ]
+    },
+    "connections": [
+      {
+        "from": "user input (URL, --curl-options, --output)",
+        "to": "wcurl",
+        "type": "trust boundary",
+        "risk": "critical"
+      },
+      {
+        "from": "wcurl",
+        "to": "curl (argv)",
+        "type": "exec",
+        "risk": "important"
+      },
+      {
+        "from": "curl",
+        "to": "filesystem",
+        "type": "write",
+        "risk": "critical"
+      },
+      {
+        "from": "wcurl",
+        "to": "filesystem",
+        "type": "filename derivation",
+        "risk": "critical"
+      },
+      {
+        "from": "GitHub Actions",
+        "to": "repository",
+        "type": "CI/CD",
+        "risk": "important"
+      }
+    ],
+    "dependency_graph": {
+      "edges": [
+        {
+          "from": "wcurl",
+          "to": "curl",
+          "kind": "runtime",
+          "min_version": "7.46.0"
+        },
+        {
+          "from": "wcurl",
+          "to": "filesystem",
+          "kind": "runtime"
+        },
+        {
+          "from": "tests",
+          "to": "shunit2",
+          "kind": "test",
+          "min_version": "2.1.8"
+        },
+        {
+          "from": "tests",
+          "to": "wcurl",
+          "kind": "test"
+        },
+        {
+          "from": "CI",
+          "to": "tests",
+          "kind": "orchestration"
+        },
+        {
+          "from": "CI",
+          "to": "shfmt",
+          "kind": "lint"
+        },
+        {
+          "from": "CI",
+          "to": "pyspelling",
+          "kind": "lint"
+        }
+      ],
+      "impact_of": {
+        "curl": "feature-gated behavior (--no-clobber 7.83+, --parallel 7.66+, parallel-max-host 8.16+); version drift → security regression",
+        "filesystem": "path traversal (CVE-2025-11563), silent overwrite, partial writes",
+        "shunit2": "broken test → undetected regression (v2025.11.09)"
+      },
+      "critical_path": [
+        "user input → wcurl arg parse → filename derivation → curl argv → curl exec → filesystem write"
+      ],
+      "cycles": []
+    },
+    "options": [
+      {
+        "name": "A — Forward-fix + hardening (whitelist filename, atomic write, timeout)",
+        "isolation": "best-effort",
+        "scalability": "high — POSIX shell, no new runtime deps; scales to 1000+ URLs with configurable parallel-max-host",
+        "summary": "Закрыть CVE-2025-11563 окончательно: whitelist [A-Za-z0-9._-] в output filename, отказ от percent-decoding опасных символов, O_EXCL/mktemp+rename, явный timeout, regression+fuzz тесты, MIGRATION.md.",
+        "pros": [
+          "Устраняет корень проблемы (не патчит симптом)",
+          "Атомарная запись закрывает race (CONC-1, CONC-2)",
+          "Timeout закрывает FP-3",
+          "MIGRATION.md закрывает FP-4"
+        ],
+        "cons": [
+          "Требует переписать filename derivation — риск регрессии",
+          "Whitelist может сломать легитимные unicode-имена (нужен escape-путь)"
+        ],
+        "effort_days": "3-5"
+      },
+      {
+        "name": "B — Minimal CVE re-fix + errata (без архитектурных изменений)",
+        "isolation": "best-effort",
+        "scalability": "medium — не решает race и timeout",
+        "summary": "Точечно переписать regression-тест CVE, добавить fuzz на имена файлов, опубликовать errata к v2025.11.04, добавить Security-секцию в changelog.",
+        "pros": [
+          "Минимальный blast radius",
+          "Быстро (1-2 дня)",
+          "Закрывает FP-5 (сломанный тест)"
+        ],
+        "cons": [
+          "Не закрывает race (CONC-1/2)",
+          "Не закрывает timeout (FP-3)",
+          "Не закрывает --curl-options injection (FP-6)"
+        ],
+        "effort_days": "1-2"
+      },
+      {
+        "name": "C — Rewrite filename handling as separate module + capability matrix",
+        "isolation": "best-effort",
+        "scalability": "high — явная матрица curl-версий, feature-detect, graceful degradation",
+        "summary": "Вынести filename derivation в отдельную функцию с unit-тестами, ввести capability matrix для curl 7.46/7.66/7.83/8.16/9.0+, конфигурируемые parallel-max-host и retry через env.",
+        "pros": [
+          "Закрывает RN-3 (version drift)",
+          "Закрывает RN-7 (hardcoded values)",
+          "Тестируемость выше"
+        ],
+        "cons": [
+          "Больше кода → больше поверхности",
+          "Дольше (5-7 дней)",
+          "Не решает CVE сам по себе — нужен A или B"
+        ],
+        "effort_days": "5-7"
+      }
+    ],
+    "infrastructure_params": {
+      "pool_size": "n/a — CLI, не сервис",
+      "cpu": "n/a",
+      "memory": "n/a",
+      "replicas": "n/a",
+      "lockTTL": "n/a — нет распределённой блокировки; локальный O_EXCL на output-файл",
+      "autoscaling": "n/a",
+      "cli_params": {
+        "parallel_max_host": {
+          "current": 5,
+          "gate": "curl>=8.16.0",
+          "recommendation": "env-overridable WCURL_PARALLEL_MAX_HOST"
+        },
+        "retry": {
+          "current": 5,
+          "total_seconds": 32,
+          "recommendation": "env-overridable WCURL_RETRY"
+        },
+        "timeout": {
+          "current": "absent",
+          "recommendation": "WCURL_TIMEOUT default 300s на общий прогон"
+        },
+        "output_filename_charset": {
+          "current": "percent-decode (кроме / и \\)",
+          "recommendation": "whitelist [A-Za-z0-9._-], остальное percent-encode"
+        }
+      }
+    },
+    "cloud_cost": {
+      "current": 0,
+      "projected": 0,
+      "delta": 0,
+      "reason": "no infrastructure change — CLI-утилита, GitHub Actions free tier для public repo",
+      "engineering_cost": {
+        "option_A": {
+          "days": "3-5",
+          "rate": "not set"
+        },
+        "option_B": {
+          "days": "1-2",
+          "rate": "not set"
+        },
+        "option_C": {
+          "days": "5-7",
+          "rate": "not set"
+        }
+      },
+      "roi": "не вычисляется без rate; качественно: A закрывает критическую CVE + race + timeout → высокий ROI при 3-5 днях",
+      "cost_of_delay": "каждый день без forward-fix = окно path traversal для пользователей на v2025.11.04–v2025.11.09; необратимая запись файла вне каталога"
+    },
+    "migration_plan": {
+      "schema": "n/a — нет БД; миграция = изменение CLI-контракта",
+      "consistency": "filename derivation должна быть детерминированной и идемпотентной; O_EXCL гарантирует no-clobber",
+      "rollback": "для CVE-фикса откат нежелателен (forward-fix only); для CLI-изменений — MIGRATION.md с таблицей 'было → стало'",
+      "validation": [
+        "regression-тест на path traversal (переписать сломанный)",
+        "fuzz-тест на имена файлов (NUL, .., unicode, mixed separators, DEL, colon)",
+        "тест на race --parallel + --no-clobber",
+        "тест на timeout",
+        "тест на --curl-options injection (запрет --output/--remote-name внутри)",
+        "матрица curl 7.46/7.66/7.83/8.16/9.0+"
+      ]
+    },
+    "gaps": {
+      "caching": "n/a для CLI; кэш не требуется",
+      "retry": "present (5×32s), но без timeout и без circuit-breaker — каскадные retry при недоступном хосте",
+      "health_checks": "n/a — CLI; но отсутствует pre-release checklist",
+      "migrations": "MIGRATION.md отсутствует для v2024-07-07 и v2024-07-10",
+      "monitoring": "отсутствует structured output для CI-парсинга",
+      "alerts": "n/a — CLI; но отсутствует процесс быстрого реагирования на security-инциденты (CVE-окно 5 дней)"
+    },
+    "evolvability": {
+      "feature_add": 7,
+      "module_replace": 6,
+      "coupling": 7,
+      "abstractions": 5,
+      "overall": 6,
+      "note": "POSIX shell + feature-detect — хорошо для добавления фич; но filename derivation смешана с arg parsing, абстракции слабые"
+    },
+    "code_generation": {
+      "artifacts": [
+        {
+          "name": "filename_sanitize.sh",
+          "language": "sh",
+          "purpose": "whitelist-based sanitization output filename",
+          "code": "#!/bin/sh\n# Sanitize output filename: whitelist [A-Za-z0-9._-], percent-encode rest.\n# Rejects path traversal, NUL, DEL, unicode normalization attacks.\nsanitize_filename() {\n    _in=\"$1\"\n    [ -z \"$_in\" ] && { printf '%s' 'index.html'; return 0; }\n    # strip fragment\n    _in=\"${_in%%#*}\"\n    # reject empty after strip\n    [ -z \"$_in\" ] && { printf '%s' 'index.html'; return 0; }\n    _out=''\n    _i=0\n    _len=${#_in}\n    while [ \"$_i\" -lt \"$_len\" ]; do\n        _c=$(printf '%s' \"$_in\" | cut -c $((_i+1)))\n        case \"$_c\" in\n            [A-Za-z0-9._-]) _out=\"${_out}${_c}\" ;;\n            *)\n                # percent-encode byte\n                _hex=$(printf '%s' \"$_c\" | od -An -tx1 | tr -d ' \\n')\n                _out=\"${_out}%${_hex}\"\n                ;;\n        esac\n        _i=$((_i+1))\n    done\n    # reject leading dot-dot or absolute\n    case \"$_out\" in\n        ..*|/*) printf '%s' 'index.html' ;;\n        *) printf '%s' \"$_out\" ;;\n    esac\n}\n"
+        },
+        {
+          "name": "atomic_write.sh",
+          "language": "sh",
+          "purpose": "atomic output via mktemp + rename, O_EXCL semantics",
+          "code": "#!/bin/sh\n# Atomic write: download to temp, rename on success. Refuse if target exists.\natomic_download() {\n    _url=\"$1\"\n    _target=\"$2\"\n    if [ -e \"$_target\" ]; then\n        printf 'wcurl: refusing to overwrite %s\\n' \"$_target\" >&2\n        return 1\n    fi\n    _tmp=$(mktemp \"${_target}.XXXXXX\") || return 1\n    trap 'rm -f \"$_tmp\"' EXIT INT TERM\n    if curl --fail --output \"$_tmp\" \"$_url\"; then\n        # atomic rename; fails if target appeared meanwhile\n        if ln \"$_tmp\" \"$_target\" 2>/dev/null; then\n            rm -f \"$_tmp\"\n            trap - EXIT INT TERM\n            return 0\n        else\n            printf 'wcurl: race detected on %s\\n' \"$_target\" >&2\n            rm -f \"$_tmp\"\n            return 1\n        fi\n    else\n        rm -f \"$_tmp\"\n        return 1\n    fi\n}\n"
+        }
+      ],
+      "validation": "python -c \"import ast; ast.parse(open('filename_sanitize.sh').read())\" — n/a для sh; вместо этого: sh -n filename_sanitize.sh && sh -n atomic_write.sh"
+    },
+    "inversion": {
+      "assumptions": [
+        {
+          "n": 1,
+          "assumption": "Percent-decoding имён файлов безопасен после фикса v2025.11.09",
+          "inversion": "Percent-decoding небезопасен в принципе — любой decode может породить опасную последовательность",
+          "consequences": [
+            "Отказ от decode полностью → ломает легитимные unicode-имена",
+            "Whitelist + encode — компромисс, но требует escape-пути для пользователя",
+            "Пользователь теряет контроль над именем → нужен явный --output"
+          ]
+        },
+        {
+          "n": 2,
+          "assumption": "curl >= 7.46.0 достаточно для безопасной работы",
+          "inversion": "Старые curl имеют свои CVE и не поддерживают --no-clobber",
+          "consequences": [
+            "На curl < 7.83 silent overwrite возможен",
+            "Нужен явный feature-detect и отказ при отсутствии --no-clobber",
+            "Матрица версий становится обязательной"
+          ]
+        },
+        {
+          "n": 3,
+          "assumption": "GitHub Actions безопасны для CI",
+          "inversion": "Workflow может быть скомпрометирован через pull_request_target или unpinned actions",
+          "consequences": [
+            "Pin actions по SHA обязателен",
+            "Минимальные permissions",
+            "Запрет pull_request_target без review"
+          ]
+        }
+      ],
+      "failure_points_on_inversion": [
+        "Отказ от decode → ломает существующие скрипты (breaking change)",
+        "Отказ от старых curl → отсекает дистрибутивы",
+        "Ужесточение CI → замедляет контрибьюцию"
+      ]
+    },
+    "thresholds": [
+      {
+        "metric": "CVE-2025-11563 status",
+        "value": "unverified after v2025.11.09",
+        "consequence": "forward-fix обязателен; откат недопустим"
+      },
+      {
+        "metric": "regression test for CVE",
+        "value": "broken",
+        "consequence": "release gate блокирует релиз до зелёного теста"
+      },
+      {
+        "metric": "timeout on curl invocation",
+        "value": "absent",
+        "consequence": "добавить WCURL_TIMEOUT default 300s"
+      },
+      {
+        "metric": "atomic write",
+        "value": "absent",
+        "consequence": "добавить mktemp+rename"
+      },
+      {
+        "metric": "curl version in CI matrix",
+        "value": "< 5 versions",
+        "consequence": "расширить матрицу до 7.46/7.66/7.83/8.16/9.0+"
+      },
+      {
+        "metric": "days since CVE window opened",
+        "value": "> 0",
+        "consequence": "каждый день = необратимая запись файла вне каталога"
+      }
+    ],
+    "constraints": {
+      "items": [
+        "pool_size ≥ 50 — n/a для CLI",
+        "timeout ≤ 10s — несовместимо с retry 5×32s; для CLI timeout на общий прогон 300s",
+        "output filename whitelist [A-Za-z0-9._-]",
+        "curl min version 7.46.0"
+      ],
+      "binding": "output filename whitelist — самое жёсткое, определяет безопасность",
+      "decision": "по связывающему: whitelist + encode, отказ от decode опасных символов"
+    },
+    "second_opinion": {
+      "role": "security engineer",
+      "view": "CVE-2025-11563 закрыт неполно дважды; regression-тест был сломан; окно уязвимости v2025.11.04–v2025.11.09 = необратимая запись файла вне каталога. Whitelist — единственный надёжный подход. Percent-decode в принципе опасен.",
+      "agreement": "Принимаю: whitelist, atomic write, timeout, fuzz-тесты, MIGRATION.md, errata к v2025.11.04.",
+      "disagreement": "Отвергаю: минимальный вариант B как достаточный — он не закрывает race и timeout. Отвергаю: сохранение percent-decode как default."
+    },
+    "stop_reason": "risk",
+    "stop_action": "force_emergency",
+    "collision": [
+      {
+        "analyst": "RN-5 (критично): прямое противоречие v2025.11.04 vs v2025.11.09 о статусе CVE",
+        "researcher": "n/a — research_first=false",
+        "synthesizer": "forward-fix обязателен, откат недопустим",
+        "contradiction": "Changelog заявляет фикс, затем признаёт его неполным — тезис о закрытии CVE ложный",
+        "resolution": "приоритет: безопасность > консистентность changelog; errata + forward-fix"
+      },
+      {
+        "analyst": "RN-11 (критично): breaking CLI change без migration guide",
+        "researcher": "n/a",
+        "synthesizer": "MIGRATION.md обязателен",
+        "contradiction": "Breaking change v2024-07-07 vs отсутствие rollback/migration",
+        "resolution": "приоритет: обратная совместимость документации > скорость релиза"
+      }
+    ],
+    "escalation": {
+      "level": 2,
+      "action": "return_to_stage2: true — 2 критичных конфликта (RN-5, RN-11) требуют пересмотра приоритетов"
+    },
+    "cove": {
+      "questions": [
+        {
+          "q": "Есть ли альтернатива, которую я отклонил слишком быстро?",
+          "answer": "Вариант B (minimal re-fix) отклонён как недостаточный, но он может быть достаточен как hotfix на 1-2 дня перед A. Пересмотреть: B как immediate, A как follow-up."
+        },
+        {
+          "q": "Есть ли риск, который я перенёс в ASSUMPTION без проверки?",
+          "answer": "Да — допущение, что v2025.11.09 действительно закрыл CVE. Требует независимой верификации (NVD, upstream curl)."
+        },
+        {
+          "q": "Есть ли конфликт между моими рекомендациями?",
+          "answer": "Да — whitelist ломает легитимные unicode-имена, что противоречит 'не ломать пользователей'. Нужен escape-путь (--output явно)."
+        },
+        {
+          "q": "Есть ли блок, который я забыл включить?",
+          "answer": "Да — блок 'Security errata' для v2025.11.04 отсутствует в changelog; нужно добавить."
+        }
+      ],
+      "verdict": "requires_external_verification",
+      "flagged": [
+        "VERIFY: фактический статус CVE-2025-11563 после v2025.11.09 (NVD, upstream curl)",
+        "VERIFY: наличие timeout и atomic write в текущем коде wcurl",
+        "VERIFY: управление секретами в GitHub Actions",
+        "VERIFY: легитимные unicode-имена — нужен ли escape-путь"
+      ]
+    },
+    "return_to_stage2": true,
+    "return_to_stage3": false,
+    "force_emergency": true,
+    "force_fallback": false,
+    "new_risks": [
+      {
+        "id": "NR-1",
+        "risk": "Whitelist ломает легитимные unicode-имена файлов",
+        "priority": "важно",
+        "mitigation": "escape-путь через явный --output; документировать в MIGRATION.md"
+      },
+      {
+        "id": "NR-2",
+        "risk": "Atomic write через ln может не работать на некоторых FS (NFS, Windows)",
+        "priority": "опционально",
+        "mitigation": "fallback на mv с проверкой; документировать ограничения"
+      },
+      {
+        "id": "NR-3",
+        "risk": "Timeout 300s может быть слишком мал для больших файлов",
+        "priority": "опционально",
+        "mitigation": "env-overridable WCURL_TIMEOUT"
+      }
+    ],
+    "tool_output": {
+      "ran": false,
+      "raw": null,
+      "note": "analyze.py не запускался — материал changelog, не код/манифест. mode_calc требует latency_type (n/a), mode_cost пустой → delta 0, mode_migrate n/a, mode_lockttl n/a (нет p99_hold_ms)."
+    },
+    "artifacts": {
+      "sql_migration": null,
+      "dockerfile": null,
+      "gantt_mermaid": "```mermaid\ngantt\n    title wcurl CVE-2025-11563 forward-fix\n    dateFormat  YYYY-MM-DD\n    section Immediate (B)\n    Errata v2025.11.04        :a1, 2026-10-15, 1d\n    Rewrite CVE regression test :a2, after a1, 1d\n    section Hardening (A)\n    Whitelist filename         :b1, after a2, 2d\n    Atomic write (mktemp+ln)   :b2, after b1, 1d\n    Timeout + env overrides    :b3, after b2, 1d\n    Fuzz tests                 :b4, after b3, 1d\n    MIGRATION.md               :b5, after b4, 1d\n    section Capability (C)\n    curl version matrix        :c1, after b5, 2d\n    Feature-detect refactor    :c2, after c1, 2d\n```"
+    },
+    "_meta": {
+      "stage": "stage4_synthesizer",
+      "tokens_in": 11250,
+      "tokens_out": 5469,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.003106
+    }
+  },
+  "audit": {
+    "audit_id": "audit-2026-10-15-e78ff4",
+    "session_id": "sess-2026-10-15-061653-00",
+    "timestamp": "2026-10-15T06:18:20.704659+00:00",
+    "material_hash": "sha256:b2e55f5feedf5bbdebb14ebde442b32b9c8a07feb78b4b843a2808a00636222e",
+    "material_hash_full": "sha256:b2e55f5feedf5bbdebb14ebde442b32b9c8a07feb78b4b843a2808a00636222e",
+    "material_size": {
+      "lines": 139,
+      "chars": 5628
+    },
+    "model": "deepseek-chat",
+    "critique_verdict": "REQUIRES_REVIEW",
+    "risk_verdict": "REQUIRES_REVIEW",
+    "cwe_ids": [],
+    "owasp_categories": [],
+    "exploitability": {
+      "reachable": false,
+      "auth_required": false,
+      "exploit_path": "not reachable from public entrypoint",
+      "blast_radius": "none",
+      "entry_points": [],
+      "blast_indicators": [],
+      "path": [],
+      "source_count": 0,
+      "sources": [],
+      "entry_points_lines": [],
+      "sinks": []
+    },
+    "dataflow": {},
+    "anomaly": {},
+    "provenance": {
+      "source": "manual",
+      "git_commit": "",
+      "git_commit_short": "",
+      "git_branch": "",
+      "git_author": "",
+      "git_author_email": "",
+      "git_remote": "",
+      "ci_run_id": "",
+      "ci_pr_number": "",
+      "timestamp": "2026-10-15T06:18:20.698318+00:00"
+    },
+    "pii_detected": false,
+    "pii_details": {},
+    "compliance_flags": [],
+    "compliance_controls": {},
+    "compliance_standards": [],
+    "runbook": {},
+    "runbook_cwes": [],
+    "runbook_steps_count": 0,
+    "redaction_applied": true,
+    "redaction_map": {
+      "email": 2
+    },
+    "sast_findings": 0,
+    "sast_high_priority": 0,
+    "sast_tools": {},
+    "sca_vulnerabilities": 0,
+    "truncated": false,
+    "original_size": 5628,
+    "web_search_used": false,
+    "web_search_queries": [],
+    "web_search_credits": 0,
+    "escalation_level": ""
+  },
+  "completeness": {
+    "level": "D3",
+    "required_count": 12,
+    "missing": [],
+    "missing_count": 0,
+    "loss_pct": 0.0,
+    "material_complete": true,
+    "threshold": 30.0,
+    "verdict": "ACCEPTABLE"
+  },
+  "critique_verdict": "REQUIRES_REVIEW",
+  "cost_usd": 0.006609,
+  "final_markdown": "# wcurl CHANGELOG — АНАЛИЗ (D3)\n\n[ECHO] Материал: `CHANGELOG.md` проекта wcurl (~120 строк, ~14 релизов, ~90 bullet-записей). Reverse-chronological release log. Задача не сформулирована явно — анализ в абстрактном контексте.\n\n[ROUTE] stage4 → stage3 → stage5. research_first=false, parallel_stages=false, subst_count=0.\n\n[CONCLUSION] Changelog фиксирует критическую проблему процесса: CVE-2025-11563 (path traversal через percent-decoding output filename) был заявлен закрытым в v2025.11.04, но v2025.11.09 признаёт, что патч не работал, а regression-тест был сломан. Окно уязвимости v2025.11.04–v2025.11.09 = необратимая запись файла вне целевого каталога. Дополнительно: breaking CLI change v2024-07-07 без migration guide, отсутствие timeout и атомарной записи. Признаков независимой верификации статуса CVE после v2025.11.09 не найдено (VERIFY: не проверялось).\n\n[RISK_NODES]\n- RN-5 (критично): прямое противоречие v2025.11.04 vs v2025.11.09 о статусе CVE-2025-11563.\n- RN-11 (критично): breaking CLI change v2024-07-07 без migration/rollback.\n- RN-1 (важно): допущение о полноте фикса CVE не проверено.\n- RN-2 (важно): фикс `/` и `\\` не покрывает NUL, `..`, unicode-нормализацию.\n- RN-4 (важно): тезис «Fix CVE» в v2025.11.04 был ложным.\n- RN-6 (важно): нет деталей CVE, вектора, affected versions, mitigation.\n- RN-8 (важно): история неполных фиксов (CVE, retry, ROOTDIR) → слабая верификация.\n- RN-10 (важно): race при `--parallel` + `--no-clobber`, нет атомарности.\n- RN-3, RN-7, RN-9 (опционально): version drift curl, hardcoded `parallel-max-host=5`/retry, масштабирование.\n\n[PLAN_B]\n- RN-1: независимый аудит percent-decoding с fuzzing (NUL, `..`, unicode, mixed separators).\n- RN-2: whitelist `[A-Za-z0-9._-]`, остальное — percent-encode.\n- RN-3: матрица совместимости curl-версий в CI + feature-detect.\n- RN-4: публичная errata к v2025.11.04 со ссылкой на v2025.11.09.\n- RN-5: обязательный regression-тест CVE как release gate в CI.\n- RN-6: секция `Security` в changelog (CVE-ID, вектор, affected, mitigation).\n- RN-7: env-overridable `WCURL_PARALLEL_MAX_HOST`, `WCURL_RETRY`.\n- RN-8: pre-release checklist (тесты, lint, CVE-regression, ручная проверка changelog).\n- RN-9: бенчмарк на 100/1000 URL, документировать лимиты.\n- RN-10: `O_EXCL` / `mktemp` + `rename` для атомарного создания output-файла.\n- RN-11: `MIGRATION.md` с таблицей «было → стало» для v2024-07-07 и v2024-07-10.\n\n[THREAT_MODEL]\nКомпоненты: wcurl (POSIX shell), curl (external), filesystem, CI (GitHub Actions), user shell.\nTrust boundaries: user input → wcurl; wcurl → curl (argv); curl → filesystem; CI → repository.\nThreats (8): 1 critical, 4 important, 3 optional.\n- #2 (critical, T): path traversal через percent-decoding → whitelist + canonicalize + prefix check.\n- #1 (important, T): инъекция через `--curl-options` → запрет `--output`/`--remote-name` внутри.\n- #3 (important, T): silent overwrite при race → `O_EXCL`/`mktemp`+`rename`.\n- #5 (important, E): CI privilege escalation → pin actions по SHA, минимальные permissions.\n- #4, #6, #7, #8 (optional): утечка через partial files, отсутствие audit log, DoS через retry, tampering с curl binary через PATH.\n\n[SILENCE_LAYERS]\n- input_silence: нет данных о нагрузке, числе пользователей, частоте релизов, размере CI-матрицы.\n- assumption_silence: предполагается, что v2025.11.04 закрыл CVE — без независимой верификации; v2025.11.09 показывает ложность.\n- consequence_silence: пользователи недоверенных URL; необратимая запись файла вне каталога в окне v2025.11.04–v2025.11.09.\n\n[INTERSECTION_RISKS]\n- input_silence × assumption_silence: невозможно оценить число затронутых пользователей → приоритет остаётся критичным по умолчанию.\n- assumption_silence × consequence_silence: ложное чувство безопасности → пользователи не применяют обходные меры → необратимая запись.\n- concurrency × security: race между проверкой имени и записью усиливает окно traversal-атаки.\n- breaking_changes × ops: удаление `-o/--opts=` без migration guide → молчаливая поломка downstream-скриптов.\n\n[ASSEMBLY]\nИерархия: core (wcurl arg parse, filename derivation) → service (curl, filesystem, shell env) → infra (GitHub Actions, shunit2, shfmt, pyspelling, docs).\nCritical path: user input → wcurl arg parse → filename derivation → curl argv → curl exec → filesystem write.\nЦиклов в dependency graph нет. 5 runtime/test/CI-рёбер.\n\n[REFACTORING]\n- Вынести filename derivation в отдельную функцию с unit-тестами.\n- Ввести capability matrix для curl 7.46/7.66/7.83/8.16/9.0+.\n- Env-overridable `WCURL_PARALLEL_MAX_HOST`, `WCURL_RETRY`, `WCURL_TIMEOUT`.\n- Атомарная запись через `mktemp` + `ln`/`rename`.\n- Whitelist-подход к output filename.\n\n[PARALLELS]\n- Аналогичный класс уязвимостей: path traversal в wget/curl wrappers, tar/zip extraction (Zip Slip).\n- Аналогичный процессный дефект: «fix declared, test broken» — встречается в проектах с недостаточным release gate.\n- Аналогичный breaking change без migration: смена CLI-контракта в утилитах без deprecation-периода.\n\n[TESTS]\nТипы: unit (shunit2 ≥ 2.1.8), integration (GitHub Actions), lint (shfmt, pyspelling).\nGaps: сломанный CVE-regression-тест; ROOTDIR в тестах мог вызывать неверный wcurl; нет fuzz на имена файлов; нет тестов на race `--parallel` + `--no-clobber`; нет теста на timeout; нет теста на `--curl-options` injection.\nEdge cases: `/`, `\\`, `:`, DEL, backslash, unicode; URL без имени → `index.html`; fragment `#`; одинаковые basename; curl 7.46/7.66/7.83/8.16/9.0+.\n\n[ACTION]\n- NOW: опубликовать errata к v2025.11.04; переписать сломанный CVE-regression-тест; добавить release gate в CI.\n- TODAY: whitelist output filename; `mktemp`+`rename`; env-overridable timeout.\n- TOMORROW: fuzz-тесты на имена файлов; `MIGRATION.md` для v2024-07-07 и v2024-07-10.\n- LATER: capability matrix curl-версий; бенчмарк на 100/1000 URL; pin actions по SHA.\n\n[QUESTIONS]\n- VERIFY: фактический статус CVE-2025-11563 после v2025.11.09 (NVD, upstream curl) — не проверялось.\n- VERIFY: наличие timeout и atomic write в текущем коде wcurl — changelog не отражает.\n- VERIFY: управление секретами в GitHub Actions — вне материала.\n- VERIFY: нужен ли escape-путь для легитимных unicode-имён при whitelist-подходе.\n- Есть ли downstream-потребители, зависящие от `-o/--opts=` (удалён в v2024-07-07)?\n\n[FUNC:FULL]\n- ECON: effort A=3–5 дней, B=1–2 дня, C=5–7 дней; cost $0 (CLI, GitHub Actions free tier для public repo); ROI высокий для A (закрывает critical CVE + race + timeout); budget не задан; cloud delta $0; cost of delay = каждый день окна path traversal → необратимая запись файла вне каталога.\n- FAIL: критично — percent-decoding output filename (FP-1, дважды неполный фикс); критично — сломанный CVE-regression-тест (FP-5); важно — отсутствие атомарной записи (FP-2), отсутствие timeout (FP-3), breaking CLI без migration (FP-4), инъекция через `--curl-options` (FP-6). Cascade: user input → filename derivation → curl argv → filesystem write. Recovery: forward-fix обязателен, откат недопустим.\n- METRICS: ~120 строк changelog, ~14 релизов, ~90 bullet-записей; deps=5 (curl ≥7.46.0, shunit2 ≥2.1.8, shfmt, pyspelling, GitHub Actions); tests: unit+integration+lint, coverage gaps — CVE-regression сломан; perf: retry 5×32s, parallel-max-host=5 (curl≥8.16.0); quality: resilience_score=4/10; infra: GitHub Actions, POSIX shell.\n- ALTERNATIVES: A — forward-fix + hardening (whitelist, atomic write, timeout, fuzz, MIGRATION.md), 3–5 дней; B — minimal CVE re-fix + errata, 1–2 дня; C — rewrite filename handling + capability matrix, 5–7 дней. Языки/фреймворки/БД — n/a (POSIX shell CLI). Паттерны: whitelist, atomic write, feature-detect.\n- EVOLVE: coupling=7/10 (POSIX shell + feature-detect — хорошо для фич); abstractions=5/10 (filename derivation смешана с arg parsing); growth=7/10; friction=6/10 (breaking changes без migration, hardcoded values).\n- COMPARE: A — 3–5 дней, $0, риск низкий, сложность средняя; B — 1–2 дня, $0, риск средний (не закрывает race/timeout), сложность низкая; C — 5–7 дней, $0, риск низкий, сложность высокая. Рекомендация: B как immediate hotfix → A как follow-up → C как долгосрочная цель.\n\n[MANDATORY BASE]\n1. ECONOMICS: time A=3–5 дней / B=1–2 дня / C=5–7 дней, cost $0, при условии что engineering rate не задан и GitHub Actions free tier для public repo.\n2. RISKS: критично — CVE-2025-11563 (path traversal, дважды неполный фикс) и сломанный regression-тест; важно — race, timeout, breaking CLI, `--curl-options` injection; при условии что статус CVE после v2025.11.09 не верифицирован независимо (VERIFY).\n3. INFRASTRUCTURE: pool_size=n/a (CLI, не сервис), при условии что wcurl — локальная утилита без серверной инфраструктуры.\n4. CODE: change = whitelist filename + atomic write + timeout + fuzz-тесты + MIGRATION.md, при условии что POSIX shell сохраняется и curl ≥7.46.0.\n5. ACTION: now — errata + переписать CVE-regression-тест + release gate; tomorrow — whitelist + atomic write + timeout; later — capability matrix + бенчмарк.\n6. TIMELINE: NOW — errata, regression-тест, release gate; TODAY — whitelist, atomic write, timeout; TOMORROW — fuzz, MIGRATION.md; LATER — capability matrix, бенчмарк, pin actions.\n7. PRODUCTION IMPACT: users N (неизвестно из материала, VERIFY), deploy window — n/a (CLI-релиз), rollback — не документирован; для CVE-фикса откат нежелателен (forward-fix only).\n8. SLO IMPACT: current n/a (SLO не определены), after n/a, при условии что для CLI-утилиты SLO нестандартны; retry-бюджет 32 сек фактически играет роль таймаут-бюджета.\n9. CLOUD COST: current $0, projected $0, delta ±$0, при условии что инфраструктура не меняется (CLI + GitHub Actions free tier).\n10. ON-CALL: new alerts — n/a (CLI); runbook — отсутствует; escalation — отсутствует процесс быстрого реагирования на security-инциденты (CVE-окно 5 дней).\n\n[MATRIX]\n| Dimension | Status | Comment |\n|-----------|--------|---------|\n| Security | FAIL | CVE-2025-11563 закрыт неполно дважды; regression-тест сломан; окно v2025.11.04–v2025.11.09. |\n| Facts | WARN | Changelog содержит прямое противоречие v2025.11.04 vs v2025.11.09; статус CVE после v2025.11.09 не верифицирован (VERIFY). |\n| Logic | WARN | Тезис «Fix CVE» в v2025.11.04 логически опровергнут v2025.11.09; retry-логика v2025.05.26 противоречила собственному выводу. |\n| Applicability | OK | Рекомендации применимы к POSIX shell CLI; whitelist + atomic write реализуемы без новых зависимостей. |\n| Effectiveness | WARN | Вариант B (1–2 дня) не закрывает race и timeout; A (3–5 дней) — достаточен. |\n| Resilience | FAIL | resilience_score=4/10; история неполных фиксов; нет timeout, атомарности, migration guide. |\n| Human factor | WARN | Breaking CLI change v2024-07-07 без migration guide → молчаливая поломка downstream-скриптов. |\n| Clarity | OK | Changelog структурирован, reverse-chronological, bullet-формат; но детали CVE отсутствуют. |\n\n[REFLEXION]\n1. Слабое место: статус CVE-2025-11563 после v2025.11.09 не верифицирован независимо → исправлено: помечено как VERIFY во всех релевантных блоках ([CONCLUSION], [QUESTIONS], [MANDATORY BASE] п.2), использована формулировка «признаков независимой верификации не найдено (VERIFY)» вместо категоричного утверждения.\n2. Слабое место: числа (effort, retry, parallel-max-host) взяты из changelog без независимого источника → исправлено: каждое число в [MANDATORY BASE] сопровождено условием; effort-дни помечены как оценка без rate.\n3. Слабое место: возможное противоречие между рекомендацией whitelist и «не ломать пользователей» (unicode-имена) → исправлено: добавлен escape-путь через явный `--output` в [PLAN_B] RN-1 и [QUESTIONS] (VERIFY: нужен ли escape-путь).\nИтог: accepted\n\n[AUDIT_TRAIL]\ngenerator: Vishap V5.10.7\naudit_id: audit-2026-10-15-e78ff4\nmaterial_hash: sha256:b2e55f5feedf5bbdebb14ebde442b32b9c8a07feb78b4b843a2808a00636222e\nmaterial_hash_full: sha256:b2e55f5feedf5bbdebb14ebde442b32b9c8a07feb78b4b843a2808a00636222e\npii_detected: false\ncompliance_flags: []\ncompliance_controls: {}\ncompliance_standards: []\ncritique_verdict: REQUIRES_REVIEW\nrisk_verdict: REQUIRES_REVIEW\ncwe_ids: []\nowasp_categories: []\nexploitability_reachable: False\nexploitability_auth_required: False\nexploitability_blast_radius: none\nexploitability_source_count: 0\nexploitability_path: []\ndataflow_path: []\ndataflow_source_count: 0\nanomaly_verdict: NORMAL\nanomaly_count: 0\nanomaly_method: none\nanomaly_top: []\nprovenance_source: manual\nprovenance_commit: \n\n\n[COMPLETENESS]\nlevel: D3\nrequired: 12\nmissing: []\nloss_pct: 0.0%\nmaterial_complete: True\nverdict: ACCEPTABLE\n",
+  "baseline_stats": {
+    "baseline_used": false,
+    "baseline_saved": false,
+    "baseline_path": "",
+    "baseline_save_path": "",
+    "baseline_known": 0,
+    "baseline_new": 11,
+    "baseline_total": 11
+  }
+}

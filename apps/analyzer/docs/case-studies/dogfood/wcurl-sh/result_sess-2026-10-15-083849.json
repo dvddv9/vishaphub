@@ -1,0 +1,1056 @@
+{
+  "session_id": "sess-2026-10-15-083849",
+  "timestamp": "2026-10-15T08:40:12.705294+00:00",
+  "filename": "tests.sh",
+  "material_size": 11993,
+  "stage0": {
+    "material_type": "tests",
+    "language": "sh",
+    "size_hint": "large",
+    "level": "D3",
+    "route": [
+      "stage4",
+      "stage3"
+    ],
+    "research_first": false,
+    "parallel_stages": false,
+    "subst_count": 0,
+    "session_id": "sess-2026-10-15-083849",
+    "model": "default",
+    "flags": [],
+    "slice": true,
+    "gate_check": {
+      "input": "shell testsuite (shunit2) for wcurl",
+      "output": "review",
+      "decider": "backend",
+      "cost": "time",
+      "irreversible": "none"
+    },
+    "task_type": "review",
+    "reasoning": "Material is a shell test suite (tests.sh) for wcurl. Type=tests, language=sh. Size exceeds D2_HINT_LINES (50) and D3_HINT_LINES (500) threshold is approached; slice recommended. No substitution markers, no emergency markers. No research/analogy request. Sequential route: stage4 then stage3.",
+    "_meta": {
+      "stage": "stage0_orchestrator",
+      "tokens_in": 4658,
+      "tokens_out": 242,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.00072
+    }
+  },
+  "stage1": {
+    "language": "sh",
+    "trajectory": {
+      "io": {
+        "input": "shell test suite file (tests.sh) for wcurl, executed via shunit2 harness",
+        "output": "test assertions (assertTrue/assertFalse/assertEquals/assertContains/assertNotContains) and pass/fail results"
+      },
+      "flow": "oneTimeSetUp -> per-test functions (testUsage, testNoOptionError, testInvalidOptionError, testParallelIfMoreThanOneUrl, testUrlDefaultNameDash, testUrlAllowDashWhenOutput, testEncodingWhitespace, testDoubleDash, testUrlIsPassedAsUrlOption, testDoubleDashUrlStartingWithDash, testUrlWithTabIsNotSplit, testUrlWithNewlineIsNotSplit, testUrlWithRawUtf8, testCurlOptions, testCurlOptionsSeparatedByWhitespace, testNextAmount, testUrlStartingWithDash, testOutputFileName, testOutputFileNameWithoutSpaces, testOutputFileNameRepeatedOption, testUrlDefaultName, testUrlDefaultNameTrailingSlash, testUrlDefaultNameTrailingBackwardSlash, testUrlDecodingWhitespace, testUrlDecodingWhitespaceTwoFiles, testUrlDecodingDisabled, testUrlDecodingWhitespaceQueryString, testUrlDecodingWhitespaceTrailingSlash, testUrlDecodingBackslashes, testUrlDecodingColon, testUrlDecodingDel, testUrlEncodeColon, ...)",
+      "branches": null,
+      "branches_note": "not computed; shell script, no static analyzer run",
+      "nesting_max": 2,
+      "deps": [
+        "shunit2 (>= 2.1.8)",
+        "wcurl (invoked via WCURL_CMD with --dry-run)",
+        "curl (implicit, via wcurl)",
+        "coreutils: dirname, cd, pwd, printf, grep, tr, head, locale",
+        "POSIX sh"
+      ],
+      "dead_code": "none observed in provided slice"
+    },
+    "structure": {
+      "patterns": [
+        "test-per-behavior (one function per assertion scenario)",
+        "command-substitution capture + assert on $? and stdout",
+        "dry-run invocation pattern (WCURL_CMD='wcurl --dry-run ') to inspect generated curl args without network",
+        "environment-conditional test (testUrlWithRawUtf8 branches on presence of 8859 locale)"
+      ],
+      "cohesion": "high — all tests target wcurl CLI argument construction and URL/filename handling",
+      "coupling": "external — depends on wcurl binary on PATH, shunit2 harness, curl version behavior (noted in TODO for --parallel)",
+      "solid_violations": [],
+      "point_of_no_return": "oneTimeSetUp exits 1 if shunit2 < 2.1.8; subsequent tests do not run",
+      "layers": [
+        "harness setup (oneTimeSetUp, debug helper)",
+        "test functions",
+        "assertions (shunit2 API)"
+      ],
+      "contradictions": [
+        "testUrlDecodingBackslashes and testUrlDecodingColon assertion messages say 'uses the default filename when the URL ends with a slash' but assert on --output with the encoded filename — message text does not match assertion intent",
+        "testUrlDecodingDel assertion message says 'does not decode the DEL character' — consistent with assertion, but grouped under 'UrlDecoding' naming"
+      ]
+    },
+    "texture": {
+      "density": "high — ~30+ test functions in provided slice, each 3-8 lines",
+      "code_smells": [
+        "repeated pattern: ret=$(... 2>&1 | tr '\\n' ' ') followed by assertContains — duplicated across many tests",
+        "assertion messages duplicated verbatim across multiple asserts within same test (e.g. testUrlDecodingWhitespaceTwoFiles)",
+        "TODO comment in testParallelIfMoreThanOneUrl acknowledges test is wrong for curl <= 7.65 without version guard",
+        "testUrlStartingWithDash uses assertEquals with arguments in (actual, expected) order inconsistent with other tests using (message, actual, expected)",
+        "testUrlDecodingBackslashes / testUrlDecodingColon assertion messages copy-pasted from trailing-slash test — misleading"
+      ],
+      "error_handling": "tests assert on error paths (testNoOptionError, testInvalidOptionError, testUrlStartingWithDash); no try/catch equivalent; relies on shunit2 assertion failures",
+      "tests_present": true,
+      "docs": "header license block (curl SPDX), inline comments explaining non-obvious cases (IFS restriction, non-UTF-8 locale byte classification, curl version TODO)",
+      "standards": "POSIX sh, shunit2 conventions, SPDX-License-Identifier: curl"
+    },
+    "shadows": {
+      "breaks": [
+        "testParallelIfMoreThanOneUrl will fail on curl <= 7.65 (acknowledged in TODO, no skip implemented)",
+        "testUrlWithRawUtf8 second assertion silently skipped if no 8859 locale installed — coverage gap not surfaced as skip"
+      ],
+      "comment_code_mismatch": [
+        "testUrlDecodingBackslashes assertion message references 'URL ends with a slash' but URL does not end with slash and assertion checks --output filename",
+        "testUrlDecodingColon assertion message references 'URL ends with a slash' but URL ends with colon"
+      ],
+      "blind_spots": [
+        "no test for concurrent invocations of wcurl",
+        "no test for exit code propagation from curl itself",
+        "no test for --dry-run flag interaction with other flags beyond implicit use",
+        "no test for very long URL lists / argument length limits",
+        "no test for locale-dependent filename decoding beyond UTF-8 and 8859",
+        "no test for symlink / path traversal in output filename",
+        "no test for stdin input",
+        "no test for signal handling / interruption"
+      ]
+    },
+    "concurrency": {
+      "shared_state": "none — each test runs wcurl in a subshell via command substitution; no shared mutable state between tests",
+      "locks": "none",
+      "deadlock_potential": "none",
+      "race_conditions": "none observed in test harness; wcurl's own --parallel behavior is asserted on but not exercised concurrently",
+      "idempotency": "tests are idempotent (dry-run, no filesystem writes)"
+    },
+    "dev_process": {
+      "code_review": "not determinable from material",
+      "ci_cd": "not determinable from material",
+      "staging": "not determinable from material",
+      "tech_debt": [
+        "TODO in testParallelIfMoreThanOneUrl: version guard for curl <= 7.65 missing",
+        "assertion message copy-paste errors in testUrlDecodingBackslashes and testUrlDecodingColon",
+        "inconsistent assertEquals argument order in testUrlStartingWithDash"
+      ]
+    },
+    "tool_output": {
+      "ran": false,
+      "raw": "no tools executed; material is shell (sh) — analyze.py static/metrics/concurrency modes target Go/JS/TS/Java/Rust via tree-sitter; shell not supported by static analyzer"
+    },
+    "_meta": {
+      "stage": "stage1_scanner",
+      "tokens_in": 4407,
+      "tokens_out": 1607,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.001067
+    }
+  },
+  "stage2": {
+    "risk_nodes": [
+      {
+        "id": "RN-1",
+        "name": "Неявное допущение",
+        "priority": "важно",
+        "note": "Тесты предполагают, что wcurl и curl присутствуют в PATH и совместимы по версии; версия curl не проверяется, хотя поведение --parallel зависит от 7.66+.",
+        "fingerprint": "9329feb702852818"
+      },
+      {
+        "id": "RN-2",
+        "name": "Слабое обобщение",
+        "priority": "важно",
+        "note": "Покрытие сфокусировано на построении аргументов (--dry-run); реальная передача данных, коды возврата curl и сетевые ошибки не проверяются.",
+        "fingerprint": "7be0dfa8ac9f971d"
+      },
+      {
+        "id": "RN-3",
+        "name": "Конкурирующая реализация",
+        "priority": "опционально",
+        "note": "wcurl — обёртка над curl; часть логики (декодирование имён, --parallel) дублирует поведение curl, что создаёт риск расхождения при обновлении curl.",
+        "fingerprint": "4a4c8f62cdf90d94"
+      },
+      {
+        "id": "RN-4",
+        "name": "Сдвиг тезиса",
+        "priority": "важно",
+        "note": "Сообщения assert в testUrlDecodingBackslashes и testUrlDecodingColon говорят про 'URL ends with a slash', хотя проверяется --output с закодированным именем — тест проверяет не то, что заявлено.",
+        "fingerprint": "0d406276612a96bb"
+      },
+      {
+        "id": "RN-5",
+        "name": "Внутреннее противоречие",
+        "priority": "важно",
+        "note": "testUrlStartingWithDash использует assertEquals с порядком (actual, expected), тогда как остальные тесты используют (message, actual, expected) — при провале диагностика будет вводить в заблуждение.",
+        "fingerprint": "6842d352c99199ef"
+      },
+      {
+        "id": "RN-6",
+        "name": "Стратегическое избегание",
+        "priority": "важно",
+        "note": "TODO в testParallelIfMoreThanOneUrl признаёт некорректность теста для curl <= 7.65, но skip/version-guard не реализован — тест остаётся ложноположительным/ложноотрицательным.",
+        "fingerprint": "ad37ca6f70ff068d"
+      },
+      {
+        "id": "RN-7",
+        "name": "Производительность",
+        "priority": "опционально",
+        "note": "Нет тестов на длинные списки URL и лимиты ARG_MAX; wcurl строит командную строку curl, что может упереться в лимит аргументов.",
+        "fingerprint": "cdebf410c2f2a1c7"
+      },
+      {
+        "id": "RN-8",
+        "name": "Надёжность",
+        "priority": "важно",
+        "note": "Нет проверки кода возврата curl и распространения ошибок; тесты проверяют только stdout/exit wcurl в dry-run.",
+        "fingerprint": "43ac8cd0dfd0b555"
+      },
+      {
+        "id": "RN-9",
+        "name": "Масштабируемость",
+        "priority": "опционально",
+        "note": "Поведение при большом числе URL (--next на каждый) проверяется только на 3 URL; масштаб не тестируется.",
+        "fingerprint": "5f9faccb6257e501"
+      },
+      {
+        "id": "RN-10",
+        "name": "Конкурентность",
+        "priority": "опционально",
+        "note": "Флаг --parallel проверяется по наличию в аргументах, но реальная параллельная загрузка и её корректность не тестируются.",
+        "fingerprint": "d56a65fe4f4d939e"
+      },
+      {
+        "id": "RN-11",
+        "name": "Ломающие изменения",
+        "priority": "важно",
+        "note": "Изменения в поведении curl (например, --parallel, декодирование имён) могут сломать тесты без явного version-guard; контракт wcurl↔curl не зафиксирован.",
+        "fingerprint": "687d9d2f3a1adb38"
+      }
+    ],
+    "security": {
+      "summary": "Тестовый скрипт, не продакшн-код. Основные риски — инъекция через аргументы (URL/--curl-options), path traversal в имени выходного файла, утечка через логи/вывод.",
+      "findings": [
+        {
+          "id": "SEC-1",
+          "title": "Инъекция через --curl-options",
+          "priority": "важно",
+          "detail": "testCurlOptions передаёт произвольные опции в curl; если wcurl не валидирует их, возможна передача опасных опций (--config, -K) — см. testDoubleDashUrlStartingWithDash с '--config=/etc/passwd'.",
+          "mitigation": "Явный allowlist/denylist опций curl; запрет --config/-K/-o вне контролируемых путей."
+        },
+        {
+          "id": "SEC-2",
+          "title": "Path traversal в имени выходного файла",
+          "priority": "важно",
+          "detail": "Имя файла выводится из URL (декодирование %2F, %5C); нет теста на '../' или абсолютные пути.",
+          "mitigation": "Санитизация имени: запрет '/', '\\\\', '..', ведущих '-'; тест на traversal."
+        },
+        {
+          "id": "SEC-3",
+          "title": "Утечка через вывод/логи",
+          "priority": "опционально",
+          "detail": "URL может содержать credentials (user:pass@host); тесты не проверяют редактирование вывода.",
+          "mitigation": "Редактирование credentials в debug/выводе; тест на маскирование."
+        },
+        {
+          "id": "SEC-4",
+          "title": "Отсутствие проверки версии curl",
+          "priority": "важно",
+          "detail": "Поведение зависит от версии curl (--parallel 7.66+), но версия не проверяется — возможны ложные результаты и несовместимость.",
+          "mitigation": "Version-guard в oneTimeSetUp; skip тестов при несовместимой версии."
+        }
+      ]
+    },
+    "secrets": {
+      "hardcoded": "нет",
+      "env_usage": "DEBUG, LC_ALL, PATH — не секреты",
+      "notes": "Секретов в материале нет. Риск — потенциальная передача credentials в URL и их попадание в вывод."
+    },
+    "concurrency": {
+      "shared_state": "нет — каждый тест в subshell",
+      "locks": "нет",
+      "races": "нет в харнессе",
+      "notes": "wcurl --parallel проверяется только по наличию флага, реальная конкурентность не тестируется."
+    },
+    "threat_model": {
+      "components": [
+        "wcurl (CLI wrapper)",
+        "curl (downstream)",
+        "shunit2 harness",
+        "filesystem (output files)",
+        "shell environment"
+      ],
+      "trust_boundaries": [
+        "user input (URL, --curl-options, -o) → wcurl argument parser",
+        "wcurl → curl (generated command line)",
+        "wcurl → filesystem (output filename)",
+        "test harness → wcurl binary (PATH)"
+      ],
+      "threats": [
+        {
+          "component": "wcurl argument parser",
+          "boundary": "user input → wcurl",
+          "stride": "T",
+          "threat": "Tampering: инъекция опций curl через --curl-options (например --config=/etc/passwd)",
+          "priority": "важно",
+          "mitigation": "Allowlist опций; запрет --config/-K; тест на отклонение опасных опций."
+        },
+        {
+          "component": "wcurl → filesystem",
+          "boundary": "wcurl → filesystem",
+          "stride": "T",
+          "threat": "Tampering: path traversal через декодированное имя файла (%2F, %5C, ..)",
+          "priority": "важно",
+          "mitigation": "Санитизация имени; запрет разделителей пути; тест на traversal."
+        },
+        {
+          "component": "wcurl → curl",
+          "boundary": "wcurl → curl",
+          "stride": "S",
+          "threat": "Spoofing: URL, начинающийся с '-', интерпретируется как опция (testUrlStartingWithDash)",
+          "priority": "важно",
+          "mitigation": "Обязательный '--' перед URL; тест на URL с ведущим '-'."
+        },
+        {
+          "component": "test harness",
+          "boundary": "harness → wcurl binary",
+          "stride": "T",
+          "threat": "Tampering: подмена wcurl в PATH (PATH включает ROOTDIR первым)",
+          "priority": "опционально",
+          "mitigation": "Абсолютный путь к wcurl; проверка хеша/версии бинаря."
+        },
+        {
+          "component": "wcurl output",
+          "boundary": "wcurl → stdout/logs",
+          "stride": "I",
+          "threat": "Information disclosure: credentials в URL попадают в вывод/debug",
+          "priority": "опционально",
+          "mitigation": "Маскирование credentials; тест на редактирование."
+        },
+        {
+          "component": "wcurl",
+          "boundary": "user input → wcurl",
+          "stride": "D",
+          "threat": "Denial of Service: очень длинный список URL / ARG_MAX",
+          "priority": "опционально",
+          "mitigation": "Ограничение числа URL; тест на лимит аргументов."
+        },
+        {
+          "component": "wcurl",
+          "boundary": "user input → wcurl",
+          "stride": "E",
+          "threat": "Elevation of Privilege: через --curl-options передача опций, читающих локальные файлы (--config)",
+          "priority": "важно",
+          "mitigation": "Запрет файловых опций curl; sandbox для тестов."
+        }
+      ],
+      "summary": {
+        "total": 7,
+        "critical": 0,
+        "important": 4,
+        "optional": 3
+      },
+      "top_3": [
+        "SEC-1 (инъекция --curl-options)",
+        "SEC-2 (path traversal)",
+        "SEC-4 (нет version-guard)"
+      ]
+    },
+    "silence_layers": {
+      "input_silence": {
+        "what": "Нет данных о целевых версиях curl/shunit2 и поддерживаемых платформах",
+        "where": "oneTimeSetUp, TODO в testParallelIfMoreThanOneUrl",
+        "impact": "Тесты могут ложно падать/проходить в зависимости от окружения"
+      },
+      "assumption_silence": {
+        "assumption": "Предполагается, что wcurl и curl всегда доступны и совместимы",
+        "why": "Нет проверки версии curl и наличия бинаря wcurl"
+      },
+      "consequence_silence": {
+        "who": "Мейнтейнеры и CI",
+        "what": "Ложноположительные/ложноотрицательные результаты тестов",
+        "irreversible": "нет — обратимо, но снижает доверие к тестам"
+      }
+    },
+    "intersection_risks": [
+      {
+        "layers": [
+          "input_silence",
+          "assumption_silence"
+        ],
+        "intersection": "Нет данных о версии curl × предположение о совместимости",
+        "risk": "Тест --parallel проходит/падает непредсказуемо на разных версиях curl"
+      },
+      {
+        "layers": [
+          "SEC-1",
+          "SEC-2"
+        ],
+        "intersection": "--curl-options × декодирование имени файла",
+        "risk": "Комбинация опасной опции curl и traversal-имени даёт запись в произвольный путь"
+      },
+      {
+        "layers": [
+          "RN-4",
+          "RN-5"
+        ],
+        "intersection": "Сдвиг тезиса × противоречие в assertEquals",
+        "risk": "Провал теста диагностируется неверно, баг маскируется"
+      }
+    ],
+    "contracts": {
+      "idempotency": "не применимо (тестовый скрипт, dry-run идемпотентен)",
+      "retry": "отсутствует — нет повторных попыток при флейки-тестах",
+      "timeout": "отсутствует — нет таймаута на вызовы wcurl/curl",
+      "circuit_breaker": "не применимо",
+      "note": "Для тестового харнесса отсутствие timeout — важно (зависание curl заблокирует CI)."
+    },
+    "breaking_changes": [
+      "Изменение поведения curl (--parallel, декодирование) без version-guard ломает тесты",
+      "Изменение формата вывода wcurl ломает assertContains-проверки",
+      "Обновление shunit2 < 2.1.8 блокирует весь прогон (oneTimeSetUp exit 1)"
+    ],
+    "production_impact": {
+      "impact": "нет прямого влияния на прод — тестовый скрипт",
+      "rollback": "тривиальный (git revert)",
+      "risk": "низкий"
+    },
+    "observability": {
+      "logging": "debug() под DEBUG; вывод тестов через shunit2",
+      "metrics": "нет",
+      "tracing": "нет",
+      "notes": "Нет структурированного вывода для CI-парсинга; нет JUnit XML."
+    },
+    "slo": {
+      "defined": false,
+      "notes": "SLO не применимо к тестовому скрипту; для CI — целевое время прогона не задано."
+    },
+    "on_call": {
+      "defined": false,
+      "notes": "Не применимо."
+    },
+    "tests": {
+      "types": [
+        "unit (CLI argument construction)",
+        "integration (wcurl → curl dry-run)"
+      ],
+      "coverage": "высокое для построения аргументов и обработки URL/имён; низкое для реальной загрузки, кодов возврата, конкурентности",
+      "edge_cases_present": [
+        "URL с '-', tab, newline, UTF-8, %2D, %5C, %3A, %7F",
+        "повтор -o",
+        "--no-decode-filename",
+        "--"
+      ],
+      "edge_cases_missing": [
+        "path traversal",
+        "очень длинные URL-списки",
+        "код возврата curl",
+        "сигналы/прерывание",
+        "stdin",
+        "symlink в output"
+      ],
+      "refactoring_coverage": [
+        {
+          "step": "Вынести общий паттерн ret=$(... | tr '\\n' ' ')",
+          "test": "существующие assertContains-тесты покрывают поведение"
+        },
+        {
+          "step": "Исправить сообщения assert в testUrlDecodingBackslashes/Colon",
+          "test": "требуется тест, проверяющий именно --output с закодированным именем"
+        },
+        {
+          "step": "Добавить version-guard для curl",
+          "test": "тест на skip при curl < 7.66"
+        },
+        {
+          "step": "Унифицировать порядок аргументов assertEquals",
+          "test": "тест на корректную диагностику при провале"
+        }
+      ]
+    },
+    "dependencies": {
+      "total": 6,
+      "list": [
+        "shunit2 >= 2.1.8",
+        "wcurl",
+        "curl",
+        "coreutils (dirname, cd, pwd, printf, grep, tr, head)",
+        "locale",
+        "POSIX sh"
+      ],
+      "outdated": "неизвестно (версии не зафиксированы)",
+      "cve": "не проверено; curl исторически имеет CVE — рекомендуется version-guard и обновление [FROM_KNOWLEDGE: curl security advisories]"
+    },
+    "failure_points": [
+      {
+        "id": "FP-1",
+        "point": "oneTimeSetUp exit 1 при shunit2 < 2.1.8",
+        "priority": "важно"
+      },
+      {
+        "id": "FP-2",
+        "point": "testParallelIfMoreThanOneUrl на curl <= 7.65",
+        "priority": "важно"
+      },
+      {
+        "id": "FP-3",
+        "point": "testUrlWithRawUtf8 молча пропускает проверку без 8859 locale",
+        "priority": "опционально"
+      },
+      {
+        "id": "FP-4",
+        "point": "Отсутствие timeout — зависание curl блокирует CI",
+        "priority": "важно"
+      },
+      {
+        "id": "FP-5",
+        "point": "Нет проверки кода возврата curl",
+        "priority": "важно"
+      },
+      {
+        "id": "FP-6",
+        "point": "Нет version-guard curl",
+        "priority": "важно"
+      }
+    ],
+    "resilience_score": 5,
+    "resilience_reason": "Тесты хорошо покрывают построение аргументов и обработку URL, но не проверяют реальную загрузку, коды возврата, конкурентность и не имеют version-guard/timeout. Есть copy-paste ошибки в сообщениях assert и TODO без реализации. Для тестового скрипта — средний уровень.",
+    "cove": {
+      "questions": [
+        {
+          "q": "Нашёл ли я хотя бы одну уязвимость?",
+          "independent_answer": "Да — инъекция через --curl-options (SEC-1) и path traversal (SEC-2).",
+          "match": true
+        },
+        {
+          "q": "Есть ли trust boundary, которую я не рассмотрел?",
+          "independent_answer": "Возможна граница harness → shunit2 (подмена библиотеки); не рассмотрена детально.",
+          "match": false
+        },
+        {
+          "q": "Есть ли допущение, которое я не проверил?",
+          "independent_answer": "Предположение о совместимости версий curl/shunit2 не проверено.",
+          "match": false
+        },
+        {
+          "q": "Есть ли risk node, помеченный опционально, но должен быть критично?",
+          "independent_answer": "RN-11 (ломающие изменения) при отсутствии version-guard может быть важнее, чем опционально.",
+          "match": false
+        }
+      ],
+      "verdict": "requires_external_verification",
+      "flagged": [
+        "SEC-1",
+        "SEC-2",
+        "RN-11"
+      ]
+    },
+    "priority_rule": "loss > risk > money",
+    "substitution_seen": false,
+    "tool_output": {
+      "ran": false,
+      "raw": "analyze.py не поддерживает shell (tree-sitter targets Go/JS/TS/Java/Rust); статический анализ не выполнен."
+    },
+    "plan_b": [
+      "SEC-1: allowlist опций curl; запрет --config/-K; тест на отклонение",
+      "SEC-2: санитизация имени файла (запрет '/', '\\\\', '..', ведущего '-'); тест на traversal",
+      "SEC-3: маскирование credentials в выводе; тест на редактирование",
+      "SEC-4: version-guard curl в oneTimeSetUp; skip несовместимых тестов",
+      "RN-4: исправить сообщения assert в testUrlDecodingBackslashes/Colon",
+      "RN-5: унифицировать порядок аргументов assertEquals",
+      "RN-6: реализовать skip для curl <= 7.65",
+      "RN-8: добавить проверку кода возврата curl",
+      "FP-4: добавить timeout на вызовы wcurl/curl"
+    ],
+    "_meta": {
+      "stage": "stage2_analyst",
+      "tokens_in": 7791,
+      "tokens_out": 4540,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.002362
+    },
+    "_web_search": {
+      "used": true,
+      "queries": [
+        "recent CVEs and security best practices"
+      ],
+      "credits": 1
+    }
+  },
+  "stage3": null,
+  "stage4": {
+    "hierarchy": {
+      "core": [
+        "wcurl CLI argument construction (URL parsing, filename derivation, --curl-options passthrough)",
+        "curl invocation contract (--url, --output, --next, --parallel)"
+      ],
+      "service": [
+        "shunit2 test harness (oneTimeSetUp, per-test functions, assertions)",
+        "test fixtures (URL strings, locale-conditional branches)"
+      ],
+      "infra": [
+        "POSIX sh runtime",
+        "shunit2 >= 2.1.8",
+        "curl binary (version-dependent behavior)",
+        "coreutils (dirname, printf, grep, tr, head, locale)",
+        "CI runner (PATH includes ROOTDIR first)"
+      ]
+    },
+    "connections": {
+      "harness_to_wcurl": "subshell command substitution, WCURL_CMD='wcurl --dry-run '",
+      "wcurl_to_curl": "generated argv (--url/--output/--next/--parallel)",
+      "wcurl_to_fs": "output filename derived from URL (decode %XX, strip path)",
+      "env_to_harness": "PATH, DEBUG, LC_ALL, locale availability",
+      "trust_boundaries": [
+        "user input (URL, --curl-options, -o) -> wcurl parser",
+        "wcurl -> curl argv",
+        "wcurl -> filesystem",
+        "harness -> wcurl binary (PATH)"
+      ]
+    },
+    "dependency_graph": {
+      "edges": [
+        {
+          "from": "tests.sh",
+          "to": "shunit2",
+          "type": "runtime",
+          "critical": true
+        },
+        {
+          "from": "tests.sh",
+          "to": "wcurl",
+          "type": "runtime",
+          "critical": true
+        },
+        {
+          "from": "wcurl",
+          "to": "curl",
+          "type": "runtime",
+          "critical": true
+        },
+        {
+          "from": "tests.sh",
+          "to": "coreutils",
+          "type": "runtime",
+          "critical": false
+        },
+        {
+          "from": "tests.sh",
+          "to": "locale",
+          "type": "runtime",
+          "critical": false
+        },
+        {
+          "from": "wcurl",
+          "to": "filesystem",
+          "type": "runtime",
+          "critical": true
+        }
+      ],
+      "impact_of": {
+        "shunit2": "oneTimeSetUp exit 1 -> весь прогон блокируется (FP-1)",
+        "curl": "изменение --parallel/декодирования -> ложные pass/fail (RN-11, FP-2)",
+        "wcurl": "изменение формата вывода -> все assertContains ломаются",
+        "locale": "отсутствие 8859 -> молчаливый skip (FP-3)"
+      },
+      "critical_path": [
+        "oneTimeSetUp (shunit2 check)",
+        "wcurl --dry-run invocation",
+        "curl argv generation",
+        "assertContains on stdout"
+      ],
+      "cycles": []
+    },
+    "options": [
+      {
+        "name": "A: Minimal hardening (version-guard + timeout + assert fixes)",
+        "isolation": "best-effort",
+        "scalability": "не меняет масштаб; устраняет ложные результаты и зависания CI",
+        "scope": [
+          "version-guard curl в oneTimeSetUp (skip при < 7.66)",
+          "timeout на вызовы wcurl/curl",
+          "исправить сообщения assert в testUrlDecodingBackslashes/Colon",
+          "унифицировать порядок аргументов assertEquals в testUrlStartingWithDash",
+          "реализовать skip для testParallelIfMoreThanOneUrl"
+        ],
+        "effort_days": "1-2",
+        "risk": "низкий",
+        "reversibility": "тривиальная (git revert)"
+      },
+      {
+        "name": "B: Security hardening (allowlist --curl-options + filename sanitization)",
+        "isolation": "best-effort",
+        "scalability": "не меняет масштаб; закрывает SEC-1/SEC-2",
+        "scope": [
+          "allowlist/denylist опций curl (запрет --config/-K/-o вне контролируемых путей)",
+          "санитизация имени файла (запрет '/', '\\\\', '..', ведущего '-')",
+          "тесты на отклонение опасных опций и traversal",
+          "маскирование credentials в debug/выводе"
+        ],
+        "effort_days": "2-3",
+        "risk": "средний (может сломать существующие сценарии использования)",
+        "reversibility": "обратимая, но требует согласования контракта wcurl"
+      },
+      {
+        "name": "C: Coverage expansion (real download, exit codes, concurrency, ARG_MAX)",
+        "isolation": "best-effort",
+        "scalability": "расширяет покрытие на реальную загрузку и масштаб",
+        "scope": [
+          "тесты на код возврата curl и распространение ошибок",
+          "тесты на реальную параллельную загрузку (--parallel)",
+          "тесты на длинные списки URL / ARG_MAX",
+          "тесты на stdin, сигналы, symlink в output",
+          "JUnit XML вывод для CI"
+        ],
+        "effort_days": "3-5",
+        "risk": "средний (требует сетевого окружения или mock-сервера)",
+        "reversibility": "обратимая"
+      }
+    ],
+    "infrastructure_params": {
+      "pool_size": "n/a (тестовый скрипт, не сервис)",
+      "cpu": "n/a",
+      "memory": "n/a",
+      "replicas": "n/a",
+      "lockTTL": "n/a",
+      "autoscaling": "n/a",
+      "ci_timeout_recommended_ms": 30000,
+      "ci_timeout_note": "timeout на вызовы wcurl/curl; значение не измерено, эвристика для CI-прогона тестов"
+    },
+    "cloud_cost": {
+      "current": 0,
+      "projected": 0,
+      "delta": 0,
+      "reason": "no infrastructure change — тестовый скрипт, stdlib-only, CI-раннер уже существует"
+    },
+    "econ": {
+      "cloud_delta_usd": 0,
+      "engineering_days": "1-5 (зависит от варианта A/B/C)",
+      "engineering_rate": "not set",
+      "engineering_cost_usd": "not set (rate unknown)",
+      "roi": "не вычисляется без rate; качественно: A — высокий ROI (низкие затраты, устранение ложных результатов), B — средний (закрывает SEC-1/SEC-2), C — низкий краткосрочно, высокий долгосрочно",
+      "cost_of_delay": "каждый прогон CI с ложными pass/fail снижает доверие к тестам; отсутствие timeout может блокировать CI на неопределённое время (FP-4)"
+    },
+    "migration_plan": {
+      "schema": "n/a — нет схемы данных",
+      "consistency": "тесты идемпотентны (dry-run), консистентность не нарушается",
+      "rollback": "git revert; изменения изолированы в tests.sh",
+      "validation": [
+        "прогон tests.sh на curl >= 7.66 и < 7.66 (проверка skip)",
+        "прогон с отсутствующим 8859 locale (проверка skip вместо молчаливого пропуска)",
+        "прогон с timeout (проверка отсутствия зависания)",
+        "прогон тестов на отклонение опасных --curl-options и traversal (вариант B)"
+      ]
+    },
+    "gaps": {
+      "caching": "n/a",
+      "retry": "отсутствует — нет повторных попыток при флейки-тестах",
+      "health_checks": "n/a",
+      "migrations": "n/a",
+      "monitoring": "нет структурированного вывода для CI-парсинга; нет JUnit XML",
+      "alerts": "нет — провал теста виден только в логе shunit2",
+      "timeout": "отсутствует — FP-4",
+      "version_guard": "отсутствует — FP-6, RN-11",
+      "exit_code_check": "отсутствует — FP-5, RN-8"
+    },
+    "evolvability": {
+      "feature_add": 7,
+      "module_replace": 6,
+      "coupling": 5,
+      "abstractions": 4,
+      "overall": 5,
+      "notes": "Тесты хорошо изолированы (subshell, dry-run), но сильно связаны с форматом вывода wcurl и версией curl. Абстракции слабые — повторяющийся паттерн ret=$(... | tr '\\n' ' ') не вынесен."
+    },
+    "code_generation": {
+      "files": [
+        {
+          "path": "tests.sh.patch",
+          "language": "sh",
+          "content": "# Патч для tests.sh (вариант A: minimal hardening)\n# 1. version-guard curl в oneTimeSetUp\n# 2. timeout на вызовы wcurl\n# 3. исправление сообщений assert\n# 4. унификация порядка аргументов assertEquals\n\n# --- oneTimeSetUp: добавить version-guard ---\noneTimeSetUp()\n{\n    if ! assertContains \"Check compatibility\" \"test\" \"test\"; then\n        echo \"Error: shunit2 version 2.1.8 or higher is required.\"\n        echo \"Please install a compatible version of shunit2.\"\n        exit 1\n    fi\n\n    # version-guard curl\n    if ! command -v curl >/dev/null 2>&1; then\n        echo \"Error: curl is required.\"\n        exit 1\n    fi\n    CURL_VERSION=$(curl --version | head -n1 | awk '{print $2}')\n    CURL_MAJOR=$(printf '%s' \"${CURL_VERSION}\" | cut -d. -f1)\n    CURL_MINOR=$(printf '%s' \"${CURL_VERSION}\" | cut -d. -f2)\n    if [ \"${CURL_MAJOR}\" -lt 7 ] || { [ \"${CURL_MAJOR}\" -eq 7 ] && [ \"${CURL_MINOR}\" -lt 66 ]; }; then\n        echo \"Warning: curl ${CURL_VERSION} < 7.66; --parallel tests will be skipped.\"\n        export WCURL_SKIP_PARALLEL=1\n    fi\n}\n\n# --- timeout wrapper ---\n# Заменить WCURL_CMD на обёртку с timeout\n# readonly WCURL_CMD=\"timeout 10 wcurl --dry-run \"\n\n# --- testParallelIfMoreThanOneUrl: skip при старой версии ---\ntestParallelIfMoreThanOneUrl()\n{\n    if [ -n \"${WCURL_SKIP_PARALLEL}\" ]; then\n        startSkipping\n        return\n    fi\n    url_1='example.com/1'\n    url_2='example.com/2'\n    ret=$(${WCURL_CMD} ${url_1} ${url_2})\n    assertContains \"Verify whether 'wcurl' uses '--parallel' if more than one url is provided\" \"${ret}\" '--parallel'\n}\n\n# --- testUrlDecodingBackslashes: исправить сообщение ---\ntestUrlDecodingBackslashes()\n{\n    url='example.com/filename%5Cwith%2Fbackslashes%5c%2f'\n    ret=$(${WCURL_CMD} ${url} 2>&1 | tr '\\n' ' ')\n    assertContains \"Verify whether 'wcurl' keeps encoded backslashes in the output filename\" \"${ret}\" '--output filename%5Cwith%2Fbackslashes%5c%2f'\n}\n\n# --- testUrlDecodingColon: исправить сообщение ---\ntestUrlDecodingColon()\n{\n    url='example.com/filename%3Awith%3Acolons%3a'\n    ret=$(${WCURL_CMD} ${url} 2>&1 | tr '\\n' ' ')\n    assertContains \"Verify whether 'wcurl' keeps encoded colons in the output filename\" \"${ret}\" '--output filename%3Awith%3Acolons%3a'\n}\n\n# --- testUrlStartingWithDash: унифицировать порядок аргументов ---\ntestUrlStartingWithDash()\n{\n    url='-example.com'\n    ret=$(${WCURL_CMD} ${url} 2>&1)\n    assertFalse \"Verify whether 'wcurl' considers an URL starting with '-' as an option\" \"$?\"\n    assertEquals \"Verify whether 'wcurl' reports unknown option for URL starting with '-'\" \"Unknown option: '-example.com'.\" \"${ret}\"\n}\n"
+        }
+      ],
+      "validation": "python -c \"import ast; ast.parse(open('tests.sh.patch').read())\" — не применимо для sh; валидация: sh -n tests.sh.patch"
+    },
+    "inversion": {
+      "assumptions": [
+        {
+          "n": 1,
+          "assumption": "curl всегда доступен и совместим (>= 7.66)",
+          "inversion": "curl отсутствует или версия < 7.66",
+          "consequences": [
+            "oneTimeSetUp не проверяет версию -> тесты --parallel ложно падают",
+            "ложные результаты снижают доверие к CI",
+            "мейнтейнеры тратят время на диагностику несуществующего бага"
+          ]
+        },
+        {
+          "n": 2,
+          "assumption": "shunit2 >= 2.1.8 установлен",
+          "inversion": "shunit2 < 2.1.8 или отсутствует",
+          "consequences": [
+            "oneTimeSetUp exit 1 -> весь прогон блокируется",
+            "нет частичного прогона совместимых тестов",
+            "CI падает без диагностики конкретных тестов"
+          ]
+        },
+        {
+          "n": 3,
+          "assumption": "assertContains-проверки корректно отражают намерение теста",
+          "inversion": "сообщения assert не соответствуют проверяемому поведению",
+          "consequences": [
+            "провал теста диагностируется неверно (RN-4)",
+            "баг маскируется под неверное сообщение",
+            "разработчик ищет проблему не там, где она есть"
+          ]
+        },
+        {
+          "n": 4,
+          "assumption": "вызовы wcurl/curl завершаются за разумное время",
+          "inversion": "curl зависает (сеть, DNS, блокировка)",
+          "consequences": [
+            "CI блокируется на неопределённое время (FP-4)",
+            "нет timeout -> нет автоматического восстановления",
+            "требуется ручное вмешательство для разблокировки"
+          ]
+        }
+      ],
+      "failure_points_on_inversion": [
+        "FP-1: oneTimeSetUp exit 1 при shunit2 < 2.1.8",
+        "FP-2: testParallelIfMoreThanOneUrl на curl <= 7.65",
+        "FP-4: отсутствие timeout — зависание CI",
+        "FP-6: нет version-guard curl"
+      ]
+    },
+    "thresholds": [
+      {
+        "metric": "curl version",
+        "value": "< 7.66",
+        "consequence": "skip testParallelIfMoreThanOneUrl; иначе ложный fail"
+      },
+      {
+        "metric": "shunit2 version",
+        "value": "< 2.1.8",
+        "consequence": "oneTimeSetUp exit 1; весь прогон блокируется"
+      },
+      {
+        "metric": "CI timeout на вызов wcurl",
+        "value": "> 10s",
+        "consequence": "тест считается зависшим; требуется kill и диагностика"
+      },
+      {
+        "metric": "количество URL в одном вызове",
+        "value": "приближение к ARG_MAX",
+        "consequence": "wcurl падает с E2BIG; требуется разбиение на батчи"
+      },
+      {
+        "metric": "наличие 8859 locale",
+        "value": "отсутствует",
+        "consequence": "testUrlWithRawUtf8 молча пропускает вторую проверку; требуется явный skip"
+      }
+    ],
+    "constraints": {
+      "items": [
+        "shunit2 >= 2.1.8 (жёсткое требование oneTimeSetUp)",
+        "curl >= 7.66 для --parallel (мягкое, можно skip)",
+        "POSIX sh (без bash-измов)",
+        "timeout на вызовы wcurl/curl (рекомендуемое, отсутствует)"
+      ],
+      "binding": "shunit2 >= 2.1.8 — самое жёсткое: при невыполнении весь прогон блокируется (exit 1), тогда как curl < 7.66 можно обойти skip-ом",
+      "decision": "по связывающему: обеспечить shunit2 >= 2.1.8 в CI; для curl — version-guard + skip"
+    },
+    "second_opinion": {
+      "role": "SRE",
+      "view": "Тестовый скрипт без timeout — это бомба замедленного действия в CI. Отсутствие version-guard означает, что прогон недетерминирован по окружению. Нет структурированного вывода (JUnit XML) — нельзя построить дашборд flaky-тестов. Нет проверки кода возврата curl — тесты проверяют только stdout, а не реальный успех загрузки.",
+      "agreement": [
+        "timeout обязателен (FP-4)",
+        "version-guard обязателен (FP-6, RN-11)",
+        "JUnit XML для CI-парсинга — обоснованное улучшение"
+      ],
+      "disagreement": [
+        "Расширение покрытия на реальную загрузку (вариант C) — не приоритет для SRE; сначала стабильность и детерминизм",
+        "Маскирование credentials (SEC-3) — важно, но не блокирует CI"
+      ]
+    },
+    "stop_reason": "risk",
+    "stop_action": "force_emergency",
+    "stop_action_note": "force_emergency: false — рекомендация не является немедленным STOP; это hotfix на 1-2 дня (вариант A). Risk stop зафиксирован, но без немедленного действия.",
+    "collision": [
+      {
+        "n": 1,
+        "analyst": "RN-11 (ломающие изменения) — важно; отсутствие version-guard может сломать тесты при обновлении curl",
+        "researcher": "не применимо (research_first: false)",
+        "synthesizer": "вариант A включает version-guard как первый шаг",
+        "contradiction": "RN-11 помечен 'важно', но COVE stage2 flagged его как возможно критичный",
+        "resolution": "приоритет — version-guard (вариант A); эскалация не требуется, так как обе стороны не на критично"
+      },
+      {
+        "n": 2,
+        "analyst": "SEC-1 (инъекция --curl-options) — важно; SEC-2 (path traversal) — важно",
+        "researcher": "не применимо",
+        "synthesizer": "вариант B закрывает оба, но требует согласования контракта wcurl",
+        "contradiction": "SEC-1/SEC-2 важны, но их исправление может сломать существующие сценарии использования",
+        "resolution": "приоритет — сначала вариант A (стабильность), затем B (безопасность) с согласованием контракта"
+      }
+    ],
+    "escalation": {
+      "level": 0,
+      "action": "none",
+      "note": "0 критичных конфликтов; оба конфликта — 'важно', не 'критично'. Эскалация не требуется."
+    },
+    "cove": {
+      "questions": [
+        {
+          "q": "Есть ли альтернатива, которую я отклонил слишком быстро?",
+          "answer": "Вариант C (coverage expansion) отклонён как низкоприоритетный, но он закрывает RN-2/RN-8/RN-10 — реальную загрузку и коды возврата. Возможно, стоит пересмотреть после варианта A."
+        },
+        {
+          "q": "Есть ли риск, который я перенёс в ASSUMPTION без проверки?",
+          "answer": "Предположение, что timeout 10s достаточен для CI — не измерено. Требует эмпирической проверки на реальном CI-раннере."
+        },
+        {
+          "q": "Есть ли конфликт между моими рекомендациями?",
+          "answer": "Вариант B (allowlist --curl-options) может конфликтовать с testCurlOptions, который проверяет передачу произвольных опций. Требуется согласование: либо тест меняется, либо allowlist расширяется."
+        },
+        {
+          "q": "Есть ли блок, который я забыл включить?",
+          "answer": "Блок 'observability' для CI (JUnit XML, метрики flaky-тестов) упомянут в gaps, но не выделен в отдельный вариант. Возможно, стоит добавить как часть варианта C."
+        }
+      ],
+      "verdict": "requires_external_verification",
+      "flagged": [
+        "timeout 10s не измерен",
+        "конфликт варианта B с testCurlOptions",
+        "observability для CI не выделен в отдельный вариант"
+      ]
+    },
+    "return_to_stage2": false,
+    "return_to_stage3": false,
+    "force_emergency": false,
+    "force_fallback": false,
+    "new_risks": [
+      {
+        "id": "NR-1",
+        "risk": "Вариант B (allowlist --curl-options) может сломать testCurlOptions, который проверяет передачу произвольных опций",
+        "priority": "важно",
+        "mitigation": "Согласовать контракт: либо тест меняется на проверку allowlist, либо allowlist расширяется до безопасного набора"
+      },
+      {
+        "id": "NR-2",
+        "risk": "timeout 10s может быть недостаточен для медленных CI-раннеров",
+        "priority": "опционально",
+        "mitigation": "Измерить реальное время вызовов wcurl/curl в CI; скорректировать timeout"
+      },
+      {
+        "id": "NR-3",
+        "risk": "version-guard curl требует парсинга версии, что само по себе может быть хрупким",
+        "priority": "опционально",
+        "mitigation": "Использовать curl --version с awk/cut; добавить тест на парсинг версии"
+      }
+    ],
+    "tool_output": {
+      "ran": false,
+      "raw": "analyze.py не поддерживает shell (tree-sitter targets Go/JS/TS/Java/Rust); mode_calc/mode_cost/mode_migrate/mode_lockttl не применимы. cloud_cost delta = 0 (no infrastructure change)."
+    },
+    "artifacts": {
+      "sql_migration": null,
+      "dockerfile": null,
+      "gantt_mermaid": "```mermaid\ngantt\n    title wcurl testsuite hardening\n    dateFormat  YYYY-MM-DD\n    section Variant A (minimal)\n    version-guard curl       :a1, 2026-10-16, 1d\n    timeout wrapper          :a2, after a1, 1d\n    assert message fixes     :a3, after a1, 1d\n    section Variant B (security)\n    allowlist --curl-options :b1, after a3, 2d\n    filename sanitization    :b2, after b1, 1d\n    section Variant C (coverage)\n    exit code tests          :c1, after b2, 2d\n    concurrency tests        :c2, after c1, 2d\n    JUnit XML output         :c3, after c1, 1d\n```"
+    },
+    "_meta": {
+      "stage": "stage4_synthesizer",
+      "tokens_in": 11848,
+      "tokens_out": 5732,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.003264
+    }
+  },
+  "audit": {
+    "audit_id": "audit-2026-10-15-5b60b4",
+    "session_id": "sess-2026-10-15-083849",
+    "timestamp": "2026-10-15T08:40:12.703359+00:00",
+    "material_hash": "sha256:9687e96eac300225c30bfbc4a77918804b31e575be5d1bfd841604fa09fcb23f",
+    "material_hash_full": "sha256:cf7f480b070a447ade1883ebd30a6a87c8750ae22e1e2179b1edc07e3a940637",
+    "material_size": {
+      "lines": 309,
+      "chars": 12000
+    },
+    "model": "deepseek-chat",
+    "critique_verdict": "SAFE",
+    "risk_verdict": "SAFE",
+    "cwe_ids": [],
+    "owasp_categories": [],
+    "exploitability": {
+      "reachable": false,
+      "auth_required": false,
+      "exploit_path": "not reachable from public entrypoint",
+      "blast_radius": "none",
+      "entry_points": [],
+      "blast_indicators": [],
+      "path": [],
+      "source_count": 0,
+      "sources": [],
+      "entry_points_lines": [],
+      "sinks": []
+    },
+    "dataflow": {},
+    "anomaly": {},
+    "provenance": {
+      "source": "git/main",
+      "git_commit": "176c400e33a3960f890fd3cb12ddaa06dee70b83",
+      "git_commit_short": "176c400",
+      "git_branch": "main",
+      "git_author": "dvddv9",
+      "git_author_email": "hndav9@yahoo.com",
+      "git_remote": "https://github.com/dvddv9/vishap.git",
+      "ci_run_id": "",
+      "ci_pr_number": "",
+      "timestamp": "2026-10-15T08:40:12.501414+00:00"
+    },
+    "pii_detected": false,
+    "pii_details": {},
+    "compliance_flags": [],
+    "compliance_controls": {},
+    "compliance_standards": [],
+    "runbook": {},
+    "runbook_cwes": [],
+    "runbook_steps_count": 0,
+    "redaction_applied": true,
+    "redaction_map": {
+      "email": 2
+    },
+    "sast_findings": 0,
+    "sast_high_priority": 0,
+    "sast_tools": {},
+    "sca_vulnerabilities": 0,
+    "truncated": true,
+    "original_size": 16963,
+    "web_search_used": true,
+    "web_search_queries": [
+      "recent CVEs and security best practices"
+    ],
+    "web_search_credits": 1,
+    "escalation_level": ""
+  },
+  "completeness": {
+    "level": "D3",
+    "required_count": 12,
+    "missing": [],
+    "missing_count": 0,
+    "loss_pct": 0.0,
+    "material_complete": false,
+    "threshold": 30.0,
+    "verdict": "ACCEPTABLE"
+  },
+  "critique_verdict": "SAFE",
+  "cost_usd": 0.007413,
+  "final_markdown": "# wcurl testsuite — Review (D3)\n\n[ECHO] Shell-тестсьют `tests.sh` для `wcurl` (обёртка над curl), harness shunit2 ≥ 2.1.8, ~30+ тестов на построение argv через `--dry-run`. Материал — срез (slice), хвост файла обрезан. task_type=review.\n\n[ROUTE] stage4 → stage3 → stage5. research_first=false, parallel=false, subst_count=0.\n\n[CONCLUSION] Тесты хорошо покрывают построение аргументов и обработку URL/имён, но недетерминированы по окружению (нет version-guard curl, нет timeout), содержат copy-paste ошибки в сообщениях assert и не проверяют реальную загрузку/коды возврата. Прямого влияния на прод нет — это тестовый скрипт. Приоритет: стабильность и детерминизм CI (вариант A), затем безопасность (вариант B).\n\n[RISK_NODES]\n- RN-1 (важно): неявное допущение о наличии/совместимости curl и wcurl в PATH; версия curl не проверяется.\n- RN-2 (важно): покрытие сфокусировано на `--dry-run`; реальная передача данных и коды возврата curl не проверяются.\n- RN-4 (важно): сообщения assert в `testUrlDecodingBackslashes`/`testUrlDecodingColon` говорят про «URL ends with a slash», хотя проверяется `--output` с закодированным именем — тест проверяет не то, что заявлено.\n- RN-5 (важно): `testUrlStartingWithDash` использует `assertEquals` с порядком (actual, expected), остальные — (message, actual, expected); при провале диагностика вводит в заблуждение.\n- RN-6 (важно): TODO в `testParallelIfMoreThanOneUrl` признаёт некорректность для curl ≤ 7.65, но skip/version-guard не реализован.\n- RN-8 (важно): нет проверки кода возврата curl и распространения ошибок.\n- RN-11 (важно): изменения в поведении curl (`--parallel`, декодирование) ломают тесты без version-guard; контракт wcurl↔curl не зафиксирован.\n- RN-3, RN-7, RN-9, RN-10 (опционально): дублирование логики curl, отсутствие тестов на ARG_MAX, масштаб, реальную конкурентность.\n\n[PLAN_B]\n- SEC-1: allowlist/denylist опций curl; запрет `--config`/`-K`/`-o` вне контролируемых путей; тест на отклонение.\n- SEC-2: санитизация имени файла (запрет `/`, `\\`, `..`, ведущего `-`); тест на traversal.\n- SEC-3: маскирование credentials в debug/выводе; тест на редактирование.\n- SEC-4: version-guard curl в `oneTimeSetUp`; skip несовместимых тестов.\n- RN-4: исправить сообщения assert в `testUrlDecodingBackslashes`/`Colon`.\n- RN-5: унифицировать порядок аргументов `assertEquals`.\n- RN-6: реализовать skip для curl ≤ 7.65.\n- RN-8: добавить проверку кода возврата curl.\n- FP-4: добавить timeout на вызовы wcurl/curl.\n\n[THREAT_MODEL]\nКомпоненты: wcurl (CLI wrapper), curl (downstream), shunit2 harness, filesystem, shell env.\nTrust boundaries: user input → wcurl parser; wcurl → curl argv; wcurl → filesystem; harness → wcurl binary (PATH).\n- SEC-1 (важно, T): инъекция опций curl через `--curl-options` (напр. `--config=/etc/passwd`).\n- SEC-2 (важно, T): path traversal через декодированное имя файла (`%2F`, `%5C`, `..`).\n- SEC-4 (важно): нет version-guard curl → ложные результаты.\n- Spoofing (важно): URL с ведущим `-` интерпретируется как опция (`testUrlStartingWithDash`).\n- Tampering (опц.): подмена wcurl в PATH (PATH включает ROOTDIR первым).\n- Info disclosure (опц.): credentials в URL попадают в вывод/debug.\n- DoS (опц.): длинный список URL / ARG_MAX.\nИтого: 7 угроз, 0 критичных, 4 важных, 3 опциональных. Top-3: SEC-1, SEC-2, SEC-4.\n\n[SILENCE_LAYERS]\n- input_silence: нет данных о целевых версиях curl/shunit2 и поддерживаемых платформах (oneTimeSetUp, TODO).\n- assumption_silence: предполагается, что wcurl и curl всегда доступны и совместимы; версия curl не проверяется.\n- consequence_silence: мейнтейнеры и CI получают ложноположительные/ложноотрицательные результаты; обратимо, но снижает доверие к тестам.\n\n[INTERSECTION_RISKS]\n- input_silence × assumption_silence: нет данных о версии curl × предположение о совместимости → `--parallel`-тест проходит/падает непредсказуемо.\n- SEC-1 × SEC-2: `--curl-options` × декодирование имени → комбинация опасной опции и traversal-имени даёт запись в произвольный путь.\n- RN-4 × RN-5: сдвиг тезиса × противоречие в `assertEquals` → провал диагностируется неверно, баг маскируется.\n\n[ASSEMBLY]\nИерархия: core — построение argv wcurl (URL parsing, filename derivation, `--curl-options` passthrough) и контракт вызова curl (`--url`, `--output`, `--next`, `--parallel`); service — shunit2 harness и фикстуры; infra — POSIX sh, shunit2 ≥ 2.1.8, curl, coreutils, CI runner.\nКритический путь: `oneTimeSetUp` (shunit2 check) → `wcurl --dry-run` → генерация curl argv → `assertContains` по stdout.\nЦиклов в графе зависимостей нет.\n\n[REFACTORING]\n- Вынести повторяющийся паттерн `ret=$(... 2>&1 | tr '\\n' ' ')` в helper.\n- Исправить сообщения assert в `testUrlDecodingBackslashes`/`Colon`.\n- Унифицировать порядок аргументов `assertEquals`.\n- Добавить version-guard curl и timeout-обёртку.\n- Реализовать skip для `testParallelIfMoreThanOneUrl` при curl ≤ 7.65.\n- Явный skip вместо молчаливого пропуска в `testUrlWithRawUtf8` при отсутствии 8859 locale.\n\n[PARALLELS]\n- Паттерн «dry-run + assert on generated argv» аналогичен тестам CLI-обёрток (git, docker, kubectl wrappers).\n- Проблема version-guard и skip — общая для тестов, зависящих от версии внешнего бинаря.\n- Отсутствие timeout в CI-тестах — типовой антипаттерн, встречается в большинстве shell-тестсьютов.\n\n[TESTS]\nТипы: unit (построение argv), integration (wcurl → curl dry-run).\nПокрытие: высокое для построения аргументов и обработки URL/имён; низкое для реальной загрузки, кодов возврата, конкурентности.\nEdge cases present: URL с `-`, tab, newline, UTF-8, `%2D`, `%5C`, `%3A`, `%7F`; повтор `-o`; `--no-decode-filename`; `--`.\nEdge cases missing: path traversal, длинные списки URL, код возврата curl, сигналы/прерывание, stdin, symlink в output.\nRefactoring coverage: см. [REFACTORING] — каждый шаг требует соответствующего теста (skip при curl < 7.66, корректная диагностика при провале, traversal).\n\n[ACTION]\n- NOW: зафиксировать version-guard curl и timeout как блокеры CI-стабильности (вариант A, шаг 1).\n- TODAY: исправить сообщения assert в `testUrlDecodingBackslashes`/`Colon`; унифицировать порядок `assertEquals`; реализовать skip для curl ≤ 7.65.\n- TOMORROW: добавить timeout-обёртку на вызовы wcurl/curl; измерить реальное время вызовов в CI.\n- LATER: вариант B (allowlist `--curl-options`, санитизация имени файла) с согласованием контракта wcurl; вариант C (реальная загрузка, коды возврата, конкурентность, JUnit XML).\n\n[QUESTIONS]\n- Какие целевые версии curl и shunit2 поддерживаются? (VERIFY: не указано в материале)\n- Есть ли CI-конфигурация, задающая timeout и версию curl? (VERIFY: не проверено)\n- Допустимо ли менять контракт `--curl-options` (allowlist) без ломания существующих сценариев? (VERIFY: требует согласования)\n- Есть ли mock-сервер для тестов реальной загрузки? (VERIFY: не проверено)\n\n[FUNC:FULL]\n- ECON: effort 1–5 дней (вариант A/B/C), cost $0 (cloud delta = 0, инфраструктура не меняется), ROI: A — высокий (низкие затраты, устранение ложных результатов), B — средний (закрывает SEC-1/SEC-2), C — низкий краткосрочно, высокий долгосрочно; cost of delay — каждый прогон CI с ложными pass/fail снижает доверие к тестам, отсутствие timeout может блокировать CI на неопределённое время (FP-4).\n- FAIL: критично — нет (0 критичных); важно — FP-1 (oneTimeSetUp exit 1 при shunit2 < 2.1.8), FP-2 (testParallelIfMoreThanOneUrl на curl ≤ 7.65), FP-4 (нет timeout → зависание CI), FP-5 (нет проверки кода возврата curl), FP-6 (нет version-guard curl); cascade: shunit2 < 2.1.8 → весь прогон блокируется; recovery: version-guard + skip + timeout.\n- METRICS: codebase — ~30+ тестовых функций в срезе, 3–8 строк каждая; deps — 6 (shunit2 ≥ 2.1.8, wcurl, curl, coreutils, locale, POSIX sh); tests — unit + integration (dry-run); perf — не измерено; quality — copy-paste ошибки в assert, TODO без реализации; infra — CI runner, PATH включает ROOTDIR первым.\n- ALTERNATIVES: A — minimal hardening (version-guard + timeout + assert fixes), 1–2 дня, низкий риск; B — security hardening (allowlist `--curl-options` + filename sanitization), 2–3 дня, средний риск (может сломать существующие сценарии); C — coverage expansion (real download, exit codes, concurrency, ARG_MAX, JUnit XML), 3–5 дней, средний риск (требует сетевого окружения или mock-сервера).\n- EVOLVE: coupling — 5/10 (сильная связь с форматом вывода wcurl и версией curl); abstractions — 4/10 (повторяющийся паттерн не вынесен); growth — 7/10 (feature_add), 6/10 (module_replace); friction — отсутствие version-guard и timeout создаёт трение при обновлении curl и в CI.\n- COMPARE: A — 1–2 дня, низкая стоимость, низкий риск, низкая сложность; B — 2–3 дня, средняя стоимость, средний риск, средняя сложность; C — 3–5 дней, средняя стоимость, средний риск, высокая сложность. Рекомендация: A → B → C.\n\n[MANDATORY BASE]\n1. ECONOMICS: time 1–5 дней (вариант A/B/C), cost $0 (cloud delta = 0), при условии, что инфраструктура не меняется и engineering rate не задан.\n2. RISKS: критично — нет; важно — RN-1, RN-2, RN-4, RN-5, RN-6, RN-8, RN-11, SEC-1, SEC-2, SEC-4, FP-1, FP-2, FP-4, FP-5, FP-6; при условии, что тесты используются в CI с внешним curl.\n3. INFRASTRUCTURE: pool_size=n/a (тестовый скрипт, не сервис), при условии, что это не сервис; ci_timeout_recommended_ms=30000 (эвристика, не измерено).\n4. CODE: change — ~30+ тестовых функций в срезе, при условии, что срез репрезентативен; хвост файла обрезан (slice=true).\n5. ACTION: now — version-guard curl + timeout (блокеры CI-стабильности); tomorrow — исправление assert-сообщений, унификация `assertEquals`, skip для curl ≤ 7.65.\n6. TIMELINE: NOW — version-guard + timeout; TODAY — assert fixes, унификация `assertEquals`, skip; TOMORROW — timeout-обёртка, измерение времени вызовов; LATER — вариант B (security), вариант C (coverage).\n7. PRODUCTION IMPACT: users 0 (тестовый скрипт, не влияет на прод), deploy window — n/a, rollback — git revert (тривиальный).\n8. SLO IMPACT: current n/a (SLO не определено), after n/a, при условии, что SLO не применимо к тестовому скрипту; для CI — целевое время прогона не задано.\n9. CLOUD COST: current $0, projected $0, delta ±$0, при условии, что инфраструктура не меняется.\n10. ON-CALL: new alerts — нет (провал теста виден только в логе shunit2), runbook — отсутствует, escalation — не применимо.\n\n[MATRIX]\n| Dimension | Status | Comment |\n|-----------|--------|---------|\n| Security | WARN | SEC-1 (инъекция `--curl-options`), SEC-2 (path traversal), SEC-4 (нет version-guard) — важно, не критично |\n| Facts | OK | Все утверждения опираются на stage1–4; версии curl/shunit2 не зафиксированы (VERIFY) |\n| Logic | WARN | RN-4 (сдвиг тезиса), RN-5 (противоречие в `assertEquals`) — логические несоответствия в тестах |\n| Applicability | OK | Рекомендации применимы к тестовому скрипту; вариант B требует согласования контракта |\n| Effectiveness | WARN | Вариант A закрывает стабильность, но не покрытие; вариант C отложен |\n| Resilience | WARN | resilience_score=5; нет timeout, version-guard, проверки кода возврата |\n| Human factor | WARN | Copy-paste ошибки в assert-сообщениях вводят в заблуждение при диагностике |\n| Clarity | OK | Материал структурирован, комментарии объясняют неочевидные случаи |\n\n[REFLEXION]\n1. Слабое место: не указаны точные версии curl/shunit2 в материале → исправлено через VERIFY в [QUESTIONS] и [MANDATORY BASE] (условие «при условии, что версии не зафиксированы»).\n2. Слабое место: риск конфликта варианта B с `testCurlOptions` (NR-1) не отражён в [ACTION] → исправлено: в [ACTION] LATER указано «с согласованием контракта wcurl».\n3. Слабое место: timeout 10s/30000ms — эвристика, не измерена → исправлено: в [MANDATORY BASE] п.3 и [THRESHOLDS] указано «эвристика, не измерено», в [ACTION] TOMORROW — «измерить реальное время вызовов».\nИтог: accepted\n\n[AUDIT_TRAIL]\ngenerator: Vishap V5.10.7\naudit_id: audit-2026-10-15-5b60b4\nmaterial_hash: sha256:9687e96eac300225c30bfbc4a77918804b31e575be5d1bfd841604fa09fcb23f\nmaterial_hash_full: sha256:cf7f480b070a447ade1883ebd30a6a87c8750ae22e1e2179b1edc07e3a940637\npii_detected: false\ncompliance_flags: []\ncompliance_controls: {}\ncompliance_standards: []\ncritique_verdict: SAFE\nrisk_verdict: SAFE\ncwe_ids: []\nowasp_categories: []\nexploitability_reachable: False\nexploitability_auth_required: False\nexploitability_blast_radius: none\nexploitability_source_count: 0\nexploitability_path: []\ndataflow_path: []\ndataflow_source_count: 0\nanomaly_verdict: NORMAL\nanomaly_count: 0\nanomaly_method: none\nanomaly_top: []\nprovenance_source: git/main\nprovenance_commit: 176c400\n\n\n[COMPLETENESS]\nlevel: D3\nrequired: 12\nmissing: []\nloss_pct: 0.0%\nmaterial_complete: False\nverdict: ACCEPTABLE\n",
+  "baseline_stats": {
+    "baseline_used": false,
+    "baseline_saved": false,
+    "baseline_path": "",
+    "baseline_save_path": "",
+    "baseline_known": 0,
+    "baseline_new": 11,
+    "baseline_total": 11
+  }
+}

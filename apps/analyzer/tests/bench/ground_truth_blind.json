@@ -1,0 +1,1216 @@
+{
+ "note": "Blind benchmark: no comment in the code says it is vulnerable. 'rules' lists the built-in rules that are expected to catch the bug today; an empty list means the rule engine cannot see it and a model has to. The rules were NOT written for this file. user_service.py: the bug list U01-U27 was written by the assistant from its own review of the file, not by the file's author; treat misses as a prompt to check the list as well as the tool.",
+ "files": [
+  "shop_service.py",
+  "orders_service.py",
+  "user_service.py"
+ ],
+ "dir": "blind",
+ "bugs": [
+  {
+   "id": "S01",
+   "title": "SQL injection via f-string in /user",
+   "lines": [
+    15
+   ],
+   "kind": "security",
+   "rules": [
+    "sqli-fstring"
+   ],
+   "keywords": [
+    "sql injection",
+    "sqli",
+    "f-string",
+    "parameteri"
+   ],
+   "provable": true,
+   "file": "shop_service.py"
+  },
+  {
+   "id": "S02",
+   "title": "Hard-coded SECRET_KEY",
+   "lines": [
+    5
+   ],
+   "kind": "security",
+   "rules": [
+    "secret-hardcoded-named"
+   ],
+   "keywords": [
+    "hard-coded",
+    "hardcoded",
+    "secret_key",
+    "secret key"
+   ],
+   "provable": false,
+   "file": "shop_service.py"
+  },
+  {
+   "id": "S03",
+   "title": "Path traversal in /download",
+   "lines": [
+    21
+   ],
+   "kind": "security",
+   "rules": [
+    "path-traversal-sendfile"
+   ],
+   "keywords": [
+    "path traversal",
+    "directory traversal",
+    "../",
+    "send_file",
+    "send_from_directory"
+   ],
+   "provable": true,
+   "file": "shop_service.py"
+  },
+  {
+   "id": "S04",
+   "title": "Passwords hashed with unsalted MD5",
+   "lines": [
+    26
+   ],
+   "kind": "security",
+   "rules": [
+    "weak-hash"
+   ],
+   "keywords": [
+    "md5"
+   ],
+   "provable": false,
+   "file": "shop_service.py"
+  },
+  {
+   "id": "S05",
+   "title": "Hash compared with == (timing)",
+   "lines": [
+    30
+   ],
+   "kind": "logic",
+   "rules": [
+    "logic-timing-compare"
+   ],
+   "keywords": [
+    "timing",
+    "compare_digest",
+    "constant-time",
+    "constant time"
+   ],
+   "provable": false,
+   "file": "shop_service.py"
+  },
+  {
+   "id": "S06",
+   "title": "Token built with SHA-1 over name+secret (forgeable)",
+   "lines": [
+    31
+   ],
+   "kind": "security",
+   "rules": [
+    "weak-hash"
+   ],
+   "keywords": [
+    "sha1",
+    "sha-1",
+    "forg",
+    "hmac"
+   ],
+   "provable": false,
+   "file": "shop_service.py"
+  },
+  {
+   "id": "S07",
+   "title": "No authentication on /transfer (move money)",
+   "lines": [
+    44
+   ],
+   "kind": "security",
+   "rules": [
+    "route-no-auth"
+   ],
+   "keywords": [
+    "authenticat",
+    "authoriz",
+    "no auth",
+    "any user",
+    "anyone"
+   ],
+   "provable": true,
+   "file": "shop_service.py"
+  },
+  {
+   "id": "S08",
+   "title": "Negative or huge amount accepted in /transfer",
+   "lines": [
+    47
+   ],
+   "kind": "logic",
+   "rules": [
+    "route-amount-no-bounds"
+   ],
+   "keywords": [
+    "negative",
+    "amount",
+    "bounds",
+    "range check",
+    "validate"
+   ],
+   "provable": true,
+   "file": "shop_service.py"
+  },
+  {
+   "id": "S09",
+   "title": "Check-then-act race on balance",
+   "lines": [
+    49
+   ],
+   "kind": "logic",
+   "rules": [
+    "route-check-then-act"
+   ],
+   "keywords": [
+    "race",
+    "atomic",
+    "transaction",
+    "toctou",
+    "concurren"
+   ],
+   "provable": false,
+   "file": "shop_service.py"
+  },
+  {
+   "id": "S10",
+   "title": "UPDATE result never checked (missing account silently ignored)",
+   "lines": [
+    49
+   ],
+   "kind": "logic",
+   "rules": [
+    "route-unchecked-rowcount"
+   ],
+   "keywords": [
+    "rowcount",
+    "affected rows",
+    "update result",
+    "result of the update",
+    "silently ignored",
+    "zero rows",
+    "no rows were updated"
+   ],
+   "provable": false,
+   "file": "shop_service.py"
+  },
+  {
+   "id": "S11",
+   "title": "Page slice returns size + 1 items",
+   "lines": [
+    39
+   ],
+   "kind": "logic",
+   "rules": [
+    "logic-slice-plus-one"
+   ],
+   "keywords": [
+    "off-by-one",
+    "off by one",
+    "size + 1",
+    "one extra",
+    "extra item"
+   ],
+   "provable": false,
+   "file": "shop_service.py"
+  },
+  {
+   "id": "S12",
+   "title": "Mutable default argument (seen=[]) shared between requests",
+   "lines": [
+    35
+   ],
+   "kind": "logic",
+   "rules": [
+    "logic-mutable-default"
+   ],
+   "keywords": [
+    "mutable default",
+    "seen=[]",
+    "shared between",
+    "memory leak",
+    "grows"
+   ],
+   "provable": false,
+   "file": "shop_service.py"
+  },
+  {
+   "id": "S13",
+   "title": "No upper bound on page size",
+   "lines": [
+    37
+   ],
+   "kind": "logic",
+   "rules": [
+    "logic-unbounded-limit"
+   ],
+   "keywords": [
+    "upper bound",
+    "max size",
+    "unbounded",
+    "limit the size",
+    "dos"
+   ],
+   "provable": false,
+   "file": "shop_service.py"
+  },
+  {
+   "id": "S14",
+   "title": "fetchone()[0] on a missing account crashes",
+   "lines": [
+    46
+   ],
+   "kind": "logic",
+   "rules": [
+    "logic-fetchone-index"
+   ],
+   "keywords": [
+    "none",
+    "typeerror",
+    "fetchone",
+    "500"
+   ],
+   "provable": false,
+   "file": "shop_service.py"
+  },
+  {
+   "id": "S15",
+   "title": "Debug mode on",
+   "lines": [
+    56
+   ],
+   "kind": "security",
+   "rules": [
+    "debug-on"
+   ],
+   "keywords": [
+    "debug"
+   ],
+   "provable": false,
+   "file": "shop_service.py"
+  },
+  {
+   "id": "S16",
+   "title": "Bound to 0.0.0.0",
+   "lines": [
+    56
+   ],
+   "kind": "security",
+   "rules": [
+    "bind-all"
+   ],
+   "keywords": [
+    "0.0.0.0",
+    "all interfaces"
+   ],
+   "provable": false,
+   "file": "shop_service.py"
+  },
+  {
+   "id": "S17",
+   "title": "No authentication on /user (reads any user's email)",
+   "lines": [
+    13
+   ],
+   "kind": "security",
+   "rules": [
+    "route-no-auth"
+   ],
+   "keywords": [
+    "/user",
+    "enumerat",
+    "any user"
+   ],
+   "provable": true,
+   "file": "shop_service.py"
+  },
+  {
+   "id": "S18",
+   "title": "No authentication on /download",
+   "lines": [
+    19
+   ],
+   "kind": "security",
+   "rules": [
+    "route-no-auth"
+   ],
+   "keywords": [
+    "/download"
+   ],
+   "provable": true,
+   "file": "shop_service.py"
+  },
+  {
+   "id": "O01",
+   "title": "Token is base64(uid:role) with no signature: anyone can mint a token with role=admin",
+   "file": "orders_service.py",
+   "lines": [
+    23,
+    29
+   ],
+   "kind": "security",
+   "rules": [],
+   "keywords": [
+    "unsigned",
+    "no signature",
+    "forge",
+    "tamper",
+    "role=admin",
+    "base64",
+    "not signed"
+   ],
+   "provable": false
+  },
+  {
+   "id": "O02",
+   "title": "Password written to the log",
+   "file": "orders_service.py",
+   "lines": [
+    48
+   ],
+   "kind": "security",
+   "rules": [],
+   "keywords": [
+    "logged",
+    "log the password",
+    "password=",
+    "logs the password",
+    "writes the password",
+    "log.info",
+    "password in the log",
+    "credentials in log",
+    "password is written"
+   ],
+   "provable": false
+  },
+  {
+   "id": "O03",
+   "title": "Open redirect through ?next=",
+   "file": "orders_service.py",
+   "lines": [
+    55
+   ],
+   "kind": "security",
+   "rules": [],
+   "keywords": [
+    "open redirect",
+    "redirect to",
+    "?next",
+    "next parameter",
+    "next="
+   ],
+   "provable": false
+  },
+  {
+   "id": "O04",
+   "title": "IDOR: any logged-in user reads any order",
+   "file": "orders_service.py",
+   "lines": [
+    61,
+    62
+   ],
+   "kind": "security",
+   "rules": [],
+   "keywords": [
+    "idor",
+    "ownership",
+    "any order",
+    "other users' orders",
+    "belongs to the",
+    "owner",
+    "another user's order",
+    "object-level"
+   ],
+   "provable": false
+  },
+  {
+   "id": "O05",
+   "title": "Unit price taken from the client",
+   "file": "orders_service.py",
+   "lines": [
+    73
+   ],
+   "kind": "logic",
+   "rules": [],
+   "keywords": [
+    "price from the client",
+    "client-controlled price",
+    "client supplied price",
+    "trusts the price",
+    "price is taken",
+    "price comes from",
+    "server-side price",
+    "price from the request",
+    "client-supplied price"
+   ],
+   "provable": false
+  },
+  {
+   "id": "O06",
+   "title": "Money in float: client price parsed with float(), total rounded with round() and stored as REAL",
+   "file": "orders_service.py",
+   "lines": [
+    73,
+    74
+   ],
+   "kind": "logic",
+   "rules": [
+    "logic-money-float"
+   ],
+   "keywords": [
+    "float",
+    "decimal",
+    "rounding",
+    "cents"
+   ],
+   "provable": false
+  },
+  {
+   "id": "O07",
+   "title": "Quantity may be zero or negative (negative total)",
+   "file": "orders_service.py",
+   "lines": [
+    72
+   ],
+   "kind": "logic",
+   "rules": [
+    "route-amount-no-bounds"
+   ],
+   "keywords": [
+    "negative",
+    "zero or negative",
+    "quantity must",
+    "qty <= 0",
+    "qty > 0",
+    "non-positive",
+    "positive quantity"
+   ],
+   "provable": false
+  },
+  {
+   "id": "O08",
+   "title": "Stock read then written later: oversell race",
+   "file": "orders_service.py",
+   "lines": [
+    76,
+    79,
+    81
+   ],
+   "kind": "logic",
+   "rules": [
+    "route-check-then-act"
+   ],
+   "keywords": [
+    "race",
+    "oversell",
+    "atomic",
+    "transaction",
+    "toctou",
+    "concurren"
+   ],
+   "provable": false
+  },
+  {
+   "id": "O09",
+   "title": "Payment failure swallowed: stock is gone and the order stays 'new' while the API answers success",
+   "file": "orders_service.py",
+   "lines": [
+    82,
+    85,
+    86
+   ],
+   "kind": "logic",
+   "rules": [],
+   "keywords": [
+    "except exception",
+    "except: pass",
+    "swallow",
+    "silently",
+    "bare except",
+    "ignores the failure",
+    "payment failure",
+    "failed charge",
+    "charge fail"
+   ],
+   "provable": false
+  },
+  {
+   "id": "O10",
+   "title": "End date exclusive: orders on the last day are dropped",
+   "file": "orders_service.py",
+   "lines": [
+    101
+   ],
+   "kind": "logic",
+   "rules": [],
+   "keywords": [
+    "exclusive",
+    "end date",
+    "last day",
+    "inclusive",
+    "off-by-one",
+    "off by one",
+    "created_at <"
+   ],
+   "provable": false
+  },
+  {
+   "id": "O11",
+   "title": "SQL injection through column names in PATCH /profile (also lets a user set role)",
+   "file": "orders_service.py",
+   "lines": [
+    110,
+    111
+   ],
+   "kind": "security",
+   "rules": [
+    "sqli-fstring"
+   ],
+   "keywords": [
+    "column name",
+    "mass assignment",
+    "sql injection",
+    "field names",
+    "keys of the json",
+    "allowlist",
+    "allow-list"
+   ],
+   "provable": false
+  },
+  {
+   "id": "O12",
+   "title": "SSRF through the callback URL",
+   "file": "orders_service.py",
+   "lines": [
+    120
+   ],
+   "kind": "security",
+   "rules": [],
+   "keywords": [
+    "ssrf",
+    "server-side request forgery",
+    "internal network",
+    "metadata"
+   ],
+   "provable": false
+  },
+  {
+   "id": "O13",
+   "title": "Unsafe pickle.loads on a cookie",
+   "file": "orders_service.py",
+   "lines": [
+    128
+   ],
+   "kind": "security",
+   "rules": [
+    "deser-pickle"
+   ],
+   "keywords": [
+    "pickle",
+    "deserializ"
+   ],
+   "provable": false
+  },
+  {
+   "id": "O14",
+   "title": "API key compared with == (timing)",
+   "file": "orders_service.py",
+   "lines": [
+    134
+   ],
+   "kind": "logic",
+   "rules": [],
+   "keywords": [
+    "timing",
+    "compare_digest",
+    "constant-time",
+    "constant time"
+   ],
+   "provable": false
+  },
+  {
+   "id": "O15",
+   "title": "Hard-coded API key",
+   "file": "orders_service.py",
+   "lines": [
+    11
+   ],
+   "kind": "security",
+   "rules": [
+    "secret-hardcoded"
+   ],
+   "keywords": [
+    "hard-coded",
+    "hardcoded",
+    "api_key",
+    "api key"
+   ],
+   "provable": false
+  },
+  {
+   "id": "O16",
+   "title": "fetchone()[0] on a missing item crashes",
+   "file": "orders_service.py",
+   "lines": [
+    76
+   ],
+   "kind": "logic",
+   "rules": [
+    "logic-fetchone-index"
+   ],
+   "keywords": [
+    "fetchone",
+    "typeerror",
+    "nonetype",
+    "none check",
+    "missing item",
+    "unknown item",
+    "item does not exist"
+   ],
+   "provable": false
+  },
+  {
+   "id": "O17",
+   "title": "Refund answers ok=True even when no order was updated",
+   "file": "orders_service.py",
+   "lines": [
+    135
+   ],
+   "kind": "logic",
+   "rules": [
+    "route-unchecked-rowcount"
+   ],
+   "keywords": [
+    "rowcount",
+    "0 rows",
+    "zero rows",
+    "not found",
+    "does not exist",
+    "nonexistent order",
+    "non-existent order",
+    "order exists"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U01",
+   "title": "SQL injection in create_user (f-string query, three fields)",
+   "file": "user_service.py",
+   "lines": [
+    21
+   ],
+   "kind": "security",
+   "rules": [
+    "taint-flow"
+   ],
+   "keywords": [
+    "create_user"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U02",
+   "title": "SQL injection in get_user",
+   "file": "user_service.py",
+   "lines": [
+    29
+   ],
+   "kind": "security",
+   "rules": [
+    "sqli-fstring"
+   ],
+   "keywords": [
+    "get_user"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U03",
+   "title": "SQL injection in get_user_profile",
+   "file": "user_service.py",
+   "lines": [
+    64
+   ],
+   "kind": "security",
+   "rules": [
+    "sqli-fstring"
+   ],
+   "keywords": [
+    "get_user_profile"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U04",
+   "title": "SQL injection in reset_password via new_password",
+   "file": "user_service.py",
+   "lines": [
+    72
+   ],
+   "kind": "security",
+   "rules": [
+    "sqli-fstring"
+   ],
+   "keywords": [
+    "reset_password"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U05",
+   "title": "SQL injection in export_user_data",
+   "file": "user_service.py",
+   "lines": [
+    81
+   ],
+   "kind": "security",
+   "rules": [
+    "sqli-fstring"
+   ],
+   "keywords": [
+    "export_user_data"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U06",
+   "title": "SQL injection in delete_user",
+   "file": "user_service.py",
+   "lines": [
+    111
+   ],
+   "kind": "security",
+   "rules": [
+    "sqli-fstring"
+   ],
+   "keywords": [
+    "delete_user"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U07",
+   "title": "SQL injection in bulk_update_users",
+   "file": "user_service.py",
+   "lines": [
+    120
+   ],
+   "kind": "security",
+   "rules": [
+    "sqli-fstring"
+   ],
+   "keywords": [
+    "bulk_update_users"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U08",
+   "title": "Live Stripe key hard-coded",
+   "file": "user_service.py",
+   "lines": [
+    8
+   ],
+   "kind": "security",
+   "rules": [
+    "secret-token",
+    "secret-hardcoded"
+   ],
+   "keywords": [
+    "stripe",
+    "hard-coded",
+    "hardcoded"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U09",
+   "title": "API key written to the log",
+   "file": "user_service.py",
+   "lines": [
+    89
+   ],
+   "kind": "security",
+   "rules": [],
+   "keywords": [
+    "logged",
+    "log line",
+    "logger",
+    "written to log",
+    "in logs"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U10",
+   "title": "Command injection through os.system with message and email",
+   "file": "user_service.py",
+   "lines": [
+    138
+   ],
+   "kind": "security",
+   "rules": [
+    "cmd-injection-py"
+   ],
+   "keywords": [
+    "os.system",
+    "command injection",
+    "shell"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U11",
+   "title": "Password reset: hard-coded token and it always resets user id 1 (admin)",
+   "file": "user_service.py",
+   "lines": [
+    69,
+    70,
+    71,
+    72
+   ],
+   "kind": "security",
+   "rules": [],
+   "keywords": [
+    "reset-secret-token",
+    "hard-coded token",
+    "static token",
+    "id=1",
+    "id = 1",
+    "admin"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U12",
+   "title": "get_user_profile gives admin data for user_id == 1 (backdoor, type confusion)",
+   "file": "user_service.py",
+   "lines": [
+    60,
+    61
+   ],
+   "kind": "security",
+   "rules": [],
+   "keywords": [
+    "user_id == 1",
+    "backdoor",
+    "type confusion",
+    "hard-coded admin",
+    "god-mode"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U13",
+   "title": "Passwords stored in plain text",
+   "file": "user_service.py",
+   "lines": [
+    20
+   ],
+   "kind": "security",
+   "rules": [],
+   "keywords": [
+    "plaintext",
+    "plain text",
+    "plain-text",
+    "hash",
+    "argon",
+    "bcrypt"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U14",
+   "title": "transfer_funds accepts a negative amount: steals from the recipient",
+   "file": "user_service.py",
+   "lines": [
+    51,
+    52
+   ],
+   "kind": "logic",
+   "rules": [
+    "func-amount-no-bounds"
+   ],
+   "keywords": [
+    "negative amount",
+    "negative",
+    "amount > 0",
+    "amount <= 0"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U15",
+   "title": "transfer_funds: balance checked, then written (race / overdraft)",
+   "file": "user_service.py",
+   "lines": [
+    51,
+    52
+   ],
+   "kind": "logic",
+   "rules": [
+    "func-check-then-act"
+   ],
+   "keywords": [
+    "race",
+    "toctou",
+    "double-spend",
+    "double spend",
+    "atomic",
+    "begin immediate"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U16",
+   "title": "transfer_funds: unknown recipient or same id destroys or duplicates money",
+   "file": "user_service.py",
+   "lines": [
+    51,
+    52
+   ],
+   "kind": "logic",
+   "rules": [
+    "func-unchecked-rowcount"
+   ],
+   "keywords": [
+    "nonexistent",
+    "non-existent",
+    "unknown recipient",
+    "self-transfer",
+    "from==to",
+    "from_user != to_user",
+    "rowcount"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U17",
+   "title": "update_balance reads, changes in Python, writes back (lost update)",
+   "file": "user_service.py",
+   "lines": [
+    40
+   ],
+   "kind": "logic",
+   "rules": [
+    "func-read-modify-write"
+   ],
+   "keywords": [
+    "lost update",
+    "read-modify-write",
+    "race"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U18",
+   "title": "update_balance: any amount, any user, no check",
+   "file": "user_service.py",
+   "lines": [
+    40
+   ],
+   "kind": "logic",
+   "rules": [
+    "func-amount-no-bounds"
+   ],
+   "keywords": [
+    "unbounded",
+    "any amount",
+    "credits themselves",
+    "arbitrary amount",
+    "no authorization"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U19",
+   "title": "get_user: fetchone() is None for an unknown id (TypeError)",
+   "file": "user_service.py",
+   "lines": [
+    30,
+    31
+   ],
+   "kind": "logic",
+   "rules": [],
+   "keywords": [
+    "get_user crash",
+    "get_user:",
+    "typeerror",
+    "none check"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U20",
+   "title": "get_admin_stats never checks admin_id",
+   "file": "user_service.py",
+   "lines": [
+    125,
+    126,
+    127,
+    128,
+    129
+   ],
+   "kind": "security",
+   "rules": [],
+   "keywords": [
+    "get_admin_stats",
+    "admin_id"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U21",
+   "title": "No authorization or ownership check in any function (IDOR)",
+   "file": "user_service.py",
+   "lines": [
+    17,
+    26,
+    34,
+    45,
+    58,
+    78,
+    108,
+    116
+   ],
+   "kind": "security",
+   "rules": [],
+   "keywords": [
+    "idor",
+    "no authorization",
+    "no authentication",
+    "ownership",
+    "no auth"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U22",
+   "title": "check_subscription: naive vs aware datetime, NULL or bad date",
+   "file": "user_service.py",
+   "lines": [
+    104,
+    105
+   ],
+   "kind": "logic",
+   "rules": [],
+   "keywords": [
+    "naive",
+    "timezone",
+    "tz-aware",
+    "aware datetime",
+    "fromisoformat"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U23",
+   "title": "process_payment records 'success' without charging, no idempotency; float/NaN amount",
+   "file": "user_service.py",
+   "lines": [
+    85,
+    86,
+    87,
+    88,
+    89,
+    90,
+    91,
+    92,
+    93,
+    94
+   ],
+   "kind": "logic",
+   "rules": [],
+   "keywords": [
+    "idempotency",
+    "without charging",
+    "no charge",
+    "nan",
+    "float",
+    "provider"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U24",
+   "title": "export_user_data returns every column of users, password included",
+   "file": "user_service.py",
+   "lines": [
+    81
+   ],
+   "kind": "security",
+   "rules": [
+    "sql-star-credentials"
+   ],
+   "keywords": [
+    "password column",
+    "select *",
+    "pii",
+    "exposes password",
+    "password hash"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U25",
+   "title": "send_notification: fetchone() is None for an unknown user",
+   "file": "user_service.py",
+   "lines": [
+    137
+   ],
+   "kind": "logic",
+   "rules": [
+    "logic-fetchone-index"
+   ],
+   "keywords": [
+    "send_notification"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U26",
+   "title": "delete_user reports success even when no row was deleted",
+   "file": "user_service.py",
+   "lines": [
+    111
+   ],
+   "kind": "logic",
+   "rules": [
+    "func-unchecked-rowcount"
+   ],
+   "keywords": [
+    "delete_user",
+    "rowcount",
+    "reports success"
+   ],
+   "provable": false
+  },
+  {
+   "id": "U27",
+   "title": "Database connections are never closed",
+   "file": "user_service.py",
+   "lines": [
+    13,
+    14
+   ],
+   "kind": "logic",
+   "rules": [],
+   "keywords": [
+    "never closed",
+    "not closed",
+    "connection leak",
+    "close()",
+    "context manager",
+    "leak"
+   ],
+   "provable": false
+  }
+ ]
+}

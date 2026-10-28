@@ -1,0 +1,105 @@
+# Local/production stack for the API. The LLM stays outside: analysis goes
+# through a DSH harness on the host (`HARNESS_URL`), so no model runs here.
+#
+#   docker compose up -d api
+#   curl http://localhost:5001/health
+#
+# The image is built from the Dockerfile in this directory; there is no
+# pre-built tag to pull any more (v7 publishes to PyPI, not to a registry).
+
+services:
+  api:
+    build: .
+    image: vishap-analyzer:local
+    container_name: vishap-api
+    ports:
+      - 5001:5001
+    environment:
+      - CONVEYOR_API_KEY=${CONVEYOR_API_KEY:-}
+      - PORT=5001
+      - VISHAP_DATA_DIR=/home/vishap/.vishap/data
+      # The harness runs on the host, so the container must not start one.
+      - HARNESS_AUTOSTART=0
+      - HARNESS_URL=${HARNESS_URL:-http://host.docker.internal:3080}
+      - HARNESS_TOKEN=${HARNESS_TOKEN:-}
+      - DATABASE_URL=postgresql+asyncpg://vishap:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/vishap
+      - JOB_STORE=postgres
+      # Local stack: Stripe/Clerk keys are not required, only warned about.
+      - VISHAP_DEV=${VISHAP_DEV:-true}
+    extra_hosts:
+      # Linux needs this; Docker Desktop maps host.docker.internal itself.
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - vishap_data:/home/vishap/.vishap/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  worker:
+    build: .
+    image: vishap-analyzer:local
+    container_name: vishap-worker
+    command: celery -A src.api.celery_app worker --loglevel=info
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - DATABASE_URL=postgresql+asyncpg://vishap:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/vishap
+      - JOB_STORE=postgres
+      - VISHAP_DATA_DIR=/home/vishap/.vishap/data
+      - HARNESS_AUTOSTART=0
+      - HARNESS_URL=${HARNESS_URL:-http://host.docker.internal:3080}
+      - HARNESS_TOKEN=${HARNESS_TOKEN:-}
+      - VISHAP_DEV=${VISHAP_DEV:-true}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - vishap_data:/home/vishap/.vishap/data
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: vishap-postgres
+    environment:
+      POSTGRES_DB: vishap
+      POSTGRES_USER: vishap
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vishap"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: vishap-redis
+    ports:
+      - 6379:6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  vishap_data: null
+  postgres_data: null

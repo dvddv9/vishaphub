@@ -1,0 +1,86 @@
+﻿name: vishap-security-scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  vishap:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Vishap
+        run: |
+          python -m pip install --upgrade pip
+          pip install git+https://github.com/dvddv9/vishap.git cyclonedx-bom
+
+      - name: Run Vishap (diff-aware, SARIF output)
+        run: |
+          mkdir -p vishap-out
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_REF="origin/${{ github.base_ref }}"
+          else
+            BASE_REF="HEAD~1"
+          fi
+          echo "BASE_REF=$BASE_REF"
+          for f in $(git diff --name-only "$BASE_REF"...HEAD | grep -E '\.(py|go|js|ts|java|rs|txt|json)$' || true); do
+            echo "=== Analyzing $f ==="
+            vishap analyze "$f" --sarif "vishap-out/sarif-$(echo "$f" | tr '/' '_').sarif" --quiet || true
+          done
+        continue-on-error: true
+
+      - name: Vishap Quality Gate (P1-5)
+        continue-on-error: true  # LLM (Ollama) unavailable in CI runner
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_REF="origin/${{ github.base_ref }}"
+          else
+            BASE_REF="HEAD~1"
+          fi
+          for f in $(git diff --name-only "$BASE_REF"...HEAD | grep -E '\.(py|go|js|ts|java|rs|txt|json)$' || true); do
+            echo "=== Quality gate: $f ==="
+            vishap analyze "$f" --gate --quiet
+            rc=$?
+            if [ $rc -eq 3 ]; then
+              echo "[gate] file unchanged -- skip (exit 3)"
+            elif [ $rc -ne 0 ]; then
+              echo "[gate] FAILED (exit $rc)"
+              exit $rc
+            fi
+          done
+
+      - name: Generate SBOM
+        run: |
+          vishap sbom --output vishap-out/sbom.json || true
+        continue-on-error: true
+
+      - name: Upload SARIF to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: vishap-out
+          category: vishap
+        continue-on-error: true
+
+      - name: Upload SBOM as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vishap-sbom
+          path: vishap-out/sbom.json
+          if-no-files-found: ignore
+        continue-on-error: true

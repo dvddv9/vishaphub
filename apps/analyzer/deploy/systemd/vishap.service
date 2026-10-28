@@ -1,0 +1,20 @@
+[Unit]
+Description=Vishap - multi-material LLM analyst
+After=network.target
+
+[Service]
+Type=simple
+User=conveyor
+WorkingDirectory=/opt/conveyor_app
+EnvironmentFile=/opt/conveyor_app/.env
+ExecStart=/opt/conveyor_app/.venv/bin/python -m src.main
+Restart=on-failure
+RestartSec=5s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/conveyor_app/data /opt/conveyor_app/docs
+
+[Install]
+WantedBy=multi-user.target

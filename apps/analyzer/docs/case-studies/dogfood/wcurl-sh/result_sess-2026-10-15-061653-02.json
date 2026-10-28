@@ -1,0 +1,1152 @@
+{
+  "session_id": "sess-2026-10-15-061653-02",
+  "timestamp": "2026-10-15T06:18:20.937455+00:00",
+  "filename": "wcurl.md",
+  "material_size": 5128,
+  "stage0": {
+    "material_type": "spec",
+    "language": "other",
+    "size_hint": "~150 lines",
+    "level": "D3",
+    "route": [
+      "stage4",
+      "stage3"
+    ],
+    "research_first": false,
+    "parallel_stages": false,
+    "subst_count": 0,
+    "session_id": "sess-2026-10-15-061653-02",
+    "model": "default",
+    "flags": [],
+    "slice": false,
+    "gate_check": {
+      "input": "man page / documentation for wcurl (curl wrapper)",
+      "output": "unspecified — no explicit analysis/review/incident request",
+      "decider": "unspecified",
+      "cost": "unspecified",
+      "irreversible": "unspecified"
+    },
+    "task_type": "spec",
+    "reasoning": "Material is a man page (spec-type documentation) for wcurl, ~150 lines. No explicit task stated by requester; gates 2–5 unanswered → abstract context. Size falls in D3 band (>50, ≤500 lines). No substitution markers, no emergency markers. research_first=false (no comparison/migration/stack-selection request). Sequential route: stage4 → stage3.",
+    "_meta": {
+      "stage": "stage0_orchestrator",
+      "tokens_in": 2544,
+      "tokens_out": 259,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.000429
+    }
+  },
+  "stage1": {
+    "language": "other",
+    "material_type": "spec",
+    "trajectory": {
+      "io": {
+        "input": "URL list (positional args), optional --curl-options, --output, --dry-run, --no-decode-filename, -V/-h",
+        "output": "downloaded files on disk; stdout for --dry-run/--version/--help; exit status from curl"
+      },
+      "flow": [
+        "parse argv: separate options from URLs",
+        "percent-encode whitespace in URLs",
+        "default scheme to https if absent",
+        "disable curl URL globbing parser",
+        "derive output filename from URL (percent-decode unless --no-decode-filename)",
+        "fallback filename 'index.html' if none or '-'",
+        "assemble curl invocation with sane defaults (parallel, redirects, retries, no-clobber, timestamp, parallel-max-host=5)",
+        "forward --curl-options tokens (whitespace-split) to curl",
+        "invoke curl (or print command if --dry-run)"
+      ],
+      "branches": [
+        "curl version >= 7.66.0 → --parallel",
+        "curl version >= 8.16.0 → --parallel-max-host 5",
+        "curl version >= 7.83.0 → --no-clobber",
+        "URL has scheme? → keep : prepend https",
+        "filename present and != '-'? → use : use index.html",
+        "--no-decode-filename set? → skip percent-decode",
+        "--output provided? → use PATH : derive from URL",
+        "multiple URLs + --output? → append numeric suffix (curl >= 7.83.0)",
+        "--dry-run? → print : execute",
+        "multiple --output occurrences → last wins"
+      ],
+      "branches_note": "Branch count reflects documented conditional behaviors in the spec; not a cyclomatic complexity measure.",
+      "nesting_max": 1,
+      "deps": [
+        "curl (external binary, version-gated features)",
+        "shell/argv parsing",
+        "filesystem (output paths)"
+      ],
+      "dead_code": "not applicable (spec, not source)"
+    },
+    "structure": {
+      "patterns": [
+        "wrapper/facade over curl",
+        "convention-over-configuration (sane defaults)",
+        "version-gated feature negotiation"
+      ],
+      "cohesion": "high — single responsibility: download files via curl with defaults",
+      "coupling": "tight to curl CLI surface and version; loose to caller",
+      "solid_violations": [
+        "SRP: partially — wcurl both parses URLs/filenames and delegates to curl; acceptable for a thin wrapper",
+        "OCP: version-gated branches require edits when curl adds features"
+      ],
+      "point_of_no_return": "invocation of curl with assembled argv (post --dry-run check)",
+      "layers": [
+        "CLI parsing",
+        "URL/filename normalization",
+        "curl argument assembly",
+        "curl execution"
+      ],
+      "contradictions": [
+        "Default avoids overwriting (--no-clobber) but resume example requires --clobber — documented as intentional override",
+        "--curl-options whitespace-split contradicts ability to pass args containing whitespace; documented workaround via --config"
+      ]
+    },
+    "texture": {
+      "density": "medium — ~150 lines, dense option/behavior enumeration",
+      "code_smells": "not applicable (documentation)",
+      "error_handling": "delegated to curl; spec does not define wcurl-level error semantics beyond exit propagation",
+      "tests_present": "not stated in material",
+      "docs": "man page (roff), sections: NAME, SYNOPSIS, DESCRIPTION, OPTIONS, CURL_OPTIONS, URL, EXAMPLES, AUTHORS, REPORTING BUGS, COPYRIGHT",
+      "standards": [
+        "man page conventions (Section 1)",
+        "SPDX-License-Identifier: curl",
+        "See-also cross-references (curl(1), trurl(1))"
+      ]
+    },
+    "shadows": {
+      "breaks": [
+        "behavior depends on installed curl version — feature set varies across environments",
+        "--curl-options whitespace-split silently mis-parses quoted args (documented, but a footgun)",
+        "resume requires --clobber, contradicting default no-clobber safety"
+      ],
+      "comment_code_mismatch": "not applicable (no source code in material)",
+      "blind_spots": [
+        "no explicit exit-code contract documented",
+        "no behavior specified for partial failures across multiple URLs",
+        "no concurrency limit semantics beyond --parallel-max-host default of 5",
+        "no mention of proxy/auth/env var interaction",
+        "no security guidance beyond 'never build CURL_OPTIONS from untrusted input'"
+      ]
+    },
+    "concurrency": {
+      "shared_state": "output filesystem paths (potential collisions across parallel downloads)",
+      "locks": "none specified at wcurl level; relies on curl --no-clobber / --clobber",
+      "deadlock_potential": "not applicable (no locks defined)",
+      "race_conditions": [
+        "parallel downloads to same derived filename — mitigated by --no-clobber (curl >= 7.83.0) or numeric suffix with --output",
+        "on curl < 7.83.0 no-clobber unavailable → overwrite race possible"
+      ],
+      "idempotency": "not idempotent by default (downloads create files); --no-clobber makes repeated runs non-destructive"
+    },
+    "dev_process": {
+      "code_review": "not stated in material",
+      "ci_cd": "not stated in material",
+      "staging": "not stated in material",
+      "tech_debt": "not stated in material; version-gated branches imply maintenance burden as curl evolves"
+    },
+    "tool_output": {
+      "ran": [],
+      "raw": "no tools executed — material is a man page (spec), not source code; analyze.py modes (static/metrics/concurrency) target code inputs and are not applicable"
+    },
+    "_meta": {
+      "stage": "stage1_scanner",
+      "tokens_in": 2314,
+      "tokens_out": 1359,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.000704
+    }
+  },
+  "stage2": {
+    "risk_nodes": [
+      {
+        "id": "RN-1",
+        "name": "Неявное допущение",
+        "priority": "важно",
+        "note": "Предполагается, что установленный curl поддерживает все версионно-зависимые флаги (--parallel, --no-clobber, --parallel-max-host); на старых curl поведение молча деградирует без предупреждения.",
+        "fingerprint": "9869ab8e71e829f7"
+      },
+      {
+        "id": "RN-2",
+        "name": "Слабое обобщение",
+        "priority": "важно",
+        "note": "«Sane defaults» обобщены на все сценарии загрузки, но resume, auth, proxy и globbing требуют ручного обхода — дефолты не универсальны.",
+        "fingerprint": "5f98a8139890d6e5"
+      },
+      {
+        "id": "RN-3",
+        "name": "Конкурирующая реализация",
+        "priority": "опционально",
+        "note": "wcurl конкурирует с прямым curl и trurl; при усложнении сценария пользователь уходит на curl, обесценивая обёртку.",
+        "fingerprint": "89ab6981c25d5946"
+      },
+      {
+        "id": "RN-4",
+        "name": "Сдвиг тезиса",
+        "priority": "важно",
+        "note": "Заявлено «simple wrapper», но --curl-options с whitespace-split и версионные ветки делают поведение неочевидным — простота декларируемая, не фактическая.",
+        "fingerprint": "73622434426586d0"
+      },
+      {
+        "id": "RN-5",
+        "name": "Внутреннее противоречие",
+        "priority": "важно",
+        "note": "Дефолт --no-clobber (не перезаписывать) противоречит примеру resume, требующему --clobber; безопасность по умолчанию ломается ради докачки.",
+        "fingerprint": "147e2b0003e110da"
+      },
+      {
+        "id": "RN-6",
+        "name": "Стратегическое избегание",
+        "priority": "важно",
+        "note": "Спека избегает контракта exit-кода, поведения при частичном отказе нескольких URL и взаимодействия с proxy/auth/env — ключевые для автоматизации темы не раскрыты.",
+        "fingerprint": "268c3f338bf321a1"
+      },
+      {
+        "id": "RN-7",
+        "name": "Производительность",
+        "priority": "опционально",
+        "note": "Дефолт 5 параллельных соединений на host (curl >= 8.16.0) может быть узким местом для массовых загрузок; снятие лимита требует ручного --parallel-max-host 0.",
+        "fingerprint": "d98543aff59dbea1"
+      },
+      {
+        "id": "RN-8",
+        "name": "Надёжность",
+        "priority": "важно",
+        "note": "Retries включены по умолчанию, но число/стратегия не документированы; при частичном отказе нескольких URL итоговый статус не определён.",
+        "fingerprint": "924e4469b5ced709"
+      },
+      {
+        "id": "RN-9",
+        "name": "Масштабируемость",
+        "priority": "опционально",
+        "note": "При большом списке URL и --output числовые суффиксы (curl >= 7.83.0) могут конфликтовать; на старых curl суффиксация недоступна.",
+        "fingerprint": "5dd2202146a901dd"
+      },
+      {
+        "id": "RN-10",
+        "name": "Конкурентность",
+        "priority": "важно",
+        "note": "Параллельные загрузки в один производный filename защищены только --no-clobber (curl >= 7.83.0); на старых curl возможна гонка перезаписи.",
+        "fingerprint": "5a5f4ba5de65caa5"
+      },
+      {
+        "id": "RN-11",
+        "name": "Ломающие изменения",
+        "priority": "важно",
+        "note": "Поведение зависит от версии curl: обновление curl меняет набор дефолтов (parallel, no-clobber, parallel-max-host) без изменения вызова wcurl.",
+        "fingerprint": "d96e7abd549fe0a4"
+      }
+    ],
+    "plan_b": [
+      {
+        "risk_id": "RN-1",
+        "plan_b": "Явная проверка версии curl при старте и предупреждение/фейл при отсутствии требуемых флагов"
+      },
+      {
+        "risk_id": "RN-2",
+        "plan_b": "Документировать матрицу сценариев (resume/auth/proxy) с рекомендованными --curl-options"
+      },
+      {
+        "risk_id": "RN-3",
+        "plan_b": "Чётко обозначить границу применимости wcurl и делегировать сложные кейсы curl/trurl"
+      },
+      {
+        "risk_id": "RN-4",
+        "plan_b": "Упростить --curl-options (парсинг с учётом кавычек) или явно ограничить его простыми флагами"
+      },
+      {
+        "risk_id": "RN-5",
+        "plan_b": "Ввести отдельный флаг --resume, инкапсулирующий --clobber --continue-at -, вместо ручного обхода"
+      },
+      {
+        "risk_id": "RN-6",
+        "plan_b": "Определить контракт exit-кода и агрегацию статуса при частичном отказе нескольких URL"
+      },
+      {
+        "risk_id": "RN-7",
+        "plan_b": "Сделать лимит параллелизма настраиваемым флагом wcurl с разумным дефолтом"
+      },
+      {
+        "risk_id": "RN-8",
+        "plan_b": "Документировать число/стратегию retry и поведение при исчерпании попыток"
+      },
+      {
+        "risk_id": "RN-9",
+        "plan_b": "Проверять доступность суффиксации (curl >= 7.83.0) и предупреждать при --output + multiple URLs"
+      },
+      {
+        "risk_id": "RN-10",
+        "plan_b": "На curl < 7.83.0 использовать уникальные имена или блокировку файла"
+      },
+      {
+        "risk_id": "RN-11",
+        "plan_b": "Пиновать минимальную версию curl и фиксировать поведение в тестах по версиям"
+      }
+    ],
+    "security": {
+      "summary": "wcurl — тонкая обёртка над curl; основная поверхность атаки — инъекция аргументов через --curl-options и URL, а также запись файлов на диск.",
+      "findings": [
+        {
+          "id": "SEC-1",
+          "issue": "Аргумент-инъекция через --curl-options: значение whitespace-split и передаётся в curl как отдельные argv; при построении из недоверенного ввода возможна подмена флагов (напр. --output, --config).",
+          "priority": "критично",
+          "mitigation": "Никогда не строить CURL_OPTIONS из недоверенного ввода (документировано); валидировать/экранировать, использовать --config-файл."
+        },
+        {
+          "id": "SEC-2",
+          "issue": "Path traversal / произвольная запись: производный из URL filename (percent-decode) может содержать ../ или абсолютные пути, перезаписывая файлы вне ожидаемой директории.",
+          "priority": "важно",
+          "mitigation": "Санитизировать производный filename, запрещать path-разделители и .., ограничивать базовой директорией."
+        },
+        {
+          "id": "SEC-3",
+          "issue": "Дефолт https при отсутствии схемы снижает риск downgrade, но явный http:// в URL не блокируется — возможна загрузка по незащищённому каналу.",
+          "priority": "опционально",
+          "mitigation": "Предупреждать при http:// или требовать явного согласия."
+        },
+        {
+          "id": "SEC-4",
+          "issue": "Следование редиректам по умолчанию может увести на другой host/scheme (в т.ч. http) — SSRF-подобный риск при загрузке из недоверенных источников.",
+          "priority": "важно",
+          "mitigation": "Ограничить редиректы (--max-redirs), запретить downgrade scheme, документировать риск."
+        }
+      ]
+    },
+    "secrets": {
+      "summary": "Спека не описывает работу с секретами; риск — утечка через argv и логи.",
+      "findings": [
+        {
+          "id": "SECR-1",
+          "issue": "Токены/креды, переданные через --curl-options (напр. -H 'Authorization: ...'), попадают в argv процесса и видны в ps/proc.",
+          "priority": "важно",
+          "mitigation": "Использовать --config-файл с ограниченными правами вместо argv; документировать."
+        },
+        {
+          "id": "SECR-2",
+          "issue": "--dry-run печатает команду, включая потенциальные секреты из --curl-options, в stdout/логи.",
+          "priority": "важно",
+          "mitigation": "Маскировать чувствительные значения в dry-run выводе."
+        },
+        {
+          "id": "SECR-3",
+          "issue": "Нет упоминания взаимодействия с ~/.curlrc и env-переменными (напр. http_proxy, токены), которые могут неявно влиять на запросы.",
+          "priority": "опционально",
+          "mitigation": "Документировать влияние curl config/env и опцию их отключения."
+        }
+      ]
+    },
+    "concurrency": {
+      "summary": "Параллельные загрузки (--parallel) пишут в общую файловую систему; защита от коллизий зависит от версии curl.",
+      "findings": [
+        {
+          "id": "CONC-1",
+          "issue": "Два URL с одинаковым производным filename при параллельной загрузке — гонка записи; --no-clobber доступен только с curl >= 7.83.0.",
+          "priority": "важно",
+          "mitigation": "Требовать curl >= 7.83.0 или использовать уникальные имена/блокировки."
+        },
+        {
+          "id": "CONC-2",
+          "issue": "Лимит 5 соединений на host (curl >= 8.16.0) не применяется на старых версиях — неконтролируемая параллельность и нагрузка на сервер.",
+          "priority": "опционально",
+          "mitigation": "Явно задавать --parallel-max-host или проверять версию."
+        },
+        {
+          "id": "CONC-3",
+          "issue": "Отсутствует wcurl-уровневая синхронизация/локировка; вся конкурентная безопасность делегирована curl.",
+          "priority": "опционально",
+          "mitigation": "Документировать границы гарантий; при необходимости — внешняя блокировка."
+        }
+      ]
+    },
+    "threat_model": {
+      "components": [
+        "wcurl CLI",
+        "argv parser",
+        "filename derivation",
+        "curl binary",
+        "filesystem",
+        "remote server"
+      ],
+      "trust_boundaries": [
+        {
+          "id": "TB-1",
+          "from": "user input (URL, --curl-options)",
+          "to": "wcurl argv assembly"
+        },
+        {
+          "id": "TB-2",
+          "from": "wcurl",
+          "to": "curl process (argv)"
+        },
+        {
+          "id": "TB-3",
+          "from": "remote server (redirects, headers, filename)",
+          "to": "wcurl/curl"
+        },
+        {
+          "id": "TB-4",
+          "from": "wcurl/curl",
+          "to": "local filesystem"
+        }
+      ],
+      "threats": [
+        {
+          "component": "argv parser",
+          "boundary": "TB-1",
+          "stride": "T",
+          "threat": "Подмена/инъекция флагов curl через --curl-options (whitespace-split, без учёта кавычек).",
+          "priority": "критично",
+          "mitigation": "Не строить из недоверенного ввода; валидация; --config-файл."
+        },
+        {
+          "component": "argv parser",
+          "boundary": "TB-1",
+          "stride": "S",
+          "threat": "Подмена URL/аргумента, ведущая к загрузке с чужого host.",
+          "priority": "важно",
+          "mitigation": "Валидация схемы/host, предупреждение при http."
+        },
+        {
+          "component": "filename derivation",
+          "boundary": "TB-4",
+          "stride": "T",
+          "threat": "Path traversal через percent-decoded filename (../, абсолютные пути).",
+          "priority": "важно",
+          "mitigation": "Санитизация имени, запрет разделителей и .."
+        },
+        {
+          "component": "curl process",
+          "boundary": "TB-2",
+          "stride": "I",
+          "threat": "Утечка секретов из argv (ps/proc) и из --dry-run вывода.",
+          "priority": "важно",
+          "mitigation": "--config-файл; маскирование в dry-run."
+        },
+        {
+          "component": "remote server",
+          "boundary": "TB-3",
+          "stride": "S",
+          "threat": "Редирект на другой host/scheme (downgrade на http), SSRF-подобное поведение.",
+          "priority": "важно",
+          "mitigation": "Ограничить редиректы, запретить downgrade."
+        },
+        {
+          "component": "remote server",
+          "boundary": "TB-3",
+          "stride": "D",
+          "threat": "Медленный/враждебный сервер исчерпывает соединения/диск (нет лимита размера).",
+          "priority": "опционально",
+          "mitigation": "Ограничить размер/таймауты (--max-filesize, --max-time)."
+        },
+        {
+          "component": "filesystem",
+          "boundary": "TB-4",
+          "stride": "D",
+          "threat": "Перезапись/заполнение диска при параллельных загрузках и отсутствии no-clobber.",
+          "priority": "важно",
+          "mitigation": "Требовать curl >= 7.83.0; уникальные имена."
+        },
+        {
+          "component": "wcurl CLI",
+          "boundary": "TB-1",
+          "stride": "R",
+          "threat": "Нет audit log загрузок (что, откуда, куда) — сложно расследовать инциденты.",
+          "priority": "опционально",
+          "mitigation": "Опциональный лог загрузок."
+        },
+        {
+          "component": "wcurl CLI",
+          "boundary": "TB-2",
+          "stride": "E",
+          "threat": "Через --curl-options можно передать --config/--output, повышая контроль над процессом (эскалация возможностей).",
+          "priority": "важно",
+          "mitigation": "Ограничить/фильтровать опасные флаги или документировать риск."
+        }
+      ],
+      "summary": {
+        "total": 9,
+        "critical": 1,
+        "important": 6,
+        "optional": 2
+      },
+      "top_3": [
+        "SEC-1 (инъекция через --curl-options)",
+        "SEC-2 (path traversal в filename)",
+        "SEC-4 (редиректы/SSRF)"
+      ]
+    },
+    "silence_layers": {
+      "input_silence": {
+        "what": "Нет цифр нагрузки: число URL, размер файлов, частота запусков, число параллельных соединений в реальных сценариях.",
+        "where": "DESCRIPTION/EXAMPLES — только примеры, без метрик.",
+        "impact": "Невозможно оценить производительность, лимиты и риск DoS/заполнения диска."
+      },
+      "assumption_silence": {
+        "assumption": "Предполагается, что установленный curl достаточно новый и поддерживает все версионно-зависимые флаги.",
+        "why": "Версии curl не проверяются явно; деградация поведения молчаливая."
+      },
+      "consequence_silence": {
+        "who": "Пользователь/автоматизация, запускающая wcurl на недоверенных URL или с недоверенным --curl-options.",
+        "what": "Возможна перезапись/запись файлов вне ожидаемой директории и инъекция флагов curl.",
+        "irreversible": "Перезапись существующих файлов (при отсутствии no-clobber) необратима."
+      }
+    },
+    "intersection_risks": [
+      {
+        "layers": [
+          "input_silence",
+          "consequence_silence"
+        ],
+        "intersection": "Отсутствие цифр нагрузки × необратимая перезапись файлов",
+        "risk": "При массовой параллельной загрузке без no-clobber (старый curl) возможна необратимая потеря данных без предупреждения."
+      },
+      {
+        "layers": [
+          "assumption_silence",
+          "security"
+        ],
+        "intersection": "Допущение о новой версии curl × path traversal в filename",
+        "risk": "На старых curl нет no-clobber, а санитизация имени отсутствует — комбинация усиливает риск произвольной записи."
+      },
+      {
+        "layers": [
+          "security",
+          "concurrency"
+        ],
+        "intersection": "Инъекция через --curl-options × параллельные загрузки",
+        "risk": "Подменённый флаг (напр. --output) в сочетании с параллелизмом может направить несколько потоков в один путь — гонка и перезапись."
+      }
+    ],
+    "contracts": {
+      "idempotency": {
+        "present": false,
+        "note": "Не идемпотентно по умолчанию (создаёт файлы); --no-clobber делает повторные запуски неразрушающими, но не гарантирует идентичность результата."
+      },
+      "retry": {
+        "present": true,
+        "note": "Retries включены по умолчанию, но число/стратегия не документированы."
+      },
+      "timeout": {
+        "present": false,
+        "note": "Таймауты не заданы wcurl; делегированы curl и не документированы."
+      },
+      "circuit_breaker": {
+        "present": false,
+        "note": "Не применимо/отсутствует; для CLI-обёртки не критично, но при массовых загрузках отсутствие ограничений повышает риск."
+      }
+    },
+    "breaking_changes": [
+      {
+        "id": "BC-1",
+        "change": "Обновление curl меняет набор дефолтов (--parallel, --no-clobber, --parallel-max-host) без изменения вызова wcurl.",
+        "impact": "Изменение поведения и безопасности по умолчанию между средами."
+      },
+      {
+        "id": "BC-2",
+        "change": "Суффиксация имён при --output + multiple URLs доступна только с curl >= 7.83.0.",
+        "impact": "На старых curl возможна перезапись/коллизия имён."
+      },
+      {
+        "id": "BC-3",
+        "change": "Resume требует --clobber, отменяя дефолтную защиту от перезаписи.",
+        "impact": "Пользователь может неосознанно разрешить перезапись."
+      }
+    ],
+    "production_impact": {
+      "summary": "wcurl — локальный CLI; влияние на прод ограничено средами автоматизации и CI, где он вызывается.",
+      "points": [
+        "Версионная зависимость от curl делает поведение недетерминированным между окружениями.",
+        "Отсутствие контракта exit-кода и агрегации частичных отказов усложняет обработку ошибок в пайплайнах.",
+        "Возможная перезапись файлов при старом curl — риск потери артефактов."
+      ],
+      "rollback": "Откат — возврат к прямому вызову curl или пинование версии curl; wcurl не хранит состояния, откат тривиален."
+    },
+    "observability": {
+      "summary": "Наблюдаемость минимальна: только stdout/--dry-run и exit-код curl.",
+      "gaps": [
+        "Нет структурированного лога загрузок (URL, размер, статус, время).",
+        "Нет метрик (успех/ошибка, retries, время).",
+        "Нет трассировки при множественных URL."
+      ]
+    },
+    "slo": {
+      "summary": "SLO не определены в материале.",
+      "note": "Для CLI-обёртки SLO обычно не задаются; при использовании в автоматизации стоит определить успешность загрузки и время."
+    },
+    "on_call": {
+      "summary": "On-call не применимо к локальному CLI.",
+      "note": "При интеграции в пайплайны — алерты на ненулевой exit-код и частичные отказы."
+    },
+    "tests": {
+      "present": "not stated in material",
+      "types_needed": [
+        "Unit: парсинг argv (опции vs URL), whitespace-split --curl-options.",
+        "Unit: деривация filename (percent-decode, index.html fallback, '-' case).",
+        "Unit: санитизация filename (path traversal).",
+        "Integration: версионные ветки (curl < 7.66, < 7.83, < 8.16, >= 8.16).",
+        "Integration: --dry-run вывод и маскирование секретов.",
+        "Integration: параллельные загрузки и коллизии имён.",
+        "Edge: несколько --output (last wins), multiple URLs + --output суффиксация.",
+        "Edge: resume с --clobber --continue-at -."
+      ],
+      "coverage_note": "Покрытие не заявлено; для каждого версионного шага рефакторинга нужен минимум 1 тест."
+    },
+    "dependencies": {
+      "total": 1,
+      "list": [
+        "curl (external binary, version-gated)"
+      ],
+      "outdated": "неизвестно (зависит от среды)",
+      "cve": "неизвестно; риски наследуются от установленной версии curl"
+    },
+    "failure_points": [
+      {
+        "id": "FP-1",
+        "point": "Инъекция флагов через --curl-options",
+        "priority": "критическая"
+      },
+      {
+        "id": "FP-2",
+        "point": "Path traversal в производном filename",
+        "priority": "важная"
+      },
+      {
+        "id": "FP-3",
+        "point": "Перезапись файлов при curl < 7.83.0 (нет no-clobber)",
+        "priority": "важная"
+      },
+      {
+        "id": "FP-4",
+        "point": "Неопределённый exit-код/агрегация при частичном отказе нескольких URL",
+        "priority": "важная"
+      },
+      {
+        "id": "FP-5",
+        "point": "Утечка секретов через argv/--dry-run",
+        "priority": "важная"
+      },
+      {
+        "id": "FP-6",
+        "point": "Редиректы на другой host/scheme (SSRF/downgrade)",
+        "priority": "опциональная"
+      }
+    ],
+    "resilience_score": 5,
+    "resilience_reason": "Тонкая обёртка с разумными дефолтами и retries, но: версионная недетерминированность, отсутствие контракта exit-кода, отсутствие санитизации filename и таймаутов, риск инъекции через --curl-options. Безопасность и предсказуемость зависят от среды и версии curl.",
+    "cove": {
+      "questions": [
+        {
+          "q": "Нашёл ли я хотя бы одну уязвимость?",
+          "independent_answer": "Да — инъекция через --curl-options (SEC-1) и path traversal в filename (SEC-2).",
+          "match": true
+        },
+        {
+          "q": "Есть ли trust boundary, которую я не рассмотрел?",
+          "independent_answer": "Рассмотрены TB-1..TB-4; потенциально не покрыт канал env/config (~/.curlrc, http_proxy) — отмечен в SECR-3.",
+          "match": false
+        },
+        {
+          "q": "Есть ли допущение, которое я не проверил?",
+          "independent_answer": "Допущение о новой версии curl не проверяется явно (RN-1, assumption_silence).",
+          "match": true
+        },
+        {
+          "q": "Есть ли risk node, помеченный опционально, но должен быть критично?",
+          "independent_answer": "RN-10 (конкурентность) при старом curl может быть важнее, чем опционально — повышаю до важно.",
+          "match": false
+        }
+      ],
+      "verdict": "requires_external_verification",
+      "flagged": [
+        "SECR-3 (env/config boundary) — VERIFY, приоритет повышен до важно",
+        "RN-10 (конкурентность) — VERIFY, приоритет повышен до важно"
+      ]
+    },
+    "priority_rule": "loss > risk > money",
+    "substitution_seen": false,
+    "tool_output": {
+      "ran": [],
+      "raw": "Инструменты не запускались: материал — man page (spec), не исходный код. analyze.py --mode security/contracts/deps/tests ориентированы на код/манифесты/директории и неприменимы к данному входу."
+    },
+    "_meta": {
+      "stage": "stage2_analyst",
+      "tokens_in": 4566,
+      "tokens_out": 5887,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.002288
+    },
+    "_web_search": {
+      "used": false,
+      "queries": [],
+      "credits": 0
+    }
+  },
+  "stage3": null,
+  "stage4": {
+    "hierarchy": {
+      "core": [
+        "argv parser (options vs URLs)",
+        "URL normalization (whitespace percent-encode, scheme default https, globbing off)",
+        "filename derivation (percent-decode, index.html fallback)",
+        "curl argv assembly (version-gated defaults)"
+      ],
+      "service": [
+        "curl invocation / --dry-run print",
+        "exit-status propagation",
+        "output path resolution (--output, numeric suffix)"
+      ],
+      "infra": [
+        "curl binary (version-gated: 7.66 / 7.83 / 8.16)",
+        "local filesystem (output paths)",
+        "shell/argv environment",
+        "curl config (~/.curlrc) + env (http_proxy, tokens)"
+      ]
+    },
+    "connections": [
+      {
+        "from": "argv parser",
+        "to": "URL normalization",
+        "type": "data"
+      },
+      {
+        "from": "argv parser",
+        "to": "curl argv assembly",
+        "type": "data (--curl-options passthrough)"
+      },
+      {
+        "from": "URL normalization",
+        "to": "filename derivation",
+        "type": "data"
+      },
+      {
+        "from": "filename derivation",
+        "to": "curl argv assembly",
+        "type": "data (--output)"
+      },
+      {
+        "from": "curl argv assembly",
+        "to": "curl invocation",
+        "type": "control"
+      },
+      {
+        "from": "curl invocation",
+        "to": "filesystem",
+        "type": "write"
+      },
+      {
+        "from": "curl invocation",
+        "to": "exit-status propagation",
+        "type": "data"
+      },
+      {
+        "from": "curl binary version",
+        "to": "curl argv assembly",
+        "type": "control (feature gate)"
+      }
+    ],
+    "dependency_graph": {
+      "edges": [
+        "wcurl -> curl (external binary, version-gated)",
+        "wcurl -> filesystem (output paths)",
+        "wcurl -> shell/argv",
+        "curl -> remote server (network)",
+        "curl -> ~/.curlrc + env (implicit config)"
+      ],
+      "impact_of": {
+        "curl version": "changes default feature set (parallel, no-clobber, parallel-max-host) without wcurl change",
+        "filesystem": "irreversible overwrite risk when no-clobber unavailable",
+        "argv passthrough": "flag injection surface (SEC-1)"
+      },
+      "critical_path": [
+        "argv parse -> URL normalize -> filename derive -> curl argv assemble -> curl exec -> filesystem write"
+      ],
+      "cycles": []
+    },
+    "options": [
+      {
+        "name": "A: Harden-in-place (thin wrapper, add guards)",
+        "isolation": "best-effort",
+        "scalability": "unchanged (CLI, per-invocation)",
+        "summary": "Keep wcurl thin. Add: explicit curl version check + warn/fail; filename sanitization (reject path separators, '..', absolute); mask secrets in --dry-run; document exit-code contract; add --resume flag encapsulating --clobber --continue-at -.",
+        "pros": [
+          "minimal surface change",
+          "preserves 'simple wrapper' thesis",
+          "addresses SEC-1/SEC-2/RN-5"
+        ],
+        "cons": [
+          "still version-gated behavior",
+          "no aggregation of partial failures unless added"
+        ]
+      },
+      {
+        "name": "B: Contract-first wrapper (define exit-code + aggregation)",
+        "isolation": "best-effort",
+        "scalability": "unchanged",
+        "summary": "Option A plus: define exit-code contract (0 all ok, non-zero partial/full fail), aggregate per-URL status, structured log line per download, optional --max-filesize/--max-time defaults.",
+        "pros": [
+          "automation-friendly",
+          "closes RN-6/RN-8/observability gaps"
+        ],
+        "cons": [
+          "larger behavioral surface",
+          "risk of diverging from curl semantics"
+        ]
+      },
+      {
+        "name": "C: Delegate complexity (document boundary, keep minimal)",
+        "isolation": "best-effort",
+        "scalability": "unchanged",
+        "summary": "Keep wcurl minimal; explicitly document that resume/auth/proxy/globbing belong to curl/trurl. Add only filename sanitization + version warning. No new flags.",
+        "pros": [
+          "smallest change",
+          "clear scope boundary (RN-3)"
+        ],
+        "cons": [
+          "leaves RN-5/RN-6/RN-8 open",
+          "users still hit footguns"
+        ]
+      }
+    ],
+    "infrastructure_params": {
+      "pool_size": "n/a (CLI, no pool)",
+      "cpu": "n/a (delegated to curl)",
+      "memory": "n/a (delegated to curl)",
+      "replicas": "n/a",
+      "lockTTL": "n/a — no locks at wcurl level; concurrency safety delegated to curl --no-clobber (>=7.83.0)",
+      "autoscaling": "n/a",
+      "parallelism": {
+        "default_connections_per_host": 5,
+        "gate": "curl >= 8.16.0 (--parallel-max-host)",
+        "override": "--curl-options=\"--parallel-max-host 0\""
+      },
+      "timeouts": "not set by wcurl; delegated to curl (undocumented)",
+      "retries": "enabled by default; count/strategy undocumented"
+    },
+    "cloud_cost": {
+      "current": 0,
+      "projected": 0,
+      "delta": 0,
+      "reason": "no infrastructure change — local CLI wrapper, no cloud resources"
+    },
+    "econ": {
+      "cloud_delta_usd": 0,
+      "engineering_days": "2-3 (option A), 4-6 (option B), 1-2 (option C)",
+      "engineering_rate": "not set",
+      "engineering_cost": "not set (rate unknown)",
+      "roi": "not quantifiable without rate; qualitative: closes 1 critical (SEC-1) + 2 important (SEC-2, RN-5) findings for 2-3 days",
+      "cost_of_delay": "each release with unsanitized filename + argv passthrough keeps SEC-1/SEC-2 live; irreversible overwrite risk persists on curl < 7.83.0"
+    },
+    "migration_plan": {
+      "schema": "n/a (no datastore)",
+      "consistency": "n/a",
+      "rollback": "trivial — wcurl is stateless; revert to prior version or direct curl invocation",
+      "validation": [
+        "unit: argv parse, filename sanitization, percent-decode, index.html fallback",
+        "integration: version-gated branches (curl <7.66, <7.83, <8.16, >=8.16)",
+        "integration: --dry-run secret masking",
+        "edge: multiple --output (last wins), multiple URLs + --output suffix",
+        "edge: resume via --clobber --continue-at -"
+      ]
+    },
+    "gaps": {
+      "caching": "n/a",
+      "retry": "present but undocumented (count/strategy)",
+      "health_checks": "n/a (CLI)",
+      "migrations": "n/a",
+      "monitoring": "absent — no structured log, no metrics",
+      "alerts": "n/a for CLI; needed if embedded in pipelines (non-zero exit, partial failures)",
+      "exit_code_contract": "undefined (RN-6)",
+      "partial_failure_aggregation": "undefined (RN-6/RN-8)",
+      "filename_sanitization": "absent (SEC-2)",
+      "secret_masking_in_dry_run": "absent (SECR-2)",
+      "env/config_boundary": "undocumented (~/.curlrc, http_proxy) (SECR-3)"
+    },
+    "evolvability": {
+      "feature_add": 6,
+      "module_replace": 7,
+      "coupling": 4,
+      "abstractions": 5,
+      "overall": 5,
+      "note": "Thin wrapper: easy to add flags, but tight coupling to curl CLI surface and version-gated branches (OCP violation) limits clean evolution."
+    },
+    "code_generation": {
+      "language": "shell (POSIX sh, illustrative)",
+      "files": [
+        {
+          "path": "wcurl.sh",
+          "content": "#!/bin/sh\n# wcurl — minimal hardened wrapper (illustrative, option A)\nset -eu\n\nCURL_MIN_NO_CLOBBER=7.83.0\nCURL_MIN_PARALLEL=7.66.0\nCURL_MIN_PARALLEL_MAX_HOST=8.16.0\n\ncurl_version() { curl --version | head -n1 | awk '{print $2}'; }\nver_ge() { [ \"$(printf '%s\\n%s\\n' \"$2\" \"$1\" | sort -V | head -n1)\" = \"$2\" ]; }\n\nsanitize_filename() {\n  # reject path traversal / absolute paths\n  case \"$1\" in\n    */*|*..*|/*) echo \"wcurl: unsafe filename: $1\" >&2; exit 2 ;;\n  esac\n  printf '%s' \"$1\"\n}\n\nDRY_RUN=0\nNO_DECODE=0\nOUTPUT=\"\"\nCURL_OPTS=\"\"\nURLS=\"\"\n\nwhile [ $# -gt 0 ]; do\n  case \"$1\" in\n    --dry-run) DRY_RUN=1 ;;\n    --no-decode-filename) NO_DECODE=1 ;;\n    -o|-O|--output) shift; OUTPUT=\"$1\" ;;\n    --output=*) OUTPUT=\"${1#--output=}\" ;;\n    --curl-options) shift; CURL_OPTS=\"$CURL_OPTS $1\" ;;\n    --curl-options=*) CURL_OPTS=\"$CURL_OPTS ${1#--curl-options=}\" ;;\n    --) shift; while [ $# -gt 0 ]; do URLS=\"$URLS $1\"; shift; done; break ;;\n    -V|--version) curl --version; exit 0 ;;\n    -h|--help) echo \"usage: wcurl [options] URL...\"; exit 0 ;;\n    -*) echo \"wcurl: unknown option: $1\" >&2; exit 2 ;;\n    *) URLS=\"$URLS $1\" ;;\n  esac\n  shift\ndone\n\nCV=$(curl_version)\nif ! ver_ge \"$CV\" \"$CURL_MIN_NO_CLOBBER\"; then\n  echo \"wcurl: warning: curl $CV < $CURL_MIN_NO_CLOBBER — no-clobber unavailable, overwrite risk\" >&2\nfi\n\nARGS=\"\"\nif ver_ge \"$CV\" \"$CURL_MIN_PARALLEL\"; then ARGS=\"$ARGS --parallel\"; fi\nif ver_ge \"$CV\" \"$CURL_MIN_PARALLEL_MAX_HOST\"; then ARGS=\"$ARGS --parallel-max-host 5\"; fi\nif ver_ge \"$CV\" \"$CURL_MIN_NO_CLOBBER\"; then ARGS=\"$ARGS --no-clobber\"; fi\nARGS=\"$ARGS --location --remote-time --globoff\"\n\nfor u in $URLS; do\n  case \"$u\" in\n    *://*) : ;;\n    *) u=\"https://$u\" ;;\n  esac\n  if [ -n \"$OUTPUT\" ]; then\n    fn=$(sanitize_filename \"$OUTPUT\")\n    ARGS=\"$ARGS --output $fn\"\n  fi\n  ARGS=\"$ARGS $u\"\ndone\n\n# NOTE: CURL_OPTS is whitespace-split by design (documented footgun).\n# Never build from untrusted input.\nCMD=\"curl$ARGS$CURL_OPTS\"\nif [ \"$DRY_RUN\" -eq 1 ]; then\n  echo \"$CMD\"\n  exit 0\nfi\nexec curl $ARGS $CURL_OPTS\n"
+        }
+      ],
+      "validation": "python -c \"import ast; ast.parse(open('wcurl.sh').read())\" — NOTE: shell, not Python; use `sh -n wcurl.sh` for syntax check."
+    },
+    "inversion": {
+      "assumptions": [
+        {
+          "n": 1,
+          "assumption": "Installed curl is new enough for all version-gated flags",
+          "inversion": "curl is old (e.g. 7.60) — no --parallel, no --no-clobber, no --parallel-max-host",
+          "consequences": [
+            "Silent degradation: no parallelism, no overwrite protection",
+            "Parallel downloads race on same filename → irreversible overwrite",
+            "User believes 'sane defaults' active when they are not"
+          ]
+        },
+        {
+          "n": 2,
+          "assumption": "--curl-options is used only with trusted input",
+          "inversion": "CURL_OPTIONS built from untrusted input (CI variable, user form)",
+          "consequences": [
+            "Flag injection: attacker passes --output /etc/passwd or --config",
+            "Arbitrary file write / config hijack",
+            "Escalation of control over curl process (STRIDE E)"
+          ]
+        },
+        {
+          "n": 3,
+          "assumption": "Derived filename is safe (no path separators)",
+          "inversion": "URL path contains ../ or absolute path after percent-decode",
+          "consequences": [
+            "Path traversal writes outside intended directory",
+            "Overwrite of arbitrary files",
+            "Combined with old curl (no no-clobber) → silent data loss"
+          ]
+        }
+      ],
+      "failure_points_on_inversion": [
+        "FP-1 flag injection (critical)",
+        "FP-2 path traversal (important)",
+        "FP-3 overwrite on curl < 7.83.0 (important)",
+        "FP-5 secret leak via argv/dry-run (important)"
+      ]
+    },
+    "thresholds": [
+      {
+        "metric": "curl version",
+        "value": "< 7.83.0",
+        "consequence": "no-clobber unavailable → overwrite risk; warn or fail"
+      },
+      {
+        "metric": "curl version",
+        "value": "< 7.66.0",
+        "consequence": "no --parallel → sequential downloads; document"
+      },
+      {
+        "metric": "derived filename",
+        "value": "contains '/' or '..'",
+        "consequence": "reject (exit 2), do not write"
+      },
+      {
+        "metric": "URLs per invocation",
+        "value": "> 100",
+        "consequence": "recommend --parallel-max-host tuning + unique output names"
+      },
+      {
+        "metric": "partial failure count",
+        "value": ">= 1 of N",
+        "consequence": "non-zero exit; aggregate status (option B)"
+      }
+    ],
+    "constraints": {
+      "items": [
+        "filename must not contain path separators or '..'",
+        "curl version must be >= 7.83.0 for overwrite safety",
+        "CURL_OPTIONS must not be built from untrusted input"
+      ],
+      "binding": "curl version >= 7.83.0 — it gates the overwrite-safety guarantee that all other constraints assume",
+      "decision": "enforce version check at startup; if below threshold, warn (option A) or fail (option B)"
+    },
+    "second_opinion": {
+      "role": "security engineer",
+      "sees": "argv passthrough (SEC-1) as the dominant risk — whitespace-split, no quoting, documented footgun; filename derivation (SEC-2) as second; secret leak via argv/dry-run (SECR-1/2) as third.",
+      "agrees": "filename sanitization + version check + secret masking are correct priorities; option A is the right minimal scope.",
+      "disagrees": "Treating --curl-options as 'documented, therefore acceptable' — documentation is not a control; recommend hard rejection of dangerous flags (--config, --output) in passthrough or explicit opt-in."
+    },
+    "stop_reason": "risk",
+    "stop_action": "force_emergency",
+    "force_emergency": false,
+    "force_emergency_note": "Recommendation is a hotfix over 2-3 days (option A), not an immediate STOP today. Per rule: EMERGENCY with multi-day plan → force_emergency: false. Reported as normal risk stop.",
+    "collision": [
+      {
+        "analyst": "SEC-1 flag injection — critical",
+        "researcher": "n/a (no research stage; research_first=false)",
+        "synthesizer": "Option A addresses via documentation + sanitization, but does not hard-block dangerous flags",
+        "contradiction": "Analyst marks SEC-1 critical; Synthesizer's option A leaves passthrough open (documented only)",
+        "resolution": "Prioritize hard rejection of dangerous flags (--config, --output) in --curl-options, or explicit opt-in flag"
+      },
+      {
+        "analyst": "RN-5 no-clobber vs resume contradiction — important",
+        "researcher": "n/a",
+        "synthesizer": "Option A adds --resume flag encapsulating --clobber --continue-at -",
+        "contradiction": "Default safety (no-clobber) vs resume requirement (clobber)",
+        "resolution": "Encapsulate in --resume; keep no-clobber default for non-resume paths"
+      }
+    ],
+    "escalation": {
+      "level": 1,
+      "action": "resolve_in_synthesis",
+      "critical_conflicts": 1,
+      "note": "One critical conflict (SEC-1) — resolvable in synthesis via hard flag rejection. No return_to_stage2."
+    },
+    "cove": {
+      "questions": [
+        {
+          "q": "Есть ли альтернатива, которую я отклонил слишком быстро?",
+          "answer": "Option C (delegate complexity) — rejected for leaving RN-5/RN-6 open, but it is the smallest change and may be correct if wcurl's thesis is strictly 'thin wrapper'. Reconsider if scope discipline is the priority."
+        },
+        {
+          "q": "Есть ли риск, который я перенёс в ASSUMPTION без проверки?",
+          "answer": "Yes — assumption that curl version is new enough (RN-1). Not verified; option A adds a runtime check, which converts assumption to enforced precondition."
+        },
+        {
+          "q": "Есть ли конфликт между моими рекомендациями?",
+          "answer": "Yes — option A keeps --curl-options passthrough (documented) while second_opinion recommends hard rejection. Resolved by prioritizing hard rejection of dangerous flags."
+        },
+        {
+          "q": "Есть ли блок, который я забыл включить?",
+          "answer": "Artifacts block — material is a spec (man page), not a codebase requiring SQL/Dockerfile/Gantt. Artifacts marked not applicable; code_generation provides illustrative shell instead."
+        }
+      ],
+      "verdict": "confirmed",
+      "flagged": [
+        "SEC-1 hard rejection vs documentation — resolve in implementation",
+        "Option C reconsideration if scope discipline prioritized"
+      ]
+    },
+    "return_to_stage2": false,
+    "return_to_stage3": false,
+    "force_fallback": false,
+    "new_risks": [
+      {
+        "id": "NR-1",
+        "risk": "Hard rejection of --config/--output in passthrough may break legitimate advanced use cases",
+        "priority": "важно",
+        "mitigation": "Provide explicit opt-in flag (--allow-dangerous-curl-options) with warning"
+      },
+      {
+        "id": "NR-2",
+        "risk": "Version check adds startup latency and a new failure mode (curl --version parse)",
+        "priority": "опционально",
+        "mitigation": "Cache version; fail-open with warning if parse fails"
+      },
+      {
+        "id": "NR-3",
+        "risk": "Filename sanitization may reject legitimate URLs with encoded slashes",
+        "priority": "опционально",
+        "mitigation": "Document rejection; allow --output override for such cases"
+      }
+    ],
+    "tool_output": {
+      "ran": [],
+      "raw": "No tools executed. analyze.py modes (calc/cost/migrate/lockttl) target code/infra inputs; material is a man page (spec). mode_cost with empty spec → delta 0, reason 'no infrastructure change' (applied). mode_lockttl not applicable (no locks). mode_calc requires latency_type — not applicable (CLI, no latency SLO)."
+    },
+    "artifacts": {
+      "applicable": false,
+      "reason": "Material is a man page (spec) for a CLI wrapper — no SQL schema, no containerization, no project schedule implied. Artifacts (SQL migration, Dockerfile, Gantt) not generated. Illustrative shell code provided in code_generation instead."
+    },
+    "_meta": {
+      "stage": "stage4_synthesizer",
+      "tokens_in": 11028,
+      "tokens_out": 4790,
+      "model": "deepseek-chat",
+      "mode": "cloud",
+      "json_ok": true,
+      "cost_usd": 0.002885
+    }
+  },
+  "audit": {
+    "audit_id": "audit-2026-10-15-9c321d",
+    "session_id": "sess-2026-10-15-061653-02",
+    "timestamp": "2026-10-15T06:18:20.936399+00:00",
+    "material_hash": "sha256:7caaa9de6d2f8938ade12cf79b65fdf4702836de307bf4a8fc1ab845f66c4672",
+    "material_hash_full": "sha256:7caaa9de6d2f8938ade12cf79b65fdf4702836de307bf4a8fc1ab845f66c4672",
+    "material_size": {
+      "lines": 167,
+      "chars": 5142
+    },
+    "model": "deepseek-chat",
+    "critique_verdict": "REQUIRES_REVIEW",
+    "risk_verdict": "REQUIRES_REVIEW",
+    "cwe_ids": [],
+    "owasp_categories": [],
+    "exploitability": {
+      "reachable": false,
+      "auth_required": false,
+      "exploit_path": "not reachable from public entrypoint",
+      "blast_radius": "none",
+      "entry_points": [],
+      "blast_indicators": [],
+      "path": [],
+      "source_count": 0,
+      "sources": [],
+      "entry_points_lines": [],
+      "sinks": []
+    },
+    "dataflow": {},
+    "anomaly": {},
+    "provenance": {
+      "source": "manual",
+      "git_commit": "",
+      "git_commit_short": "",
+      "git_branch": "",
+      "git_author": "",
+      "git_author_email": "",
+      "git_remote": "",
+      "ci_run_id": "",
+      "ci_pr_number": "",
+      "timestamp": "2026-10-15T06:18:20.930092+00:00"
+    },
+    "pii_detected": true,
+    "pii_details": {
+      "email": 2
+    },
+    "compliance_flags": [
+      "GDPR",
+      "152-ФЗ"
+    ],
+    "compliance_controls": {},
+    "compliance_standards": [],
+    "runbook": {},
+    "runbook_cwes": [],
+    "runbook_steps_count": 0,
+    "redaction_applied": true,
+    "redaction_map": {
+      "email": 4
+    },
+    "sast_findings": 0,
+    "sast_high_priority": 0,
+    "sast_tools": {},
+    "sca_vulnerabilities": 0,
+    "truncated": false,
+    "original_size": 5142,
+    "web_search_used": false,
+    "web_search_queries": [],
+    "web_search_credits": 0,
+    "escalation_level": ""
+  },
+  "completeness": {
+    "level": "D3",
+    "required_count": 12,
+    "missing": [],
+    "missing_count": 0,
+    "loss_pct": 0.0,
+    "material_complete": true,
+    "threshold": 30.0,
+    "verdict": "ACCEPTABLE"
+  },
+  "critique_verdict": "REQUIRES_REVIEW",
+  "cost_usd": 0.006306,
+  "final_markdown": "# wcurl — Спецификация: анализ и рекомендации\n\n**Session:** sess-2026-10-15-061653-02-02 · **Level:** D3 · **Type:** spec · **Model:** default\n\n---\n\n[ECHO] Man page (Section 1) для `wcurl` — тонкой обёртки над curl. ~150 строк, roff. Секции: NAME, SYNOPSIS, DESCRIPTION, OPTIONS, CURL_OPTIONS, URL, EXAMPLES, AUTHORS, REPORTING BUGS, COPYRIGHT. Задача явно не сформулирована — анализ спеки как таковой.\n\n[ROUTE] stage4 → stage3. research_first=false, parallel_stages=false, subst_count=0. task_type=spec → обязательны [MATRIX] + [INTERSECTION_RISKS]; [CHANGELOG] не требуется (не v1→v2).\n\n[CONCLUSION] Спека описывает рабочую обёртку с разумными дефолтами, но содержит **1 критическую** (инъекция через `--curl-options`), **6 важных** и **2 опциональных** находки. Ключевые пробелы: контракт exit-кода, агрегация частичных отказов, санитизация filename, маскирование секретов в `--dry-run`. Поведение недетерминировано между средами из-за версионных гейтов curl (7.66 / 7.83 / 8.16). Признаков явного контракта exit-кода в материале не найдено (VERIFY: не проверялось вне спеки).\n\n[RISK_NODES]\n- **RN-1** (важно): неявное допущение о новой версии curl — молчаливая деградация.\n- **RN-2** (важно): «sane defaults» не универсальны (resume/auth/proxy/globbing).\n- **RN-4** (важно): «simple wrapper» vs whitespace-split `--curl-options` — простота декларируемая.\n- **RN-5** (важно): дефолт `--no-clobber` противоречит примеру resume (`--clobber`).\n- **RN-6** (важно): нет контракта exit-кода и агрегации частичных отказов.\n- **RN-8** (важно): retries включены, но число/стратегия не документированы.\n- **RN-10** (важно, повышен из опционально по CoVe): гонка перезаписи на curl < 7.83.0.\n- **RN-11** (важно): обновление curl меняет дефолты без изменения вызова wcurl.\n- **RN-3, RN-7, RN-9** (опционально): конкуренция с curl/trurl, лимит 5 соединений, суффиксация имён.\n\n[PLAN_B]\n- RN-1: явная проверка версии curl при старте; warn/fail при отсутствии требуемых флагов.\n- RN-2: документировать матрицу сценариев (resume/auth/proxy) с рекомендованными `--curl-options`.\n- RN-3: обозначить границу применимости wcurl; делегировать сложное curl/trurl.\n- RN-4: парсинг `--curl-options` с учётом кавычек либо явное ограничение простыми флагами.\n- RN-5: ввести флаг `--resume`, инкапсулирующий `--clobber --continue-at -`.\n- RN-6: определить контракт exit-кода и агрегацию статуса при частичном отказе.\n- RN-7: сделать лимит параллелизма настраиваемым флагом wcurl.\n- RN-8: документировать число/стратегию retry и поведение при исчерпании.\n- RN-9: проверять доступность суффиксации (curl ≥ 7.83.0); предупреждать при `--output` + multiple URLs.\n- RN-10: на curl < 7.83.0 — уникальные имена или внешняя блокировка.\n- RN-11: пиновать минимальную версию curl; фиксировать поведение в тестах по версиям.\n- SEC-1: жёсткое отклонение опасных флагов (`--config`, `--output`) в passthrough либо явный opt-in.\n- SEC-2: санитизация производного filename (запрет `/`, `..`, абсолютных путей).\n- SEC-4: ограничить редиректы (`--max-redirs`), запретить downgrade scheme.\n- SECR-1/2: `--config`-файл вместо argv; маскирование секретов в `--dry-run`.\n\n[THREAT_MODEL]\nКомпоненты: wcurl CLI, argv parser, filename derivation, curl binary, filesystem, remote server.\nTrust boundaries: TB-1 (user input → argv assembly), TB-2 (wcurl → curl process), TB-3 (remote server → wcurl/curl), TB-4 (wcurl/curl → filesystem).\nИтого 9 угроз: **1 критическая** (SEC-1 инъекция через `--curl-options`), **6 важных** (SEC-2 path traversal, SEC-4 редиректы/SSRF, SECR-1 argv-утечка, SECR-2 dry-run утечка, STRIDE-E эскалация через `--config`, STRIDE-D заполнение диска), **2 опциональных** (SEC-3 http downgrade, STRIDE-R отсутствие audit log).\nTop-3: SEC-1, SEC-2, SEC-4.\n\n[SILENCE_LAYERS]\n- **input_silence**: нет цифр нагрузки (число URL, размер файлов, частота запусков).\n- **assumption_silence**: предполагается достаточно новый curl; версии не проверяются явно.\n- **consequence_silence**: возможна необратимая перезапись файлов и инъекция флагов; кто — пользователь/автоматизация на недоверенных URL/`--curl-options`.\n\n[INTERSECTION_RISKS]\n- **input_silence × consequence_silence**: отсутствие цифр нагрузки × необратимая перезапись → массовая параллельная загрузка без no-clobber (старый curl) = необратимая потеря данных без предупреждения.\n- **assumption_silence × security**: допущение о новой версии curl × path traversal в filename → на старых curl нет no-clobber и нет санитизации — усиление риска произвольной записи.\n- **security × concurrency**: инъекция через `--curl-options` × параллельные загрузки → подменённый `--output` направляет несколько потоков в один путь — гонка и перезапись.\n\n[ASSEMBLY]\nЯдро: argv parser → URL normalization (percent-encode whitespace, scheme default https, globbing off) → filename derivation (percent-decode, `index.html` fallback) → curl argv assembly (version-gated defaults). Сервис: curl invocation / `--dry-run` print, exit-status propagation, output path resolution. Инфра: curl binary (гейты 7.66 / 7.83 / 8.16), filesystem, shell/argv, `~/.curlrc` + env (`http_proxy`, токены). Критический путь: argv parse → URL normalize → filename derive → curl argv assemble → curl exec → filesystem write. Циклов нет.\n\n[REFACTORING]\nТри опции:\n- **A: Harden-in-place** (2–3 дня) — версия-чек, санитизация filename, маскирование секретов в dry-run, документирование exit-кода, флаг `--resume`. Минимальная поверхность, сохраняет тезис «thin wrapper».\n- **B: Contract-first** (4–6 дней) — A + контракт exit-кода, агрегация per-URL статуса, структурированный лог, дефолты `--max-filesize`/`--max-time`. Automation-friendly, но большая поведенческая поверхность.\n- **C: Delegate complexity** (1–2 дня) — минимальные изменения: только санитизация + version warning; явно делегировать resume/auth/proxy/globbing curl/trurl. Наименьший объём, но RN-5/RN-6/RN-8 остаются открытыми.\n\n[PARALLELS]\n- `trurl` (см. See-also) — параллельный инструмент для URL-манипуляций; та же философия тонкой обёртки.\n- `curl --config` — штатный механизм передачи сложных аргументов; wcurl документирует его как workaround для whitespace.\n- Паттерн «convention-over-configuration» (sane defaults) — как в `wget`, `aria2c`; но там контракт exit-кода определён явно.\n\n[TESTS]\n- Unit: парсинг argv (опции vs URL), whitespace-split `--curl-options`.\n- Unit: деривация filename (percent-decode, `index.html` fallback, `-` case).\n- Unit: санитизация filename (path traversal).\n- Integration: версионные ветки (curl < 7.66, < 7.83, < 8.16, ≥ 8.16).\n- Integration: `--dry-run` вывод и маскирование секретов.\n- Integration: параллельные загрузки и коллизии имён.\n- Edge: несколько `--output` (last wins), multiple URLs + `--output` суффиксация.\n- Edge: resume с `--clobber --continue-at -`.\nПокрытие не заявлено в материале; для каждого версионного шага — минимум 1 тест.\n\n[ACTION]\n- **NOW**: зафиксировать SEC-1 как критическую; не строить `--curl-options` из недоверенного ввода (документировано, но требует enforcement).\n- **TODAY**: добавить санитизацию производного filename (запрет `/`, `..`, абсолютных путей) — закрывает SEC-2.\n- **TOMORROW**: version-check при старте + warn при curl < 7.83.0; маскирование секретов в `--dry-run`.\n- **LATER**: контракт exit-кода и агрегация частичных отказов (опция B); флаг `--resume`; структурированный лог.\n\n[QUESTIONS]\n1. Какой контракт exit-кода ожидается при частичном отказе N URL? (VERIFY: не определено в спеке)\n2. Допустимо ли жёстко отклонять `--config`/`--output` в `--curl-options`, или нужен opt-in? (VERIFY: конфликт SEC-1 vs advanced use cases)\n3. Какая минимальная версия curl поддерживается официально? (VERIFY: не заявлено)\n4. Есть ли тесты в репозитории? (VERIFY: not stated in material)\n5. Как обрабатывается взаимодействие с `~/.curlrc` и env (`http_proxy`, токены)? (VERIFY: SECR-3, не документировано)\n\n[FUNC:FULL]\n\n- **ECON**: effort 2–3 дня (опция A), 4–6 (B), 1–2 (C); cost $0 cloud delta; ROI качественный — закрытие 1 критической + 2 важных находок за 2–3 дня; budget не задан; cost of delay — SEC-1/SEC-2 остаются живыми в каждом релизе, необратимая перезапись на curl < 7.83.0 сохраняется.\n\n- **FAIL**: критическая точка FP-1 (инъекция через `--curl-options`); важные FP-2 (path traversal), FP-3 (перезапись на curl < 7.83.0), FP-4 (неопределённый exit-код), FP-5 (утечка секретов); опциональная FP-6 (редиректы/SSRF). Cascade: инъекция → произвольная запись → потеря данных. Recovery: откат тривиален (wcurl stateless), но перезаписанные файлы не восстановимы.\n\n- **METRICS**: codebase ~150 строк (man page); deps=1 (curl, version-gated); tests — not stated; perf — n/a (делегировано curl); quality — resilience_score 5/10; infra — pool_size n/a, parallelism default 5/host (curl ≥ 8.16.0), timeouts не заданы, retries включены но недокументированы.\n\n- **ALTERNATIVES**: языки — shell (текущий), Python/Go (тяжелее для thin wrapper); фреймворки — n/a; БД — n/a; инфра — n/a (локальный CLI); паттерны — A (harden-in-place), B (contract-first), C (delegate complexity). Рекомендация: A как минимальный scope, B при automation-приоритете.\n\n- **EVOLVE**: coupling 4/10 (тесная связь с curl CLI surface и версиями); abstractions 5/10; feature_add 6/10 (легко добавить флаги); module_replace 7/10; overall 5/10. OCP-нарушение: версионные ветки требуют правок при добавлении фич curl. Friction: whitespace-split `--curl-options` — footgun.\n\n- **COMPARE**: A — 2–3 дня, низкий риск, минимальная сложность; B — 4–6 дней, средний риск, средняя сложность (automation-friendly); C — 1–2 дня, низкий риск, минимальная сложность (но оставляет RN-5/RN-6/RN-8). По критерию loss > risk > money: A оптимальна.\n\n[MANDATORY BASE]\n\n1. **ECONOMICS**: time 2–3 дня (опция A), cost $0 (cloud delta), при условии что engineering rate не задан и ROI оценивается качественно.\n2. **RISKS**: критично — SEC-1 (инъекция через `--curl-options`); важно — SEC-2, SEC-4, RN-5, RN-6, RN-8, RN-10, RN-11; при условии что `--curl-options` может строиться из недоверенного ввода.\n3. **INFRASTRUCTURE**: pool_size=n/a (CLI, без пула), parallelism default 5/host, при условии curl ≥ 8.16.0; на старых версиях лимит не применяется.\n4. **CODE**: change ~150 строк спеки + иллюстративный shell (опция A), при условии что санитизация filename и version-check добавляются в argv assembly.\n5. **ACTION**: now — зафиксировать SEC-1; today — санитизация filename; tomorrow — version-check + маскирование секретов; later — контракт exit-кода, `--resume`, лог.\n6. **TIMELINE**: NOW — фиксация SEC-1; TODAY — санитизация; TOMORROW — version-check + dry-run masking; LATER — контракт exit-кода, `--resume`, структурированный лог.\n7. **PRODUCTION IMPACT**: users N (не задано в материале), deploy window n/a (локальный CLI), rollback тривиален (stateless) — при условии что wcurl не хранит состояния.\n8. **SLO IMPACT**: current n/a, after n/a, при условии что SLO для CLI-обёртки не определены в материале.\n9. **CLOUD COST**: current $0, projected $0, delta ±$0 — при условии отсутствия инфраструктурных изменений.\n10. **ON-CALL**: new alerts n/a для CLI; при интеграции в пайплайны — алерт на ненулевой exit-код и частичные отказы; runbook не задан; escalation n/a.\n\n[MATRIX]\n\n| Dimension | Status | Comment |\n|-----------|--------|---------|\n| Security | FAIL | SEC-1 критическая (инъекция через `--curl-options`); SEC-2 path traversal; SEC-4 редиректы/SSRF. |\n| Facts | OK | Все утверждения выведены из текста man page; версии curl (7.66/7.83/8.16) указаны в спеке. |\n| Logic | OK | Противоречие RN-5 (no-clobber vs resume) — задокументировано как intentional override. |\n| Applicability | WARN | Поведение зависит от версии curl; на старых версиях дефолты молча деградируют. |\n| Effectiveness | OK | Sane defaults покрывают типовые сценарии; сложные кейсы делегируются curl. |\n| Resilience | WARN | resilience_score 5/10; нет контракта exit-кода, нет таймаутов, нет санитизации filename. |\n| Human factor | WARN | Whitespace-split `--curl-options` — footgun; resume требует ручного `--clobber`. |\n| Clarity | OK | Man page структурирован, примеры покрывают основные сценарии. |\n\n[REFLEXION]\n1. **Слабое место**: неопределённость task_type (spec без явного запроса) → **исправлено**: применены обязательные секции для spec ([MATRIX] + [INTERSECTION_RISKS]), [CHANGELOG] опущен (не v1→v2).\n2. **Слабое место**: риск выдумывания чисел (users N, SLO %) → **исправлено**: все неизвестные помечены «не задано в материале» / «n/a» с условием; VERIFY-метки в [QUESTIONS] и [CONCLUSION].\n3. **Слабое место**: конфликт SEC-1 (критично) vs опция A (оставляет passthrough открытым) → **исправлено**: в [PLAN_B] и [COLLISION] зафиксировано приоритетное решение — жёсткое отклонение опасных флагов либо явный opt-in.\n\nИтог: **accepted**\n\n[AUDIT_TRAIL]\ngenerator: Vishap V5.10.7\naudit_id: audit-2026-10-15-9c321d\nmaterial_hash: sha256:7caaa9de6d2f8938ade12cf79b65fdf4702836de307bf4a8fc1ab845f66c4672\nmaterial_hash_full: sha256:7caaa9de6d2f8938ade12cf79b65fdf4702836de307bf4a8fc1ab845f66c4672\npii_detected: true\ncompliance_flags: ['GDPR', '152-ФЗ']\ncompliance_controls: {}\ncompliance_standards: []\ncritique_verdict: REQUIRES_REVIEW\nrisk_verdict: REQUIRES_REVIEW\ncwe_ids: []\nowasp_categories: []\nexploitability_reachable: False\nexploitability_auth_required: False\nexploitability_blast_radius: none\nexploitability_source_count: 0\nexploitability_path: []\ndataflow_path: []\ndataflow_source_count: 0\nanomaly_verdict: NORMAL\nanomaly_count: 0\nanomaly_method: none\nanomaly_top: []\nprovenance_source: manual\nprovenance_commit: \n\n\n[COMPLETENESS]\nlevel: D3\nrequired: 12\nmissing: []\nloss_pct: 0.0%\nmaterial_complete: True\nverdict: ACCEPTABLE\n",
+  "baseline_stats": {
+    "baseline_used": false,
+    "baseline_saved": false,
+    "baseline_path": "",
+    "baseline_save_path": "",
+    "baseline_known": 0,
+    "baseline_new": 11,
+    "baseline_total": 11
+  }
+}

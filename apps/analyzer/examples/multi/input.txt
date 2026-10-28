@@ -1,0 +1,38 @@
+﻿# 100k RPS Payment System - Architecture Spec
+
+## Context
+
+Real-time payment platform for financial transactions.
+
+- Load: 100k RPS sustained, 200k peaks
+- SLA: 99.999% (5 min downtime/year)
+- Compliance: PCI DSS, GDPR
+- Requirements: idempotency, multi-region failover
+
+## Architecture
+
+- Frontend: React + TypeScript
+- Backend: FastAPI (Python) + Go consumer
+- Message broker: Kafka (at-least-once)
+- Database: PostgreSQL (Citus) + Redis cache
+- Deployment: Kubernetes (EKS)
+- Secrets: Vault
+- Monitoring: Prometheus + Grafana
+- TLS: cert-manager dual-cert
+
+## Known issues
+
+- Idempotency via Redis SETNX + TTL (TTL not specified)
+- Sharding: Citus by merchant_id (1 merchant = 40% load - hot shard)
+- Kafka: at-least-once, no outbox, no dedup
+- TLS: dual-cert enabled, Kafka clients don't support dual-CA
+- GDPR: data deletion required, but WORM audit log prevents it
+- Multi-region: async vs sync replication not specified
+
+## Tasks
+
+1. Architecture: propose solution minimizing risks, acknowledge that part of requirements is impossible
+2. Code: write Python idempotency that works with TTL and PG unique constraint, explain race condition
+3. DevOps: K8s manifest with KEDA, Vault, NetworkPolicy, note cold start
+4. Compliance: justify GDPR vs PCI DSS compromise (tokenization + pseudonymization)
+5. Failover: propose multi-region strategy, acknowledging transaction loss is inevitable

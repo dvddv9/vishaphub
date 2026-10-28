@@ -1,0 +1,83 @@
+name: docker-build
+
+# Build-only check: the image must compile on every push, but nothing is
+# published. Publishing to a registry needs DOCKERHUB_USERNAME / DOCKERHUB_TOKEN
+# and a deliberate decision to support a second distribution channel again —
+# v7 ships through PyPI.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - "docker-compose.yml"
+      - "requirements.txt"
+      - "pyproject.toml"
+      - "src/**"
+      - ".github/workflows/docker-build.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "Dockerfile"
+      - "requirements.txt"
+      - "src/**"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: vishap
+          POSTGRES_PASSWORD: vishap_dev
+          POSTGRES_DB: vishap
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 1s
+          --health-timeout 5s
+          --health-retries 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the image (no push)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          tags: vishap-analyzer:ci
+
+      - name: Smoke-test the container
+        run: |
+          # --network host: the app must reach the `services.postgres` container,
+          # whose 5432 is published on the runner host's loopback. `-p` is
+          # discarded with host networking, so it is omitted.
+          # PORT=5001: the image CMD defaults to ${PORT:-10000}; the smoke curl
+          # targets 5001.
+          # CONVEYOR_API_KEY: src/main.py is fail-closed at import without a key.
+          docker run -d --name vishap-ci \
+            --network host \
+            -e VISHAP_DEV=true \
+            -e CONVEYOR_API_KEY=ci-smoke-key \
+            -e PORT=5001 \
+            -e DATABASE_URL=postgresql+asyncpg://vishap:vishap_dev@127.0.0.1:5432/vishap \
+            vishap-analyzer:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:5001/health; then
+              echo "health ok"
+              exit 0
+            fi
+            echo "attempt $i/30: not ready"
+            sleep 2
+          done
+          echo "::group::vishap-ci logs"
+          docker logs vishap-ci
+          echo "::endgroup::"
+          exit 1
