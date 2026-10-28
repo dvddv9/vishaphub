@@ -73,7 +73,7 @@
     <section class="panel">
       <div class="k">talk to Vishap</div>
       <div class="chat" id="chat">
-        <div class="msg sys">Your key stays in this browser. Without it I answer from a local script.</div>
+        <div class="msg sys">I answer with the hub’s own key. Bring yours only if you want the run to be yours.</div>
       </div>
       <div class="composer">
         <textarea id="text" rows="1" placeholder="write, or press the mic and speak…"></textarea>
@@ -90,12 +90,12 @@
 
     <section class="panel">
       <div class="k">your model key</div>
-      <input id="key" type="password" placeholder="sk-ant-… (kept in localStorage)">
+      <input id="key" type="password" placeholder="sk-ant-… (optional, kept in this browser)">
       <div class="row" style="margin-top:10px">
         <button id="save" class="ghost">save</button>
         <button id="clear" class="ghost">clear</button>
       </div>
-      <div class="hint">The hub holds no key of its own: nothing is spent unless you bring one.</div>
+      <div class="hint">Optional. Without a key the hub answers with its own — your run stays on the server, not in your name.</div>
 
       <div class="k" style="margin-top:18px">or run the pipeline</div>
       <textarea id="material" rows="4" placeholder="paste code, a spec or logs…"></textarea>
