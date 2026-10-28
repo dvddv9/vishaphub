@@ -1,6 +1,8 @@
 import re
 import unittest
 
+from tests import helpers  # noqa: F401  (puts src on the path)
+
 from generator.config import PROMPTS_DIR
 from generator.pipeline import generate, textcheck
 from generator.pipeline.prompts import load_prompt, system_prompt

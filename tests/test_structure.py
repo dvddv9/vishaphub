@@ -1,5 +1,7 @@
 import re
 import unittest
+
+from tests import helpers  # noqa: F401  (puts src on the path)
 from pathlib import Path
 
 from generator import __version__
