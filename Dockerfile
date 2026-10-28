@@ -5,7 +5,7 @@ ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
 
 COPY pyproject.toml README.md ./
 COPY src/ ./src/
-RUN pip install --no-cache-dir .
+# pytest is what the behaviour stage runs; without it every deliverable would look broken.\nRUN pip install --no-cache-dir . pytest
 
 RUN useradd -m -u 1000 validator
 USER validator
