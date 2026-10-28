@@ -158,7 +158,7 @@ def cmd_prove(args):
     """Run probes against the handlers in a file (and optionally compare a patched version)."""
     from src.tools.proof import prove_cli
 
-    sys.exit(prove_cli(args.input, patched=args.patched, unisolated=args.unisolated))
+    sys.exit(prove_cli(args.input, patched=args.patched, unisolated=args.unisolated, answers=args.answers))
 
 
 def cmd_scan(args):
@@ -253,6 +253,8 @@ def main():
     p_prove.add_argument("--patched", metavar="PATH", help="Compare with a patched version: did the fix close the exploits?")
     p_prove.add_argument("--unisolated", action="store_true",
                          help="Allow running without bubblewrap. Only for code you would run anyway.")
+    p_prove.add_argument("--answers", metavar="FILE",
+                         help="JSON with answers to the questions of an earlier run: {\"<question_id>\": \"<option key>\"}")
     p_prove.set_defaults(func=cmd_prove)
 
     p_scan = sub.add_parser("scan", help="Scan a directory or a diff with the built-in rules (no LLM)")
