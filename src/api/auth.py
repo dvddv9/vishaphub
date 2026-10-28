@@ -58,19 +58,28 @@ async def verify_api_key(x_api_key: str = Header(default="")) -> None:
         await verify_tenant_api_key(x_api_key)
         return
 
-    if not API_KEY:
-        # Same documented test switch as the import-time gate in src/main.py:
-        # VISHAP_ALLOW_NO_KEY=1 means "trusted loopback-only test environment".
-        if os.getenv("VISHAP_ALLOW_NO_KEY", "").strip().lower() in _TRUE_VALUES:
-            return
-        raise RuntimeError("CONVEYOR_API_KEY/API_KEY is required (fail-closed)")
+    # The rule itself lives in vishap-core, so every service answers the same way
+    # and a change in the rule is a change in one place.
+    from core import Decision, KeyPolicy, check_key
 
-    if os.getenv("VISHAP_PUBLIC_DEMO", "").strip().lower() in _TRUE_VALUES:
-        # Open demo: the server's own model pays for the call, so the caller needs
-        # no key. The daily limiter on /analyze is what bounds the spend.
+    decision = check_key(
+        x_api_key,
+        KeyPolicy(
+            expected_key=API_KEY,
+            # Same documented test switch as the import-time gate in src/main.py:
+            # VISHAP_ALLOW_NO_KEY=1 means "trusted loopback-only test environment".
+            allow_no_key=os.getenv("VISHAP_ALLOW_NO_KEY", "").strip().lower() in _TRUE_VALUES,
+            # Open demo: the server's own model pays for the call, so the caller needs
+            # no key. The daily limiter on /analyze is what bounds the spend.
+            public_demo=os.getenv("VISHAP_PUBLIC_DEMO", "").strip().lower() in _TRUE_VALUES,
+        ),
+    )
+
+    if decision is Decision.ALLOW:
         return
-
-    if not x_api_key:
+    if decision is Decision.UNAVAILABLE:
+        raise RuntimeError("CONVEYOR_API_KEY/API_KEY is required (fail-closed)")
+    if decision is Decision.MISSING:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="X-API-Key header required",
