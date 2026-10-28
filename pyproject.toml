@@ -1,7 +1,7 @@
 [project]
 name = "vishap-validator"
-version = "0.1.0"
-description = "Validates generated code against the spec it was generated from: structure, syntax, contract, behaviour."
+version = "0.2.0"
+description = "Validates generated code against the spec it was generated from: six stages, one verdict."
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "AGPL-3.0-or-later"}
@@ -19,3 +19,6 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+validator = ["web/*.html"]

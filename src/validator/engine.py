@@ -15,10 +15,10 @@ Verdict rules:
 """
 from __future__ import annotations
 
-from .checks import behavior, contract, structure, syntax
+from .checks import behavior, conformance, contract, coverage, structure, syntax
 from .models import CheckResult, Report, Severity, Spec, Verdict
 
-ORDER = (structure, syntax, contract, behavior)
+ORDER = (structure, syntax, contract, coverage, behavior, conformance)
 STOP_ON_FAILURE = {"structure", "syntax"}
 
 

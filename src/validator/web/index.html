@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vishap Validator — does the code do what the spec promised</title>
+<style>
+  :root{
+    --bg:#0a0c0b; --panel:#111614; --line:#1d2724; --ink:#e6ece9; --dim:#8b9a94;
+    --accent:#c9a227; --ok:#57c785; --warn:#e0a54a; --bad:#e0645c;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:
+      radial-gradient(1100px 520px at 82% -8%,rgba(201,162,39,.10),transparent 60%),
+      radial-gradient(900px 420px at 0% 100%,rgba(87,199,133,.06),transparent 55%),var(--bg);
+    color:var(--ink);font:15px/1.65 var(--mono);min-height:100vh}
+  .wrap{max-width:1080px;margin:0 auto;padding:44px 24px 80px}
+  header{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:18px}
+  h1{font-size:22px;font-weight:600;margin:0;letter-spacing:.01em}
+  h1 span{color:var(--accent)}
+  .tag{font-size:12px;color:var(--dim);border:1px solid var(--line);border-radius:999px;padding:2px 10px}
+  .lead{color:var(--dim);max-width:66ch;margin:18px 0 30px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:820px){.grid{grid-template-columns:1fr}}
+  .panel{background:linear-gradient(180deg,rgba(255,255,255,.02),transparent),var(--panel);
+    border:1px solid var(--line);border-radius:14px;padding:18px}
+  .panel h2{font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:var(--dim);margin:0 0 12px;font-weight:500}
+  #drop{border:1px dashed #2a3a35;border-radius:10px;padding:26px 16px;text-align:center;color:var(--dim);cursor:pointer;transition:.15s}
+  #drop.hot{border-color:var(--accent);color:var(--ink);background:rgba(201,162,39,.05)}
+  #drop b{color:var(--ink)}
+  .files{margin-top:12px;font-size:13px;color:var(--dim);max-height:150px;overflow:auto}
+  .files div{display:flex;justify-content:space-between;border-bottom:1px dotted #1b2522;padding:3px 0}
+  textarea{width:100%;min-height:150px;background:#0c100f;color:var(--ink);border:1px solid var(--line);
+    border-radius:10px;padding:12px;font:13px/1.55 var(--mono);resize:vertical}
+  .row{display:flex;gap:10px;align-items:center;margin-top:16px;flex-wrap:wrap}
+  button{background:var(--accent);color:#141005;border:0;border-radius:10px;padding:11px 20px;
+    font:600 14px var(--mono);cursor:pointer;transition:.15s}
+  button:hover{filter:brightness(1.08)}
+  button:disabled{opacity:.45;cursor:default}
+  button.ghost{background:transparent;color:var(--dim);border:1px solid var(--line)}
+  .stages{display:flex;flex-direction:column;gap:8px;margin-top:6px}
+  .stage{display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:center;
+    padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:#0c100f;opacity:.85}
+  .stage .dot{width:9px;height:9px;border-radius:50%;background:#31403b}
+  .stage.ok .dot{background:var(--ok);box-shadow:0 0 10px rgba(87,199,133,.6)}
+  .stage.fail .dot{background:var(--bad);box-shadow:0 0 10px rgba(224,100,92,.65)}
+  .stage.skip .dot{background:#4c5a55}
+  .stage .name{color:var(--ink)}
+  .stage .state{font-size:12px;color:var(--dim)}
+  .verdict{margin-top:16px;padding:16px;border-radius:12px;border:1px solid var(--line);background:#0c100f}
+  .verdict .big{font-size:26px;font-weight:700;letter-spacing:.04em}
+  .verdict.PASS .big{color:var(--ok)} .verdict.NEEDS_REVIEW .big{color:var(--warn)}
+  .verdict.FAIL .big,.verdict.ERROR .big{color:var(--bad)}
+  .verdict .why{color:var(--dim);font-size:13px;margin-top:4px}
+  .finding{font-size:13px;padding:7px 0;border-bottom:1px dotted #1b2522;color:#c8d3cf}
+  .finding b{color:var(--warn);font-weight:600}
+  .finding .loc{color:var(--dim)}
+  .hint{font-size:12px;color:var(--dim);margin-top:10px}
+  a{color:var(--accent);text-decoration:none}
+  footer{margin-top:36px;border-top:1px solid var(--line);padding-top:14px;color:var(--dim);font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Vishap <span>Validator</span></h1>
+    <span class="tag">six stages</span>
+    <span class="tag">does the code do what the spec promised</span>
+  </header>
+
+  <p class="lead">
+    Not an analyser: it does not ask «is it dangerous». It asks «does it match the promise» —
+    files, names, tests, and whether a public function is real or a stub wearing a name.
+  </p>
+
+  <div class="grid">
+    <section class="panel">
+      <h2>1 · deliverable</h2>
+      <div id="drop">
+        drop <b>.py</b> files here, or <b>click to choose</b><br>
+        <span style="font-size:12px">they are sent as text, nothing is stored</span>
+      </div>
+      <input id="picker" type="file" multiple accept=".py,.txt,.md,.json,.toml" style="display:none">
+      <div class="files" id="files"></div>
+      <div class="hint">Everything stays in this request: the server writes a temp dir and deletes it.</div>
+    </section>
+
+    <section class="panel">
+      <h2>2 · spec</h2>
+      <textarea id="spec" spellcheck="false">{
+  "entry": "calc",
+  "files": ["calc/__init__.py", "test_calc.py"],
+  "exports": ["add"],
+  "tests": ["test_calc.py"]
+}</textarea>
+      <div class="row">
+        <button id="run">Check</button>
+        <button id="example" class="ghost">load example</button>
+      </div>
+      <div class="hint">Unknown spec keys are rejected: a typo must not silently disable a check.</div>
+    </section>
+  </div>
+
+  <section class="panel" style="margin-top:18px">
+    <h2>3 · result</h2>
+    <div class="stages" id="stages"></div>
+    <div id="out"></div>
+  </section>
+
+  <footer>
+    <a href="https://github.com/dvddv9/vishap-validator">github.com/dvddv9/vishap-validator</a> ·
+    a crash is <b>ERROR</b>, never <b>PASS</b> ·
+    <span id="ver"></span>
+  </footer>
+</div>
+
+<script>
+const STAGES = ["structure","syntax","contract","coverage","behavior","conformance"];
+const $ = (id) => document.getElementById(id);
+let files = {};
+
+function paintStages(state){
+  $("stages").innerHTML = STAGES.map(name => {
+    const s = state[name] || "";
+    const label = s === "ok" ? "ok" : s === "fail" ? "failed" : s === "skip" ? "skipped" : "waiting";
+    return `<div class="stage ${s}"><span class="dot"></span><span class="name">${name}</span><span class="state">${label}</span></div>`;
+  }).join("");
+}
+
+function listFiles(){
+  $("files").innerHTML = Object.keys(files).sort()
+    .map(n => `<div><span>${n}</span><span>${files[n].length} chars</span></div>`).join("");
+}
+
+async function addFiles(fileList){
+  for (const f of fileList){
+    const text = await f.text();
+    files[f.webkitRelativePath || f.name] = text;
+  }
+  listFiles();
+}
+
+$("drop").onclick = () => $("picker").click();
+$("picker").onchange = (e) => addFiles(e.target.files);
+["dragenter","dragover"].forEach(ev => $("drop").addEventListener(ev, e => { e.preventDefault(); $("drop").classList.add("hot"); }));
+["dragleave","drop"].forEach(ev => $("drop").addEventListener(ev, e => { e.preventDefault(); $("drop").classList.remove("hot"); }));
+$("drop").addEventListener("drop", e => addFiles(e.dataTransfer.files));
+
+$("example").onclick = () => {
+  files = {
+    "calc/__init__.py": "def add(a, b):\n    return a + b\n",
+    "test_calc.py": "from calc import add\n\n\ndef test_add():\n    assert add(2, 3) == 5\n"
+  };
+  listFiles();
+};
+
+$("run").onclick = async () => {
+  let spec;
+  try { spec = JSON.parse($("spec").value); }
+  catch (e) { $("out").innerHTML = `<div class="verdict FAIL"><div class="big">SPEC</div><div class="why">spec is not JSON: ${e.message}</div></div>`; return; }
+
+  const btn = $("run"); btn.disabled = true;
+  paintStages({});
+  $("out").innerHTML = `<div class="hint">checking…</div>`;
+
+  try {
+    const res = await fetch("/check", {method:"POST", headers:{"content-type":"application/json"},
+      body: JSON.stringify({files, spec})});
+    const data = await res.json();
+    if (data.error){ $("out").innerHTML = `<div class="verdict ERROR"><div class="big">REFUSED</div><div class="why">${data.error}</div></div>`; return; }
+
+    const state = {};
+    for (const c of data.checks) state[c.name] = c.skipped ? "skip" : (c.ok ? "ok" : "fail");
+    paintStages(state);
+
+    const findings = data.checks.flatMap(c => c.findings.map(f => ({...f, check:c.name})));
+    $("out").innerHTML = `
+      <div class="verdict ${data.verdict}">
+        <div class="big">${data.verdict}</div>
+        <div class="why">${data.reason || "all six stages passed"}</div>
+      </div>
+      ${findings.length ? `<div style="margin-top:14px">${findings.map(f =>
+        `<div class="finding"><b>${f.severity}</b> · ${f.check}: ${f.message} <span class="loc">${f.location||""}</span></div>`).join("")}</div>` : ""}`;
+  } catch (e) {
+    $("out").innerHTML = `<div class="verdict ERROR"><div class="big">ERROR</div><div class="why">${e.message}</div></div>`;
+  } finally { btn.disabled = false; }
+};
+
+paintStages({});
+fetch("/health").then(r => r.json()).then(d => { $("ver").textContent = "v" + d.version; }).catch(()=>{});
+</script>
+</body>
+</html>
