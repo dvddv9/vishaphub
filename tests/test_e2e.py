@@ -29,7 +29,7 @@ class FakeModel:
             def do_POST(self):
                 n = int(self.headers.get("Content-Length", 0))
                 req = json.loads(self.rfile.read(n))
-                if req["messages"][0]["content"].startswith("You compare a specification text"):
+                if req["messages"][0]["content"].startswith("# VISHAP GENERATOR — STAGE 2"):
                     text = '{"uncovered": []}'
                 else:
                     fake.seen.append(req)

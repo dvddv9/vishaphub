@@ -1,17 +1,16 @@
 # Prompts
 
-The model is called in three places; each has its own file. The file is the whole prompt:
-the code adds only the data (spec text, requirements, problems) in the user message.
+Модель вызывается в трёх местах; у каждого свой файл. Файл — весь промпт: код добавляет в сообщение пользователя только данные (текст spec, требования, проблемы). Стиль и разделы как у промптов Vishap: Вход, Что делать, Самопроверка, Выход — JSON, Что запрещено, Тон.
 
-| File | Stage | Used by |
+| Файл | Этап | Кем используется |
 |---|---|---|
-| `00_rules.md` | all | appended to every system prompt |
-| `02_design_textcheck.md` | 2 Design | `pipeline/textcheck.py` — free text against the numbered requirements (report only) |
-| `03_build.md` | 3 Build | `pipeline/generate.py` — write the files |
-| `03_build_repair.md` | 3 Build | `pipeline/generate.py` — fix them after Verify (user message, not system) |
+| `00_rules.md` | все | добавляется в конец каждого системного промпта |
+| `02_design_textcheck.md` | 2 Design | `pipeline/textcheck.py`: свободный текст против требований (только отчёт) |
+| `03_build.md` | 3 Build | `pipeline/generate.py`: написать файлы; описывает, как Verify их проверит |
+| `03_build_repair.md` | 3 Build | `pipeline/generate.py`: исправить после Verify (идёт в сообщении пользователя) |
 
-Intake (1), Verify (4) and Deliver (5) have no prompt on purpose: they are deterministic code,
-so their verdicts do not depend on a model.
+Intake (1), Verify (4) и Deliver (5) без промпта намеренно: это детерминированный код, их вердикт не зависит от модели.
 
-Data from the user goes between random `VG_<LABEL>_<hex>` markers (`pipeline/prompts.py`), so
-text inside a spec cannot close the block and pass for instructions.
+Данные пользователя идут между случайными маркерами `VG_<ЯРЛЫК>_<hex>` (`pipeline/prompts.py`), поэтому текст внутри spec не может закрыть блок и сойти за инструкцию.
+
+Промпт ссылается на то, что Verify реально делает (набор атак, `fullmatch`, порог 80%, правила `sql-from-input` и `log-raw-input`). Если меняешь Verify, меняй и `03_build.md`; `tests/test_prompts.py` ловит часть расхождений.

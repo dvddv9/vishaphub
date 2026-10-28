@@ -21,7 +21,7 @@ def answer(code):
 class Stub:
     """A chat function that returns the given answers in order."""
 
-    TEXT_CHECK = "You compare a specification text"
+    TEXT_CHECK = "# VISHAP GENERATOR — STAGE 2"
 
     def __init__(self, *answers, text_answer='{"uncovered": []}'):
         self.answers, self.calls = list(answers), []

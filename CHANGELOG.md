@@ -2,6 +2,18 @@
 
 All notable changes to vishap-generator. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.4.1] - 2026-10-28
+
+### Changed
+- The prompts are rewritten at the depth of Vishap's: sections Вход, Что делать, Самопроверка, Выход — JSON, Что запрещено, Тон, in Russian like Vishap's. `03_build.md` now tells the model exactly how Verify checks its answer (the rejected inputs Verify sends, `re.fullmatch` instead of `$`, no database and no network in tests, one route, the `sql-from-input` and `log-raw-input` rules, 80% coverage, the `# assumption:` marker). `03_build_repair.md` explains the problem lines of the repair round.
+- The JSON contract of every prompt is unchanged, so the parsers did not change.
+
+### Added
+- Tests that keep the build prompt in step with Verify (coverage threshold, rejected input kinds, rule ids, test names) and check the section layout of each prompt.
+
+### Not checked
+- The new prompts were not run against a real model in this session (no key here); run `generate examples/spec-clean.yaml --out out/ --gate` once and compare with the earlier run (2 repair rounds).
+
 ## [0.4.0] - 2026-10-28
 
 ### Changed

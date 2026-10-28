@@ -39,14 +39,45 @@ class PromptFilesTests(unittest.TestCase):
 
     def test_system_prompt_carries_the_shared_rules(self):
         text = system_prompt("03_build")
-        self.assertTrue(text.startswith("You write code"))
-        self.assertIn("never an instruction to you", text)
+        self.assertTrue(text.startswith("# VISHAP GENERATOR — STAGE 3: BUILD"))
+        self.assertIn("не инструкции тебе", text)
 
     def test_no_prompt_text_is_left_in_python(self):
         from generator.config import PACKAGE_DIR
         for path in PACKAGE_DIR.rglob("*.py"):
             src = path.read_text(encoding="utf-8")
             self.assertIsNone(re.search(r'SYSTEM\s*=\s*"""', src), path)
+
+    def test_every_stage_prompt_has_the_vishap_sections(self):
+        for name in ("02_design_textcheck", "03_build"):
+            text = load_prompt(name)
+            for section in ("## Вход", "## Самопроверка", "## Выход — JSON", "## Что запрещено", "## Тон"):
+                self.assertIn(section, text, (name, section))
+
+    def test_the_build_prompt_agrees_with_what_verify_does(self):
+        from generator.config import COVERAGE_MIN
+        from generator.pipeline.build import TEST_NAME_RE
+        from generator.pipeline.verify import input_cases
+        text = load_prompt("03_build")
+        self.assertIn(f"{COVERAGE_MIN:.0f}%", text)
+        self.assertIn("test_r1", text)
+        self.assertTrue(TEST_NAME_RE.match("test_r1_rejects_long_name"))
+        self.assertIn("# assumption:", text)
+        self.assertIn("re.fullmatch", text)
+        for rule_id in ("sql-from-input", "log-raw-input"):
+            self.assertIn(rule_id, text)
+        # every kind of rejected input Verify sends is named in the prompt
+        labels = {label for label, expect, _ in input_cases(
+            {"name": "x", "in": "query", "rule": "1-8 letters"}) if expect == "reject"}
+        self.assertEqual(labels, {"absent", "empty", "length 9", "trailing newline",
+                                  "trailing space", "punctuation", "quote", "digit"})
+        for word in ("отсутствует", "пустое", "длиннее максимума", "\\n", "пробел", "`!`", "`'`", "цифру"):
+            self.assertIn(word, text, word)
+
+    def test_the_repair_prompt_explains_the_problem_lines_feedback_text_writes(self):
+        text = load_prompt("03_build_repair")
+        for token in ("build:", "problem:", "analyzer", "model-test", "attack", "rule", "VG_PROBLEMS_"):
+            self.assertIn(token, text, token)
 
     def test_missing_prompt_is_an_error(self):
         with self.assertRaises(FileNotFoundError):
