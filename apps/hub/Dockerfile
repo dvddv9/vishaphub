@@ -14,8 +14,11 @@ COPY apps/validator/ ./apps/validator/
 COPY apps/analyzer/ ./apps/analyzer/
 COPY apps/hub/ ./apps/hub/
 
-RUN pip install --no-cache-dir -e ./packages/core -e ./apps/validator \
-    && pip install --no-cache-dir -r ./apps/analyzer/requirements.txt \
+# The analyser's requirements still name vishap-core as a git dependency; in this
+# image core is a local package, so that line is dropped before pip runs.
+RUN grep -v '^vishap-core' ./apps/analyzer/requirements.txt > /tmp/analyzer-reqs.txt \
+    && pip install --no-cache-dir -e ./packages/core -e ./apps/validator \
+    && pip install --no-cache-dir -r /tmp/analyzer-reqs.txt \
     && pip install --no-cache-dir -e ./apps/analyzer --no-deps \
     && pip install --no-cache-dir -e ./apps/hub \
     && pip install --no-cache-dir edge-tts pytest
