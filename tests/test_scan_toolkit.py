@@ -154,6 +154,7 @@ def test_probes_confirm_planted_bugs_in_isolation():
         doc = proof.prove(PLANTED, findings)
     finally:
         os.environ.pop("VISHAP_PROVE", None)
+    assert not doc.get("error"), doc.get("error")
     assert doc["isolation"] == "bwrap"
     confirmed = {(r["function"], r["check"]) for r in doc["results"] if r["status"] == "CONFIRMED"}
     assert {("get_user", "sqli"), ("download", "traversal"), ("transfer", "auth"), ("transfer", "amount")} <= confirmed
@@ -171,9 +172,10 @@ def test_fixed_app_has_no_confirmed_exploit_and_patch_is_verified():
         noop = proof.verify_patch(PLANTED, PLANTED)
     finally:
         os.environ.pop("VISHAP_PROVE", None)
+    assert not doc.get("error"), doc.get("error")
     assert not [r for r in doc["results"] if r["status"] == "CONFIRMED"]
-    assert verdict["verdict"] == "CLOSES_EXPLOITS" and not verdict["regressions"]
-    assert noop["verdict"] == "NO_EFFECT"
+    assert verdict["verdict"] == "CLOSES_EXPLOITS" and not verdict["regressions"], verdict
+    assert noop["verdict"] == "NO_EFFECT", noop
 
 
 def test_verify_patch_rejects_code_that_does_not_parse():
@@ -192,6 +194,7 @@ def test_a_handler_whose_file_needs_an_unset_env_var_is_still_probed():
         doc = proof.prove(code)
     finally:
         os.environ.pop("VISHAP_PROVE", None)
+    assert not doc.get("error"), doc.get("error")
     assert doc["handlers"] == 1
 
 

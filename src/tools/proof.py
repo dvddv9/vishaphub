@@ -109,12 +109,20 @@ def _run_harness(code: str, timeout: int = 20, force: bool = False) -> dict:
             env = _sandbox_env(tmp)
         except Exception:
             env = {"PATH": os.environ.get("PATH", ""), "VISHAP_SANDBOX": "1"}
-        cmd = [sys.executable, "-I", str(HARNESS), str(target)]
+        # A virtualenv lives under /home, which the sandbox hides. The harness is stdlib-only, so run it with
+        # the real interpreter (venv python is a symlink) and, if that interpreter itself lives under /home or
+        # /root (pyenv, uv), put just its prefix back read-only.
+        exe = os.path.realpath(sys.executable)
+        cmd = [exe, "-I", str(HARNESS), str(target)]
         kw: dict = {}
         if level == "bwrap":
+            visible = []
+            for d in {os.path.realpath(sys.base_prefix), os.path.dirname(exe)}:
+                if d.startswith(("/home/", "/root/")):
+                    visible += ["--ro-bind", d, d]
             cmd = ["bwrap", "--unshare-all", "--die-with-parent", "--new-session", "--ro-bind", "/", "/",
-                   "--tmpfs", "/root", "--tmpfs", "/home", "--bind", tmp, tmp, "--dev", "/dev", "--proc", "/proc",
-                   "--chdir", tmp] + cmd
+                   "--tmpfs", "/root", "--tmpfs", "/home"] + visible + [
+                   "--bind", tmp, tmp, "--dev", "/dev", "--proc", "/proc", "--chdir", tmp] + cmd
         elif level == "unshare":
             cmd = ["unshare", "--net", "--map-root-user"] + cmd
         if os.name == "posix":
