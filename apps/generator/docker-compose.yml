@@ -18,8 +18,8 @@ services:
     environment:
       - GENERATOR_API_TOKEN=${GENERATOR_API_TOKEN:?set GENERATOR_API_TOKEN}
       - VISHAP_LLM_PROVIDER=custom
-      - CUSTOM_LLM_URL=${CUSTOM_LLM_URL:-https://api.deepseek.com}
-      - CUSTOM_LLM_MODEL=${CUSTOM_LLM_MODEL:-deepseek-flash}
+      - CUSTOM_LLM_URL=${CUSTOM_LLM_URL:-https://api.anthropic.com/v1}
+      - CUSTOM_LLM_MODEL=${CUSTOM_LLM_MODEL:-claude-sonnet-5-5}
       - CUSTOM_LLM_KEY=${CUSTOM_LLM_KEY:-}
       - CUSTOM_LLM_THINKING=${CUSTOM_LLM_THINKING:-disabled}
     read_only: true

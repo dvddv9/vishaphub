@@ -20,9 +20,9 @@ services:
       - key: GENERATOR_API_TOKEN
         sync: false
       - key: CUSTOM_LLM_URL
-        value: https://api.deepseek.com
+        value: https://api.anthropic.com/v1
       - key: CUSTOM_LLM_MODEL
-        value: deepseek-flash
+        value: claude-sonnet-5-5
       - key: CUSTOM_LLM_THINKING
         value: disabled
       - key: CUSTOM_LLM_KEY
