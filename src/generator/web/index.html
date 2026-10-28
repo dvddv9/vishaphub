@@ -609,7 +609,7 @@ function pageRun(id) {
   return el("main", { class: "wrap" },
     el("div", { class: "head" }, el("a", { class: "btn mini", href: "#/" }, "← Dashboard"), el("h1", null, run.name),
       run.mode === "check" ? badge("neutral", "spec check") : badge(run.verdict), el("span", { class: "muted", style: "font-size:.8rem" }, ago(run.time)),
-      el("span", { class: "spacer" }, el("button", { class: "btn mini", onclick: () => { app.draft = { spec: run.spec }; location.hash = "#/generate"; } }, "Edit the spec and run again"))),
+      el("span", { class: "spacer" }, el("button", { class: "btn mini", onclick: () => { app.draft = { spec: run.spec }; location.hash = "#/generate"; } }, (app.status && app.status.check_only ? "Edit the spec and check again" : "Edit the spec and run again")))),
     r.error ? el("p", { class: "err", style: "margin-top:1rem", role: "alert" }, r.error) : null,
     tabsEl, panel);
 }

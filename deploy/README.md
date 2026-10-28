@@ -28,6 +28,8 @@ visitor sends is run as code, so the missing isolation of Verify does not apply.
 without a token in this mode only; the Host and Origin check still accepts just this server's own names
 (`RENDER_EXTERNAL_HOSTNAME`, which Render sets, and `GENERATOR_PUBLIC_HOSTS` for a custom domain).
 
+Live: https://vishap-generator.onrender.com/
+
 Render: New > Blueprint > pick the repository > Apply. The free plan sleeps after 15 minutes without a request
 and wakes on the next one (about a minute). The request limit counts the proxy's address, so it is one shared
 bucket (`GENERATOR_RATE_LIMIT`, 60 a minute here).
