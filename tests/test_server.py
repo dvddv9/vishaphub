@@ -139,7 +139,7 @@ class UiSupportTests(ServerCase):
         status, data = self.req("/api/examples")
         out = json.loads(data)["examples"]
         self.assertEqual(status, 200)
-        self.assertEqual([e["id"] for e in out], ["user-lookup", "with-a-gap", "order-signed-in"])
+        self.assertEqual([e["id"] for e in out], ["user-lookup", "with-a-gap", "order-signed-in", "create-user-json", "item-by-path"])
         self.assertTrue(all("{today}" not in e["spec"] for e in out))
 
     def test_generate_returns_the_diff(self):

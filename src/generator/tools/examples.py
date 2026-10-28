@@ -137,6 +137,98 @@ must_never:
 check: analyzer
 """,
     },
+    {
+        "id": "create-user-json",
+        "title": "Create user (JSON body)",
+        "description": "A POST with the value in a JSON body: Verify attacks body fields as it does query values.",
+        "spec": """\
+version: 1
+updated: {today}
+
+text: |
+  Add an HTTP endpoint POST /user that creates one user from a JSON body
+  {{"username": "..."}}. Called by signed-in users; a name that is taken is refused.
+
+target: python/flask
+kind: http-endpoint
+output: handlers/create_user.py
+caller: signed-in
+route: POST /user
+
+inputs:
+  - name: username
+    in: body
+    rule: "3-32 letters and digits"
+
+outputs:
+  - status: 201
+    body: "json: id, username only"
+  - status: 400
+    when: "invalid username"
+  - status: 401
+    when: "no valid session"
+  - status: 409
+    when: "username is taken"
+
+profile: owasp-asvs-2
+constraints: [include-tests, validate-inputs]
+
+must_never:
+  - id: sql-from-input
+    text: "SQL is never built from the input"
+  - id: log-raw-input
+    text: "Raw input is never logged"
+
+should:
+  - id: audit-create
+    text: "Every created user is written to the audit log"
+
+check: analyzer
+""",
+    },
+    {
+        "id": "item-by-path",
+        "title": "Item by path",
+        "description": "The value is part of the route (GET /item/<id>): Verify fills the placeholder.",
+        "spec": """\
+version: 1
+updated: {today}
+
+text: |
+  Add an HTTP endpoint GET /item/<id> that returns one item by its numeric id.
+  Called by the public web app, without sign-in.
+
+target: python/flask
+kind: http-endpoint
+output: handlers/item.py
+caller: public
+route: GET /item/<id>
+
+inputs:
+  - name: id
+    in: path
+    rule: "1-12 digits"
+
+outputs:
+  - status: 200
+    body: "json: id, title only"
+  - status: 404
+    when: "no such item"
+  - status: 400
+    when: "invalid id"
+
+profile: owasp-asvs-2
+constraints: [include-tests, validate-inputs]
+
+must_never:
+  - id: sql-from-input
+    text: "SQL is never built from the input"
+  - id: log-raw-input
+    text: "Raw input is never logged"
+
+check: analyzer
+""",
+    },
 )
 
 

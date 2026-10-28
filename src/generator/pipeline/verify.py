@@ -38,6 +38,7 @@ from generator.pipeline.design import DesignResult
 from generator.pipeline.intake import Requirement
 from generator.tools.spec import REQUIREMENT_LISTS, Spec
 
+ATTACKED = ("query", "header", "path", "body")      # the kinds of input Verify sends values to
 RULE_RE = re.compile(r"^\s*(\d+)\s*-\s*(\d+)\s+(letters and digits|letters|digits)\s*$", re.I)
 ABSENT = object()
 
@@ -74,10 +75,11 @@ def input_cases(item: dict) -> list[tuple[str, str, object]] | None:
     base = rule.valid(n)
     cases: list[tuple[str, str, object]] = []
     if rule.lo >= 1:
-        cases += [("absent", "reject", ABSENT), ("empty", "reject", "")]
+        # a path value cannot be absent or empty: that is another route, not an invalid value
+        cases += [] if item["in"] == "path" else [("absent", "reject", ABSENT), ("empty", "reject", "")]
     cases.append((f"length {rule.hi + 1}", "reject", rule.valid(rule.hi + 1)))
     if n + 1 <= rule.hi:
-        if item["in"] == "query":
+        if item["in"] in ("query", "path", "body"):
             cases.append(("trailing newline", "reject", base + "\n"))
         cases += [("trailing space", "reject", base + " "),
                   ("punctuation", "reject", base + "!"),
@@ -110,37 +112,68 @@ def _module_name(path: str) -> str:
     return ".".join(PurePosixPath(path).with_suffix("").parts)
 
 
+def default_values(inputs: list[dict]) -> dict[str, str]:
+    """A valid value for every input: what the other inputs carry while one is attacked."""
+    out = {}
+    for i in inputs:
+        r = parse_rule(i.get("rule"))
+        out[i["name"]] = r.valid(max(r.lo, 1)) if r else "a"
+    return out
+
+
+def route_has(route: str | None, name: str) -> bool:
+    """Does the route carry a placeholder for this path input: `<name>`, `<int:name>` or `{name}`?"""
+    if not route:
+        return False
+    return bool(re.search(r"<(?:[A-Za-z_]+:)?" + re.escape(name) + r">|\{" + re.escape(name) + r"\}", route))
+
+
+def make_request(inputs: list[dict], defaults: dict[str, str], rid: str, label: str, expect: str,
+                 target: dict, value, marker: str | None = None) -> dict:
+    """One request for the sandbox: `target` carries `value`, every other input a valid value.
+
+    query and header go as they are; `path` values replace the placeholders of the route; `body` values
+    become one JSON object. An input that is ABSENT is left out of its place.
+    """
+    query, headers, path_values, body = {}, {}, {}, {}
+    for i in inputs:
+        if i["in"] not in ATTACKED:
+            continue
+        v = defaults[i["name"]]
+        if i is target:
+            if value is ABSENT:
+                continue
+            v = value
+        {"query": query, "header": headers, "path": path_values, "body": body}[i["in"]][i["name"]] = v
+    req = {"id": f"{rid}:{label}", "req": rid, "label": label, "expect": expect,
+           "query": query, "headers": headers}
+    if path_values:
+        req["path_values"] = path_values
+    if any(i["in"] == "body" for i in inputs):
+        req["json"] = body
+    if marker:
+        req["marker"] = marker
+    return req
+
+
 def _build_requests(spec: Spec, item_of: dict) -> tuple[list[dict], list[tuple[str, str]], set[int]]:
     inputs = [item for item, _ in spec.items.get("inputs", [])]
     statuses = {o["status"] for o, _ in spec.items.get("outputs", [])}
     reject = (statuses & {400, 422}) or {400, 422}
-    defaults = {}
-    for i in inputs:
-        r = parse_rule(i.get("rule"))
-        defaults[i["name"]] = r.valid(max(r.lo, 1)) if r else "a"
+    defaults = default_values(inputs)
+    route = spec.data.get("route")
 
     def make(rid, label, expect, target, value, marker=None):
-        query, headers = {}, {}
-        for i in inputs:
-            if i["in"] not in ("query", "header"):
-                continue
-            v = defaults[i["name"]]
-            if i is target:
-                if value is ABSENT:
-                    continue
-                v = value
-            (query if i["in"] == "query" else headers)[i["name"]] = v
-        req = {"id": f"{rid}:{label}", "req": rid, "label": label, "expect": expect,
-               "query": query, "headers": headers}
-        if marker:
-            req["marker"] = marker
-        return req
+        return make_request(inputs, defaults, rid, label, expect, target, value, marker)
 
     requests, skipped = [], []
     for rid, (field, item) in item_of.items():
         if field == "inputs":
-            if item["in"] not in ("query", "header"):
-                skipped.append((rid, f"input in {item['in']} is not attacked yet"))
+            if item["in"] not in ATTACKED:
+                skipped.append((rid, f"input in {item['in']} is not attacked"))
+                continue
+            if item["in"] == "path" and not route_has(route, item["name"]):
+                skipped.append((rid, f"the route has no placeholder for the path input {item['name']}"))
                 continue
             cases = input_cases(item)
             if cases is None:
@@ -150,7 +183,7 @@ def _build_requests(spec: Spec, item_of: dict) -> tuple[list[dict], list[tuple[s
                 requests.append(make(rid, label, expect, item, value))
         elif field == "must_never" and item["id"] == "log-raw-input":
             for i in inputs:
-                if i["in"] not in ("query", "header"):
+                if i["in"] not in ATTACKED or (i["in"] == "path" and not route_has(route, i["name"])):
                     continue
                 m = _marker(i)
                 requests.append(make(rid, f"{i['name']} valid value not logged", "no-log", i, m, m))

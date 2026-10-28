@@ -34,6 +34,16 @@ class ExampleSpecTests(unittest.TestCase):
         self.assertEqual(gaps["user-lookup"], [])
         self.assertEqual(gaps["with-a-gap"], ["G1"])
         self.assertEqual(gaps["order-signed-in"], [])
+        self.assertEqual(gaps["create-user-json"], [])
+        self.assertEqual(gaps["item-by-path"], [])
+
+    def test_the_new_examples_use_body_and_path_inputs(self):
+        kinds = {}
+        for ex in examples():
+            spec = self.load(ex)
+            kinds[ex["id"]] = {i["in"] for i, _ in spec.items["inputs"]}
+        self.assertEqual(kinds["create-user-json"], {"body"})
+        self.assertEqual(kinds["item-by-path"], {"path"})
 
     def test_today_is_filled_in_and_the_example_is_fresh(self):
         day = dt.date(2026, 10, 28)

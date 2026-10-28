@@ -16,6 +16,7 @@ import io
 import json
 import logging
 import os
+import re
 import sys
 import threading
 import unittest
@@ -203,14 +204,28 @@ def single_route(app):
     return (methods[0] if methods else "GET"), rules[0].rule
 
 
+def fill_path(path, values):
+    """The route with its placeholders (`<name>`, `<int:name>`, `{name}`) replaced by the given raw values.
+
+    PATH_INFO is already decoded in WSGI, so the value goes in as it is (a trailing newline stays a newline).
+    """
+    for name, value in values.items():
+        path = re.sub(r"<(?:[A-Za-z_]+:)?" + re.escape(name) + r">|\{" + re.escape(name) + r"\}",
+                      lambda _m, v=value: v, path)
+    return path
+
+
 def do_request(app, method, path, req):
     env = {}
     setup_testing_defaults(env)
     env["REQUEST_METHOD"] = method
-    env["PATH_INFO"] = path
+    env["PATH_INFO"] = fill_path(path, req.get("path_values", {}))
     env["QUERY_STRING"] = urlencode(req.get("query", {}))
-    env["wsgi.input"] = io.BytesIO(b"")
-    env["CONTENT_LENGTH"] = "0"
+    payload = json.dumps(req["json"]).encode("utf-8") if "json" in req else b""
+    env["wsgi.input"] = io.BytesIO(payload)
+    env["CONTENT_LENGTH"] = str(len(payload))
+    if payload:
+        env["CONTENT_TYPE"] = "application/json"
     for k, v in req.get("headers", {}).items():
         env["HTTP_" + k.upper().replace("-", "_")] = v
 

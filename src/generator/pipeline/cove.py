@@ -25,7 +25,8 @@ from generator.pipeline.intake import Requirement
 from generator.pipeline.prompts import build_prompt
 from generator.pipeline.sandbox import DEFAULT_TIMEOUT, run_sandbox
 from generator.pipeline.stages import parse_json_response
-from generator.pipeline.verify import _items_by_requirement, _module_name, parse_rule
+from generator.pipeline.verify import (ATTACKED, _items_by_requirement, _module_name, default_values, make_request,
+                                       parse_rule, route_has)
 from generator.tools.spec import Spec
 
 PROMPT = "04_verify_cove"
@@ -64,10 +65,10 @@ def build_probes(spec: Spec, reqs: tuple[Requirement, ...]) -> list[Probe]:
     """Unusual values around each machine-readable input rule: the places a rule is read in more than one way."""
     probes: list[Probe] = []
     for rid, (fld, item) in _items_by_requirement(spec, reqs).items():
-        if fld != "inputs" or item["in"] not in ("query", "header"):
+        if fld != "inputs" or item["in"] not in ATTACKED:
             continue
         rule = parse_rule(item.get("rule"))
-        if rule is None:
+        if rule is None or (item["in"] == "path" and not route_has(spec.data.get("route"), item["name"])):
             continue
         n = min(rule.hi, max(rule.lo, 3))
         base = rule.valid(n)
@@ -123,19 +124,14 @@ def parse_answers(answer: str, probes: list[Probe]) -> dict[str, tuple[str, str]
 
 
 def _requests(spec: Spec, probes: list[Probe]) -> list[dict]:
-    inputs = [item for item, _ in spec.items.get("inputs", []) if item["in"] in ("query", "header")]
-    defaults = {}
-    for i in inputs:
-        r = parse_rule(i.get("rule"))
-        defaults[i["name"]] = r.valid(max(r.lo, 1)) if r else "a"
+    inputs = [item for item, _ in spec.items.get("inputs", [])]
+    defaults = default_values(inputs)
+    by_name = {i["name"]: i for i in inputs}
     reqs = []
     for p in probes:
-        query, headers = {}, {}
-        for i in inputs:
-            v = p.value if i["name"] == p.name else defaults[i["name"]]
-            (query if i["in"] == "query" else headers)[i["name"]] = v
-        reqs.append({"id": p.id, "req": p.requirement, "label": p.label, "expect": "probe",
-                     "query": query, "headers": headers})
+        req = make_request(inputs, defaults, p.id, p.label, "probe", by_name[p.name], p.value)
+        req["id"], req["req"] = p.id, p.requirement
+        reqs.append(req)
     return reqs
 
 

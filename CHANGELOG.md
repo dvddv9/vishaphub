@@ -2,6 +2,16 @@
 
 All notable changes to vishap-generator. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.7.0] - 2026-10-28
+
+### Added
+- Verify's attacks and the COVE probes reach inputs in `body` and `path`, not only `query` and `header`. `body`: one JSON object with `Content-Type: application/json`, the attacked field carries the value and the other fields valid ones. `path`: the value replaces the placeholder of the route (`<name>`, `<int:name>`, `{name}`); a path input whose route has no placeholder is skipped with the reason; a path value is never "absent" or "empty" (that is another route). The trailing-newline attack (the `$` bug) now runs for `query`, `body` and `path`.
+- Two examples for the form: "Create user (JSON body)" and "Item by path". The build prompt tells the model how Verify sends each kind of input.
+- `verify.make_request`, `default_values`, `route_has` (shared by Verify and COVE).
+
+### Not verified
+No real model was run: the attacks were checked against hand-written apps.
+
 ## [0.6.1] - 2026-10-28
 
 ### Added
