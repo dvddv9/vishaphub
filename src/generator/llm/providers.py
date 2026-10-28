@@ -1,93 +1,95 @@
-"""LLM client for any OpenAI-compatible chat endpoint. Standard library only.
+"""Allow-listed LLM providers for requests that bring their own key.
 
-Configuration comes from the environment, the same names as in Vishap:
+The analog of Vishap's `llm/providers.py`.
 
-  VISHAP_LLM_PROVIDER  must be "custom" (the default)
-  CUSTOM_LLM_URL       base URL, e.g. https://api.example.com/v1  (required)
-  CUSTOM_LLM_MODEL     model name                                  (required)
-  CUSTOM_LLM_KEY       API key; required unless the URL is localhost
-  CUSTOM_LLM_THINKING  optional: enabled | disabled. Sent as
-                       {"thinking": {"type": ...}} (DeepSeek). Unset: not sent.
-  CUSTOM_LLM_REASONING_EFFORT  optional: low | high | max. Sent as
-                       reasoning_effort. Unset: not sent.
+SECURITY: the base URL is NEVER taken from a request. A caller picks a provider *id*; the URL comes from this
+table, on the server. Accepting a URL from the browser would let a page make the server send a key (yours,
+or the caller's) to any host, or call addresses inside your network (SSRF).
 
-The two optional fields are not part of every OpenAI-compatible API, so
-they are sent only when set.
-
-There is no default URL: a forgotten variable must not send a spec to a
-provider nobody chose. Plain http is allowed only for localhost (Ollama
-and similar), so a key never crosses the network unencrypted. The key is
-never put into an error message or a repr.
+`GENERATOR_ALLOWED_PROVIDERS=anthropic,deepseek` narrows the list (default: all). The local model (Ollama) is
+offered only when the server is on loopback, or when the operator sets `GENERATOR_ENABLE_LOCAL_PROVIDER=1`;
+its address comes from `OLLAMA_URL` / `OLLAMA_MODEL` on the server. A custom endpoint is configured only
+through the server's own CUSTOM_LLM_* variables.
 """
 
 from __future__ import annotations
 
 import os
 import re
-import urllib.parse
-from dataclasses import dataclass, field
 
-DEFAULT_TIMEOUT = 60.0
-LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
-MAX_KEY_LENGTH = 200
-KEY_RE = re.compile(r"^[\x21-\x7E]+$")  # printable ASCII, no spaces
-THINKING_VALUES = frozenset({"enabled", "disabled"})
-EFFORT_VALUES = frozenset({"low", "high", "max"})
+from generator.llm.custom_client import LLMConfig, LLMConfigError, config_from_env
 
+# id -> (label, OpenAI-compatible base URL, default model)
+PRESETS: dict[str, tuple[str, str, str]] = {
+    "anthropic": ("Anthropic (Claude)", "https://api.anthropic.com/v1", "claude-sonnet-5-5"),
+    "deepseek": ("DeepSeek", "https://api.deepseek.com/v1", "deepseek-chat"),
+    "groq": ("Groq", "https://api.groq.com/openai/v1", "llama-3.3-70b-versatile"),
+    "openai": ("OpenAI", "https://api.openai.com/v1", "gpt-4o-mini"),
+    "openrouter": ("OpenRouter", "https://openrouter.ai/api/v1", "deepseek/deepseek-chat"),
+}
+LOCAL_ID = "ollama"
+SERVER_ID = "server"       # "use the model the server is configured with"
 
-class LLMConfigError(ValueError):
-    """The environment does not describe a usable endpoint."""
-
-
-@dataclass(frozen=True)
-class LLMConfig:
-    url: str
-    model: str
-    key: str = field(default="", repr=False)
-    timeout: float = DEFAULT_TIMEOUT
-    thinking: str = ""
-    reasoning_effort: str = ""
-
-    @property
-    def endpoint(self) -> str:
-        return self.url.rstrip("/") + "/chat/completions"
+_MODEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/@-]{0,99}$")
 
 
-def _check_url(url: str) -> None:
-    parts = urllib.parse.urlsplit(url)
-    if parts.scheme not in ("http", "https") or not parts.hostname:
-        raise LLMConfigError("CUSTOM_LLM_URL must be an http(s) URL with a host")
-    if parts.scheme == "http" and parts.hostname not in LOCAL_HOSTS:
-        raise LLMConfigError("CUSTOM_LLM_URL must use https unless it points at localhost")
-    if parts.username or parts.password:
-        raise LLMConfigError("CUSTOM_LLM_URL must not carry a user or password")
+class ProviderError(ValueError):
+    """Unknown or disabled provider, or a malformed model name."""
 
 
-def config_from_env(env: dict | None = None) -> LLMConfig:
-    env = os.environ if env is None else env
-    provider = env.get("VISHAP_LLM_PROVIDER", "custom")
-    if provider != "custom":
-        raise LLMConfigError(f"VISHAP_LLM_PROVIDER={provider!r} is not supported; use custom")
-    url = env.get("CUSTOM_LLM_URL", "").strip()
-    if not url:
-        raise LLMConfigError("CUSTOM_LLM_URL is not set")
-    _check_url(url)
-    model = env.get("CUSTOM_LLM_MODEL", "").strip()
-    if not model:
-        raise LLMConfigError("CUSTOM_LLM_MODEL is not set")
-    key = env.get("CUSTOM_LLM_KEY", "").strip()
-    if key and (len(key) > MAX_KEY_LENGTH or not KEY_RE.match(key)):
-        raise LLMConfigError(
-            f"CUSTOM_LLM_KEY does not look like an API key (length {len(key)}; "
-            "it must be printable ASCII without spaces, at most "
-            f"{MAX_KEY_LENGTH} characters). Was something else in the clipboard?")
-    if not key and urllib.parse.urlsplit(url).hostname not in LOCAL_HOSTS:
-        raise LLMConfigError("CUSTOM_LLM_KEY is not set (only a localhost server may go without one)")
-    thinking = env.get("CUSTOM_LLM_THINKING", "").strip().lower()
-    if thinking and thinking not in THINKING_VALUES:
-        raise LLMConfigError("CUSTOM_LLM_THINKING must be enabled or disabled")
-    effort = env.get("CUSTOM_LLM_REASONING_EFFORT", "").strip().lower()
-    if effort and effort not in EFFORT_VALUES:
-        raise LLMConfigError("CUSTOM_LLM_REASONING_EFFORT must be low, high or max")
-    return LLMConfig(url=url, model=model, key=key,
-                     thinking=thinking, reasoning_effort=effort)
+def local_enabled(loopback: bool = False) -> bool:
+    return loopback or os.getenv("GENERATOR_ENABLE_LOCAL_PROVIDER", "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def _presets(loopback: bool) -> dict[str, tuple[str, str, str]]:
+    presets = dict(PRESETS)
+    if local_enabled(loopback):
+        presets[LOCAL_ID] = ("Local model (Ollama)",
+                             os.getenv("OLLAMA_URL", "").strip() or "http://127.0.0.1:11434/v1",
+                             os.getenv("OLLAMA_MODEL", "").strip() or "llama3")
+    return presets
+
+
+def allowed_ids(loopback: bool = False) -> list[str]:
+    presets = _presets(loopback)
+    raw = os.getenv("GENERATOR_ALLOWED_PROVIDERS", "").strip()
+    if not raw:
+        return list(presets)
+    wanted = {p.strip().lower() for p in raw.split(",") if p.strip()}
+    return [p for p in presets if p in wanted]
+
+
+def list_providers(loopback: bool = False) -> list[dict]:
+    presets = _presets(loopback)
+    return [{"id": pid, "label": presets[pid][0], "default_model": presets[pid][2],
+             "needs_key": pid != LOCAL_ID} for pid in allowed_ids(loopback)]
+
+
+def resolve(provider: str | None, model: str | None, loopback: bool = False) -> tuple[str, str] | None:
+    """(base_url, model) for an allowed provider id; None means "the server's own model"."""
+    pid = (provider or "").strip().lower()
+    if not pid or pid == SERVER_ID:
+        return None
+    presets = _presets(loopback)
+    if pid not in presets or pid not in allowed_ids(loopback):
+        raise ProviderError(f"unknown or disabled provider: {pid[:40]!r}")
+    chosen = (model or "").strip() or presets[pid][2]
+    if not _MODEL_RE.match(chosen):
+        raise ProviderError("invalid model name")
+    return presets[pid][1], chosen
+
+
+def config_for(provider: str | None, model: str | None, key: str = "", thinking: str = "",
+               loopback: bool = False) -> LLMConfig | None:
+    """The settings for a request that names a provider; None for the server's own model."""
+    target = resolve(provider, model, loopback)
+    if target is None:
+        return None
+    url, chosen = target
+    env = {"CUSTOM_LLM_URL": url, "CUSTOM_LLM_MODEL": chosen, "CUSTOM_LLM_KEY": key or "",
+           "CUSTOM_LLM_THINKING": thinking or ""}
+    return config_from_env(env)
+
+
+__all__ = ["LLMConfigError", "LOCAL_ID", "PRESETS", "ProviderError", "SERVER_ID", "allowed_ids",
+           "config_for", "list_providers", "resolve"]

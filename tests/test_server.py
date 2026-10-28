@@ -147,24 +147,32 @@ class UiSupportTests(ServerCase):
         self.assertEqual(status, 200)
         self.assertIn("+++ b/handlers/user.py", out["diff"])
 
-    def test_client_llm_is_validated_like_the_environment(self):
-        for llm, word in (({"url": "", "model": "m"}, "CUSTOM_LLM_URL"),
-                          ({"url": "https://x.example", "model": ""}, "CUSTOM_LLM_MODEL"),
-                          ({"url": "https://x.example", "model": "m", "key": ""}, "CUSTOM_LLM_KEY"),
-                          ({"url": "http://x.example", "model": "m", "key": "k"}, "https"),
-                          ({"url": "https://x.example", "model": "m", "key": "k", "thinking": "maybe"}, "THINKING")):
+    def test_client_llm_is_validated(self):
+        for llm, word in (({"provider": "nope", "model": "m", "key": "k"}, "unknown or disabled"),
+                          ({"provider": "deepseek", "model": "bad model!", "key": "k"}, "invalid model"),
+                          ({"provider": "deepseek", "model": "m", "key": ""}, "CUSTOM_LLM_KEY"),
+                          ({"provider": "deepseek", "model": "m", "key": "k", "thinking": "maybe"}, "THINKING"),
+                          ({"url": "https://evil.example", "model": "m", "key": "k"}, "cannot name a URL")):
             with self.subTest(llm=llm):
                 status, out = self.post("/api/generate", {"spec": SPEC_TEXT, "llm": llm})
                 self.assertEqual(status, 400)
                 self.assertTrue(out["error"].startswith("llm:"), out)
                 self.assertIn(word, out["error"])
         self.assertEqual(self.post("/api/generate", {"spec": SPEC_TEXT, "llm": "x"})[0], 400)
-        self.assertEqual(self.post("/api/generate", {"spec": SPEC_TEXT, "llm": {"url": 5}})[0], 400)
+        self.assertEqual(self.post("/api/generate", {"spec": SPEC_TEXT, "llm": {"provider": 5}})[0], 400)
 
     def test_the_key_is_never_echoed(self):
-        llm = {"url": "https://x.example", "model": "m", "key": "sk-very-secret-1234", "thinking": ""}
+        llm = {"provider": "nope", "model": "m", "key": "sk-very-secret-1234", "thinking": ""}
         status, data = self.req("/api/check", {"spec": SPEC_TEXT, "llm": llm})
         self.assertNotIn(b"sk-very-secret-1234", data)
+
+    def test_providers_come_from_the_server_table(self):
+        status, data = self.req("/api/providers")
+        ids = [p["id"] for p in json.loads(data)["providers"]]
+        self.assertEqual(status, 200)
+        self.assertIn("deepseek", ids)
+        self.assertIn("ollama", ids)             # loopback server: the local model is offered
+        self.assertTrue(all("url" not in p for p in json.loads(data)["providers"]))
 
     def test_a_valid_client_llm_reaches_the_pipeline(self):
         seen = {}
@@ -175,16 +183,34 @@ class UiSupportTests(ServerCase):
             return PipelineResult(exit_code=0)
 
         out = handle_generate(
-            {"spec": SPEC_TEXT, "llm": {"url": "https://x.example", "model": "m", "key": "k"}},
+            {"spec": SPEC_TEXT, "llm": {"provider": "deepseek", "model": "deepseek-flash", "key": "k"}},
             check_only=False, run=fake_run)
-        self.assertEqual(seen["config"].model, "m")
+        self.assertEqual(seen["config"].model, "deepseek-flash")
         self.assertEqual(seen["config"].key, "k")
+        self.assertEqual(seen["config"].url, "https://api.deepseek.com/v1")
         self.assertNotIn("llm", out)
+
+    def test_the_server_provider_means_the_environment(self):
+        seen = {}
+
+        def fake_run(path, **kw):
+            seen.update(kw)
+            from generator.pipeline.orchestrator import PipelineResult
+            return PipelineResult(exit_code=0)
+
+        handle_generate({"spec": SPEC_TEXT, "llm": {"provider": "server"}}, check_only=False, run=fake_run)
+        self.assertNotIn("config", seen)
+
+    def test_the_local_model_is_not_offered_on_a_shared_server(self):
+        with self.assertRaises(ApiError) as cm:
+            handle_generate({"spec": SPEC_TEXT, "llm": {"provider": "ollama", "model": "llama3"}},
+                            check_only=False, loopback=False)
+        self.assertEqual(cm.exception.status, 400)
 
     def test_client_llm_can_be_refused(self):
         with self.assertRaises(ApiError) as cm:
-            handle_generate({"spec": SPEC_TEXT, "llm": {"url": "https://x.example", "model": "m", "key": "k"}},
-                                   check_only=False, client_llm=False)
+            handle_generate({"spec": SPEC_TEXT, "llm": {"provider": "deepseek", "model": "m", "key": "k"}},
+                            check_only=False, client_llm=False)
         self.assertEqual(cm.exception.status, 403)
 
 

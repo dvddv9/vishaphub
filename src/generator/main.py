@@ -35,6 +35,7 @@ from generator.api.auth import host_ok, token_ok
 from generator.api.errors import ApiError
 from generator.api.jobs import handle_generate
 from generator.api.llm_config import status
+from generator.llm.providers import list_providers
 from generator.api.reports import http_status
 from generator.config import (DEFAULT_HOST, DEFAULT_PORT, LOOPBACK, MAX_BODY, WEB_INDEX,
                               allow_client_llm, api_token)
@@ -43,7 +44,7 @@ from generator.tools.examples import examples
 
 
 def make_handler(token: str | None, host_names: set[str], run=run_pipeline, run_kwargs=None,
-                 client_llm: bool = True):
+                 client_llm: bool = True, loopback: bool = True):
     run_kwargs = run_kwargs or {}
 
     class Handler(BaseHTTPRequestHandler):
@@ -79,7 +80,9 @@ def make_handler(token: str | None, host_names: set[str], run=run_pipeline, run_
             if path == "/health":
                 return self._send(200, {"ok": True})
             if path == "/api/status":
-                return self._send(200, status(token, client_llm))
+                return self._send(200, status(token, client_llm, loopback))
+            if path == "/api/providers":
+                return self._send(200, {"providers": list_providers(loopback) if client_llm else []})
             if path == "/api/examples":
                 return self._send(200, {"examples": examples()})
             if path == "/":
@@ -113,7 +116,7 @@ def make_handler(token: str | None, host_names: set[str], run=run_pipeline, run_
                 return self._send(400, {"error": "body must be a JSON object"})
             try:
                 out = handle_generate(body, check_only=path == "/api/check", run=run,
-                                      client_llm=client_llm, **run_kwargs)
+                                      client_llm=client_llm, loopback=loopback, **run_kwargs)
             except ApiError as e:
                 return self._send(e.status, {"error": e.message})
             self._send(http_status(out), out)
@@ -130,7 +133,7 @@ def serve(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT) -> int:
     # Model settings from the browser mean the server calls a URL the browser names:
     # fine on this computer, not on a shared server unless the operator says so.
     client_llm = allow_client_llm(host)
-    httpd = ThreadingHTTPServer((host, port), make_handler(token, names, client_llm=client_llm))
+    httpd = ThreadingHTTPServer((host, port), make_handler(token, names, client_llm=client_llm, loopback=host in LOOPBACK))
     print(f"vishap-generator on http://{host}:{port}/  (Ctrl+C to stop)", flush=True)
     try:
         httpd.serve_forever()

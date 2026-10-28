@@ -9,34 +9,37 @@ import shutil
 from generator.api.errors import ApiError
 from generator.config import analyzer_command
 from generator.llm import LLMConfigError, config_from_env
+from generator.llm.providers import ProviderError, config_for, list_providers
 from generator.version import __version__
 
-LLM_FIELDS = {"url": "CUSTOM_LLM_URL", "model": "CUSTOM_LLM_MODEL", "key": "CUSTOM_LLM_KEY",
-              "thinking": "CUSTOM_LLM_THINKING"}
+LLM_FIELDS = ("provider", "model", "key", "thinking")
 
 
-def client_llm_config(llm):
-    """The model settings a request brings along, checked like the environment ones.
+def client_llm_config(llm, loopback: bool = False):
+    """The model settings a request brings along: a provider id, a model, a key.
 
-    They live for this one request only: nothing is stored, logged or returned.
+    The URL is never taken from a request (see llm/providers.py): the browser picks a provider from the
+    server's allow-list. The settings live for this one request only: nothing is stored, logged or returned.
     """
     if llm is None:
         return None
     if not isinstance(llm, dict):
         raise ApiError(400, '"llm" must be an object')
-    env = {}
-    for field, name in LLM_FIELDS.items():
+    if "url" in llm:
+        raise ApiError(400, 'llm: a request cannot name a URL; pick a "provider" (see /api/providers)')
+    values = {}
+    for field in LLM_FIELDS:
         v = llm.get(field, "")
         if not isinstance(v, str):
             raise ApiError(400, f'"llm.{field}" must be text')
-        env[name] = v
+        values[field] = v
     try:
-        return config_from_env(env)
-    except LLMConfigError as e:
+        return config_for(values["provider"], values["model"], values["key"], values["thinking"], loopback)
+    except (ProviderError, LLMConfigError) as e:
         raise ApiError(400, f"llm: {e}") from None
 
 
-def status(token: str | None, client_llm: bool) -> dict:
+def status(token: str | None, client_llm: bool, loopback: bool = True) -> dict:
     from generator.pipeline.stages import STAGES
     try:
         config_from_env()
@@ -48,6 +51,7 @@ def status(token: str | None, client_llm: bool) -> dict:
         "version": __version__,
         "llm_from_environment": llm_env,
         "client_llm_allowed": client_llm,
+        "providers": list_providers(loopback) if client_llm else [],
         "token_required": bool(token),
         "analyzer_found": bool(cmd) and shutil.which(cmd[0]) is not None,
         "coverage": "package" if importlib.util.find_spec("coverage") else "built-in",

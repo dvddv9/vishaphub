@@ -218,16 +218,7 @@ async function copy(text, btn) {
 
 /* ---------- state ---------- */
 const app = { status: null, examples: [], draft: null };
-const PRESETS = [
-  { id: "env", label: "From the server's environment", url: "", model: "" },
-  { id: "deepseek", label: "DeepSeek", url: "https://api.deepseek.com", model: "deepseek-flash", thinking: "disabled" },
-  { id: "openai", label: "OpenAI", url: "https://api.openai.com/v1", model: "" },
-  { id: "openrouter", label: "OpenRouter", url: "https://openrouter.ai/api/v1", model: "" },
-  { id: "groq", label: "Groq", url: "https://api.groq.com/openai/v1", model: "" },
-  { id: "ollama", label: "Ollama (this computer)", url: "http://localhost:11434/v1", model: "" },
-  { id: "custom", label: "Other OpenAI-compatible", url: "", model: "" },
-];
-const llm = () => session.get("vg:llm", { preset: "env", url: "", model: "", key: "", thinking: "" });
+const llm = () => session.get("vg:llm", { provider: "server", model: "", key: "", thinking: "" });
 const token = () => session.get("vg:token", "");
 
 async function api(path, body) {
@@ -353,27 +344,28 @@ function jobCard(run) {
 function llmSettings() {
   const s = llm(), st = app.status;
   const allowed = !st || st.client_llm_allowed;
+  const providers = (st && st.providers) || [];
   const save = (patch) => { session.set("vg:llm", { ...llm(), ...patch }); };
-  const url = el("input", { type: "text", value: s.url, placeholder: "https://api.deepseek.com", autocomplete: "off", oninput: (e) => save({ url: e.target.value }) });
-  const model = el("input", { type: "text", value: s.model, placeholder: "model name", autocomplete: "off", oninput: (e) => save({ model: e.target.value }) });
+  const cur = providers.find((p) => p.id === s.provider);
+  const model = el("input", { type: "text", value: s.model, placeholder: cur ? cur.default_model : "model name", autocomplete: "off", oninput: (e) => save({ model: e.target.value }) });
   const key = el("input", { type: "password", value: s.key, placeholder: "API key (kept in this tab only)", autocomplete: "off", oninput: (e) => save({ key: e.target.value }) });
   const thinking = el("select", { onchange: (e) => save({ thinking: e.target.value }) },
     ...[["", "Server default"], ["disabled", "disabled (DeepSeek: recommended)"], ["enabled", "enabled"]].map(([v, t]) => el("option", { value: v, selected: s.thinking === v }, t)));
-  const preset = el("select", { onchange: (e) => {
-    const p = PRESETS.find((x) => x.id === e.target.value);
-    url.value = p.url; model.value = p.model; thinking.value = p.thinking || "";
-    save({ preset: p.id, url: p.url, model: p.model, thinking: p.thinking || "" }); } },
-    ...PRESETS.map((p) => el("option", { value: p.id, selected: s.preset === p.id }, p.label)));
+  const provider = el("select", { "aria-label": "Provider", onchange: (e) => {
+    const p = providers.find((x) => x.id === e.target.value);
+    model.placeholder = p ? p.default_model : "model name";
+    save({ provider: e.target.value }); } },
+    el("option", { value: "server", selected: s.provider === "server" }, "From the server's environment"),
+    ...providers.map((p) => el("option", { value: p.id, selected: s.provider === p.id }, p.label)));
   const tok = st && st.token_required ? el("div", { class: "field" }, el("label", { class: "l" }, "Access token (the server asks for one)"),
     el("input", { type: "password", value: token(), autocomplete: "off", oninput: (e) => session.set("vg:token", e.target.value) })) : null;
   return el("details", { class: "faq", "aria-label": "Model settings" },
     el("summary", null, "Advanced: model settings"),
     el("div", { class: "form", style: "margin:.75rem 0 .25rem" },
-      allowed ? el("p", { class: "muted", style: "margin:0;font-size:.85rem" }, "Leave on “From the server's environment” to use CUSTOM_LLM_* of the server. Anything typed here stays in this browser tab and is sent only with a run.")
+      allowed ? el("p", { class: "muted", style: "margin:0;font-size:.85rem" }, "Leave on “From the server's environment” to use CUSTOM_LLM_* of the server. A provider is chosen from the server's list; its address is not typed here. The key stays in this browser tab and is sent only with a run.")
               : el("p", { class: "note" }, "This server takes model settings from its environment only."),
       allowed ? el("div", { class: "fieldgrid" },
-        el("div", { class: "field" }, el("label", { class: "l" }, "Provider"), preset),
-        el("div", { class: "field" }, el("label", { class: "l" }, "URL"), url),
+        el("div", { class: "field" }, el("label", { class: "l" }, "Provider"), provider),
         el("div", { class: "field" }, el("label", { class: "l" }, "Model"), model),
         el("div", { class: "field" }, el("label", { class: "l" }, "Key"), key),
         el("div", { class: "field" }, el("label", { class: "l" }, "Reasoning (thinking)"), thinking)) : null,
@@ -381,8 +373,8 @@ function llmSettings() {
 }
 function llmForRequest() {
   const s = llm(), st = app.status;
-  if (!st || !st.client_llm_allowed || s.preset === "env" || !s.url) return undefined;
-  return { url: s.url, model: s.model, key: s.key, thinking: s.thinking };
+  if (!st || !st.client_llm_allowed || !s.provider || s.provider === "server") return undefined;
+  return { provider: s.provider, model: s.model, key: s.key, thinking: s.thinking };
 }
 
 /* ---------- generate page ---------- */

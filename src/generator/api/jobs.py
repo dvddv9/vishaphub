@@ -14,7 +14,7 @@ from generator.pipeline.orchestrator import run_pipeline
 
 
 def handle_generate(body: dict, *, check_only: bool, run=run_pipeline, client_llm: bool = True,
-                    **run_kwargs) -> dict:
+                    loopback: bool = True, **run_kwargs) -> dict:
     spec_text = body.get("spec")
     if not isinstance(spec_text, str) or not spec_text.strip():
         raise ApiError(400, '"spec" must be the text of a spec.yaml')
@@ -28,7 +28,7 @@ def handle_generate(body: dict, *, check_only: bool, run=run_pipeline, client_ll
     if body.get("llm") is not None:
         if not client_llm:
             raise ApiError(403, "this server does not take model settings from the browser")
-        config = client_llm_config(body["llm"])
+        config = client_llm_config(body["llm"], loopback)
     if not check_only and not RUN_LOCK.acquire(blocking=False):
         raise ApiError(429, "another run is in progress")
     try:
