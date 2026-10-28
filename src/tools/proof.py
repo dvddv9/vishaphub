@@ -138,7 +138,21 @@ def _run_harness(code: str, timeout: int = 20, force: bool = False, harness: Pat
         try:
             p = subprocess.run(cmd, cwd=tmp, env=env, capture_output=True, text=True, timeout=timeout, **kw)
         except subprocess.TimeoutExpired:
-            return {"error": f"proof run timed out after {timeout}s", "results": [], "handlers": 0, "notes": []}
+            # On POSIX the harness cuts a runaway call itself (SIGALRM); where signals
+            # are missing the whole subprocess has to be killed, and «we never got an
+            # answer» is exactly what INCONCLUSIVE means — not an error, and never a
+            # silent SAFE.
+            ids = []
+            if isinstance(spec, dict):
+                ids = [h.get("id") for h in (spec.get("hypotheses") or [])
+                       if isinstance(h, dict) and h.get("id")]
+            results = [
+                {"id": str(i), "status": "INCONCLUSIVE",
+                 "evidence": f"did not finish in {timeout}s (harness timed out)", "checks": []}
+                for i in ids
+            ]
+            return {"error": "", "results": results, "handlers": 0,
+                    "notes": [f"harness timed out after {timeout}s"]}
         lines = [ln for ln in (p.stdout or "").splitlines() if ln.startswith("{")]
         if not lines:
             return {"error": "harness produced no result: " + (p.stderr or "")[-200:], "results": [], "handlers": 0, "notes": []}
