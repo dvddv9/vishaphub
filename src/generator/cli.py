@@ -1,6 +1,7 @@
 """Command line.
 
     vishap-generator generate spec.yaml --out src/ [--gate] [--force] [--dry-run]
+    vishap-generator init [spec.yaml]
     vishap-generator rollback RUN_ID --out src/ [--force]
     vishap-generator serve [--host 127.0.0.1] [--port 8787]
 
@@ -39,7 +40,7 @@ def cmd_generate(args) -> int:
     print(f"spec        {spec_file}")
     res = run_pipeline(
         spec_file, out_dir=args.out, gate=args.gate, force=args.force, dry_run=args.dry_run,
-        no_llm=args.no_llm, repairs=args.repairs, require_coverage=args.require_coverage,
+        no_llm=args.no_llm, repairs=args.repairs, require_coverage=args.require_coverage, text_check=not args.no_text_check,
         analyzer=None if args.no_analyzer else _default_analyzer(),
         log=print)
     if res.error:
@@ -69,6 +70,58 @@ def cmd_generate(args) -> int:
 def _default_analyzer():
     from .analyzer import run_analyzer
     return run_analyzer
+
+
+TEMPLATE = """\
+# spec.yaml for vishap-generator. Change the text and the lists, keep the keys.
+version: 1
+updated: {today}          # the day you last reviewed this spec; older than 90 days counts as stale
+
+text: |
+  Describe in plain words what to build, who calls it, and what it must not do.
+
+target: python/flask      # language/framework
+kind: http-endpoint       # function | http-endpoint | module | config
+output: handlers/thing.py # where the code goes: relative path, forward slashes
+caller: public            # public | signed-in | internal (needed for http-endpoint)
+route: GET /thing
+
+inputs:
+  - name: name
+    in: query
+    rule: "1-64 letters and digits"
+
+outputs:
+  - status: 200
+    body: "json: id, name only"
+  - status: 404
+    when: "no such item"
+  - status: 400
+    when: "invalid name"
+
+profile: owasp-asvs-2
+constraints: [include-tests, validate-inputs]
+
+must_never:
+  - id: sql-from-input
+    text: "SQL is never built from the input"
+  - id: log-raw-input
+    text: "Raw input is never logged"
+
+check: analyzer
+"""
+
+
+def cmd_init(args) -> int:
+    import datetime as dt
+    path = Path(args.path)
+    if path.exists():
+        print(f"error: {path} already exists, not overwriting", file=sys.stderr)
+        return 2
+    path.write_text(TEMPLATE.format(today=dt.date.today().isoformat()), encoding="utf-8")
+    print(f"wrote {path}")
+    print(f"next: vishap-generator generate {path} --no-llm   (check the spec, no model)")
+    return 0
 
 
 def cmd_rollback(args) -> int:
@@ -104,6 +157,8 @@ def build_parser() -> argparse.ArgumentParser:
     g.add_argument("--force", action="store_true", help="with --gate: write anyway, trace says forced")
     g.add_argument("--dry-run", action="store_true", help="show the diff, write nothing")
     g.add_argument("--no-llm", action="store_true", help="Intake and the spec check only")
+    g.add_argument("--no-text-check", action="store_true",
+                   help="do not ask the model to compare the free text with the requirements")
     g.add_argument("--no-analyzer", action="store_true", help="skip the Vishap Analyzer")
     g.add_argument("--repairs", type=int, default=DEFAULT_REPAIRS, metavar="N",
                    help=f"repair rounds when Verify finds problems (default {DEFAULT_REPAIRS})")
@@ -112,6 +167,10 @@ def build_parser() -> argparse.ArgumentParser:
     g.add_argument("--json", metavar="FILE", help="write the full result as JSON")
     g.add_argument("--sarif", metavar="FILE", help="write SARIF 2.1.0 for the result")
     g.set_defaults(func=cmd_generate)
+
+    i = sub.add_parser("init", help="write a starting spec.yaml")
+    i.add_argument("path", nargs="?", default="spec.yaml")
+    i.set_defaults(func=cmd_init)
 
     r = sub.add_parser("rollback", help="undo a run")
     r.add_argument("run_id")

@@ -63,7 +63,8 @@ def handle_generate(body: dict, *, check_only: bool, run=run_pipeline, **run_kwa
             path.write_text(spec_text, encoding="utf-8")
             log: list[str] = []
             kwargs = dict(gate=gate, no_llm=check_only, repairs=repairs, allow_write=False,
-                          require_coverage=bool(body.get("require_coverage", False)), log=log.append)
+                          require_coverage=bool(body.get("require_coverage", False)),
+                          text_check=bool(body.get("text_check", True)), log=log.append)
             if body.get("no_analyzer"):
                 kwargs["analyzer"] = None
             kwargs.update(run_kwargs)

@@ -21,10 +21,18 @@ def answer(code):
 class Stub:
     """A chat function that returns the given answers in order."""
 
-    def __init__(self, *answers):
+    TEXT_CHECK = "You compare a specification text"
+
+    def __init__(self, *answers, text_answer='{"uncovered": []}'):
         self.answers, self.calls = list(answers), []
+        self.text_answer, self.text_calls = text_answer, []
 
     def __call__(self, messages, config=None, **kw):
+        if messages[0]["content"].startswith(self.TEXT_CHECK):     # the text check, not Build
+            self.text_calls.append(messages)
+            if isinstance(self.text_answer, Exception):
+                raise self.text_answer
+            return self.text_answer
         self.calls.append(messages)
         a = self.answers[min(len(self.calls), len(self.answers)) - 1]
         if isinstance(a, Exception):

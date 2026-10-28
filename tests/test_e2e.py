@@ -28,8 +28,12 @@ class FakeModel:
         class Handler(BaseHTTPRequestHandler):
             def do_POST(self):
                 n = int(self.headers.get("Content-Length", 0))
-                fake.seen.append(json.loads(self.rfile.read(n)))
-                text = fake.answers[min(len(fake.seen), len(fake.answers)) - 1]
+                req = json.loads(self.rfile.read(n))
+                if req["messages"][0]["content"].startswith("You compare a specification text"):
+                    text = '{"uncovered": []}'
+                else:
+                    fake.seen.append(req)
+                    text = fake.answers[min(len(fake.seen), len(fake.answers)) - 1]
                 body = json.dumps({"choices": [{"message": {"content": text}}]}).encode()
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")

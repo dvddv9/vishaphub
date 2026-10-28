@@ -27,6 +27,7 @@ from .generate import GenerateError, generate_code, repair_code
 from .intake import Requirement, requirements_from
 from .llm import LLMConfig, LLMConfigError, LLMError, chat
 from .spec import Spec, SpecError, load_spec
+from .textcheck import TextCheckError, check_text
 from .verify import VerifyResult, verify
 
 DEFAULT_REPAIRS = 2
@@ -74,7 +75,7 @@ def _count(reqs) -> str:
 def run_pipeline(spec_path: str | Path, *, out_dir: str | Path | None = None,
                  gate: bool = False, force: bool = False, dry_run: bool = False,
                  no_llm: bool = False, repairs: int = DEFAULT_REPAIRS,
-                 require_coverage: bool = False,
+                 require_coverage: bool = False, text_check: bool = True,
                  chat_fn: Callable[..., str] = chat, config: LLMConfig | None = None,
                  analyzer: Callable[[dict], AnalyzerResult] | None = run_analyzer,
                  today: dt.date | None = None, now: dt.datetime | None = None,
@@ -102,6 +103,19 @@ def run_pipeline(spec_path: str | Path, *, out_dir: str | Path | None = None,
         f"{len(d.gaps) - len(d.critical_gaps)} other")
     for g in d.gaps:
         log(f"            {g.id} {g.severity}: {g.text}")
+
+    if text_check and not no_llm:
+        try:
+            d, dropped = check_text(spec, reqs, d, chat_fn=chat_fn, config=config)
+        except (LLMConfigError, LLMError, TextCheckError) as e:
+            log(f"            text check skipped: {e}")
+        else:
+            res.design = d
+            added = [g for g in d.gaps if g.source and g.source.field == "text"]
+            log(f"            text check: {len(added)} statement(s) no requirement covers"
+                + (f", {dropped} dropped (not quoted from the text)" if dropped else ""))
+            for g in added:
+                log(f"            {g.id} {g.severity}: {g.text}")
 
     if no_llm:
         log("            --no-llm: stopping after Design")

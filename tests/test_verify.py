@@ -100,13 +100,14 @@ TODAY = dt.date(2026, 10, 28)
 HAS_COVERAGE = importlib.util.find_spec("coverage") is not None
 
 
-def run(code=GOOD, tests=TESTS, today=TODAY, timeout=60, analyzer=None):
+def run(code=GOOD, tests=TESTS, today=TODAY, timeout=60, analyzer=None, coverage="auto"):
     spec = load_spec(EXAMPLE)
     reqs = requirements_from(spec)
     d = design(spec, reqs)
     files = {"handlers/__init__.py": "", "handlers/user.py": code,
              "tests/__init__.py": "", "tests/test_user.py": tests}
-    return verify(spec, reqs, d, files, today=today, timeout=timeout, analyzer=analyzer)
+    return verify(spec, reqs, d, files, today=today, timeout=timeout, analyzer=analyzer,
+                  coverage=coverage)
 
 
 def status(result, rid):
@@ -160,13 +161,32 @@ class EndToEndTests(unittest.TestCase):
         self.assertTrue(old.spec_stale)
         self.assertEqual(old.spec_age_days, 97)
 
-    def test_coverage(self):
+    def test_coverage_is_always_measured(self):
         res = run()
-        if HAS_COVERAGE:
-            self.assertIn(res.coverage_status, ("ok", "below"))
-        else:
-            self.assertEqual(res.coverage_status, "skipped")
-            self.assertIn("not installed", res.coverage_note)
+        self.assertIn(res.coverage_status, ("ok", "below"))
+        self.assertIsNotNone(res.coverage_percent)
+        if not HAS_COVERAGE:
+            self.assertIn("built-in", res.coverage_note)
+
+    def test_builtin_coverage_of_well_tested_code(self):
+        res = run(coverage="builtin")
+        self.assertEqual(res.coverage_status, "ok", res.coverage_note)
+        self.assertGreaterEqual(res.coverage_percent, 80.0)
+        self.assertLessEqual(res.coverage_percent, 100.0)
+        self.assertIn("built-in", res.coverage_note)
+
+    def test_builtin_coverage_sees_untested_code(self):
+        unused = "\n\ndef never_called(x):\n" + "".join(f"    x += {i}\n" for i in range(40)) + "    return x\n"
+        res = run(code=GOOD + unused, coverage="builtin")
+        self.assertEqual(res.coverage_status, "below")
+        self.assertLess(res.coverage_percent, 60.0)
+        self.assertEqual(res.code_verdict, "needs_verification")
+        self.assertEqual([r.status for r in res.requirements], ["passed"] * 5)
+
+    def test_builtin_coverage_counts_import_time_lines(self):
+        res = run(coverage="builtin")
+        # module level lines (imports, constants, def lines) run at import and are counted
+        self.assertGreater(res.coverage_percent, 50.0)
 
     def test_code_that_hangs_times_out(self):
         res = run(code="while True:\n    pass\n", timeout=3)

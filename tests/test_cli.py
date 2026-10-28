@@ -102,6 +102,17 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("--gate", err)
 
+    def test_init_writes_a_spec_that_loads_and_has_no_open_gaps(self):
+        path = self.tmp / "new.yaml"
+        code, out, _ = self.run_cli(["init", str(path)])
+        self.assertEqual(code, 0)
+        code, out, _ = self.run_cli(["generate", str(path), "--no-llm", "--gate"])
+        self.assertEqual(code, 0, out)
+        self.assertIn("gaps: 0 critical", out)
+        code, _, err = self.run_cli(["init", str(path)])
+        self.assertEqual(code, 2)
+        self.assertIn("already exists", err)
+
     def test_no_command_is_an_error(self):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             cli.main([])

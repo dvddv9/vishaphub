@@ -369,7 +369,8 @@ def _decide(evidence: list[Evidence]) -> tuple[str, str]:
 def verify(spec: Spec, requirements: tuple[Requirement, ...], design: DesignResult,
            files: dict[str, str], *, today: dt.date | None = None,
            timeout: float = DEFAULT_TIMEOUT, python: str | None = None,
-           analyzer: Callable[[dict[str, str]], AnalyzerResult] | None = None) -> VerifyResult:
+           analyzer: Callable[[dict[str, str]], AnalyzerResult] | None = None,
+           coverage: str = "auto") -> VerifyResult:
     python = python or sys.executable
     today = today or dt.date.today()
     problems: list[str] = []
@@ -402,7 +403,7 @@ def verify(spec: Spec, requirements: tuple[Requirement, ...], design: DesignResu
     if python_target and test_files and code_files:
         run = _run_sandbox(planned, "tests",
                            {"tests_dir": str(PurePosixPath(test_files[0]).parent),
-                            "code_files": code_files}, timeout, python)
+                            "code_files": code_files, "coverage": coverage}, timeout, python)
         if run["status"] != "ok":
             problems.append(f"model tests: {run['status']}")
         else:

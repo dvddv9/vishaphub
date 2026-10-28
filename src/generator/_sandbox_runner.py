@@ -17,6 +17,7 @@ import json
 import logging
 import os
 import sys
+import threading
 import unittest
 from urllib.parse import urlencode
 from wsgiref.util import setup_testing_defaults
@@ -63,20 +64,85 @@ class Collect(unittest.TestResult):
             self._set(test, kind, err)
 
 
+class LineTracer:
+    """Line coverage with the standard library, for when `coverage` is not installed.
+
+    Counts lines of the given files that ran, against the lines the compiler
+    says can run. Line coverage only (no branches), like the default of coverage.py.
+    """
+
+    def __init__(self, paths):
+        self.paths = {os.path.normcase(os.path.abspath(p)) for p in paths}
+        self.hit = {p: set() for p in self.paths}
+        self._known = {}
+
+    def _global(self, frame, event, arg):
+        name = frame.f_code.co_filename
+        key = self._known.get(name)
+        if key is None:
+            norm = os.path.normcase(os.path.abspath(name))
+            key = self._known[name] = norm if norm in self.paths else ""
+        if not key:
+            return None
+        hits = self.hit[key]
+
+        def local(frame, event, arg):
+            if event == "line":
+                hits.add(frame.f_lineno)
+            return local
+        return local
+
+    def start(self):
+        threading.settrace(self._global)
+        sys.settrace(self._global)
+
+    def stop(self):
+        sys.settrace(None)
+        threading.settrace(None)
+
+    @staticmethod
+    def executable(path):
+        with open(path, encoding="utf-8") as f:
+            code = compile(f.read(), path, "exec")
+        lines = set()
+
+        def walk(c):
+            for _start, _end, line in c.co_lines():
+                if line:
+                    lines.add(line)
+            for const in c.co_consts:
+                if isinstance(const, type(c)):
+                    walk(const)
+        walk(code)
+        return lines
+
+    def percent(self):
+        total = covered = 0
+        for path in self.paths:
+            want = self.executable(path)
+            total += len(want)
+            covered += len(want & self.hit[path])
+        return round(100.0 * covered / total, 1) if total else 100.0
+
+
 def run_tests(plan):
     tests_dir = os.path.join(ROOT, plan["tests_dir"])
     top = ROOT if os.path.exists(os.path.join(tests_dir, "__init__.py")) else None
-    cov, cov_note = None, None
+    cov, cov_note, tracer = None, None, None
+    paths = [os.path.join(ROOT, p) for p in plan["code_files"]]
     try:
+        if plan.get("coverage") == "builtin":
+            raise ImportError
         import coverage
-        cov = coverage.Coverage(
-            data_file=None,
-            include=[os.path.join(ROOT, p) for p in plan["code_files"]])
+        cov = coverage.Coverage(data_file=None, include=paths)
         cov.start()
     except ImportError:
-        cov_note = "coverage is not installed"
+        tracer = LineTracer(paths)
+        cov_note = "measured with the built-in line tracer (coverage package not installed)"
     except Exception as e:  # noqa: BLE001
         cov, cov_note = None, f"coverage did not start: {e}"
+    if tracer is not None:
+        tracer.start()
 
     result = Collect()
     buf = io.StringIO()
@@ -87,8 +153,15 @@ def run_tests(plan):
     finally:
         if cov is not None:
             cov.stop()
+        if tracer is not None:
+            tracer.stop()
 
     percent = None
+    if tracer is not None:
+        try:
+            percent = tracer.percent()
+        except Exception as e:  # noqa: BLE001
+            cov_note = f"built-in coverage failed: {e}"
     if cov is not None:
         try:
             percent = round(cov.report(file=io.StringIO()), 1)
