@@ -51,6 +51,13 @@ def check_only() -> bool:
     return os.environ.get("GENERATOR_CHECK_ONLY") == "1"
 
 
+def public_check() -> bool:
+    """GENERATOR_PUBLIC_CHECK=1: with a token set, `/api/check` (Intake and Design, no model, no code run) is open
+    to everyone, while generating still needs the token. This is how one Render service serves a public spec
+    check and a private generator."""
+    return os.environ.get("GENERATOR_PUBLIC_CHECK") == "1"
+
+
 def public_hosts() -> set[str]:
     """Host names a public server answers to: GENERATOR_PUBLIC_HOSTS (comma separated) and, on Render,
     RENDER_EXTERNAL_HOSTNAME. The Host and Origin check still rejects every other name."""

@@ -39,7 +39,8 @@ def client_llm_config(llm, loopback: bool = False):
         raise ApiError(400, f"llm: {e}") from None
 
 
-def status(token: str | None, client_llm: bool, loopback: bool = True, check_only: bool = False) -> dict:
+def status(token: str | None, client_llm: bool, loopback: bool = True, check_only: bool = False,
+           public_check: bool = False) -> dict:
     from generator.pipeline.stages import STAGES
     try:
         config_from_env()
@@ -54,6 +55,7 @@ def status(token: str | None, client_llm: bool, loopback: bool = True, check_onl
         "providers": list_providers(loopback) if client_llm else [],
         "token_required": bool(token),
         "check_only": check_only,
+        "public_check": public_check,
         "analyzer_found": bool(cmd) and shutil.which(cmd[0]) is not None,
         "coverage": "package" if importlib.util.find_spec("coverage") else "built-in",
         "ruff_found": shutil.which("ruff") is not None,

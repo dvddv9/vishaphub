@@ -2,6 +2,18 @@
 
 All notable changes to vishap-generator. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.7.1] - 2026-10-28
+
+### Added
+- `GENERATOR_PUBLIC_CHECK=1` (needs `GENERATOR_API_TOKEN`): the page and `/api/check` are open to everyone, `/api/generate`, `/api/generate/async` and `/api/jobs/<id>` need the token. One service for the public check and the owner's full run. Unknown paths answer 404 before the token is asked. `/api/status` has `public_check`. The server refuses to start in this mode without a token.
+- The form shows "Access token and model settings" open when a token is required, and says so when a run is started without it.
+
+### Changed
+- `render.yaml` now sets up that mode: the token and the model key are `sync: false` (entered in the Render dashboard), the model address and name are the project defaults.
+
+### Not verified
+Render with the new blueprint, and a real model run through it.
+
 ## [0.7.0] - 2026-10-28
 
 ### Added

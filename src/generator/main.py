@@ -47,14 +47,14 @@ from generator.api.llm_config import status
 from generator.llm.providers import list_providers
 from generator.api.reports import http_status
 from generator.config import (DEFAULT_HOST, DEFAULT_PORT, LOOPBACK, MAX_BODY, WEB_INDEX,
-                              allow_client_llm, api_token, check_only, public_hosts)
+                              allow_client_llm, api_token, check_only, public_check, public_hosts)
 from generator.pipeline.orchestrator import run_pipeline
 from generator.tools.examples import examples
 
 
 def make_handler(token: str | None, host_names: set[str], run=run_pipeline, run_kwargs=None,
                  client_llm: bool = True, loopback: bool = True, store=None, limiter=None,
-                 check_only: bool = False):
+                 check_only: bool = False, open_check: bool = False):
     run_kwargs = run_kwargs or {}
     store = store if store is not None else MemoryJobStore()
     limiter = limiter if limiter is not None else RateLimiter(per_minute())
@@ -122,7 +122,7 @@ def make_handler(token: str | None, host_names: set[str], run=run_pipeline, run_
             if path == "/health":
                 return self._send(200, {"ok": True})
             if path == "/api/status":
-                return self._send(200, status(token, client_llm, loopback, check_only))
+                return self._send(200, status(token, client_llm, loopback, check_only, open_check))
             if path == "/api/providers":
                 return self._send(200, {"providers": list_providers(loopback) if client_llm else []})
             if path == "/api/examples":
@@ -138,11 +138,12 @@ def make_handler(token: str | None, host_names: set[str], run=run_pipeline, run_
             self._begin()
             if not self._host_ok():
                 return self._send(403, {"error": "bad Host or Origin"})
-            if not self._auth_ok():
-                return self._send(401, {"error": "missing or wrong token"})
             path = urlsplit(self.path).path
             if path not in ("/api/generate", "/api/generate/async", "/api/check"):
                 return self._send(404, {"error": "not found"})
+            # a spec check calls no model and runs no code: it may be open while generating needs the token
+            if not self._auth_ok() and not (open_check and path == "/api/check"):
+                return self._send(401, {"error": "missing or wrong token"})
             if check_only and path != "/api/check":
                 return self._send(403, {"error": "this server only checks specs: no model is called and no code is run. "
                                                  "Run the generator on your own computer to generate code."})
@@ -187,10 +188,12 @@ def serve(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT) -> int:
     # Model settings from the browser mean the server calls a URL the browser names:
     # fine on this computer, not on a shared server unless the operator says so.
     client_llm = allow_client_llm(host) and not public
+    open_check = public_check() and bool(token) and not public
     httpd = ThreadingHTTPServer((host, port), make_handler(token, names, client_llm=client_llm, loopback=host in LOOPBACK,
-                                                            check_only=public))
+                                                            check_only=public, open_check=open_check))
     print(f"vishap-generator on http://{host}:{port}/  (Ctrl+C to stop)"
-          + ("  [check only: no model, no code is run]" if public else ""), flush=True)
+          + ("  [check only: no model, no code is run]" if public else
+             "  [spec check open, generating needs the token]" if open_check else ""), flush=True)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

@@ -395,8 +395,8 @@ function llmSettings() {
     ...providers.map((p) => el("option", { value: p.id, selected: s.provider === p.id }, p.label)));
   const tok = st && st.token_required ? el("div", { class: "field" }, el("label", { class: "l" }, "Access token (the server asks for one)"),
     el("input", { type: "password", value: token(), autocomplete: "off", oninput: (e) => session.set("vg:token", e.target.value) })) : null;
-  return el("details", { class: "faq", "aria-label": "Model settings" },
-    el("summary", null, "Advanced: model settings"),
+  return el("details", { class: "faq", "aria-label": "Access token and model settings", open: !!tok },
+    el("summary", null, tok ? "Access token and model settings" : "Advanced: model settings"),
     el("div", { class: "form", style: "margin:.75rem 0 .25rem" },
       allowed ? el("p", { class: "muted", style: "margin:0;font-size:.85rem" }, "Leave on “From the server's environment” to use CUSTOM_LLM_* of the server. A provider is chosen from the server's list; its address is not typed here. The key stays in this browser tab and is sent only with a run.")
               : el("p", { class: "note" }, "This server takes model settings from its environment only."),
@@ -467,6 +467,12 @@ function pageGenerate(query) {
 
   async function go(mode) {
     out.replaceChildren();
+    if (mode === "run" && app.status && app.status.token_required && !token()) {
+      out.append(el("p", { class: "err", role: "alert" }, app.status.public_check
+        ? "Generating needs the access token: enter it in the access token field below. Without it this page can only check the spec."
+        : "The server asks for an access token: enter it in the field below."));
+      return;
+    }
     [runBtn, checkBtn].forEach((b) => (b.disabled = true));
     const t0 = Date.now();
     const timer = el("span", { class: "muted" }, "0 s");
