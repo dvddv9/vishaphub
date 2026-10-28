@@ -13,6 +13,7 @@ Exit codes (used by the command line):
 
 from __future__ import annotations
 
+import dataclasses
 import datetime as dt
 import tempfile
 from collections.abc import Callable
@@ -155,6 +156,12 @@ def run_pipeline(spec_path: str | Path, *, out_dir: str | Path | None = None,
             break
         files, build = gen.files, gen.check
         log(f"[Repair]    round {rounds}: model sent {len(files)} files")
+    if not build.ok and v.code_verdict == "passed":
+        # Verify ran what it could, but the build check found errors (a missing test, a stray file):
+        # that is not a clean pass.
+        first = [*build.errors, *(f"{f.path}: {e}" for f in build.files for e in f.errors)][:3]
+        v = dataclasses.replace(v, code_verdict="needs_verification",
+                                notes=v.notes + ("build check reported errors: " + "; ".join(first),))
     res.files, res.build, res.verify, res.repair_rounds = files, build, v, rounds
     cov = (f"{v.coverage_percent:.0f}% (minimum 80%)" if v.coverage_percent is not None
            else f"{v.coverage_status} ({v.coverage_note})")

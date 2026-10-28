@@ -123,6 +123,27 @@ class RepairTests(Base):
         self.assertEqual(res.verify.code_verdict, "passed")
 
 
+class BuildErrorsTests(Base):
+    def test_a_build_error_is_not_a_clean_pass(self):
+        # the spec has 6 requirements; this answer's tests cover only R1..R5
+        from tests.test_verify import TESTS as TESTS_5
+        five = json.dumps({"files": {"handlers/__init__.py": "", "handlers/user.py": GOOD,
+                                     "tests/__init__.py": "", "tests/test_user.py": TESTS_5}})
+        res = self.run_it(Stub(five), repairs=0)
+        self.assertFalse(res.build.ok)
+        self.assertEqual(res.verify.code_verdict, "needs_verification")
+        self.assertTrue(any("build check reported errors" in n and "R6" in n for n in res.verify.notes))
+        self.assertEqual(res.exit_code, 0)          # no gate: written, reported
+
+    def test_the_gate_blocks_on_it_once(self):
+        from tests.test_verify import TESTS as TESTS_5
+        five = json.dumps({"files": {"handlers/__init__.py": "", "handlers/user.py": GOOD,
+                                     "tests/__init__.py": "", "tests/test_user.py": TESTS_5}})
+        res = self.run_it(Stub(five), repairs=0, gate=True)
+        self.assertEqual(res.exit_code, 1)
+        self.assertEqual(sum("R6" in r for r in res.deliver.gate.reasons), 1)
+
+
 class GateTests(Base):
     def test_gate_blocks_and_exits_1(self):
         res = self.run_it(Stub(answer(DOLLAR_BUG)), gate=True, repairs=0)

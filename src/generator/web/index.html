@@ -5,181 +5,666 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Vishap Generator</title>
 <style>
-  :root { color-scheme: light dark; --bg:#fff; --fg:#111827; --mut:#6b7280; --line:#e5e7eb; --card:#f9fafb; --ok:#166534; --bad:#b91c1c; --warn:#92400e; --acc:#1d4ed8; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#0b1220; --fg:#e5e7eb; --mut:#94a3b8; --line:#1e293b; --card:#0f172a; --ok:#86efac; --bad:#fca5a5; --warn:#fcd34d; --acc:#93c5fd; } }
-  * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; }
-  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
-  h1 { font-size: 26px; margin: 0 0 4px; } h2 { font-size: 18px; margin: 28px 0 8px; }
-  p.lead { color: var(--mut); margin: 0 0 20px; }
-  textarea { width:100%; height: 340px; font: 13.5px/1.6 ui-monospace,Menlo,Consolas,monospace; background:var(--card); color:var(--fg); border:1px solid var(--line); border-radius:10px; padding:12px; resize: vertical; }
-  .row { display:flex; flex-wrap:wrap; gap:16px; align-items:center; margin:12px 0; }
-  label { display:flex; gap:6px; align-items:center; }
-  input[type=number] { width: 64px; padding:4px 6px; background:var(--card); color:var(--fg); border:1px solid var(--line); border-radius:6px; }
-  input[type=password] { padding:6px 8px; background:var(--card); color:var(--fg); border:1px solid var(--line); border-radius:6px; }
-  button { padding:8px 16px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--fg); font:inherit; cursor:pointer; }
-  button.primary { background:var(--acc); color:#fff; border-color:var(--acc); }
-  button:disabled { opacity:.5; cursor:wait; }
-  table { width:100%; border-collapse:collapse; font-size:14px; }
-  th, td { text-align:left; padding:8px 10px 8px 0; border-top:1px solid var(--line); vertical-align:top; }
-  th { color:var(--mut); font-weight:600; font-size:13px; }
-  .pill { display:inline-block; padding:1px 8px; border-radius:999px; font-size:12px; font-weight:600; border:1px solid currentColor; }
-  .passed { color:var(--ok); } .failed { color:var(--bad); } .needs_verification, .not_verified { color:var(--warn); }
-  pre { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px; overflow:auto; font:13px/1.55 ui-monospace,Menlo,Consolas,monospace; margin:6px 0 14px; }
-  .mut { color:var(--mut); } .err { color:var(--bad); font-weight:600; }
-  details { margin: 6px 0; } summary { cursor:pointer; font-family: ui-monospace,Menlo,Consolas,monospace; font-size:14px; }
-  ul { margin: 4px 0; padding-left: 20px; }
+/* Same palette and shapes as the Vishap web app: slate surfaces, sky buttons, emerald accent in the hero. */
+:root {
+  --background:#f8fafc; --foreground:#0f172a; --surface:#ffffff; --border:#e2e8f0;
+  --s100:#f1f5f9; --s300:#cbd5e1; --s400:#94a3b8; --s500:#64748b; --s600:#475569; --s700:#334155; --s800:#1e293b;
+  --sky:#0ea5e9; --sky-h:#38bdf8; --ok:#15803d; --bad:#b91c1c; --warn:#a16207; --run:#1d4ed8;
+  --ok-bg:rgba(34,197,94,.12); --bad-bg:rgba(239,68,68,.12); --warn-bg:rgba(234,179,8,.12); --neutral-bg:rgba(100,116,139,.12);
+  --add:rgba(34,197,94,.14); --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme: light;
+}
+html[data-theme="dark"] {
+  --background:#020617; --foreground:#f8fafc; --surface:#0f172a; --border:#334155;
+  --s100:#1e293b; --s300:#475569; --s400:#64748b; --s500:#94a3b8; --s600:#cbd5e1; --s700:#e2e8f0; --s800:#f1f5f9;
+  --ok:#4ade80; --bad:#fca5a5; --warn:#fcd34d; --run:#93c5fd; color-scheme: dark;
+}
+* { box-sizing:border-box; }
+html { height:100%; }
+body { margin:0; background:var(--background); color:var(--foreground); font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+a { color:inherit; }
+:focus-visible { outline:2px solid var(--sky); outline-offset:2px; }
+.wrap { max-width:72rem; margin:0 auto; padding:0 1rem; }
+.mono { font-family:var(--mono); }
+.muted { color:var(--s500); }
+h1,h2,h3,h4 { margin:0; }
+.sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+
+/* navbar */
+header.nav { position:sticky; top:0; z-index:50; border-bottom:1px solid var(--border); background:color-mix(in srgb, var(--surface) 85%, transparent); backdrop-filter:blur(8px); }
+header.nav nav { display:flex; align-items:center; gap:.25rem; height:3.5rem; max-width:72rem; margin:0 auto; padding:0 1rem; }
+.brand { margin-right:.75rem; display:flex; gap:.5rem; align-items:center; font-weight:600; letter-spacing:-.01em; text-decoration:none; }
+.navlink { min-height:2.25rem; display:flex; align-items:center; padding:.375rem .625rem; border-radius:.375rem; font-size:.875rem; color:var(--s600); text-decoration:none; }
+.navlink:hover, .navlink[aria-current="page"] { background:var(--s100); color:var(--foreground); }
+.spacer { margin-left:auto; display:flex; gap:.5rem; align-items:center; }
+.brand { white-space:nowrap; }
+@media (max-width:30rem) { .brand .long, .chip { display:none; } header.nav nav { padding:0 .75rem; } }
+.chip { border:1px solid var(--border); border-radius:.375rem; padding:.25rem .5rem; font-size:.7rem; font-weight:500; letter-spacing:.04em; text-transform:uppercase; color:var(--s500); }
+button, .btn { font:inherit; }
+.iconbtn { min-height:2.25rem; min-width:2.25rem; border:1px solid var(--border); background:var(--surface); color:var(--s600); border-radius:.375rem; cursor:pointer; }
+.iconbtn:hover { background:var(--s100); }
+
+/* buttons */
+.btn { display:inline-flex; align-items:center; gap:.5rem; min-height:2.5rem; padding:.5rem 1rem; border-radius:.5rem; font-size:.875rem; cursor:pointer; text-decoration:none; border:1px solid var(--s300); background:var(--surface); color:var(--s700); box-shadow:0 1px 2px rgba(0,0,0,.04); }
+.btn:hover { background:var(--s100); }
+.btn.primary { background:var(--sky); border-color:var(--sky); color:#020617; font-weight:600; box-shadow:none; }
+.btn.primary:hover { background:var(--sky-h); }
+.btn:disabled { opacity:.5; cursor:not-allowed; }
+.btn.danger:hover { border-color:#fca5a5; background:var(--bad-bg); color:var(--bad); }
+
+/* hero (always dark, like Vishap) */
+.hero { position:relative; overflow:hidden; background:#020617; color:#f1f5f9; border-bottom:1px solid #1e293b; }
+.hero .grid { position:absolute; inset:0; background-image:linear-gradient(to right, rgb(148 163 184 / .35) 1px, transparent 1px), linear-gradient(to bottom, rgb(148 163 184 / .35) 1px, transparent 1px); background-size:56px 56px; opacity:.18; -webkit-mask-image:radial-gradient(ellipse 70% 60% at 50% 0%, #000 40%, transparent 100%); mask-image:radial-gradient(ellipse 70% 60% at 50% 0%, #000 40%, transparent 100%); }
+.hero .glow { position:absolute; top:-8rem; left:50%; width:45rem; max-width:100%; height:26rem; transform:translateX(-50%); border-radius:50%; background:rgba(16,185,129,.2); filter:blur(120px); }
+.hero .in { position:relative; display:grid; gap:2.5rem; padding:3.5rem 1.25rem; max-width:72rem; margin:0 auto; }
+@media (min-width:64rem) { .hero .in { grid-template-columns:1.05fr .95fr; align-items:center; padding:6rem 1.25rem; gap:3rem; } }
+.pill { display:inline-flex; align-items:center; gap:.5rem; border:1px solid rgba(52,211,153,.3); background:rgba(52,211,153,.1); color:#6ee7b7; border-radius:999px; padding:.25rem .75rem; font:11px var(--mono); letter-spacing:.12em; text-transform:uppercase; }
+.dot { width:6px; height:6px; border-radius:50%; background:#34d399; animation:pulse 2s infinite; }
+@keyframes pulse { 50% { opacity:.35; } }
+.hero h1 { margin-top:1.5rem; font-size:clamp(2.4rem,6vw,3.75rem); line-height:1.05; letter-spacing:-.02em; font-weight:600; }
+.hero h1 em { font-style:normal; color:#34d399; }
+.hero p.lead { margin:1.25rem 0 0; max-width:36rem; color:#cbd5e1; line-height:1.65; }
+.hero p.meta { margin:.75rem 0 0; font:12px var(--mono); color:#94a3b8; }
+.hero .cta { margin-top:2rem; display:flex; flex-wrap:wrap; gap:.75rem; }
+.hero .btn.em { background:#34d399; border-color:#34d399; color:#020617; font-weight:600; padding:.75rem 1.5rem; box-shadow:none; }
+.hero .btn.em:hover { background:#6ee7b7; }
+.hero .btn.ghost { background:transparent; border-color:#475569; color:#f1f5f9; padding:.75rem 1.5rem; box-shadow:none; }
+.hero .btn.ghost:hover { border-color:#94a3b8; }
+.sample { border:1px solid #334155; border-radius:.75rem; background:#0f172a; overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,.4); }
+.sample .bar { display:flex; align-items:center; gap:.5rem; padding:.625rem .875rem; border-bottom:1px solid #1e293b; background:#0b1220; font:11px var(--mono); color:#cbd5e1; }
+.sample .bar i { width:10px; height:10px; border-radius:50%; background:#334155; display:inline-block; }
+.sample .bar .r { margin-left:auto; font-size:10px; color:#94a3b8; }
+.sample .body { padding:1rem; display:grid; gap:.9rem; }
+.sample .lab { font:10px var(--mono); letter-spacing:.14em; text-transform:uppercase; color:#94a3b8; margin-bottom:.35rem; }
+.sample .row { display:flex; gap:.5rem; align-items:center; font-size:13px; color:#e2e8f0; padding:.2rem 0; }
+.sample .row .st { margin-left:auto; font:11px var(--mono); }
+.sample .okc { color:#4ade80; } .sample .badc { color:#fda4af; }
+.stats { display:grid; grid-template-columns:repeat(3,1fr); gap:.75rem; margin:0; }
+.stats div { border:1px solid #1e293b; border-radius:.5rem; padding:.6rem .75rem; background:#0b1220; }
+.stats dt { font:10px var(--mono); letter-spacing:.14em; text-transform:uppercase; color:#94a3b8; }
+.stats dd { margin:.15rem 0 0; font-weight:600; color:#f1f5f9; }
+
+/* page blocks */
+main.wrap { padding-top:2.5rem; padding-bottom:4rem; }
+.card { border:1px solid var(--border); background:var(--surface); border-radius:.75rem; padding:1rem 1.25rem; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+.grid3 { display:grid; gap:1rem; grid-template-columns:repeat(auto-fit,minmax(15rem,1fr)); margin-top:1.5rem; }
+.card h3 { font-size:1rem; font-weight:600; }
+.card p { margin:.4rem 0 0; font-size:.875rem; color:var(--s600); }
+.sec { margin-top:2.5rem; }
+.sec > h2 { font-size:1.125rem; font-weight:500; }
+.steps { display:grid; gap:1rem; grid-template-columns:repeat(auto-fit,minmax(11rem,1fr)); margin-top:.75rem; }
+.step .n { font:11px var(--mono); color:var(--s500); }
+.actions { margin-top:2rem; display:flex; flex-wrap:wrap; gap:.75rem; }
+.status { margin-top:1rem; min-height:1.5rem; font-size:.8rem; color:var(--s500); display:flex; flex-wrap:wrap; gap:.4rem 1rem; }
+.status b { color:var(--s700); font-weight:600; }
+details.faq { border:1px solid var(--border); background:var(--surface); border-radius:.75rem; padding:.75rem 1rem; margin-top:.5rem; }
+details summary { cursor:pointer; min-height:2.25rem; display:flex; align-items:center; font-size:.875rem; font-weight:500; }
+details p { margin:.25rem 0 .5rem; font-size:.875rem; color:var(--s600); }
+
+/* run cards */
+.jobs { margin-top:1rem; display:grid; gap:.75rem; }
+.job { display:flex; align-items:center; gap:.75rem; flex-wrap:wrap; text-decoration:none; }
+.job:hover { border-color:var(--s400); }
+.job .name { font:.875rem var(--mono); }
+.job .sub { font-size:.75rem; color:var(--s500); font-family:var(--mono); }
+.job .grow { flex:1; min-width:10rem; }
+.empty { border:1px dashed var(--s300); border-radius:.75rem; padding:2rem; text-align:center; color:var(--s500); font-size:.875rem; }
+
+/* badges */
+.badge { display:inline-flex; align-items:center; gap:.375rem; border-radius:999px; border:1px solid transparent; font-size:.75rem; font-weight:500; line-height:1; padding:.25rem .625rem; white-space:nowrap; }
+.badge-passed, .badge-pass, .badge-done { background:var(--ok-bg); border-color:rgba(34,197,94,.35); color:var(--ok); }
+.badge-failed, .badge-fail, .badge-error, .badge-critical { background:var(--bad-bg); border-color:rgba(239,68,68,.35); color:var(--bad); }
+.badge-needs_verification, .badge-not_verified, .badge-high, .badge-warning { background:var(--warn-bg); border-color:rgba(234,179,8,.35); color:var(--warn); }
+.badge-neutral, .badge-medium, .badge-note, .badge-skipped { background:var(--neutral-bg); border-color:rgba(100,116,139,.35); color:var(--s700); }
+
+/* forms */
+.form { display:grid; gap:1.5rem; }
+@media (min-width:60rem) { .form.two { grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); align-items:start; } }
+fieldset { border:0; padding:0; margin:0; min-width:0; }
+legend, label.l { font-size:.875rem; font-weight:500; color:var(--s700); }
+textarea, input[type=text], input[type=password], input[type=number], select { width:100%; background:var(--surface); color:var(--foreground); border:1px solid var(--s300); border-radius:.5rem; padding:.5rem .75rem; font:inherit; }
+textarea { font:13.5px/1.6 var(--mono); min-height:26rem; resize:vertical; max-width:100%; }
+.fieldgrid { display:grid; gap:.9rem; grid-template-columns:repeat(auto-fit,minmax(min(100%,11rem),1fr)); }
+.field { min-width:0; }
+.field { display:grid; gap:.3rem; }
+.chk { display:flex; gap:.75rem; align-items:flex-start; border:1px solid var(--border); border-radius:.5rem; padding:.6rem .8rem; font-size:.875rem; }
+.chk b { display:block; font-weight:500; color:var(--s700); }
+.chk span.d { color:var(--s500); font-size:.8rem; }
+.chk input { margin-top:.2rem; }
+.pillrow { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.5rem; }
+.pillbtn { border:1px solid var(--s300); background:var(--surface); color:var(--s700); border-radius:999px; padding:.35rem .9rem; font-size:.8rem; cursor:pointer; }
+.pillbtn:hover { border-color:var(--s500); }
+.err { border:1px solid rgba(239,68,68,.35); background:var(--bad-bg); color:var(--bad); border-radius:.75rem; padding:.75rem 1rem; font-size:.875rem; }
+.note { border:1px solid var(--border); background:var(--s100); color:var(--s600); border-radius:.75rem; padding:.75rem 1rem; font-size:.8rem; }
+.good li { margin:.3rem 0; }
+ul.tight { margin:.4rem 0; padding-left:1.1rem; font-size:.875rem; color:var(--s600); }
+
+/* progress */
+.progress { display:flex; align-items:center; gap:.75rem; }
+.spin { width:1rem; height:1rem; border:2px solid var(--s300); border-top-color:var(--sky); border-radius:50%; animation:spin .8s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* result */
+.head { display:flex; flex-wrap:wrap; gap:.75rem; align-items:center; }
+.head h1 { font:1.1rem var(--mono); word-break:break-all; }
+.tabs { margin-top:1.5rem; display:flex; gap:.25rem; border-bottom:1px solid var(--border); overflow-x:auto; }
+.tab { border:0; background:none; color:var(--s600); padding:.6rem .9rem; font-size:.875rem; cursor:pointer; border-bottom:2px solid transparent; white-space:nowrap; min-height:2.5rem; }
+.tab[aria-selected="true"] { color:var(--foreground); border-bottom-color:var(--sky); font-weight:600; }
+.panel { margin-top:1.25rem; }
+.kv { display:grid; grid-template-columns:repeat(auto-fit,minmax(11rem,1fr)); gap:.75rem; margin:1rem 0; }
+.kv div { border:1px solid var(--border); border-radius:.6rem; padding:.6rem .8rem; background:var(--surface); }
+.kv dt { font:10px var(--mono); letter-spacing:.12em; text-transform:uppercase; color:var(--s500); }
+.kv dd { margin:.2rem 0 0; font-weight:600; font-size:.95rem; }
+table { width:100%; border-collapse:collapse; font-size:.875rem; text-align:left; }
+th { padding:.5rem .75rem .5rem 0; font-weight:500; color:var(--s500); font-size:.8rem; }
+td { padding:.6rem .75rem .6rem 0; border-top:1px solid var(--border); vertical-align:top; }
+.scroll { overflow-x:auto; }
+.ev { font:12px/1.5 var(--mono); }
+.ev.bad { color:var(--bad); } .ev.good { color:var(--s500); }
+.terminal { background:var(--surface); border:1px solid var(--border); border-radius:.75rem; font:.8125rem/1.6 var(--mono); overflow-x:auto; padding:.875rem 1rem; white-space:pre-wrap; word-break:break-word; margin:.5rem 0 1rem; }
+.diff .a { background:var(--add); display:block; } .diff .h { color:var(--run); display:block; } .diff .d { color:var(--bad); display:block; }
+.filehead { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+.filehead .grow { flex:1; }
+.mini { min-height:1.9rem; padding:.2rem .7rem; font-size:.75rem; }
+.reasons li { margin:.2rem 0; }
 </style>
 </head>
 <body>
-<main>
-  <h1>Vishap Generator</h1>
-  <p class="lead">A specification in, code out, and every requirement proven or marked not proven. This page runs the five stages; it never writes to the server's disk, the files come back here.</p>
+<header class="nav"><nav aria-label="Main" id="nav"></nav></header>
+<div id="app"></div>
 
-  <label for="spec"><strong>spec.yaml</strong></label>
-  <textarea id="spec" spellcheck="false">version: 1
-updated: 2026-10-28
-
-text: |
-  Add an HTTP endpoint GET /user that returns one user by name
-  from the app database. Called by the public web app, without sign-in.
-
-target: python/flask
-kind: http-endpoint
-output: handlers/user.py
-caller: public
-route: GET /user
-
-inputs:
-  - name: name
-    in: query
-    rule: "1-64 letters and digits"
-
-outputs:
-  - status: 200
-    body: "json: id, name only"
-  - status: 404
-    when: "no such user"
-  - status: 400
-    when: "invalid name"
-
-profile: owasp-asvs-2
-constraints: [include-tests, validate-inputs]
-
-must_never:
-  - id: sql-from-input
-    text: "SQL is never built from the input"
-  - id: log-raw-input
-    text: "Raw input is never logged"
-
-check: analyzer
-</textarea>
-
-  <div class="row">
-    <label><input type="checkbox" id="gate"> gate</label>
-    <label>repair rounds <input type="number" id="repairs" min="0" max="5" value="2"></label>
-    <label><input type="checkbox" id="noanalyzer"> skip Analyzer</label>
-    <label>token <input type="password" id="token" placeholder="only if the server needs one" autocomplete="off"></label>
-  </div>
-  <div class="row">
-    <button id="check">Check the spec (no model)</button>
-    <button id="run" class="primary">Generate and verify</button>
-    <span id="status" class="mut"></span>
-  </div>
-
-  <div id="out"></div>
-</main>
 <script>
 "use strict";
-const $ = (id) => document.getElementById(id);
-const out = $("out");
-// the example spec says it was reviewed today, so it is not stale on first run
-$("spec").value = $("spec").value.replace(/^updated: .*$/m, "updated: " + new Date().toISOString().slice(0, 10));
-
+/* ---------- helpers ---------- */
+const $ = (sel, root = document) => root.querySelector(sel);
 function el(tag, props, ...kids) {
   const e = document.createElement(tag);
-  if (props) for (const [k, v] of Object.entries(props)) { if (k === "class") e.className = v; else e.setAttribute(k, v); }
-  for (const k of kids) e.append(k);
+  if (props) for (const [k, v] of Object.entries(props)) {
+    if (v === false || v == null) continue;
+    if (k === "class") e.className = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (k === "value") e.value = v;
+    else if (k === "checked") e.checked = !!v;
+    else e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const k of kids.flat()) if (k != null && k !== false) e.append(k.nodeType ? k : document.createTextNode(String(k)));
   return e;
 }
-const pill = (s) => el("span", { class: "pill " + s }, s.replace("_", " "));
-
-function render(r) {
-  out.replaceChildren();
-  if (r.error) { out.append(el("p", { class: "err" }, "Error: " + r.error)); }
-  if (r.verify) {
-    out.append(el("h2", null, "Verdict: ", pill(r.verify.code_verdict)));
-    const meta = [];
-    meta.push("coverage " + (r.verify.coverage.percent == null ? r.verify.coverage.status : Math.round(r.verify.coverage.percent) + "%"));
-    meta.push(r.verify.spec.stale ? "spec stale (" + r.verify.spec.age_days + " days)" : "spec fresh");
-    meta.push("repair rounds used: " + r.repair_rounds);
-    if (r.verify.analyzer) meta.push("analyzer " + r.verify.analyzer.status);
-    out.append(el("p", { class: "mut" }, meta.join(" · ")));
-    if (r.deliver && r.deliver.gate.blocked) {
-      const ul = el("ul");
-      for (const x of r.deliver.gate.reasons) ul.append(el("li", null, x));
-      out.append(el("p", null, r.deliver.blocked ? "The gate would block the write:" : "Gate reasons:"), ul);
-    }
-  }
-  if (r.requirements && r.requirements.length) {
-    out.append(el("h2", null, "Requirements"));
-    const verdicts = {};
-    if (r.verify) for (const v of r.verify.requirements) verdicts[v.id] = v;
-    const t = el("table");
-    t.append(el("tr", null, ...["ID", "Requirement", "Priority", "Status", "Evidence"].map((h) => el("th", null, h))));
-    for (const q of r.requirements) {
-      const v = verdicts[q.id];
-      const ev = el("td");
-      if (v) for (const e of v.evidence) ev.append(el("div", { class: e.status === "pass" ? "mut" : "failed" }, e.source + " " + e.name + ": " + e.status + (e.detail ? " (" + e.detail + ")" : "")));
-      if (v && v.note) ev.append(el("div", { class: "mut" }, v.note));
-      t.append(el("tr", null, el("td", null, q.id), el("td", null, q.text), el("td", null, q.priority), el("td", null, v ? pill(v.status) : "-"), ev));
-    }
-    out.append(t);
-  }
-  if (r.design && r.design.gaps.length) {
-    out.append(el("h2", null, "Gaps"));
-    const ul = el("ul");
-    for (const g of r.design.gaps) ul.append(el("li", null, g.id + " [" + g.severity + "] " + g.text));
-    out.append(ul);
-  }
-  if (r.verify && (r.verify.problems.length || r.verify.notes.length)) {
-    out.append(el("h2", null, "Problems and notes"));
-    const ul = el("ul");
-    for (const p of r.verify.problems) ul.append(el("li", { class: "failed" }, p));
-    for (const p of r.verify.notes) ul.append(el("li", { class: "mut" }, p));
-    out.append(ul);
-  }
-  if (r.files) {
-    out.append(el("h2", null, "Files"));
-    for (const [p, c] of Object.entries(r.files)) out.append(el("details", null, el("summary", null, p), el("pre", null, c)));
-  }
-  if (r.trace) out.append(el("details", null, el("summary", null, "trace.json"), el("pre", null, JSON.stringify(r.trace, null, 2))));
-  if (r.log && r.log.length) out.append(el("details", null, el("summary", null, "run log"), el("pre", null, r.log.join("\n"))));
+const badge = (kind, text) => el("span", { class: "badge badge-" + kind }, text || String(kind).replace(/_/g, " "));
+function safe(fn, fallback) { try { return fn(); } catch (e) { return fallback; } }
+const store = {
+  get: (k, d) => safe(() => JSON.parse(localStorage.getItem(k)) ?? d, d),
+  set: (k, v) => safe(() => localStorage.setItem(k, JSON.stringify(v))),
+};
+const session = {
+  get: (k, d) => safe(() => JSON.parse(sessionStorage.getItem(k)) ?? d, d),
+  set: (k, v) => safe(() => sessionStorage.setItem(k, JSON.stringify(v))),
+  del: (k) => safe(() => sessionStorage.removeItem(k)),
+};
+const ago = (iso) => {
+  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return "just now"; if (s < 3600) return Math.floor(s / 60) + " min ago";
+  if (s < 86400) return Math.floor(s / 3600) + " h ago"; return Math.floor(s / 86400) + " d ago";
+};
+function download(name, text, type = "text/plain") {
+  const url = URL.createObjectURL(new Blob([text], { type: type + ";charset=utf-8" }));
+  const a = el("a", { href: url, download: name });
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+async function copy(text, btn) {
+  try { await navigator.clipboard.writeText(text); const t = btn.textContent; btn.textContent = "Copied"; setTimeout(() => (btn.textContent = t), 1200); }
+  catch (e) { btn.textContent = "Select and copy by hand"; }
 }
 
-async function call(path) {
-  const buttons = [$("check"), $("run")];
-  buttons.forEach((b) => (b.disabled = true));
-  $("status").textContent = "working... a model run can take a few minutes";
+/* ---------- state ---------- */
+const app = { status: null, examples: [], draft: null };
+const PRESETS = [
+  { id: "env", label: "From the server's environment", url: "", model: "" },
+  { id: "deepseek", label: "DeepSeek", url: "https://api.deepseek.com", model: "deepseek-flash", thinking: "disabled" },
+  { id: "openai", label: "OpenAI", url: "https://api.openai.com/v1", model: "" },
+  { id: "openrouter", label: "OpenRouter", url: "https://openrouter.ai/api/v1", model: "" },
+  { id: "groq", label: "Groq", url: "https://api.groq.com/openai/v1", model: "" },
+  { id: "ollama", label: "Ollama (this computer)", url: "http://localhost:11434/v1", model: "" },
+  { id: "custom", label: "Other OpenAI-compatible", url: "", model: "" },
+];
+const llm = () => session.get("vg:llm", { preset: "env", url: "", model: "", key: "", thinking: "" });
+const token = () => session.get("vg:token", "");
+
+async function api(path, body) {
+  const headers = {};
+  let opts = {};
+  if (body !== undefined) { headers["Content-Type"] = "application/json"; opts = { method: "POST", body: JSON.stringify(body) }; }
+  if (token()) headers["Authorization"] = "Bearer " + token();
+  const res = await fetch(path, { ...opts, headers });
+  let data = {};
+  try { data = await res.json(); } catch (e) { /* not JSON */ }
+  return { ok: res.ok, status: res.status, data };
+}
+
+/* ---------- theme + navbar ---------- */
+function applyTheme(t) { document.documentElement.setAttribute("data-theme", t); }
+applyTheme(store.get("vg:theme", matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+
+function renderNav() {
+  const here = location.hash.replace(/^#/, "") || "/";
+  const link = (href, label) => el("a", { class: "navlink", href: "#" + href, "aria-current": (href === "/" ? here === "/" : here.startsWith(href)) ? "page" : false }, label);
+  const dark = document.documentElement.getAttribute("data-theme") === "dark";
+  $("#nav").replaceChildren(
+    el("a", { class: "brand", href: "#/" }, el("span", { "aria-hidden": "true" }, "🐉"), el("span", null, "Vishap", el("span", { class: "long" }, " Generator"))),
+    link("/", "Dashboard"), link("/generate", "Generate"),
+    el("div", { class: "spacer" },
+      el("button", { class: "iconbtn", "aria-label": dark ? "Switch to light theme" : "Switch to dark theme", onclick: () => {
+        const t = dark ? "light" : "dark"; applyTheme(t); store.set("vg:theme", t); renderNav(); }}, dark ? "☀" : "☾"),
+      el("span", { class: "chip" }, app.status && app.status.token_required ? "Token" : "Local")));
+}
+
+/* ---------- dashboard ---------- */
+const FEATURES = [
+  ["Requirements, numbered", "Every input, output and must-never line of the spec becomes R1..Rn with a priority. Nothing is invented from the free text."],
+  ["Attacks of its own", "Verify does not trust the model's tests: it sends boundary values, a trailing newline, quotes and over-long input to the code itself."],
+  ["Rules on the syntax tree", "SQL built from input and raw input in logs are found by reading the code, not by hoping a test covers them."],
+  ["Analyzer check", "The generated code goes through the Vishap Analyzer when it is installed; its errors fail the code, and are sent back to the model to fix."],
+  ["A gate you can use in CI", "Failed or unproven critical and high requirements, low coverage, an open critical gap or a stale spec block the write."],
+  ["Trace and rollback", "Each requirement is traced to code, tests and evidence. Every write keeps a backup, and one command puts the old files back."],
+];
+const STAGES = [
+  ["Intake", "The spec file becomes numbered requirements with priorities. No model."],
+  ["Design", "Plans the files and reports gaps in the spec. The model compares the free text with the requirements."],
+  ["Build", "The model writes code and a test per requirement. Syntax and lint are checked at once."],
+  ["Verify", "Model tests, own attacks, static rules, coverage, spec age and the Analyzer. Problems go back to the model."],
+  ["Deliver", "Gate, diff, backup, write, trace.json, rollback."],
+];
+const FAQ = [
+  ["What does it produce?", "Code and tests for the files the spec asks for, a verdict per requirement, and a trace that links each requirement to code, tests and evidence."],
+  ["Does this page write files?", "No. The page never writes to the server's disk: files come back here and you download them. The command line writes into a folder you name, with backup and rollback."],
+  ["Is the generated code safe to run?", "Verify runs it in a subprocess with a clean environment and a timeout, but that is not isolation: it runs with your rights. Read the code before you use it, and use Docker for specs you do not trust."],
+  ["What is a gap?", "Something the spec leaves out or contradicts, for example no answer for invalid input. Critical gaps block a gated write; notes do not."],
+  ["Where does the model key go?", "Either the server's environment (CUSTOM_LLM_*), or the settings below. A key typed here stays in this tab only (session storage) and is sent with the request; the server does not store or log it."],
+  ["Why does 'passed' not mean 'safe'?", "It means every requirement in the spec has evidence. A requirement the spec never states is not checked. The Gaps tab and the Analyzer tab show what the spec leaves open."],
+];
+
+function sampleCard() {
+  const row = (id, text, st, ok) => el("div", { class: "row" }, el("span", { class: "mono", style: "color:#94a3b8" }, id), el("span", null, text), el("span", { class: "st " + (ok ? "okc" : "badc") }, st));
+  return el("div", { class: "sample", "aria-hidden": "true" },
+    el("div", { class: "bar" }, el("i"), el("i"), el("i"), el("span", null, "handlers/user.py"), el("span", { class: "r" }, "example result")),
+    el("div", { class: "body" },
+      el("div", null, el("div", { class: "lab" }, "Requirements"),
+        row("R1", "name: 1-64 letters and digits", "passed", true),
+        row("R4", "SQL is never built from input", "passed", true),
+        row("R5", "Raw input is never logged", "passed", true)),
+      el("div", null, el("div", { class: "lab" }, "Evidence"),
+        el("div", { class: "row" }, "own attack: trailing newline", el("span", { class: "st okc" }, "answered 400")),
+        el("div", { class: "row" }, "rule: sql-from-input", el("span", { class: "st okc" }, "pass"))),
+      el("div", null, el("div", { class: "lab" }, "Gate"), el("div", { class: "row" }, "write allowed", el("span", { class: "st okc" }, "exit 0")))));
+}
+
+function pageDashboard() {
+  const runs = store.get("vg:runs", []);
+  const st = app.status;
+  const root = el("div", null,
+    el("section", { class: "hero" }, el("div", { class: "grid" }), el("div", { class: "glow" }),
+      el("div", { class: "in" },
+        el("div", null,
+          el("p", { class: "pill" }, el("span", { class: "dot" }), "Spec → code → proof"),
+          el("h1", null, "Write the spec.", el("br"), "Get code ", el("em", null, "with proof"), "."),
+          el("p", { class: "lead" }, "Describe the endpoint in a spec file. A model writes the code and the tests; then every requirement is checked by tests, by attacks of Verify's own, by rules on the syntax tree and by the Vishap Analyzer. What is not proven is marked not proven."),
+          el("p", { class: "meta" }, "5 stages · gate for CI · trace per requirement · rollback"),
+          el("div", { class: "cta" },
+            el("a", { class: "btn em", href: "#/generate?example=user-lookup" }, "Try with an example →"),
+            el("a", { class: "btn ghost", href: "#/generate" }, "Write my own spec")),
+          el("dl", { class: "stats", style: "margin-top:2rem" },
+            el("div", null, el("dt", null, "Stages"), el("dd", null, "5")),
+            el("div", null, el("dt", null, "Exit codes"), el("dd", null, "0 · 1 · 2")),
+            el("div", null, el("dt", null, "Writes"), el("dd", null, "only in --out")))),
+        sampleCard())),
+    el("main", { class: "wrap" },
+      el("div", { class: "status", "aria-live": "polite" }, ...statusLine()),
+      el("div", { class: "grid3" }, FEATURES.map(([t, d]) => el("div", { class: "card" }, el("h3", null, t), el("p", null, d)))),
+      el("section", { class: "sec", "aria-labelledby": "how" }, el("h2", { id: "how" }, "How it works"),
+        el("div", { class: "steps" }, STAGES.map(([t, d], i) => el("div", { class: "card step" }, el("div", { class: "n" }, "STAGE " + (i + 1)), el("h3", null, t), el("p", null, d))))),
+      el("div", { class: "actions" },
+        el("a", { class: "btn primary", href: "#/generate" }, "New generation"),
+        el("button", { class: "btn", onclick: render }, "Refresh"),
+        el("button", { class: "btn danger", disabled: !runs.length, onclick: () => { if (confirm("Clear the history of this browser? Files you downloaded stay.")) { store.set("vg:runs", []); render(); } } }, "Clear history")),
+      el("section", { class: "sec" }, el("h2", null, "Recent runs"),
+        el("div", { class: "jobs" }, runs.length ? runs.map(jobCard) : [el("div", { class: "empty" }, "No runs yet. Pick an example or write a spec, and the result will show up here.")])),
+      el("section", { class: "sec" }, el("h2", { id: "faq" }, "Questions"), FAQ.map(([q, a]) => el("details", { class: "faq" }, el("summary", null, q), el("p", null, a)))),
+      el("section", { class: "sec" }, llmSettings())));
+  return root;
+}
+
+function statusLine() {
+  const s = app.status;
+  if (!s) return [el("span", null, "Checking the server…")];
+  const bit = (k, v, good) => el("span", null, k + ": ", el("b", { style: good === false ? "color:var(--warn)" : "" }, v));
+  return [bit("version", s.version), bit("model", s.llm_from_environment ? "set in environment" : "set it below or in CUSTOM_LLM_*", s.llm_from_environment),
+          bit("Analyzer", s.analyzer_found ? "found" : "not found (will be skipped)", s.analyzer_found),
+          bit("coverage", s.coverage === "package" ? "coverage package" : "built-in counter"), bit("ruff", s.ruff_found ? "found" : "not found")];
+}
+
+function jobCard(run) {
+  const v = run.verdict;
+  return el("a", { class: "card job", href: "#/run/" + run.id },
+    el("div", { class: "grow" }, el("div", { class: "name" }, run.name), el("div", { class: "sub" }, run.summary + " · " + ago(run.time))),
+    run.mode === "check" ? badge("neutral", "spec check") : badge(v));
+}
+
+/* ---------- model settings ---------- */
+function llmSettings() {
+  const s = llm(), st = app.status;
+  const allowed = !st || st.client_llm_allowed;
+  const save = (patch) => { session.set("vg:llm", { ...llm(), ...patch }); };
+  const url = el("input", { type: "text", value: s.url, placeholder: "https://api.deepseek.com", autocomplete: "off", oninput: (e) => save({ url: e.target.value }) });
+  const model = el("input", { type: "text", value: s.model, placeholder: "model name", autocomplete: "off", oninput: (e) => save({ model: e.target.value }) });
+  const key = el("input", { type: "password", value: s.key, placeholder: "API key (kept in this tab only)", autocomplete: "off", oninput: (e) => save({ key: e.target.value }) });
+  const thinking = el("select", { onchange: (e) => save({ thinking: e.target.value }) },
+    ...[["", "Server default"], ["disabled", "disabled (DeepSeek: recommended)"], ["enabled", "enabled"]].map(([v, t]) => el("option", { value: v, selected: s.thinking === v }, t)));
+  const preset = el("select", { onchange: (e) => {
+    const p = PRESETS.find((x) => x.id === e.target.value);
+    url.value = p.url; model.value = p.model; thinking.value = p.thinking || "";
+    save({ preset: p.id, url: p.url, model: p.model, thinking: p.thinking || "" }); } },
+    ...PRESETS.map((p) => el("option", { value: p.id, selected: s.preset === p.id }, p.label)));
+  const tok = st && st.token_required ? el("div", { class: "field" }, el("label", { class: "l" }, "Access token (the server asks for one)"),
+    el("input", { type: "password", value: token(), autocomplete: "off", oninput: (e) => session.set("vg:token", e.target.value) })) : null;
+  return el("details", { class: "faq", "aria-label": "Model settings" },
+    el("summary", null, "Advanced: model settings"),
+    el("div", { class: "form", style: "margin:.75rem 0 .25rem" },
+      allowed ? el("p", { class: "muted", style: "margin:0;font-size:.85rem" }, "Leave on “From the server's environment” to use CUSTOM_LLM_* of the server. Anything typed here stays in this browser tab and is sent only with a run.")
+              : el("p", { class: "note" }, "This server takes model settings from its environment only."),
+      allowed ? el("div", { class: "fieldgrid" },
+        el("div", { class: "field" }, el("label", { class: "l" }, "Provider"), preset),
+        el("div", { class: "field" }, el("label", { class: "l" }, "URL"), url),
+        el("div", { class: "field" }, el("label", { class: "l" }, "Model"), model),
+        el("div", { class: "field" }, el("label", { class: "l" }, "Key"), key),
+        el("div", { class: "field" }, el("label", { class: "l" }, "Reasoning (thinking)"), thinking)) : null,
+      tok));
+}
+function llmForRequest() {
+  const s = llm(), st = app.status;
+  if (!st || !st.client_llm_allowed || s.preset === "env" || !s.url) return undefined;
+  return { url: s.url, model: s.model, key: s.key, thinking: s.thinking };
+}
+
+/* ---------- generate page ---------- */
+const TARGETS = [["python/flask", "Python / Flask"], ["python/stdlib", "Python (WSGI, no framework)"], ["java/spring", "Java / Spring (plan and code only)"], ["c", "C (plan and code only)"], ["terraform", "Terraform (plan and code only)"], ["openapi", "OpenAPI (plan and code only)"]];
+const KINDS = [["http-endpoint", "HTTP endpoint"], ["function", "Function"], ["module", "Module"], ["config", "Config"]];
+const PROFILES = [["owasp-asvs-2", "OWASP ASVS 2"], ["owasp-asvs-1", "OWASP ASVS 1"], ["none", "No profile"]];
+const CALLERS = [["public", "Public, no sign-in"], ["signed-in", "Signed-in users"], ["internal", "Internal callers only"]];
+const CONSTRAINTS = [["include-tests", "Include tests", "A test per requirement."], ["validate-inputs", "Validate inputs", "Reject bad input before anything else."], ["no-dependencies", "No dependencies", "Standard library only."], ["explain-decisions", "Explain decisions", "Comments for the choices the spec left open."]];
+
+function getKey(text, key) { const m = text.match(new RegExp("^" + key + ":[ \\t]*(.*?)[ \\t]*(#.*)?$", "m")); return m ? m[1].replace(/^["']|["']$/g, "") : ""; }
+function setKey(text, key, value) {
+  const re = new RegExp("^" + key + ":.*$", "m");
+  const line = key + ": " + value;
+  if (re.test(text)) return text.replace(re, line);
+  return text.replace(/\s*$/, "\n") + line + "\n";
+}
+function getConstraints(text) { const m = text.match(/^constraints:[ \t]*\[(.*?)\]/m); return m ? m[1].split(",").map((x) => x.trim()).filter(Boolean) : []; }
+
+function pageGenerate(query) {
+  const spec = el("textarea", { id: "spec", spellcheck: "false", "aria-label": "spec.yaml" });
+  const out = el("div", { id: "gen-out" });
+  const opts = { gate: false, requireCov: false, repairs: 2, noAnalyzer: false, noText: false };
+  const draft = query.get("example") ? {} : (app.draft || {});
+  Object.assign(opts, draft.options || {});
+  spec.value = draft.spec || "";
+
+  const selects = {};
+  function sel(id, label, options, key) {
+    const s = el("select", { id, "aria-label": label, onchange: (e) => { spec.value = setKey(spec.value, key, e.target.value); sync(); } },
+      ...options.map(([v, t]) => el("option", { value: v }, t)));
+    selects[key] = s;
+    return el("div", { class: "field" }, el("label", { class: "l", for: id }, label), s);
+  }
+  const outputInput = el("input", { type: "text", id: "output", "aria-label": "Output file", oninput: (e) => { spec.value = setKey(spec.value, "output", e.target.value); } });
+  const boxes = CONSTRAINTS.map(([id, label, desc]) => {
+    const c = el("input", { type: "checkbox", id: "c-" + id, onchange: () => {
+      const on = CONSTRAINTS.map(([i]) => i).filter((i) => $("#c-" + i).checked);
+      spec.value = setKey(spec.value, "constraints", "[" + on.join(", ") + "]"); } });
+    return { id, node: el("label", { class: "chk" }, c, el("span", null, el("b", null, label), el("span", { class: "d" }, desc))), c };
+  });
+  function sync() {
+    for (const [key, s] of Object.entries(selects)) { const v = getKey(spec.value, key); if ([...s.options].some((o) => o.value === v)) s.value = v; }
+    outputInput.value = getKey(spec.value, "output");
+    const cs = getConstraints(spec.value); boxes.forEach((b) => (b.c.checked = cs.includes(b.id)));
+  }
+  spec.addEventListener("input", sync);
+
+  const exBtns = el("div", { class: "pillrow" }, app.examples.map((e) => el("button", { class: "pillbtn", type: "button", title: e.description, onclick: () => { spec.value = e.spec; sync(); out.replaceChildren(); } }, e.title)));
+  const optBox = (id, title, desc, key) => el("label", { class: "chk" }, el("input", { type: "checkbox", id, checked: opts[key], onchange: (e) => (opts[key] = e.target.checked) }), el("span", null, el("b", null, title), el("span", { class: "d" }, desc)));
+
+  const runBtn = el("button", { class: "btn primary", type: "button" }, "Generate and verify");
+  const checkBtn = el("button", { class: "btn", type: "button" }, "Check the spec (no model)");
+
+  async function go(mode) {
+    out.replaceChildren();
+    [runBtn, checkBtn].forEach((b) => (b.disabled = true));
+    const t0 = Date.now();
+    const timer = el("span", { class: "muted" }, "0 s");
+    const iv = setInterval(() => (timer.textContent = Math.floor((Date.now() - t0) / 1000) + " s"), 500);
+    out.append(el("div", { class: "card progress", role: "status" }, el("div", { class: "spin" }), el("span", null, mode === "check" ? "Checking the spec…" : "Running the five stages. A model run takes a few minutes, with repair rounds longer. "), timer));
+    app.draft = { spec: spec.value, options: { ...opts } };
+    const body = { spec: spec.value, gate: opts.gate, require_coverage: opts.requireCov, repairs: Number(opts.repairs), no_analyzer: opts.noAnalyzer, text_check: !opts.noText };
+    if (mode === "run") { const l = llmForRequest(); if (l) body.llm = l; }
+    let res;
+    try { res = await api(mode === "check" ? "/api/check" : "/api/generate", body); }
+    catch (e) { res = { ok: false, status: 0, data: { error: "could not reach the server: " + e } }; }
+    clearInterval(iv);
+    [runBtn, checkBtn].forEach((b) => (b.disabled = false));
+    out.replaceChildren();
+    const d = res.data || {};
+    if (!res.ok && !d.requirements) { out.append(el("p", { class: "err", role: "alert" }, "Error " + (res.status || "") + ": " + (d.error || "the request failed"))); return; }
+    const run = saveRun(d, spec.value, mode);
+    location.hash = "#/run/" + run.id;
+  }
+  runBtn.addEventListener("click", () => go("run"));
+  checkBtn.addEventListener("click", () => go("check"));
+
+  const sheet = el("aside", { class: "card" },
+    el("h3", null, "Specification sheet"),
+    el("ul", { class: "tight" }, el("li", null, "Every input has a rule: length and kind of characters. The attacks are built from it."),
+      el("li", null, "List an answer for invalid input (400 or 422), not only the happy path."),
+      el("li", null, "Put what must never happen under must_never, one id and one sentence each. These become critical requirements."),
+      el("li", null, "Name who calls it (public, signed-in, internal) and the route."),
+      el("li", null, "Update the date when you review the spec; after 90 days it counts as stale.")),
+    el("h3", { style: "margin-top:1rem" }, "Known must_never ids"),
+    el("p", null, "sql-from-input and log-raw-input are also checked by rules on the code. Other ids are checked by the model's tests only."));
+
+  const page = el("main", { class: "wrap" },
+    el("h1", { style: "font-size:1.5rem;font-weight:600" }, "Generate from a specification"),
+    el("p", { class: "muted", style: "margin:.25rem 0 1.5rem" }, "Write or paste a spec.yaml. The form on the right edits the same text."),
+    el("div", { class: "form two" },
+      el("div", { class: "form" },
+        el("fieldset", null, el("legend", null, "Start with an example"), exBtns),
+        el("div", { class: "field" }, el("label", { class: "l", for: "spec" }, "Specification (spec.yaml)"), spec),
+        el("div", { class: "actions", style: "margin:0" }, runBtn, checkBtn),
+        out),
+      el("div", { class: "form" },
+        el("div", { class: "card form" },
+          el("div", { class: "fieldgrid" },
+            sel("f-target", "Language", TARGETS, "target"), sel("f-kind", "Kind", KINDS, "kind"),
+            sel("f-profile", "Security profile", PROFILES, "profile"), sel("f-caller", "Caller", CALLERS, "caller"),
+            el("div", { class: "field" }, el("label", { class: "l", for: "output" }, "Output file"), outputInput)),
+          el("fieldset", { class: "form", style: "gap:.5rem" }, el("legend", null, "Constraints"), ...boxes.map((b) => b.node))),
+        el("div", { class: "card form", style: "gap:.5rem" },
+          el("h3", null, "Run options"),
+          optBox("o-gate", "Gate", "Block the write on a failed critical or high requirement, low coverage, an open critical gap or a stale spec.", "gate"),
+          optBox("o-cov", "Require coverage", "With the gate: coverage that could not be measured blocks too.", "requireCov"),
+          optBox("o-noan", "Skip the Analyzer", "Do not run the Vishap Analyzer on the code.", "noAnalyzer"),
+          optBox("o-notext", "Skip the text check", "Do not ask the model to compare the free text with the requirements.", "noText"),
+          el("div", { class: "field" }, el("label", { class: "l", for: "o-rep" }, "Repair rounds (0 to 5)"),
+            el("input", { type: "number", id: "o-rep", min: "0", max: "5", value: String(opts.repairs), oninput: (e) => (opts.repairs = e.target.value) }))),
+        sheet)),
+    el("div", { class: "sec" }, llmSettings()));
+  const pre = query.get("example");
+  if (!spec.value) {
+    const e = app.examples.find((x) => x.id === (pre || "user-lookup"));
+    if (e) spec.value = e.spec;
+  }
+  sync();
+  return page;
+}
+
+/* ---------- runs ---------- */
+function saveRun(data, specText, mode) {
+  const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const name = getKey(specText, "output") || "spec.yaml";
+  const v = data.verify;
+  const summary = mode === "check"
+    ? (data.requirements || []).length + " requirements, " + ((data.design && data.design.gaps) || []).length + " gaps"
+    : v ? v.requirements.filter((r) => r.status === "passed").length + "/" + v.requirements.length + " passed" : (data.error || "no result");
+  const run = { id, time: new Date().toISOString(), name, mode, verdict: v ? v.code_verdict : (data.error ? "failed" : "neutral"), summary, spec: specText, result: data };
+  let runs = [run, ...store.get("vg:runs", [])].slice(0, 12);
+  while (runs.length > 1 && JSON.stringify(runs).length > 3_500_000) runs.pop();
+  store.set("vg:runs", runs);
+  return run;
+}
+
+const TABS = ["summary", "requirements", "files", "gaps", "analyzer", "diff", "audit", "raw"];
+
+function pageRun(id) {
+  const run = store.get("vg:runs", []).find((r) => r.id === id);
+  if (!run) return el("main", { class: "wrap" }, el("p", { class: "err" }, "This run is not in this browser's history."), el("p", null, el("a", { class: "btn", href: "#/" }, "Back to the dashboard")));
+  const r = run.result, v = r.verify, d = r.design;
+  let active = "summary";
+  const panel = el("div", { class: "panel", role: "tabpanel" });
+  const tabsEl = el("div", { class: "tabs", role: "tablist", "aria-label": "Result sections" });
+  const counts = {
+    requirements: (r.requirements || []).length, files: r.files ? Object.keys(r.files).length : 0,
+    gaps: d ? d.gaps.length : 0, analyzer: v && v.analyzer ? v.analyzer.findings.length : 0,
+  };
+  const labels = { summary: "Summary", requirements: "Requirements", files: "Files", gaps: "Gaps", analyzer: "Analyzer", diff: "Diff", audit: "Audit", raw: "Full result" };
+  const visible = TABS.filter((t) => !(["files", "analyzer", "diff"].includes(t) && !v) && !(t === "audit" && !r.trace && !r.log));
+  function draw() {
+    tabsEl.replaceChildren(...visible.map((t) => el("button", { class: "tab", role: "tab", id: "tab-" + t, "aria-selected": String(t === active), "aria-controls": "panel", tabindex: t === active ? "0" : "-1",
+      onclick: () => { active = t; draw(); },
+      onkeydown: (e) => { const i = visible.indexOf(t); let n = null;
+        if (e.key === "ArrowRight") n = (i + 1) % visible.length; else if (e.key === "ArrowLeft") n = (i - 1 + visible.length) % visible.length; else if (e.key === "Home") n = 0; else if (e.key === "End") n = visible.length - 1;
+        if (n !== null) { e.preventDefault(); active = visible[n]; draw(); $("#tab-" + active).focus(); } } },
+      labels[t] + (counts[t] ? " (" + counts[t] + ")" : ""))));
+    panel.id = "panel"; panel.setAttribute("aria-labelledby", "tab-" + active);
+    panel.replaceChildren(tabBody(active, run));
+  }
+  draw();
+  return el("main", { class: "wrap" },
+    el("div", { class: "head" }, el("a", { class: "btn mini", href: "#/" }, "← Dashboard"), el("h1", null, run.name),
+      run.mode === "check" ? badge("neutral", "spec check") : badge(run.verdict), el("span", { class: "muted", style: "font-size:.8rem" }, ago(run.time)),
+      el("span", { class: "spacer" }, el("button", { class: "btn mini", onclick: () => { app.draft = { spec: run.spec }; location.hash = "#/generate"; } }, "Edit the spec and run again"))),
+    r.error ? el("p", { class: "err", style: "margin-top:1rem", role: "alert" }, r.error) : null,
+    tabsEl, panel);
+}
+
+function kvRow(pairs) { return el("dl", { class: "kv" }, pairs.map(([k, val]) => el("div", null, el("dt", null, k), el("dd", null, val)))); }
+
+function tabBody(tab, run) {
+  const r = run.result, v = r.verify, d = r.design;
+  if (tab === "summary") {
+    const nodes = [];
+    if (v) {
+      const passed = v.requirements.filter((x) => x.status === "passed").length;
+      const cov = v.coverage.percent == null ? v.coverage.status : Math.round(v.coverage.percent) + "%";
+      nodes.push(kvRow([
+        ["Verdict", badge(v.code_verdict)], ["Requirements", passed + " of " + v.requirements.length + " proven"],
+        ["Coverage", cov + " (minimum " + v.coverage.minimum + "%)"], ["Spec", v.spec.stale ? "stale, " + v.spec.age_days + " days" : "fresh, " + v.spec.age_days + " days"],
+        ["Repair rounds", String(r.repair_rounds)], ["Analyzer", v.analyzer ? v.analyzer.status : "not run"],
+        ["Gate", r.deliver ? (r.deliver.gate.blocked ? "would block" : "would pass") : "-"]]));
+      const buildErrs = r.build ? [...r.build.errors, ...r.build.files.flatMap((f) => f.errors.map((e) => f.path + ": " + e))] : [];
+      const concl = v.code_verdict === "passed" ? "Every critical and high requirement has evidence and nothing failed."
+        : v.code_verdict === "failed" ? "At least one critical or high requirement failed. See the Requirements tab for the evidence."
+        : "Something could not be proven or run. Read the problems below before you trust this code.";
+      nodes.push(el("div", { class: "card" }, el("h3", null, "Conclusion"), el("p", null, concl)));
+      if (r.deliver && r.deliver.gate.reasons.length) nodes.push(el("div", { class: "card", style: "margin-top:1rem" }, el("h3", null, "The gate would block because"), el("ul", { class: "tight reasons" }, r.deliver.gate.reasons.map((x) => el("li", null, x)))));
+      if (buildErrs.length) nodes.push(el("div", { class: "card", style: "margin-top:1rem" }, el("h3", null, "Build check"), el("ul", { class: "tight" }, buildErrs.map((x) => el("li", { style: "color:var(--bad)" }, x)))));
+      if (v.problems.length) nodes.push(el("div", { class: "card", style: "margin-top:1rem" }, el("h3", null, "Problems"), el("ul", { class: "tight" }, v.problems.map((x) => el("li", { style: "color:var(--bad)" }, x)))));
+      if (v.notes.length) nodes.push(el("div", { class: "card", style: "margin-top:1rem" }, el("h3", null, "Notes"), el("ul", { class: "tight" }, v.notes.map((x) => el("li", null, x)))));
+    } else {
+      nodes.push(kvRow([["Mode", "Spec check, no model"], ["Requirements", String((r.requirements || []).length)], ["Gaps", String(d ? d.gaps.length : 0)],
+        ["Critical gaps", String(d ? d.gaps.filter((g) => g.severity === "critical").length : 0)], ["Files planned", String(d ? d.files.length : 0)]]));
+      nodes.push(el("div", { class: "note" }, "No model was called and no code was written. This only shows what Intake and Design make of the spec."));
+    }
+    return el("div", null, nodes);
+  }
+  if (tab === "requirements") {
+    const by = {}; if (v) for (const x of v.requirements) by[x.id] = x;
+    const tr = (r.trace && r.trace.requirements) ? Object.fromEntries(r.trace.requirements.map((x) => [x.id, x])) : {};
+    return el("div", null,
+      v ? el("p", { class: "muted", style: "margin:0 0 .5rem;font-size:.85rem" }, "Traced: " + v.requirements.filter((x) => x.status === "passed").length + " of " + v.requirements.length + " proven.") : null,
+      el("div", { class: "scroll" }, el("table", null, el("thead", null, el("tr", null, ["ID", "Requirement", "Priority", v ? "Status" : "", v ? "Code and evidence" : ""].map((h) => el("th", { scope: "col" }, h)))),
+        el("tbody", null, (r.requirements || []).map((q) => {
+          const x = by[q.id], t = tr[q.id];
+          return el("tr", null, el("td", { class: "mono" }, q.id), el("td", null, q.text), el("td", null, badge(q.priority)), el("td", null, x ? badge(x.status) : ""),
+            el("td", null, t && t.code.length ? el("div", { class: "ev good" }, "code: " + t.code.join(", ")) : null,
+              t && t.tests.length ? el("div", { class: "ev good" }, "tests: " + t.tests.join(", ")) : null,
+              x ? x.evidence.map((e) => el("div", { class: "ev " + (e.status === "pass" ? "good" : "bad") }, e.source + " " + e.name + ": " + e.status + (e.detail ? " (" + e.detail + ")" : ""))) : null,
+              x && x.note ? el("div", { class: "ev good" }, x.note) : null));
+        })))));
+  }
+  if (tab === "files") {
+    const files = r.files || {};
+    const names = Object.keys(files);
+    if (!names.length) return el("div", { class: "empty" }, "No files came back.");
+    return el("div", null, el("p", { class: "note", style: "margin-bottom:1rem" }, "Nothing was written to the server's disk. Download the files, or run the command line with --out to write them with a backup."),
+      names.map((p, i) => el("details", { class: "faq", open: i === 0 },
+        el("summary", null, el("span", { class: "filehead", style: "width:100%" }, el("span", { class: "mono grow" }, p), el("span", { class: "muted", style: "font-size:.75rem" }, files[p].split("\n").length + " lines"))),
+        el("div", { class: "filehead", style: "margin:.25rem 0" }, el("button", { class: "btn mini", onclick: (e) => copy(files[p], e.target) }, "Copy"),
+          el("button", { class: "btn mini", onclick: () => download(p.split("/").pop(), files[p]) }, "Download")),
+        el("pre", { class: "terminal" }, files[p] || "(empty file)"))));
+  }
+  if (tab === "gaps") {
+    if (!d || !d.gaps.length) return el("div", { class: "empty" }, "No gaps. The spec states what Design needs.");
+    return el("div", { class: "scroll" }, el("table", null, el("thead", null, el("tr", null, ["ID", "Type", "Severity", "What", "Where"].map((h) => el("th", { scope: "col" }, h)))),
+      el("tbody", null, d.gaps.map((g) => el("tr", null, el("td", { class: "mono" }, g.id), el("td", null, g.type.replace("_", " ")), el("td", null, badge(g.severity === "critical" ? "critical" : "note", g.severity)), el("td", null, g.text), el("td", { class: "mono" }, g.source ? g.source.field + ":" + g.source.line : "-"))))));
+  }
+  if (tab === "analyzer") {
+    const a = v && v.analyzer;
+    if (!a) return el("div", { class: "empty" }, "The Analyzer did not run (check: none, skipped, or an earlier check failed first).");
+    return el("div", null, kvRow([["Status", badge(a.status)], ["Summary", a.note || "-"]]),
+      a.findings.length ? el("div", { class: "scroll" }, el("table", null, el("thead", null, el("tr", null, ["Level", "Rule", "File", "Finding"].map((h) => el("th", { scope: "col" }, h)))),
+        el("tbody", null, a.findings.map((f) => el("tr", null, el("td", null, badge(f.level === "error" ? "critical" : f.level === "warning" ? "warning" : "note", f.level)), el("td", { class: "mono" }, f.rule), el("td", { class: "mono" }, f.file), el("td", null, f.message)))))) : null);
+  }
+  if (tab === "diff") {
+    const diff = r.diff || "";
+    if (!diff) return el("div", { class: "empty" }, "No diff.");
+    return el("div", null, el("p", { class: "note", style: "margin-bottom:1rem" }, "Compared with an empty folder: this page never reads your disk. For a diff against the files you already have, use --dry-run on the command line."),
+      el("pre", { class: "terminal diff" }, diff.split("\n").map((line) => el("span", { class: line.startsWith("+") && !line.startsWith("+++") ? "a" : line.startsWith("@@") ? "h" : line.startsWith("-") && !line.startsWith("---") ? "d" : "" }, line + "\n"))));
+  }
+  if (tab === "audit") {
+    const t = r.trace;
+    return el("div", null,
+      t ? kvRow([["Spec SHA-256", t.spec.sha256.slice(0, 16) + "…"], ["Spec date", t.spec.updated], ["Run", t.run.id], ["Forced", String(t.forced)]]) : null,
+      el("div", { class: "filehead" }, t ? el("button", { class: "btn mini", onclick: () => download("trace.json", JSON.stringify(t, null, 2), "application/json") }, "Download trace.json") : null,
+        el("button", { class: "btn mini", onclick: () => download("spec.yaml", run.spec, "text/yaml") }, "Download spec.yaml")),
+      r.log && r.log.length ? el("div", null, el("h3", { style: "margin-top:1rem" }, "Run log"), el("pre", { class: "terminal" }, r.log.join("\n"))) : null,
+      t ? el("div", null, el("h3", null, "Trace"), el("pre", { class: "terminal" }, JSON.stringify(t, null, 2))) : null);
+  }
+  const copyBtn = el("button", { class: "btn mini", onclick: (e) => copy(JSON.stringify(r, null, 2), e.target) }, "Copy JSON");
+  return el("div", null, el("div", { class: "filehead" }, copyBtn), el("pre", { class: "terminal" }, JSON.stringify(r, null, 2)));
+}
+
+/* ---------- router ---------- */
+async function render() {
+  const hash = location.hash.replace(/^#/, "") || "/";
+  const [path, qs] = hash.split("?");
+  const query = new URLSearchParams(qs || "");
+  renderNav();
+  let page;
+  if (path === "/generate") { page = pageGenerate(query); }
+  else if (path.startsWith("/run/")) { page = pageRun(path.slice(5)); }
+  else { page = pageDashboard(); }
+  $("#app").replaceChildren(page);
+  window.scrollTo(0, 0);
+}
+window.addEventListener("hashchange", render);
+
+(async function boot() {
+  $("#app").replaceChildren(el("main", { class: "wrap" }, el("p", { class: "muted" }, "Loading…")));
   try {
-    const headers = { "Content-Type": "application/json" };
-    if ($("token").value) headers["Authorization"] = "Bearer " + $("token").value;
-    const res = await fetch(path, {
-      method: "POST", headers,
-      body: JSON.stringify({ spec: $("spec").value, gate: $("gate").checked, repairs: Number($("repairs").value), no_analyzer: $("noanalyzer").checked }),
-    });
-    const data = await res.json();
-    if (!res.ok) render({ error: data.error || res.statusText }); else render(data);
-    $("status").textContent = "";
-  } catch (e) {
-    render({ error: String(e) });
-    $("status").textContent = "";
-  } finally {
-    buttons.forEach((b) => (b.disabled = false));
-  }
-}
-$("check").addEventListener("click", () => call("/api/check"));
-$("run").addEventListener("click", () => call("/api/generate"));
+    const [s, e] = await Promise.all([api("/api/status"), api("/api/examples")]);
+    if (s.ok) app.status = s.data;
+    if (e.ok) app.examples = e.data.examples || [];
+  } catch (err) { /* the page still works without them */ }
+  render();
+})();
 </script>
 </body>
 </html>

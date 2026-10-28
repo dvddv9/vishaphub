@@ -1,6 +1,6 @@
 [project]
 name = "vishap-generator"
-version = "0.0.1"
+version = "0.3.0"
 description = "Spec-to-code generator that proves its output"
 requires-python = ">=3.11"
 dependencies = ["pyyaml>=6"]

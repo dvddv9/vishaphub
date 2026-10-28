@@ -2,6 +2,8 @@
 
     GET  /              the web form
     GET  /health        {"ok": true}
+    GET  /api/status    version, what is installed, whether a model is configured
+    GET  /api/examples  the example specs of the form
     POST /api/check     {"spec": "<yaml text>"}                -> Intake and Design only
     POST /api/generate  {"spec": "<yaml text>", "gate": false, "repairs": 2,
                          "no_analyzer": false}                 -> all five stages
@@ -18,19 +20,28 @@ Safety:
   Host and Origin headers must match this server.
 - One generate run at a time (a run costs model tokens); the next gets 429.
 - Request body up to 256 KB.
+- The browser may send its own model settings (`llm`: url, model, key, thinking) for one request.
+  They are never stored or logged. Accepted only when bound to loopback, or with
+  GENERATOR_ALLOW_CLIENT_LLM=1 (otherwise the server would call any URL a client names).
 """
 
 from __future__ import annotations
 
 import hmac
+import importlib.util
 import json
 import os
+import shlex
+import shutil
 import tempfile
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from . import __version__
+from .examples import examples
+from .llm import LLMConfigError, config_from_env
 from .pipeline import DEFAULT_REPAIRS, run_pipeline
 
 MAX_BODY = 256 * 1024
@@ -45,7 +56,51 @@ class ApiError(Exception):
         self.status, self.message = status, message
 
 
-def handle_generate(body: dict, *, check_only: bool, run=run_pipeline, **run_kwargs) -> dict:
+LLM_FIELDS = {"url": "CUSTOM_LLM_URL", "model": "CUSTOM_LLM_MODEL", "key": "CUSTOM_LLM_KEY",
+              "thinking": "CUSTOM_LLM_THINKING"}
+
+
+def client_llm_config(llm):
+    """The model settings a request brings along, checked like the environment ones.
+
+    They live for this one request only: nothing is stored, logged or returned.
+    """
+    if llm is None:
+        return None
+    if not isinstance(llm, dict):
+        raise ApiError(400, '"llm" must be an object')
+    env = {}
+    for field, name in LLM_FIELDS.items():
+        v = llm.get(field, "")
+        if not isinstance(v, str):
+            raise ApiError(400, f'"llm.{field}" must be text')
+        env[name] = v
+    try:
+        return config_from_env(env)
+    except LLMConfigError as e:
+        raise ApiError(400, f"llm: {e}") from None
+
+
+def status(token: str | None, client_llm: bool) -> dict:
+    try:
+        config_from_env()
+        llm_env = True
+    except LLMConfigError:
+        llm_env = False
+    analyzer_cmd = shlex.split(os.environ.get("VISHAP_ANALYZER_CMD") or "vishap")
+    return {
+        "version": __version__,
+        "llm_from_environment": llm_env,
+        "client_llm_allowed": client_llm,
+        "token_required": bool(token),
+        "analyzer_found": bool(analyzer_cmd) and shutil.which(analyzer_cmd[0]) is not None,
+        "coverage": "package" if importlib.util.find_spec("coverage") else "built-in",
+        "ruff_found": shutil.which("ruff") is not None,
+    }
+
+
+def handle_generate(body: dict, *, check_only: bool, run=run_pipeline, client_llm: bool = True,
+                    **run_kwargs) -> dict:
     spec_text = body.get("spec")
     if not isinstance(spec_text, str) or not spec_text.strip():
         raise ApiError(400, '"spec" must be the text of a spec.yaml')
@@ -55,6 +110,11 @@ def handle_generate(body: dict, *, check_only: bool, run=run_pipeline, **run_kwa
     if not isinstance(repairs, int) or isinstance(repairs, bool) or not 0 <= repairs <= 5:
         raise ApiError(400, '"repairs" must be an integer from 0 to 5')
     gate = bool(body.get("gate", False))
+    config = None
+    if body.get("llm") is not None:
+        if not client_llm:
+            raise ApiError(403, "this server does not take model settings from the browser")
+        config = client_llm_config(body["llm"])
     if not check_only and not _RUN_LOCK.acquire(blocking=False):
         raise ApiError(429, "another run is in progress")
     try:
@@ -65,6 +125,8 @@ def handle_generate(body: dict, *, check_only: bool, run=run_pipeline, **run_kwa
             kwargs = dict(gate=gate, no_llm=check_only, repairs=repairs, allow_write=False,
                           require_coverage=bool(body.get("require_coverage", False)),
                           text_check=bool(body.get("text_check", True)), log=log.append)
+            if config is not None:
+                kwargs["config"] = config
             if body.get("no_analyzer"):
                 kwargs["analyzer"] = None
             kwargs.update(run_kwargs)
@@ -79,6 +141,7 @@ def handle_generate(body: dict, *, check_only: bool, run=run_pipeline, **run_kwa
         out["files"] = {p: c for p, c in res.files.items() if p in planned}
     if res.deliver:
         out["trace"] = res.deliver.trace
+        out["diff"] = res.deliver.diff      # against an empty folder: the API never reads the disk
     return out
 
 
@@ -93,7 +156,8 @@ def _status_for(out: dict) -> int:
     return 500
 
 
-def make_handler(token: str | None, host_names: set[str], run=run_pipeline, run_kwargs=None):
+def make_handler(token: str | None, host_names: set[str], run=run_pipeline, run_kwargs=None,
+                 client_llm: bool = True):
     run_kwargs = run_kwargs or {}
 
     class Handler(BaseHTTPRequestHandler):
@@ -139,6 +203,10 @@ def make_handler(token: str | None, host_names: set[str], run=run_pipeline, run_
             path = urlsplit(self.path).path
             if path == "/health":
                 return self._send(200, {"ok": True})
+            if path == "/api/status":
+                return self._send(200, status(token, client_llm))
+            if path == "/api/examples":
+                return self._send(200, {"examples": examples()})
             if path == "/":
                 try:
                     return self._send(200, WEB.read_bytes(), "text/html")
@@ -169,7 +237,8 @@ def make_handler(token: str | None, host_names: set[str], run=run_pipeline, run_
             except (ValueError, UnicodeDecodeError):
                 return self._send(400, {"error": "body must be a JSON object"})
             try:
-                out = handle_generate(body, check_only=path == "/api/check", run=run, **run_kwargs)
+                out = handle_generate(body, check_only=path == "/api/check", run=run,
+                                      client_llm=client_llm, **run_kwargs)
             except ApiError as e:
                 return self._send(e.status, {"error": e.message})
             self._send(_status_for(out), out)
@@ -183,7 +252,10 @@ def serve(host: str = "127.0.0.1", port: int = 8787) -> int:
         print("error: a non-loopback host needs GENERATOR_API_TOKEN", flush=True)
         return 2
     names = set(LOOPBACK) | {host.lower()}
-    httpd = ThreadingHTTPServer((host, port), make_handler(token, names))
+    # Model settings from the browser mean the server calls a URL the browser names:
+    # fine on this computer, not on a shared server unless the operator says so.
+    client_llm = host in LOOPBACK or os.environ.get("GENERATOR_ALLOW_CLIENT_LLM") == "1"
+    httpd = ThreadingHTTPServer((host, port), make_handler(token, names, client_llm=client_llm))
     print(f"vishap-generator on http://{host}:{port}/  (Ctrl+C to stop)", flush=True)
     try:
         httpd.serve_forever()

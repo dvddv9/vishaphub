@@ -119,6 +119,71 @@ class ApiTests(ServerCase):
         self.assertEqual(out["exit_code"], 1)
 
 
+class UiSupportTests(ServerCase):
+    def test_status(self):
+        status, data = self.req("/api/status")
+        out = json.loads(data)
+        self.assertEqual(status, 200)
+        self.assertEqual(out["version"], __import__("generator").__version__)
+        self.assertIn(out["coverage"], ("package", "built-in"))
+        self.assertTrue(out["client_llm_allowed"])
+        self.assertFalse(out["token_required"])
+        for key in ("llm_from_environment", "analyzer_found", "ruff_found"):
+            self.assertIsInstance(out[key], bool)
+
+    def test_examples(self):
+        status, data = self.req("/api/examples")
+        out = json.loads(data)["examples"]
+        self.assertEqual(status, 200)
+        self.assertEqual([e["id"] for e in out], ["user-lookup", "with-a-gap", "order-signed-in"])
+        self.assertTrue(all("{today}" not in e["spec"] for e in out))
+
+    def test_generate_returns_the_diff(self):
+        status, out = self.post("/api/generate", {"spec": SPEC_TEXT})
+        self.assertEqual(status, 200)
+        self.assertIn("+++ b/handlers/user.py", out["diff"])
+
+    def test_client_llm_is_validated_like_the_environment(self):
+        for llm, word in (({"url": "", "model": "m"}, "CUSTOM_LLM_URL"),
+                          ({"url": "https://x.example", "model": ""}, "CUSTOM_LLM_MODEL"),
+                          ({"url": "https://x.example", "model": "m", "key": ""}, "CUSTOM_LLM_KEY"),
+                          ({"url": "http://x.example", "model": "m", "key": "k"}, "https"),
+                          ({"url": "https://x.example", "model": "m", "key": "k", "thinking": "maybe"}, "THINKING")):
+            with self.subTest(llm=llm):
+                status, out = self.post("/api/generate", {"spec": SPEC_TEXT, "llm": llm})
+                self.assertEqual(status, 400)
+                self.assertTrue(out["error"].startswith("llm:"), out)
+                self.assertIn(word, out["error"])
+        self.assertEqual(self.post("/api/generate", {"spec": SPEC_TEXT, "llm": "x"})[0], 400)
+        self.assertEqual(self.post("/api/generate", {"spec": SPEC_TEXT, "llm": {"url": 5}})[0], 400)
+
+    def test_the_key_is_never_echoed(self):
+        llm = {"url": "https://x.example", "model": "m", "key": "sk-very-secret-1234", "thinking": ""}
+        status, data = self.req("/api/check", {"spec": SPEC_TEXT, "llm": llm})
+        self.assertNotIn(b"sk-very-secret-1234", data)
+
+    def test_a_valid_client_llm_reaches_the_pipeline(self):
+        seen = {}
+
+        def fake_run(path, **kw):
+            seen.update(kw)
+            from generator.pipeline import PipelineResult
+            return PipelineResult(exit_code=0)
+
+        out = server.handle_generate(
+            {"spec": SPEC_TEXT, "llm": {"url": "https://x.example", "model": "m", "key": "k"}},
+            check_only=False, run=fake_run)
+        self.assertEqual(seen["config"].model, "m")
+        self.assertEqual(seen["config"].key, "k")
+        self.assertNotIn("llm", out)
+
+    def test_client_llm_can_be_refused(self):
+        with self.assertRaises(server.ApiError) as cm:
+            server.handle_generate({"spec": SPEC_TEXT, "llm": {"url": "https://x.example", "model": "m", "key": "k"}},
+                                   check_only=False, client_llm=False)
+        self.assertEqual(cm.exception.status, 403)
+
+
 class TokenTests(ServerCase):
     token = "s3cret-token"
 
