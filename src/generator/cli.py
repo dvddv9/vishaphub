@@ -97,7 +97,7 @@ def usage_line(u: dict) -> str:
     """`3 model calls, 8120 tokens in / 2310 out, 41.2 s` and the cost when prices are set."""
     tokens = (f", {u['tokens_in']} tokens in / {u['tokens_out']} out" if u["tokens_in"] or u["tokens_out"]
               else ", tokens not reported by the endpoint")
-    cost = f", ${u['cost_usd']:.4f}" if u["cost_usd"] else ""
+    cost = f", ${u['cost_usd']:.4f}" if u.get("cost_known") else ", cost not priced"
     return f"{u['llm_calls']} model call(s){tokens}, {u['duration_s']:.1f} s{cost}"
 
 

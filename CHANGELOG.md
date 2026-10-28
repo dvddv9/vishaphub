@@ -2,6 +2,25 @@
 
 All notable changes to vishap-generator. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.8.0] - 2026-10-28
+
+Changes made after the first real run (Sonnet 5.5 through the Anthropic compatibility layer, on Render): the run passed, and the result showed what it had not proven.
+
+### Changed
+- A valid input that Verify's attack could not get answered because the sandbox lacks a database or a network (`OperationalError`, `KeyError`, a 5xx answer) is now `inconclusive`, not `pass`. It is listed in the notes as not proven. It no longer counts as evidence: a requirement with nothing else behind it is `not_verified`. A valid input that raises a programming error (`TypeError`, `NameError`, `AttributeError`, `IndexError`, `ValueError`, ...) now fails the requirement.
+- The result page shows `inconclusive` and `skipped` evidence in a neutral colour, not as a failure.
+- Cost: `usage.cost_known` says whether prices are set. Without `GENERATOR_PRICE_IN` and `GENERATOR_PRICE_OUT` the report, the CLI and the page say "not priced" instead of $0.
+- The Docker image installs Flask, so a spec with `target: python/flask` is verified as Flask.
+- Build prompt: a section `ENVIRONMENT`, a rule not to import a library marked NOT installed (write it with the standard library and leave an `# assumption:`), storage errors answer 503 with a constant body, a connection does not create a database file.
+
+### Added
+- `tools/environment.py`: the Python version and the status of the libraries the design names. The build message carries it, so the model no longer finds out that Flask is missing from a failed first round. The result has `environment`; the trace has `libraries`.
+- `tools/assumptions.py`: the `# assumption:` comments of the code, with file and line (found with the tokenizer, so a string with the same words does not count). Result key `assumptions`, trace key `assumptions`, a section in the report, a card on the page.
+- Gate key `require_analyzer` (default false): blocks when the analyzer did not run. The report and the page say when the verdict does not include the analyzer's findings.
+
+### Not verified
+No real model was run with the new prompt (the earlier run was before these changes). The Docker image was not built. Prices of the model are not in the project: set them yourself.
+
 ## [0.7.1] - 2026-10-28
 
 ### Added

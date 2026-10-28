@@ -35,10 +35,12 @@ from generator.observability.logging import bind_run_id, clear_context, get_logg
 from generator.tools.spec import Spec, SpecError, load_spec
 from generator.pipeline.textcheck import TextCheckError, check_text
 from generator.pipeline.verdict import VerifyResult, apply_build_errors
-from generator.pipeline.cost import sum_stage_costs
+from generator.pipeline.cost import prices_set, sum_stage_costs
 from generator.pipeline.stages import StageClock
 from generator.pipeline.verify import verify
 from generator.storage.history import add_entry
+from generator.tools.assumptions import find_assumptions
+from generator.tools.environment import environment_for, fallbacks
 from generator.tools.injection import scan as scan_injection
 from generator.tools.provenance import get_provenance
 from generator.tools.strict import strict_message
@@ -71,6 +73,8 @@ class PipelineResult:
     cove: dict | None = None                          # the COVE check (pipeline/cove.py), None when not run
     loss_pct: float = 0.0
     stopped: str = ""                                 # why the repair loop ended early, if it did
+    environment: dict = field(default_factory=dict)   # python and the planned libraries on this machine (tools/environment.py)
+    assumptions: list = field(default_factory=list)   # the `# assumption:` comments in the code (tools/assumptions.py)
 
     @property
     def usage(self) -> dict:
@@ -80,6 +84,7 @@ class PipelineResult:
                 "tokens_out": sum(s["tokens_out"] for s in self.stages),
                 "tokens_reported": any(s["tokens_in"] or s["tokens_out"] for s in self.stages),
                 "cost_usd": sum_stage_costs(self.stages),
+                "cost_known": prices_set(),
                 "duration_s": round(sum(s["duration_s"] for s in self.stages), 3)}
 
     def to_dict(self) -> dict:
@@ -106,6 +111,10 @@ class PipelineResult:
             d["loss_pct"] = self.loss_pct
         if self.stopped:
             d["repair_stopped"] = self.stopped
+        if self.environment:
+            d["environment"] = self.environment
+        if self.build or self.files:
+            d["assumptions"] = self.assumptions
         d["effort"] = self.effort
         d["stages"] = self.stages
         d["usage"] = self.usage
@@ -245,6 +254,7 @@ def _run(res: PipelineResult, clock: StageClock, spec_path, eff, *, out_dir, gat
     mark = {"covered": "ok", "partial": "~", "not_covered": "NO", "not_applicable": "-"}
     log("            STRIDE      " + "  ".join(f"{t.letter} {mark[t.status]}" for t in d.threats))
     res.threats = with_proof(d.threats, None)
+    res.environment = environment_for(d)
     limit = quality_gate.strict_missing_pct if quality_gate.strict_missing_pct is not None \
         else (STRICT_MISSING_PCT if strict else None)
     refusal = strict_message(spec, limit)
@@ -392,6 +402,11 @@ def _run(res: PipelineResult, clock: StageClock, spec_path, eff, *, out_dir, gat
                 log(f"            COVE skipped: {cv.note}")
     res.files, res.build, res.verify, res.repair_rounds = files, build, v, rounds
     res.threats = with_proof(d.threats, v)
+    res.assumptions = find_assumptions(files)
+    for lib in fallbacks(res.environment):
+        log(f"            environment: {lib} is not installed here; the model was told to use the standard library")
+    if res.assumptions:
+        log(f"            assumptions: {len(res.assumptions)} decision(s) the model took where the spec is silent")
     cov = (f"{v.coverage_percent:.0f}% (minimum {quality_gate.coverage_min:.0f}%)" if v.coverage_percent is not None
            else f"{v.coverage_status} ({v.coverage_note})")
     log(f"            coverage: {cov}")
@@ -456,6 +471,9 @@ def _trace_extra(res: PipelineResult) -> dict:
         extra["cove"] = res.cove
     if res.stopped:
         extra["repair_stopped"] = res.stopped
+    if (res.environment or {}).get("libraries"):
+        extra["libraries"] = res.environment["libraries"]
+    extra["assumptions"] = res.assumptions
     return extra
 
 

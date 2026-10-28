@@ -231,10 +231,12 @@ class AnalyzerIntegrationTests(unittest.TestCase):
 
 
 class NotesTests(unittest.TestCase):
-    def test_500_on_valid_input_is_noted(self):
+    def test_a_valid_input_the_sandbox_cannot_answer_is_noted_as_not_proven(self):
         code = GOOD.replace('    if name not in USERS:', '    raise RuntimeError("no db")\n    if name not in USERS:')
         res = run(code=code)
-        self.assertTrue(any("valid input gave a server error" in n for n in res.notes), res.notes)
+        self.assertTrue(any("not proven" in n for n in res.notes), res.notes)
+        marks = [e.status for r in res.requirements if r.id == "R1" for e in r.evidence if e.name in ("length 1", "length 64")]
+        self.assertEqual(marks, ["inconclusive", "inconclusive"])
 
 
 class RuleTests(unittest.TestCase):

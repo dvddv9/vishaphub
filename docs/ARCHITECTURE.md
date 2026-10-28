@@ -71,6 +71,8 @@
 | `pipeline/effort.py` | уровни глубины D0–D4 | три имени: quick, standard, deep |
 | `tools/injection.py` | `substitution_seen` | узкие шаблоны EN/RU; spec и так идёт к модели только как данные |
 | `tools/domains.py` | чек-листы областей | напоминания, не требования |
+| `tools/environment.py` | — | что есть на машине Verify (Python, библиотеки из плана); модель узнаёт это до того, как пишет код |
+| `tools/assumptions.py` | — | комментарии `# assumption:` из кода одним списком: что модель решила сама |
 | `api/job_store*.py`, `api/jobs.py` | асинхронные задачи | в памяти сервера, час |
 | `api/rate_limit.py` | `api/rate_limit.py` | окно на адрес сокета; заголовкам прокси не верим |
 | `tools/report.py` | `static_scan.render_markdown`, `api/reports` | один и тот же прогон даёт один и тот же текст |

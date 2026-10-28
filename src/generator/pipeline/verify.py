@@ -191,18 +191,35 @@ def _build_requests(spec: Spec, item_of: dict) -> tuple[list[dict], list[tuple[s
     return requests, skipped, reject
 
 
+# Exceptions that a valid input only raises because of a mistake in the code. Anything else (a missing table, a
+# missing file, a refused connection, a missing setting) is the sandbox: it has no database and no network.
+BUG_ERRORS = frozenset({"TypeError", "AttributeError", "NameError", "UnboundLocalError", "IndexError",
+                        "ZeroDivisionError", "ValueError", "RecursionError", "AssertionError", "NotImplementedError"})
+
+
 def _judge(req: dict, res: dict, reject: set[int]) -> tuple[str, str]:
+    """(status, detail). Status is pass, fail or inconclusive.
+
+    `inconclusive` is a valid input that was not answered because the sandbox lacks what the code needs (a
+    database, say). It is not a pass: nothing was proven for that value. It does not fail the requirement either.
+    """
     if req["expect"] == "no-log":
         return ("fail", "the input value appeared in logs or output") if res["marker_seen"] else ("pass", "")
     if res["error"]:
         if req["expect"] == "accept":
-            return "pass", f"raised {res['error']}, not a rejection"
+            if res["error"] in BUG_ERRORS:
+                return "fail", f"a valid input raised {res['error']}"
+            return "inconclusive", f"raised {res['error']}: the sandbox may lack what the code needs (a database, a network)"
         return "fail", f"raised {res['error']} instead of answering"
     code = res["status"]
     if req["expect"] == "reject":
         return ("pass", f"answered {code}") if code in reject else \
             ("fail", f"answered {code}, expected {' or '.join(map(str, sorted(reject)))}")
-    return ("pass", f"answered {code}") if code not in reject else ("fail", f"rejected with {code}")
+    if code in reject:
+        return "fail", f"rejected with {code}"
+    if (code or 0) >= 500:
+        return "inconclusive", f"answered {code}: a server error on a valid input, the sandbox may lack what the code needs"
+    return "pass", f"answered {code}"
 
 
 def verify(spec: Spec, requirements: tuple[Requirement, ...], design: DesignResult,
@@ -290,10 +307,8 @@ def verify(spec: Spec, requirements: tuple[Requirement, ...], design: DesignResu
                     req = by_id[res["id"]]
                     status, detail = _judge(req, res, reject)
                     evidence[req["req"]].append(Evidence("attack", req["label"], status, detail))
-                    if status == "pass" and req["expect"] == "accept" and (
-                            res.get("error") or (res.get("status") or 0) >= 500):
-                        notes.append(f"{req['req']} '{req['label']}': valid input gave a server error "
-                                     f"({detail}); may only mean the sandbox has no database")
+                    if status == "inconclusive":
+                        notes.append(f"{req['req']} '{req['label']}': not proven, {detail}")
 
     analyzer_result = None
     if analyzer is not None and spec.data.get("check", "analyzer") == "analyzer":

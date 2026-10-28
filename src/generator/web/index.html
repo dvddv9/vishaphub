@@ -166,7 +166,7 @@ th { padding:.5rem .75rem .5rem 0; font-weight:500; color:var(--s500); font-size
 td { padding:.6rem .75rem .6rem 0; border-top:1px solid var(--border); vertical-align:top; }
 .scroll { overflow-x:auto; }
 .ev { font:12px/1.5 var(--mono); }
-.ev.bad { color:var(--bad); } .ev.good { color:var(--s500); }
+.ev.bad { color:var(--bad); } .ev.good { color:var(--s500); } .ev.warn { color:var(--warn); }
 .terminal { background:var(--surface); border:1px solid var(--border); border-radius:.75rem; font:.8125rem/1.6 var(--mono); overflow-x:auto; padding:.875rem 1rem; white-space:pre-wrap; word-break:break-word; margin:.5rem 0 1rem; }
 .diff .a { background:var(--add); display:block; } .diff .h { color:var(--run); display:block; } .diff .d { color:var(--bad); display:block; }
 .filehead { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
@@ -634,6 +634,14 @@ function extraCards(r, d) {
   const out = [];
   const threats = r.threats && r.threats.length ? r.threats : (d && d.threats) || [];
   if (threats.length) out.push(strideCard(threats));
+  const libs = r.environment && r.environment.libraries ? Object.entries(r.environment.libraries).filter(([, s]) => s === "missing") : [];
+  if (libs.length) out.push(el("div", { class: "note", style: "margin-top:1rem" },
+    libs.map(([n]) => n).join(", ") + " is not installed on this server, so the model was told to use the standard library. If you need " + libs[0] + ", run the generator where it is installed."));
+  if (r.assumptions && r.assumptions.length) {
+    out.push(el("div", { class: "card", style: "margin-top:1rem" }, el("h3", null, "Assumptions the model took"),
+      el("p", { class: "muted", style: "font-size:.85rem" }, "Where the spec is silent the model chose and left an assumption comment. Nothing proved these choices: read them."),
+      el("ul", { class: "tight" }, r.assumptions.map((a) => el("li", null, el("span", { class: "mono" }, a.file + ":" + a.line + " "), a.text)))));
+  }
   if (r.candidates && r.candidates.length) {
     out.push(el("div", { class: "card", style: "margin-top:1rem" }, el("h3", null, "Candidates"),
       el("p", { class: "muted", style: "font-size:.85rem" }, "Each answer of the model was built and verified; the one with the most proof was kept. This costs one Build per candidate."),
@@ -673,7 +681,8 @@ function tabBody(tab, run) {
         ["Incomplete", r.loss_pct ? r.loss_pct + "% of planned files missing" : "no"],
         ["Gate", r.deliver ? (r.deliver.gate.blocked ? "would block" : "would pass") : "-"]]));
       const buildErrs = r.build ? [...r.build.errors, ...r.build.files.flatMap((f) => f.errors.map((e) => f.path + ": " + e))] : [];
-      const concl = v.code_verdict === "passed" ? "Every critical and high requirement has evidence and nothing failed."
+      const noAnalyzer = !v.analyzer || v.analyzer.status === "skipped";
+      const concl = v.code_verdict === "passed" ? "Every critical and high requirement has evidence and nothing failed." + (noAnalyzer ? " The Analyzer did not run, so its findings are not part of this verdict." : "")
         : v.code_verdict === "failed" ? "At least one critical or high requirement failed. See the Requirements tab for the evidence."
         : "Something could not be proven or run. Read the problems below before you trust this code.";
       nodes.push(el("div", { class: "card" }, el("h3", null, "Conclusion"), el("p", null, concl)));
@@ -684,7 +693,7 @@ function tabBody(tab, run) {
       if (v.notes.length) nodes.push(el("div", { class: "card", style: "margin-top:1rem" }, el("h3", null, "Notes"), el("ul", { class: "tight" }, v.notes.map((x) => el("li", null, x)))));
       if (r.stages && r.stages.length) {
         const u = r.usage || {};
-        const total = u.llm_calls ? u.llm_calls + " model call(s), " + (u.tokens_in || u.tokens_out ? u.tokens_in + " tokens in / " + u.tokens_out + " out, " : "tokens not reported, ") + (u.duration_s || 0).toFixed(1) + " s" + (u.cost_usd ? ", $" + u.cost_usd.toFixed(4) : "") : "no model call";
+        const total = u.llm_calls ? u.llm_calls + " model call(s), " + (u.tokens_in || u.tokens_out ? u.tokens_in + " tokens in / " + u.tokens_out + " out, " : "tokens not reported, ") + (u.duration_s || 0).toFixed(1) + " s" + (u.cost_known ? ", $" + (u.cost_usd || 0).toFixed(4) : ", cost not priced") : "no model call";
         nodes.push(el("div", { class: "card", style: "margin-top:1rem" }, el("h3", null, "Stages and model use"), el("p", { class: "muted" }, total),
           el("ul", { class: "tight" }, r.stages.map((x) => el("li", null, x.title + ": " + x.duration_s.toFixed(1) + " s" + (x.runs > 1 ? ", " + x.runs + " runs" : "") + (x.llm_calls ? ", " + x.llm_calls + " model call(s)" : "")))),
           r.markdown ? el("button", { class: "btn mini", type: "button", onclick: () => download("vishap-generator-report.md", r.markdown, "text/markdown") }, "Download the report (.md)") : null));
@@ -708,7 +717,7 @@ function tabBody(tab, run) {
           return el("tr", null, el("td", { class: "mono" }, q.id), el("td", null, q.text), el("td", null, badge(q.priority)), el("td", null, x ? badge(x.status) : ""),
             el("td", null, t && t.code.length ? el("div", { class: "ev good" }, "code: " + t.code.join(", ")) : null,
               t && t.tests.length ? el("div", { class: "ev good" }, "tests: " + t.tests.join(", ")) : null,
-              x ? x.evidence.map((e) => el("div", { class: "ev " + (e.status === "pass" ? "good" : "bad") }, e.source + " " + e.name + ": " + e.status + (e.detail ? " (" + e.detail + ")" : ""))) : null,
+              x ? x.evidence.map((e) => el("div", { class: "ev " + (e.status === "pass" ? "good" : e.status === "fail" || e.status === "error" ? "bad" : "warn") }, e.source + " " + e.name + ": " + e.status + (e.detail ? " (" + e.detail + ")" : ""))) : null,
               x && x.note ? el("div", { class: "ev good" }, x.note) : null));
         })))));
   }

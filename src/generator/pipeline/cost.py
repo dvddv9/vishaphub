@@ -20,6 +20,11 @@ def prices() -> tuple[float, float]:
     return one("GENERATOR_PRICE_IN"), one("GENERATOR_PRICE_OUT")
 
 
+def prices_set() -> bool:
+    """True when at least one price is set, so a cost of 0.0 means free and not unknown."""
+    return any(p > 0 for p in prices())
+
+
 def estimate_cost(tokens_in: int, tokens_out: int, price: tuple[float, float] | None = None) -> float:
     """Cost in USD, rounded to 6 decimals."""
     p_in, p_out = price if price is not None else prices()

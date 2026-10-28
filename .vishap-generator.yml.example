@@ -11,4 +11,5 @@ quality_gate:
   strict_missing_pct: 50             # refuse a spec that lacks more than this share of the key data (off when absent)
   require_stride: [T, I]             # STRIDE letters that must be fully covered by the spec (none by default)
   fail_on_cove: false                # a mismatch found by `--cove` blocks
+  require_analyzer: false            # blocks when the analyzer did not run (skipped, for example when `vishap` is not installed)
   max_loss_pct: 30                   # share of planned code/test files the model may leave out

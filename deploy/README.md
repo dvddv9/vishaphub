@@ -35,6 +35,9 @@ needs your token.
 - Verify runs the code the model wrote from *your* specs on the service itself, as a child process: no
   isolation (see `docs/LIMITATIONS.md`). That is acceptable for one owner; it is the reason the run is behind a
   token. Jobs live in memory, so a restart or the free plan's sleep loses a running job.
+- The image installs Flask, so `target: python/flask` is verified as Flask. Anthropic's compatibility layer ignores `seed`, so `--repro` is not exactly repeatable there.
+- The cost is shown only when `GENERATOR_PRICE_IN` and `GENERATOR_PRICE_OUT` (USD per 1M tokens) are set in Render; the project does not carry model prices.
+- The Vishap analyzer is not in the image, so the report says the verdict does not include it; set `require_analyzer: true` in the gate to block such runs.
 - A visitor who is not you cannot spend your model key and cannot make the server run code.
 
 To go back to the check-only demo: remove `GENERATOR_PUBLIC_CHECK`, set `GENERATOR_CHECK_ONLY` to `"1"`.

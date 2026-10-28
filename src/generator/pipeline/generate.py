@@ -27,6 +27,7 @@ from generator.pipeline.intake import Requirement
 from generator.pipeline.stages import parse_json_response
 from generator.pipeline.prompts import build_prompt, load_prompt, wrap_material
 from generator.llm import LLMConfig, chat
+from generator.tools.environment import environment_for, environment_lines
 from generator.tools.spec import Spec
 
 MAX_TOKENS = 8000
@@ -76,6 +77,11 @@ def build_messages(spec: Spec, requirements: tuple[Requirement, ...],
             lines.append(f"  serves: {', '.join(f.requirements)}")
         if f.measures:
             lines.append(f"  measures: {', '.join(f.measures)}")
+
+    env = environment_lines(environment_for(design))
+    if env:
+        lines.append("")
+        lines += env
 
     if design.gaps:
         lines.append("")

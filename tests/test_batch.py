@@ -169,7 +169,7 @@ class CliCommandTests(unittest.TestCase):
         self.assertIn("**Verdict:** PASSED", (self.root / "r.md").read_text())
 
     def test_usage_line(self):
-        line = cli.usage_line({"llm_calls": 3, "tokens_in": 100, "tokens_out": 50, "cost_usd": 0.0123,
+        line = cli.usage_line({"llm_calls": 3, "tokens_in": 100, "tokens_out": 50, "cost_usd": 0.0123, "cost_known": True,
                                "duration_s": 4.25})
         self.assertEqual(line, "3 model call(s), 100 tokens in / 50 out, 4.2 s, $0.0123")
         self.assertIn("not reported", cli.usage_line({"llm_calls": 1, "tokens_in": 0, "tokens_out": 0,

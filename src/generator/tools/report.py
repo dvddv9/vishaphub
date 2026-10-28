@@ -21,7 +21,11 @@ def render_markdown(res, spec_name: str = "spec.yaml") -> str:
         out += [f"**Verdict:** {v.code_verdict.upper()}  ", f"**Requirements:** {v.passed}/{len(v.requirements)} passed  "]
         cov = (f"{v.coverage_percent:.0f}%" if v.coverage_percent is not None
                else f"{v.coverage_status} ({v.coverage_note})")
-        out += [f"**Coverage:** {cov}  ", f"**Spec:** {'stale' if v.spec_stale else 'fresh'}, {v.spec_age_days} days old", ""]
+        out += [f"**Coverage:** {cov}  ", f"**Spec:** {'stale' if v.spec_stale else 'fresh'}, {v.spec_age_days} days old  "]
+        if v.analyzer is None or v.analyzer.status == "skipped":
+            why = f" ({_cell(v.analyzer.note)})" if v.analyzer else ""
+            out.append(f"**Analyzer:** did not run{why}. The verdict does not include its findings.  ")
+        out.append("")
         out += ["## Requirements", "", "| ID | Priority | Status | Requirement |", "|---|---|---|---|"]
         text = {r.id: r.text for r in res.requirements}
         prio = {r.id: r.priority for r in res.requirements}
@@ -53,6 +57,17 @@ def render_markdown(res, spec_name: str = "spec.yaml") -> str:
         out += [f"| {p['id']} | {_cell(p['input'])} ({_cell(p['label'])}) | `{_cell(p['value'])}` | "
                 f"{p['spec_reading']} | {p['code']}{'' if p['match'] else ' **mismatch**'} |" for p in cv["probes"]]
         out.append("")
+    libs = (res.environment or {}).get("libraries") or {}
+    if libs:
+        out += ["## Environment", "", f"- python {res.environment.get('python', '?')}"]
+        out += [f"- {n}: {s}" + (" (the model was told to use the standard library)" if s == "missing" else "")
+                for n, s in sorted(libs.items())]
+        out.append("")
+    if res.assumptions:
+        out += ["## Assumptions", "", "Decisions the model took where the spec is silent, from `# assumption:` comments "
+                "in the code. Read them: nothing proved them.", "", "| File | Line | Decision |", "|---|---|---|"]
+        out += [f"| {a['file']} | {a['line']} | {_cell(a['text'])} |" for a in res.assumptions]
+        out.append("")
     if res.design and res.design.gaps:
         out += ["## Gaps", "", "| ID | Severity | Gap |", "|---|---|---|"]
         out += [f"| {g.id} | {g.severity} | {_cell(g.text)} |" for g in res.design.gaps]
@@ -67,6 +82,9 @@ def render_markdown(res, spec_name: str = "spec.yaml") -> str:
     if res.stages:
         if res.stopped:
             out += [f"Repair stopped early: {_cell(res.stopped)}", ""]
+        u = res.usage
+        out += [f"Cost: ${u['cost_usd']:.4f}" if u.get("cost_known") else
+                "Cost: not priced (set GENERATOR_PRICE_IN and GENERATOR_PRICE_OUT, USD per 1M tokens); tokens are real", ""]
         out += ["## Stages", "", "| Stage | Runs | Model calls | Tokens in | Tokens out |", "|---|---|---|---|---|"]
         out += [f"| {s['title']} | {s['runs']} | {s['llm_calls']} | {s['tokens_in']} | {s['tokens_out']} |"
                 for s in res.stages]

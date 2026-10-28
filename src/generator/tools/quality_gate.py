@@ -16,6 +16,7 @@ Config file `.vishap-generator.yml` (next to the spec, else in the current folde
       strict_missing_pct: 50      # refuse a spec that lacks more than this share of the key data (off when absent)
       require_stride: [T, I]      # STRIDE letters that must be `covered` (see tools/stride.py); none by default
       fail_on_cove: false         # a COVE mismatch (--cove) blocks
+      require_analyzer: false     # blocks when the analyzer did not run (skipped or off)
       max_loss_pct: 30            # share of planned code/test files the model may leave out
 
 Without a file the defaults above apply. An unknown key is an error, not silently ignored.
@@ -52,6 +53,7 @@ class Gate:
     require_stride: tuple[str, ...] = ()
     fail_on_cove: bool = False
     max_loss_pct: float = LOSS_MAX_PCT
+    require_analyzer: bool = False
 
     def to_dict(self) -> dict:
         return {"fail_on": list(self.fail_on), "coverage_min": self.coverage_min,
@@ -60,7 +62,8 @@ class Gate:
                 "require_coverage": self.require_coverage,
                 "accepted_gaps": sorted(self.accepted_gaps),
                 "strict_missing_pct": self.strict_missing_pct, "require_stride": list(self.require_stride),
-                "fail_on_cove": self.fail_on_cove, "max_loss_pct": self.max_loss_pct}
+                "fail_on_cove": self.fail_on_cove, "max_loss_pct": self.max_loss_pct,
+                "require_analyzer": self.require_analyzer}
 
 
 @dataclass(frozen=True)
@@ -76,7 +79,7 @@ class GateResult:
 
 KNOWN = {"fail_on", "coverage_min", "stale_days", "max_critical_gaps", "fail_on_analyzer",
          "require_coverage", "baseline", "strict_missing_pct", "require_stride", "fail_on_cove",
-         "max_loss_pct"}
+         "max_loss_pct", "require_analyzer"}
 STRIDE_LETTERS = ("S", "T", "R", "I", "D", "E")
 
 
@@ -96,7 +99,7 @@ def parse_gate(cfg: dict, base_dir: Path | None = None) -> Gate:
     if (not isinstance(fail_on, list) or not fail_on
             or any(p not in PRIORITIES for p in fail_on)):
         raise QualityGateError(f"quality_gate.fail_on must be a list of {', '.join(PRIORITIES)}")
-    for key in ("fail_on_analyzer", "require_coverage", "fail_on_cove"):
+    for key in ("fail_on_analyzer", "require_coverage", "fail_on_cove", "require_analyzer"):
         if key in cfg and not isinstance(cfg[key], bool):
             raise QualityGateError(f"quality_gate.{key} must be true or false")
     cov = _number(cfg, "coverage_min", (int, float), 0, COVERAGE_MIN)
@@ -124,7 +127,8 @@ def parse_gate(cfg: dict, base_dir: Path | None = None) -> Gate:
         require_coverage=cfg.get("require_coverage", False),
         accepted_gaps=load_baseline(baseline_path),
         strict_missing_pct=None if strict is None else float(strict),
-        require_stride=tuple(stride), fail_on_cove=cfg.get("fail_on_cove", False), max_loss_pct=float(loss))
+        require_stride=tuple(stride), fail_on_cove=cfg.get("fail_on_cove", False), max_loss_pct=float(loss),
+        require_analyzer=cfg.get("require_analyzer", False))
 
 
 def load_quality_gate(*dirs: Path | str) -> Gate:
@@ -164,6 +168,9 @@ def evaluate_gate(design, build, verify, gate: Gate | None = None) -> GateResult
             reasons.append(f"{r.id} ({r.priority}) is {r.status}")
     if gate.fail_on_analyzer and verify.analyzer and verify.analyzer.status == "failed":
         reasons.append("analyzer reported errors")
+    if gate.require_analyzer and (verify.analyzer is None or verify.analyzer.status == "skipped"):
+        why = f": {verify.analyzer.note}" if verify.analyzer else ""
+        reasons.append(f"the analyzer did not run{why}")
     if verify.coverage_status == "below":
         reasons.append(f"coverage {verify.coverage_percent:.0f}% is under {gate.coverage_min:.0f}%")
     if gate.require_coverage and verify.coverage_status == "skipped":

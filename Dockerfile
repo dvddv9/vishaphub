@@ -2,11 +2,13 @@
 # The server in a container. Verify still runs generated code as a child process, but
 # inside the container it can reach nothing of the host: this is the isolation that
 # README.md asks for before you take specs from other people.
+# Flask is installed so that a spec with `target: python/flask` is verified as Flask, not as a standard-library
+# fallback. Verify's sandbox imports whatever is installed here.
 
 FROM python:3.12-slim AS builder
 WORKDIR /app
 COPY requirements.txt ./
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt coverage ruff
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt coverage ruff flask
 COPY pyproject.toml README.md LICENSE ./
 COPY src/ ./src/
 RUN pip install --no-cache-dir --no-deps --prefix=/install .
