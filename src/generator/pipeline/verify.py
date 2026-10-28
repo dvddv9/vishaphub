@@ -20,15 +20,11 @@ from __future__ import annotations
 
 import ast
 import datetime as dt
-import json
-import os
 import re
-import subprocess
 import sys
-import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass
-from pathlib import Path, PurePosixPath
+from pathlib import PurePosixPath
 
 from generator.config import COVERAGE_MIN, STALE_DAYS
 from generator.tools.analyzer import AnalyzerResult

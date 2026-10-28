@@ -31,7 +31,7 @@ from generator.tools.spec import Spec
 
 MAX_TOKENS = 8000
 BUILD_PROMPT = "03_build"
-REPAIR_PROMPT = "04_repair"
+REPAIR_PROMPT = "03_build_repair"
 FENCE_RE = re.compile(r"^\s*```(?:json)?\s*\n(.*)\n\s*```\s*$", re.DOTALL)
 
 class GenerateError(RuntimeError):

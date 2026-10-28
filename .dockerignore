@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+.git/
+.github/
+.env
+.env.*
+!.env.example
+out/
+output/
+tests/
+scripts/
+docs/
+*.md
+!README.md

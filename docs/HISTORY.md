@@ -202,3 +202,9 @@ CLI (`cli.py`), SARIF (`sarif.py`), REST API и форма (`server.py`, `web/in
 - Пайплайн: если проверка сборки нашла ошибки, вердикт кода понижается с `passed` до `needs_verification` с пометкой в `notes`; гейт их по-прежнему называет один раз.
 - Тесты проекта: 249.
 
+## 0.4.0 (2026-10-28)
+
+- Структура как у Vishap: `api/`, `llm/`, `pipeline/`, `tools/`, `prompts/`, `config.py`, `version.py`, `main.py`; корневые файлы проекта (`AGENTS.md`, `SECURITY.md`, Docker, CI и другие), `docs/`.
+- Все промпты вынесены в файлы; данные для модели идут между случайными маркерами `VG_<LABEL>_<hex>`.
+- Тесты проекта: 266. Подробности: `CHANGELOG.md`.
+

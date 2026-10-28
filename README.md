@@ -97,21 +97,26 @@
 
 ## Структура
 
-    src/generator/spec.py       загрузка и проверка spec.yaml
-    src/generator/intake.py     этап 1
-    src/generator/gaps.py       дыры
-    src/generator/design.py     этап 2
-    src/generator/llm.py        клиент OpenAI-совместимого endpoint
-    src/generator/generate.py   этап 3: генерация и исправление
-    src/generator/build.py      проверки сборки
-    src/generator/verify.py     этап 4
-    src/generator/analyzer.py   запуск Анализатора Vishap
-    src/generator/textcheck.py  сверка свободного text с требованиями
-    src/generator/deliver.py    этап 5: гейт, запись, трасса, откат
-    src/generator/pipeline.py   все этапы подряд
-    src/generator/cli.py        командная строка
-    src/generator/server.py     REST API и веб-форма (web/index.html)
-    src/generator/sarif.py      SARIF 2.1.0
-    examples/spec.yaml
-    docs/plan.md  docs/stages.md
-    tests/
+Как у Vishap: код по папкам, промпты файлами, служебные файлы в корне.
+
+    src/generator/
+      version.py  config.py  cli.py  main.py        версия, настройки, командная строка, HTTP-сервер
+      api/        auth errors rate_limit llm_config reports jobs
+      llm/        providers (настройки из окружения), client (один вызов), _scrub
+      pipeline/   intake design build generate verify deliver textcheck
+                  orchestrator (все этапы)  stages (реестр)  prompts (загрузка)
+                  sandbox + _sandbox_runner (дочерний процесс)
+      tools/      spec gaps analyzer sarif examples
+      prompts/    00_rules  02_design_textcheck  03_build  03_build_repair  (.md)
+      web/        index.html
+    tests/        по файлу на модуль, плюс test_prompts и test_structure
+    docs/         ARCHITECTURE FAQ LIMITATIONS ROADMAP VISHAP HISTORY stages
+    deploy/       systemd, заметки о развёртывании
+    examples/     spec.yaml (с дырой), spec-clean.yaml
+    scripts/      check_version.py, try_generate.py, try_verify.py
+
+В корне: `AGENTS.md`, `SECURITY.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, `LICENSE` (AGPL-3.0-or-later), `Dockerfile`, `docker-compose.yml`, `.env.example`, `ruff.toml`, `requirements*.txt`, `run_tests.py`, `run_local.ps1`, `start_generator.bat`, `.pre-commit-config.yaml`, `.github/`.
+
+Промпты: `src/generator/prompts/README.md`. Пути импорта изменились в 0.4.0: `generator.pipeline.verify`, `generator.tools.spec`, `generator.pipeline.orchestrator.run_pipeline`, `generator.main.serve`.
+
+Запуск без командной строки: `run_local.ps1` или `start_generator.bat` (откроют форму на http://127.0.0.1:8787/). Проверка перед коммитом: `python run_tests.py --lint`.

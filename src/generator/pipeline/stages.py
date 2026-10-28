@@ -21,7 +21,7 @@ class Stage:
 STAGES = (
     Stage("intake", 1, "Intake", "generator.pipeline.intake"),
     Stage("design", 2, "Design", "generator.pipeline.design", ("02_design_textcheck",)),
-    Stage("build", 3, "Build", "generator.pipeline.generate", ("03_build", "04_repair")),
+    Stage("build", 3, "Build", "generator.pipeline.generate", ("03_build", "03_build_repair")),
     Stage("verify", 4, "Verify", "generator.pipeline.verify"),
     Stage("deliver", 5, "Deliver", "generator.pipeline.deliver"),
 )

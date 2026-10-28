@@ -1,13 +1,11 @@
-import json
 import os
-import stat
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 from tests import helpers  # noqa: F401  (puts src on the path)
-from generator.tools.analyzer import AnalyzerFinding, AnalyzerResult, parse_sarif, run_analyzer
+from generator.tools.analyzer import AnalyzerFinding, parse_sarif, run_analyzer
 
 FAKE = '''\
 import json, sys

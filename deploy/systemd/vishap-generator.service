@@ -1,0 +1,20 @@
+[Unit]
+Description=vishap-generator - spec to proven code
+After=network.target
+
+[Service]
+Type=simple
+User=generator
+WorkingDirectory=/opt/vishap-generator
+# GENERATOR_API_TOKEN and CUSTOM_LLM_* go here (chmod 600)
+EnvironmentFile=/opt/vishap-generator/.env
+ExecStart=/opt/vishap-generator/.venv/bin/vishap-generator serve --host 0.0.0.0 --port 8787
+Restart=on-failure
+RestartSec=5s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

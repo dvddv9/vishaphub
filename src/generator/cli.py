@@ -6,7 +6,7 @@
     vishap-generator serve [--host 127.0.0.1] [--port 8787]
 
 The model comes from the environment (CUSTOM_LLM_URL, CUSTOM_LLM_MODEL,
-CUSTOM_LLM_KEY, see docs/plan.md). Exit codes: 0 done, 1 gate blocked,
+CUSTOM_LLM_KEY, see docs/HISTORY.md). Exit codes: 0 done, 1 gate blocked,
 2 error.
 """
 

@@ -8,7 +8,7 @@ the code adds only the data (spec text, requirements, problems) in the user mess
 | `00_rules.md` | all | appended to every system prompt |
 | `02_design_textcheck.md` | 2 Design | `pipeline/textcheck.py` — free text against the numbered requirements (report only) |
 | `03_build.md` | 3 Build | `pipeline/generate.py` — write the files |
-| `04_repair.md` | 3 Build | `pipeline/generate.py` — fix them after Verify (user message, not system) |
+| `03_build_repair.md` | 3 Build | `pipeline/generate.py` — fix them after Verify (user message, not system) |
 
 Intake (1), Verify (4) and Deliver (5) have no prompt on purpose: they are deterministic code,
 so their verdicts do not depend on a model.
