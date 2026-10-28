@@ -178,9 +178,11 @@
    "keywords": [
     "rowcount",
     "affected rows",
-    "nonexistent",
-    "does not exist",
-    "missing account"
+    "update result",
+    "result of the update",
+    "silently ignored",
+    "zero rows",
+    "no rows were updated"
    ],
    "provable": false
   },

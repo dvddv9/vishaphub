@@ -210,7 +210,17 @@ RULES: tuple[Rule, ...] = (
 _SECRET_NAME = r"(?:pw|pwd|passwd|password|\w*hash\w*|digest|token|signature|hmac|secret)"
 _NOT_LITERAL = r"""(?!["'\d]|None\b|null\b|undefined\b|True\b|False\b|true\b|false\b)"""
 
+_MONEY = r"\w*(?:price|amount|total|cost|balance|fee|tax|vat|subtotal|discount|refund|payout)\w*"
+
 _LOGIC_RULES: tuple[Rule, ...] = (
+    _r("logic-money-float", "Money handled as float (binary rounding errors)", "medium", "CWE-1339",
+       r"(?i)^(?!.*\bDecimal\b)(?:.*\bfloat\(\s*[^)]*\b" + _MONEY + r"\b"
+       r"|.*\b" + _MONEY + r"\s*=\s*(?:float|round)\()",
+       "Use Decimal (or integer cents) for money, quantize with an explicit rounding mode, and store it as "
+       "DECIMAL/INTEGER rather than REAL. Take prices from the server, not from the request.", _PY, kind="logic"),
+    _r("logic-js-money-float", "Money parsed as a float (binary rounding errors)", "medium", "CWE-1339",
+       r"(?i)\bparseFloat\(\s*[^)]*\b" + _MONEY + r"\b",
+       "Use integer cents or a decimal library (decimal.js, big.js) for money.", _JS, kind="logic"),
     _r("logic-slice-plus-one", "Page slice returns size + 1 items (off-by-one)", "medium", "CWE-193",
        r"""\[\s*(\w+)\s*\*\s*(\w+)\s*:\s*\1\s*\*\s*\2\s*\+\s*\2\s*\+\s*1\s*\]""",
        "A page of `size` items is rows[page*size : page*size + size]. If the extra row is a 'has next page' "

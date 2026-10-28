@@ -47,6 +47,15 @@ def test_login_required_decorator_counts_as_auth():
     assert "route-no-auth" not in _ids(checklist(code, "python")["findings"])
 
 
+def test_handler_that_checks_an_api_key_header_is_not_flagged_as_unauthenticated():
+    code = ("from flask import Flask, request\napp = Flask(__name__)\n"
+            "@app.post('/internal')\ndef internal():\n"
+            "    if request.headers.get('X-Api-Key') != KEY:\n        return 'no', 403\n    return 'ok'\n"
+            "@app.post('/open')\ndef open_():\n    return request.headers.get('User-Agent', '')\n")
+    flagged = {f["line"] for f in checklist(code, "python")["findings"] if f["id"] == "route-no-auth"}
+    assert 4 not in flagged and 9 in flagged
+
+
 def test_checklist_never_raises_on_broken_code():
     assert checklist("def (:\n", "python")["findings"] == []
     assert checklist("", "javascript")["findings"] == []
@@ -341,3 +350,62 @@ def test_ground_truth_lines_point_at_real_code():
 def test_report_scoring_counts_keywords():
     res = score_report("There is SQL injection in /user and MD5 is used; debug mode is on.")
     assert {"B01", "B04", "B15"} <= set(res["found"]) and "B03" in res["missed"]
+
+
+# --- blind benchmark ------------------------------------------------------------------------------
+
+def _blind():
+    truth = load_truth("blind")
+    files = {f: (BENCH / truth["dir"] / f).read_text(encoding="utf-8") for f in truth["files"]}
+    return truth, files
+
+
+def test_blind_files_carry_no_hint_that_they_are_vulnerable():
+    _, files = _blind()
+    for name, code in files.items():
+        low = code.lower()
+        assert "vulnerab" not in low and "ground truth" not in low and "never deploy" not in low, name
+
+
+def test_blind_ground_truth_lines_point_at_real_code():
+    truth, files = _blind()
+    for bug in truth["bugs"]:
+        lines = files[bug["file"]].splitlines()
+        for n in bug["lines"]:
+            assert 1 <= n <= len(lines) and lines[n - 1].strip(), bug
+
+
+def test_blind_shop_is_the_planted_shop_without_its_header():
+    _, files = _blind()
+    assert files["shop_service.py"].splitlines() == PLANTED.splitlines()[2:]
+
+
+def test_engine_finds_what_the_blind_ground_truth_says_it_should():
+    truth, files = _blind()
+    for name, code in files.items():
+        res = score_engine(scan_material(code, name)["findings"], truth, file=name)
+        expected = [b["id"] for b in truth["bugs"] if b["file"] == name and b["rules"]]
+        assert set(expected) <= set(res["found"]), (name, res)
+
+
+def test_blind_orders_has_bugs_the_rule_engine_cannot_see():
+    truth, files = _blind()
+    res = score_engine(scan_material(files["orders_service.py"], "orders_service.py")["findings"], truth,
+                       file="orders_service.py")
+    assert res["recall"] < 0.6   # the point of this file: the rest has to come from a model
+
+
+def test_handler_with_its_own_api_key_check_is_not_reported_unauthenticated_in_orders():
+    _, files = _blind()
+    flagged = {f["line"] for f in scan_material(files["orders_service.py"], "o.py")["findings"] if f["id"] == "route-no-auth"}
+    assert 133 not in flagged
+
+
+def test_money_in_float_is_a_logic_finding_and_decimal_is_not():
+    def ids(code, name="m.py"):
+        return [f["id"] for f in scan_material(code, name)["findings"]]
+    assert "logic-money-float" in ids("unit_price = float(data['price'])\n")
+    assert "logic-money-float" in ids("total = round(qty * unit_price * 1.2, 2)\n")
+    assert "logic-js-money-float" in ids("const amount = parseFloat(req.body.amount);\n", "m.js")
+    assert "logic-money-float" not in ids("price = Decimal(data['price'])\n")
+    assert "logic-money-float" not in ids("score = float(row['score'])\nratio = float(n) / d\n")

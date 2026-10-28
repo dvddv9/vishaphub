@@ -33,6 +33,8 @@ _AUTH_BODY = re.compile(
     r"verify_\w+|check_token|decode_token|get_jwt|request\.authorization|"
     r"HTTPException\(\s*status_code\s*=\s*40[13]|raise\s+Unauthorized|raise\s+Forbidden",
 )
+# a handler that reads a credential header itself (X-Api-Key, X-Signature, ...) does its own auth check
+_AUTH_HEADER = re.compile(r"headers(?:\.get\(|\s*\[)\s*['\"][^'\"]*(?:key|token|auth|secret|signature)[^'\"]*['\"]", re.I)
 _SENSITIVE = re.compile(r"\busers?\b|\baccounts?\b|e-?mail|passw|secret|send_file|send_from_directory", re.I)
 _TXN = re.compile(r"BEGIN\b|\.begin\(|transaction|atomic|FOR\s+UPDATE|with_for_update|isolation", re.I)
 _GUARD_SQL = re.compile(r"\bAND\b[^;]*?(>=|<=|>|<|!=)|\bWHERE\b[^;]*?(>=|<=)", re.I)
@@ -125,7 +127,8 @@ def _has_auth(fn, global_auth: bool) -> bool:
     for default in list(fn.args.defaults) + list(fn.args.kw_defaults):
         if default is not None and re.search(r"Depends\s*\(.*(user|auth|token|jwt|current)", ast.unparse(default), re.I):
             return True
-    return bool(_AUTH_BODY.search(ast.unparse(fn)))
+    body = ast.unparse(fn)
+    return bool(_AUTH_BODY.search(body) or _AUTH_HEADER.search(body))
 
 
 def _check_then_act(fn, execs) -> int:

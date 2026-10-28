@@ -2,8 +2,8 @@
   "manifest_version": "0.2",
   "name": "vishap-claude",
   "display_name": "Vishap Claude (Anthropic API)",
-  "version": "7.4.8",
-  "description": "Security analysis for engineering materials via Claude API (Anthropic SDK).",
+  "version": "7.5.2",
+  "description": "Security and logic analysis: Vishap's rule engine and optional exploit probes, then Claude API (Anthropic SDK).",
   "author": {
     "name": "dvddv9",
     "email": "hndav9@yahoo.com",
@@ -22,17 +22,28 @@
       ],
       "env": {
         "ANTHROPIC_API_KEY": "${user_config.ANTHROPIC_API_KEY}",
-        "ANTHROPIC_MODEL": "${user_config.ANTHROPIC_MODEL}"
+        "ANTHROPIC_MODEL": "${user_config.ANTHROPIC_MODEL}",
+        "VISHAP_PROVE": "${user_config.VISHAP_PROVE}",
+        "VISHAP_WSL_DISTRO": "${user_config.VISHAP_WSL_DISTRO}"
       }
     }
   },
   "tools": [
     {
       "name": "vishap_analyze",
-      "description": "Analyze code, spec, logs, or config for security risks (SQLi, XSS, RCE, TOCTOU, path traversal, command injection) via Claude API. Returns a structured Markdown report with CWE, STRIDE threat model, and recommendations."
+      "description": "Analyze code, spec, logs, or config for security risks and logic bugs. Runs Vishap's rule engine locally, optionally proves findings by running the handlers in isolation (bubblewrap/WSL), then asks Claude. Returns Markdown with CWE, proof status and fixes."
     }
   ],
-  "keywords": ["security", "sast", "stride", "cwe", "owasp", "claude", "anthropic", "audit"],
+  "keywords": [
+    "security",
+    "sast",
+    "stride",
+    "cwe",
+    "owasp",
+    "claude",
+    "anthropic",
+    "audit"
+  ],
   "license": "AGPL-3.0-or-later",
   "repository": {
     "type": "git",
@@ -52,6 +63,20 @@
       "description": "Model ID (e.g. claude-sonnet-5-5, claude-opus-5-5, claude-haiku-5-5)",
       "required": true,
       "default": "claude-sonnet-5-5"
+    },
+    "VISHAP_PROVE": {
+      "type": "boolean",
+      "title": "Prove findings by running the code",
+      "description": "Runs the submitted Flask handlers with probe values inside bubblewrap (on Windows: inside WSL, needs 'apt install bubblewrap'). Executes the submitted code in isolation.",
+      "required": false,
+      "default": false
+    },
+    "VISHAP_WSL_DISTRO": {
+      "type": "string",
+      "title": "WSL distribution (Windows)",
+      "description": "WSL distribution with python3 and bubblewrap, used for proofs on Windows.",
+      "required": false,
+      "default": "Ubuntu"
     }
   }
 }
