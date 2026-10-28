@@ -330,7 +330,7 @@ def render_verified_md(findings: list, doc: dict | None = None) -> str:
     return "\n".join(out)
 
 
-def prove_cli(input_path: str, patched: str | None = None, unisolated: bool = False) -> int:
+def prove_cli(input_path: str, patched: str | None = None, unisolated: bool = False, answers: str | None = None) -> int:
     """``vishap prove``: print what the probes found. Exit 0 = nothing confirmed / patch closes the exploits,
     1 = something confirmed / patch does not close them, 2 = could not run."""
     from src.tools.static_scan import scan_material
@@ -359,9 +359,21 @@ def prove_cli(input_path: str, patched: str | None = None, unisolated: bool = Fa
         if pr:
             print(f"  {pr['status']:15} {f['id']:26} line {f['line']:<4} {pr['evidence'][:110]}")
     print(f"confirmed:     {len(confirmed)} of {len(scan['findings'])} findings")
+    md = ""
+    try:     # questions for the person about what the code alone cannot settle (see questions.py)
+        from src.tools import questions
+        res = questions.ask(scan["findings"], code, store=questions.load_store(answers) if answers else None)
+        if res["applied"]:
+            print(f"answers:       {len(res['applied'])} applied from {answers}")
+        md = questions.render_md(res["questions"])
+    except Exception:
+        pass
     from collections import Counter
     verdicts = Counter((f.get("skeptic") or {}).get("skeptic_verdict", "-") for f in scan["findings"])
     print("skeptic:       " + ", ".join(f"{n} {v}" for v, n in sorted(verdicts.items())))
+    if md:
+        print("\n" + md)
+        print('answer with a JSON file {"<question_id>": "<option key>"} and run again with --answers FILE')
     if patched:
         fixed = Path(patched).read_text(encoding="utf-8", errors="replace")
         v = verify_patch(code, fixed)
