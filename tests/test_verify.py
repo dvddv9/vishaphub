@@ -11,8 +11,8 @@ from generator.tools.analyzer import AnalyzerResult
 from generator.pipeline.design import design
 from generator.pipeline.intake import requirements_from
 from generator.tools.spec import load_spec
-from generator.pipeline.verify import (input_cases, log_findings, parse_rule,
-                              sql_findings, verify)
+from generator.pipeline.verify import input_cases, parse_rule, verify
+from generator.tools.static_scan import log_findings, sql_findings
 
 # A plain WSGI app, so these tests run without Flask installed.
 GOOD = '''\

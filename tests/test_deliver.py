@@ -13,7 +13,8 @@ from tests.test_verify import TESTS as TESTS_5
 
 from generator.pipeline import deliver as deliver_mod
 from generator.pipeline.build import check_build
-from generator.pipeline.deliver import DeliverError, deliver, gate_check, rollback
+from generator.pipeline.deliver import DeliverError, deliver, rollback
+from generator.tools.quality_gate import Gate, evaluate_gate as gate_check
 from generator.pipeline.design import design
 from generator.pipeline.intake import requirements_from
 from generator.tools.spec import load_spec
@@ -283,18 +284,18 @@ class RequireCoverageTests(TmpCase):
     def test_skipped_coverage_blocks_only_when_required(self):
         p, v = self.skipped()
         self.assertFalse(gate_check(p["design"], p["build"], v).blocked)
-        g = gate_check(p["design"], p["build"], v, require_coverage=True)
+        g = gate_check(p["design"], p["build"], v, Gate(require_coverage=True))
         self.assertTrue(g.blocked)
         self.assertIn("coverage was not measured (coverage is not installed)", g.reasons)
 
     def test_measured_coverage_passes_when_required(self):
         p = prepare()
         v = dataclasses.replace(p["verify"], coverage_status="ok", coverage_percent=91.0)
-        self.assertFalse(gate_check(p["design"], p["build"], v, require_coverage=True).blocked)
+        self.assertFalse(gate_check(p["design"], p["build"], v, Gate(require_coverage=True)).blocked)
 
     def test_deliver_passes_the_flag_through(self):
         p, v = self.skipped()
         p["verify"] = v
-        res = deliver(**p, out_root=self.root, gate=True, require_coverage=True, now=NOW)
+        res = deliver(**p, out_root=self.root, gate=True, quality_gate=Gate(require_coverage=True), now=NOW)
         self.assertTrue(res.blocked)
         self.assertFalse(self.root.exists())

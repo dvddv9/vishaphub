@@ -27,6 +27,10 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 
 from generator.config import COVERAGE_MIN, STALE_DAYS
+from generator.pipeline.verdict import (Evidence, RequirementVerdict, VerifyResult,
+                                        compute_code_verdict, compute_spec_verdict,
+                                        decide_requirement)
+from generator.tools.static_scan import RULES, scan_code
 from generator.tools.analyzer import AnalyzerResult
 from generator.pipeline.build import TEST_NAME_RE
 from generator.pipeline.sandbox import DEFAULT_TIMEOUT, run_sandbox
@@ -38,67 +42,10 @@ RULE_RE = re.compile(r"^\s*(\d+)\s*-\s*(\d+)\s+(letters and digits|letters|digit
 ABSENT = object()
 
 
-# ---------------------------------------------------------------- results
-
-@dataclass(frozen=True)
-class Evidence:
-    source: str     # model-test | attack | rule
-    name: str
-    status: str     # pass | fail | error | skipped
-    detail: str = ""
-
-    def to_dict(self) -> dict:
-        return {"source": self.source, "name": self.name,
-                "status": self.status, "detail": self.detail}
-
-
-@dataclass(frozen=True)
-class RequirementVerdict:
-    id: str
-    priority: str
-    status: str     # passed | failed | needs_verification | not_verified
-    evidence: tuple[Evidence, ...]
-    note: str = ""
-
-    def to_dict(self) -> dict:
-        return {"id": self.id, "priority": self.priority, "status": self.status,
-                "note": self.note, "evidence": [e.to_dict() for e in self.evidence]}
-
-
-@dataclass(frozen=True)
-class VerifyResult:
-    requirements: tuple[RequirementVerdict, ...]
-    code_verdict: str           # passed | failed | needs_verification
-    spec_stale: bool
-    spec_age_days: int
-    coverage_status: str        # ok | below | skipped
-    coverage_percent: float | None
-    coverage_note: str
-    problems: tuple[str, ...]
-    notes: tuple[str, ...] = ()
-    analyzer: AnalyzerResult | None = None
-
-    @property
-    def passed(self) -> int:
-        return sum(1 for r in self.requirements if r.status == "passed")
-
-    def to_dict(self) -> dict:
-        return {
-            "code_verdict": self.code_verdict,
-            "spec": {"stale": self.spec_stale, "age_days": self.spec_age_days},
-            "coverage": {"status": self.coverage_status, "percent": self.coverage_percent,
-                         "minimum": COVERAGE_MIN, "note": self.coverage_note},
-            "problems": list(self.problems),
-            "notes": list(self.notes),
-            "analyzer": self.analyzer.to_dict() if self.analyzer else None,
-            "requirements": [r.to_dict() for r in self.requirements],
-        }
-
-
 # ---------------------------------------------------------------- rules
 
 @dataclass(frozen=True)
-class Rule:
+class InputRule:
     lo: int
     hi: int
     kind: str
@@ -108,14 +55,14 @@ class Rule:
         return (pat * (n // len(pat) + 1))[:n]
 
 
-def parse_rule(text) -> Rule | None:
+def parse_rule(text) -> InputRule | None:
     m = RULE_RE.match(text or "") if isinstance(text, str) else None
     if not m:
         return None
     lo, hi = int(m.group(1)), int(m.group(2))
     if hi < lo or hi < 1:
         return None
-    return Rule(lo, hi, m.group(3).lower())
+    return InputRule(lo, hi, m.group(3).lower())
 
 
 def input_cases(item: dict) -> list[tuple[str, str, object]] | None:
@@ -150,87 +97,6 @@ def _marker(item: dict) -> str:
     pattern = {"letters and digits": "vg7q", "letters": "vgqz", "digits": "9071"}[rule.kind]
     n = min(rule.hi, max(rule.lo, 8))
     return rule.valid(n, pattern)
-
-
-# ---------------------------------------------------------------- static checks
-
-SQL_CALLS = {"execute", "executemany", "executescript", "raw", "text"}
-LOG_METHODS = {"debug", "info", "warning", "warn", "error", "exception", "critical", "log"}
-
-
-def _assignments(tree: ast.AST) -> dict[str, list[ast.AST]]:
-    out: dict[str, list[ast.AST]] = {}
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Assign):
-            for t in node.targets:
-                if isinstance(t, ast.Name):
-                    out.setdefault(t.id, []).append(node.value)
-        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.value:
-            out.setdefault(node.target.id, []).append(node.value)
-    return out
-
-
-def sql_findings(tree: ast.AST) -> list[str]:
-    assigns = _assignments(tree)
-
-    def built(expr, depth=0):
-        if isinstance(expr, ast.JoinedStr):
-            return "an f-string"
-        if isinstance(expr, ast.BinOp) and isinstance(expr.op, (ast.Mod, ast.Add)):
-            return "% or +"
-        if (isinstance(expr, ast.Call) and isinstance(expr.func, ast.Attribute)
-                and expr.func.attr in ("format", "join")):
-            return f".{expr.func.attr}()"
-        if isinstance(expr, ast.Name) and depth < 3:
-            for value in assigns.get(expr.id, []):
-                why = built(value, depth + 1)
-                if why:
-                    return f"{why} (through {expr.id})"
-        return None
-
-    found = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Call) and node.args:
-            f = node.func
-            name = f.attr if isinstance(f, ast.Attribute) else getattr(f, "id", None)
-            if name in SQL_CALLS:
-                why = built(node.args[0])
-                if why:
-                    found.append(f"line {node.lineno}: {name}() gets SQL built with {why}")
-    return found
-
-
-# Names that carry request data: Flask `request`, WSGI `environ`.
-REQUEST_NAMES = {"request", "environ"}
-
-
-def log_findings(tree: ast.AST) -> list[str]:
-    assigns = _assignments(tree)
-
-    def mentions(expr, tainted):
-        return any(isinstance(n, ast.Name) and (n.id in REQUEST_NAMES or n.id in tainted)
-                   for n in ast.walk(expr))
-
-    tainted: set[str] = set()
-    for _ in range(4):
-        for name, values in assigns.items():
-            if any(mentions(v, tainted) for v in values):
-                tainted.add(name)
-
-    found = []
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Call):
-            continue
-        f = node.func
-        is_print = isinstance(f, ast.Name) and f.id == "print"
-        is_log = (isinstance(f, ast.Attribute) and f.attr in LOG_METHODS
-                  and "log" in ast.unparse(f.value).lower())
-        if not (is_print or is_log):
-            continue
-        args = list(node.args) + [k.value for k in node.keywords]
-        if any(mentions(a, tainted) for a in args):
-            found.append(f"line {node.lineno}: {ast.unparse(f)}() gets request data")
-    return found
 
 
 # ---------------------------------------------------------------- verify
@@ -306,26 +172,12 @@ def _judge(req: dict, res: dict, reject: set[int]) -> tuple[str, str]:
     return ("pass", f"answered {code}") if code not in reject else ("fail", f"rejected with {code}")
 
 
-def _decide(evidence: list[Evidence]) -> tuple[str, str]:
-    own = [e for e in evidence if e.source in ("attack", "rule") and e.status in ("pass", "fail")]
-    model = [e for e in evidence if e.source == "model-test" and e.status != "skipped"]
-    if any(e.status == "fail" for e in own):
-        return "failed", ""
-    model_bad = [e for e in model if e.status != "pass"]
-    if model_bad and own:
-        return "needs_verification", "a model test fails while Verify's own checks pass; the test may be wrong"
-    if model_bad:
-        return "failed", ""
-    if model or own:
-        return "passed", ""
-    return "not_verified", "no test or check covers it"
-
-
 def verify(spec: Spec, requirements: tuple[Requirement, ...], design: DesignResult,
            files: dict[str, str], *, today: dt.date | None = None,
            timeout: float = DEFAULT_TIMEOUT, python: str | None = None,
            analyzer: Callable[[dict[str, str]], AnalyzerResult] | None = None,
-           coverage: str = "auto") -> VerifyResult:
+           coverage: str = "auto", coverage_min: float = COVERAGE_MIN,
+           stale_days: int = STALE_DAYS) -> VerifyResult:
     python = python or sys.executable
     today = today or dt.date.today()
     problems: list[str] = []
@@ -348,10 +200,11 @@ def verify(spec: Spec, requirements: tuple[Requirement, ...], design: DesignResu
     for rid, (field, item) in item_of.items():
         if field != "must_never" or not trees:
             continue
-        check = {"sql-from-input": sql_findings, "log-raw-input": log_findings}.get(item["id"])
-        if check:
-            found = [f"{p} {x}" for p, t in trees.items() for x in check(t)]
-            evidence[rid].append(Evidence("rule", item["id"], "fail" if found else "pass", "; ".join(found)))
+        if item["id"] in RULES:
+            found = scan_code(item["id"], trees)
+            rule = RULES[item["id"]]
+            evidence[rid].append(Evidence("rule", item["id"], "fail" if found else "pass",
+                                          "; ".join(found), cwe=rule.cwe))
 
     # model tests
     coverage_status, coverage_percent, coverage_note = "skipped", None, "no tests ran"
@@ -380,7 +233,7 @@ def verify(spec: Spec, requirements: tuple[Requirement, ...], design: DesignResu
             if coverage_percent is None:
                 coverage_status = "skipped"
             else:
-                coverage_status = "ok" if coverage_percent >= COVERAGE_MIN else "below"
+                coverage_status = "ok" if coverage_percent >= coverage_min else "below"
 
     # attacks
     if python_target and code_files and spec.data.get("kind") == "http-endpoint":
@@ -419,21 +272,17 @@ def verify(spec: Spec, requirements: tuple[Requirement, ...], design: DesignResu
 
     verdicts = []
     for r in requirements:
-        status, note = _decide(evidence[r.id])
+        status, note = decide_requirement(evidence[r.id])
         verdicts.append(RequirementVerdict(r.id, r.priority, status, tuple(evidence[r.id]), note))
 
-    hard = [v for v in verdicts if v.priority in ("critical", "high")]
-    if any(v.status == "failed" for v in hard) or (analyzer_result and analyzer_result.status == "failed"):
-        code_verdict = "failed"
-    elif any(v.status != "passed" for v in hard) or coverage_status == "below" or problems:
-        code_verdict = "needs_verification"
-    else:
-        code_verdict = "passed"
+    analyzer_failed = bool(analyzer_result and analyzer_result.status == "failed")
+    code_verdict = compute_code_verdict(verdicts, coverage_status, problems, analyzer_failed)
 
-    age = (today - spec.updated).days
+    stale, age = compute_spec_verdict((today - spec.updated).days, stale_days)
     return VerifyResult(
         requirements=tuple(verdicts), code_verdict=code_verdict,
-        spec_stale=age > STALE_DAYS, spec_age_days=age,
+        spec_stale=stale, spec_age_days=age,
         coverage_status=coverage_status, coverage_percent=coverage_percent,
         coverage_note=coverage_note, problems=tuple(problems),
-        notes=tuple(notes), analyzer=analyzer_result)
+        notes=tuple(notes), analyzer=analyzer_result,
+        coverage_min=coverage_min, stale_days=stale_days)

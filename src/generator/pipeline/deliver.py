@@ -28,56 +28,14 @@ from generator.pipeline.build import BuildCheck
 from generator.pipeline.design import DesignResult
 from generator.pipeline.intake import Requirement
 from generator.tools.spec import Spec
-from generator.config import COVERAGE_MIN
-from generator.pipeline.verify import VerifyResult
+from generator.pipeline.verdict import VerifyResult
+from generator.tools.quality_gate import Gate, GateResult, evaluate_gate
 
 META_DIR = ".vishap"
 
 
 class DeliverError(RuntimeError):
     pass
-
-
-# ---------------------------------------------------------------- gate
-
-@dataclass(frozen=True)
-class GateResult:
-    blocked: bool
-    reasons: tuple[str, ...]
-
-    def to_dict(self) -> dict:
-        return {"blocked": self.blocked, "reasons": list(self.reasons)}
-
-
-def gate_check(design: DesignResult, build: BuildCheck, verify: VerifyResult,
-               require_coverage: bool = False) -> GateResult:
-    """The reasons a gated run would not write. Empty list: it may.
-
-    Coverage that could not be measured (`skipped`) does not block unless
-    `require_coverage` is set: then "not measured" counts as a failure.
-    """
-    reasons: list[str] = []
-    for e in build.errors:
-        reasons.append(f"build: {e}")
-    for f in build.files:
-        for e in f.errors:
-            reasons.append(f"build: {f.path}: {e}")
-    for r in verify.requirements:
-        if r.priority in ("critical", "high") and r.status != "passed":
-            reasons.append(f"{r.id} ({r.priority}) is {r.status}")
-    if verify.analyzer and verify.analyzer.status == "failed":
-        reasons.append("analyzer reported errors")
-    if verify.coverage_status == "below":
-        reasons.append(f"coverage {verify.coverage_percent:.0f}% is under {COVERAGE_MIN:.0f}%")
-    if require_coverage and verify.coverage_status == "skipped":
-        reasons.append(f"coverage was not measured ({verify.coverage_note or 'no reason given'})")
-    for g in design.critical_gaps:
-        reasons.append(f"open critical gap {g.id}: {g.text}")
-    if verify.spec_stale:
-        reasons.append(f"spec is stale ({verify.spec_age_days} days since update)")
-    for p in verify.problems:
-        reasons.append(f"verify: {p}")
-    return GateResult(bool(reasons), tuple(reasons))
 
 
 # ---------------------------------------------------------------- helpers
@@ -201,13 +159,13 @@ def _diff(rel: str, old: str | None, new: str) -> str:
 def deliver(*, spec: Spec, requirements: tuple[Requirement, ...], design: DesignResult,
             files: dict[str, str], build: BuildCheck, verify: VerifyResult,
             out_root: str | os.PathLike, gate: bool = False, force: bool = False,
-            dry_run: bool = False, require_coverage: bool = False,
+            dry_run: bool = False, quality_gate: Gate | None = None,
             now: dt.datetime | None = None) -> DeliverResult:
     now = now or dt.datetime.now().replace(microsecond=0)
     root = Path(out_root).resolve()
     if root.exists() and not root.is_dir():
         raise DeliverError(f"output folder is a file: {root}")
-    gate_result = gate_check(design, build, verify, require_coverage)
+    gate_result = evaluate_gate(design, build, verify, quality_gate)
     blocked = gate and gate_result.blocked
     forced = bool(gate and blocked and force)
     run_id = _new_run_id(root, spec.sha256, now)
