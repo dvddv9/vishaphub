@@ -12,6 +12,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from .chat import reply
 from .pipeline import run_plan
+from .tts import available as tts_available, speak as tts_speak
 from .router import RouteError, plan_for
 from .services import ServiceConfig
 from .version import __version__
@@ -105,6 +106,24 @@ class Handler(BaseHTTPRequestHandler):
             messages = body.get("messages") if isinstance(body.get("messages"), list) else []
             result = reply(message, messages, str(body.get("api_key") or ""), str(body.get("model") or ""))
             self._send(200 if result["ok"] else 502, result)
+            return
+
+        if path == "/speak":
+            body = self._body()
+            if body is None:
+                return
+            text = body.get("text")
+            if not isinstance(text, str) or not text.strip():
+                self._send(400, {"ok": False, "error": "text is required"})
+                return
+            if not tts_available():
+                self._send(503, {"ok": False, "error": "speech is not installed in this image"})
+                return
+            audio = tts_speak(text)
+            if not audio:
+                self._send(502, {"ok": False, "error": "the voice produced no audio"})
+                return
+            self._send(200, audio, "audio/mpeg")
             return
 
         if path == "/run":

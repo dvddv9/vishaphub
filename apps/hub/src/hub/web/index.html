@@ -102,6 +102,7 @@
       <div class="row" style="margin-top:10px">
         <button id="run">analyse</button>
         <button id="runv" class="ghost">validate</button>
+        <button id="hear" class="ghost" disabled>🔊 read it</button>
       </div>
       <div class="verdict" id="verdict"></div>
     </section>
@@ -183,6 +184,28 @@ $("mic").onclick = () => {
   r.start();
 };
 
+let lastSpoken = "";
+
+async function speakResult(){
+  const text = lastSpoken.trim();
+  if (!text){ return; }
+  const btn = $("hear");
+  const was = btn.textContent; btn.disabled = true; btn.textContent = "…";
+  try {
+    const res = await fetch("/speak", {method:"POST", headers:{"content-type":"application/json"},
+      body: JSON.stringify({text})});
+    if (!res.ok){
+      const data = await res.json().catch(()=>({}));
+      bubble("sys", data.error || "no voice available");
+      return;
+    }
+    const blob = await res.blob();
+    const audio = new Audio(URL.createObjectURL(blob));
+    audio.play();
+  } catch (e) { bubble("sys", e.message); }
+  finally { btn.disabled = false; btn.textContent = was; }
+}
+
 async function pipeline(intent){
   const material = $("material").value;
   if (!material.trim()){ $("verdict").innerHTML = "<b>nothing to check</b>"; return; }
@@ -193,9 +216,13 @@ async function pipeline(intent){
     const data = await res.json();
     if (data.error){ $("verdict").innerHTML = `<b>refused</b> ${data.error}`; return; }
     $("verdict").innerHTML = `plan <b>${data.plan.stages.join(" → ")}</b> · verdict <b>${data.result.verdict}</b>`;
+    const steps = (data.result.steps || []).map(s => `${s.stage}: ${s.verdict || (s.ok ? "ok" : "failed")}`);
+    lastSpoken = `The verdict is ${data.result.verdict}. Plan: ${data.plan.stages.join(", ")}. ${steps.join(". ")}.`;
+    $("hear").disabled = false;
     speak(`The verdict is ${data.result.verdict}.`);
   } catch (e) { $("verdict").innerHTML = `<b>error</b> ${e.message}`; }
 }
+$("hear").onclick = speakResult;
 $("run").onclick = () => pipeline("analyse");
 $("runv").onclick = () => pipeline("validate");
 

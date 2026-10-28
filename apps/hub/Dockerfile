@@ -10,6 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends git \
 COPY pyproject.toml README.md ./
 COPY src/ ./src/
 RUN pip install --no-cache-dir . "vishap-core @ git+https://github.com/dvddv9/vishap-core.git@main"
+# the hub speaks with the same voice as the greeting
+RUN pip install --no-cache-dir edge-tts
 
 RUN useradd -m -u 1000 hub
 USER hub
