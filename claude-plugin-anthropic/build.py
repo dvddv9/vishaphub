@@ -11,7 +11,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
 ENGINE = ["static_scan.py", "route_checklist.py", "findings_diff.py", "dataflow.py", "patterns.py",
-          "proof.py", "proof_harness.py"]
+          "proof.py", "proof_harness.py", "probe_funcs.py", "proof_funcs_harness.py"]
 
 
 def main() -> Path:

@@ -36,6 +36,7 @@ import tempfile
 from pathlib import Path
 
 HARNESS = Path(__file__).with_name("proof_harness.py")
+HARNESS_FUNCS = Path(__file__).with_name("proof_funcs_harness.py")   # plain functions + sqlite, see probe_funcs.py
 
 #: finding id -> checks that can prove it (any CONFIRMED check proves it)
 CHECKS_FOR = {
@@ -93,8 +94,9 @@ def _limits():  # pragma: no cover - runs in the child between fork and exec
     resource.setrlimit(resource.RLIMIT_NPROC, (64, 64))
 
 
-def _run_harness(code: str, timeout: int = 20, force: bool = False) -> dict:
-    """Run the harness on ``code``; return its JSON document or {"error": ...}."""
+def _run_harness(code: str, timeout: int = 20, force: bool = False, harness: Path | None = None, spec: dict | None = None) -> dict:
+    """Run the harness on ``code``; return its JSON document or {"error": ...}. ``spec`` (a JSON-able dict) is handed to
+    the harness as a second argument (the function probes read their hypotheses from it)."""
     if not force:
         ok, why = proof_allowed()
         if not ok:
@@ -104,6 +106,10 @@ def _run_harness(code: str, timeout: int = 20, force: bool = False) -> dict:
     try:
         target = Path(tmp) / "target.py"
         target.write_text(code, encoding="utf-8")
+        extra = []
+        if spec is not None:
+            (Path(tmp) / "spec.json").write_text(json.dumps(spec), encoding="utf-8")
+            extra = [str(Path(tmp) / "spec.json")]
         try:
             from src.pipeline.sandbox import _sandbox_env
             env = _sandbox_env(tmp)
@@ -113,7 +119,7 @@ def _run_harness(code: str, timeout: int = 20, force: bool = False) -> dict:
         # the real interpreter (venv python is a symlink) and, if that interpreter itself lives under /home or
         # /root (pyenv, uv), put just its prefix back read-only.
         exe = os.path.realpath(sys.executable)
-        cmd = [exe, "-I", str(HARNESS), str(target)]
+        cmd = [exe, "-I", str(harness or HARNESS), str(target)] + extra
         kw: dict = {}
         if level == "bwrap":
             visible = []
@@ -145,9 +151,34 @@ def _run_harness(code: str, timeout: int = 20, force: bool = False) -> dict:
         shutil.rmtree(tmp, ignore_errors=True)
 
 
-def prove(code: str, findings: list | None = None, *, force: bool = False, timeout: int = 20) -> dict:
-    """Run the probes. With ``findings``, annotate each one in place (finding['proof'], finding['status'])."""
+def _function_probes(code: str, *, force: bool, timeout: int, runner=None, spec: dict | None = None) -> dict | None:
+    """Probes for plain functions (see probe_funcs.py); never raises, None when nothing applies."""
+    try:
+        from src.tools import probe_funcs
+        if spec is not None:
+            doc = probe_funcs.run(code, spec, force=force, timeout=timeout)
+        else:
+            doc = probe_funcs.prove_functions(code, None, runner=runner, force=force, timeout=timeout)
+        return doc if doc.get("results") else None
+    except Exception:
+        return None
+
+
+def prove(code: str, findings: list | None = None, *, force: bool = False, timeout: int = 20, runner=None) -> dict:
+    """Run the probes. With ``findings``, annotate each one in place (finding['proof'], finding['status']).
+
+    Two probe families run: HTTP handlers (proof_harness) and plain functions with sqlite (probe_funcs).
+    ``runner`` is optional; with it a model may add function hypotheses (declarative, validated)."""
     doc = _run_harness(code, timeout=timeout, force=force)
+    allowed = not (doc.get("error") or "").startswith(("proof is off", "no containment"))
+    if allowed:
+        fdoc = _function_probes(code, force=force, timeout=timeout, runner=runner)
+        if fdoc:
+            doc["function_probes"] = fdoc
+            doc.setdefault("isolation", fdoc.get("isolation", ""))
+            if (doc.get("error") or "").startswith("no Flask-style"):
+                doc["error"] = None      # nothing to call over HTTP, but the functions were probed
+                doc["isolation"] = fdoc.get("isolation", "")
     if findings is not None and not doc.get("error"):
         annotate(findings, doc)
     doc["enabled"] = not (doc.get("error") or "").startswith(("proof is off", "no containment"))
@@ -158,6 +189,8 @@ def annotate(findings: list, doc: dict) -> None:
     """Attach proof to the findings the checks can speak about. Others stay UNCONFIRMED."""
     results = doc.get("results") or []
     for f in findings:
+        if f.get("status") in ("CONFIRMED", "NOT_REPRODUCED"):
+            continue
         checks = CHECKS_FOR.get(f.get("id", ""))
         if not checks:
             f.setdefault("status", "UNCONFIRMED")
@@ -174,14 +207,29 @@ def annotate(findings: list, doc: dict) -> None:
                       "route": best["route"], "isolation": doc.get("isolation", "")}
         f["status"] = "CONFIRMED" if best["status"] == "CONFIRMED" else (
             "NOT_REPRODUCED" if best["status"] == "NOT_REPRODUCED" else "UNCONFIRMED")
+    if doc.get("function_probes"):
+        from src.tools import probe_funcs
+        probe_funcs.annotate(findings, doc["function_probes"])
 
 
 def _confirmed(doc: dict) -> set:
     return {(r["function"], r["check"]) for r in doc.get("results", []) if r["status"] == "CONFIRMED"}
 
 
+def _fn_confirmed(doc: dict | None) -> set:
+    return {(r["function"], r["id"].split(":", 1)[-1]) for r in (doc or {}).get("results", []) if r["status"] == "CONFIRMED"}
+
+
+def _fn_gone(doc: dict | None) -> set:
+    return {r["function"] for r in (doc or {}).get("results", []) if str(r.get("evidence", "")).endswith("not found in the module")}
+
+
 def verify_patch(original: str, patched: str, *, force: bool = False, timeout: int = 20) -> dict:
-    """Did the patch close the exploits that worked before, and open none?"""
+    """Did the patch close the exploits that worked before, and open none?
+
+    Both HTTP handlers and plain functions are probed. For functions the SAME hypotheses (generated from the
+    original code) are replayed against the patch: a hypothesis that was CONFIRMED before and holds now is
+    closed; one that is still CONFIRMED is still open; one that only the patch violates is a regression."""
     try:
         import ast
         ast.parse(patched)
@@ -189,20 +237,39 @@ def verify_patch(original: str, patched: str, *, force: bool = False, timeout: i
         return {"verdict": "REJECTED", "reason": f"patched code does not parse: {e.msg} (line {e.lineno})",
                 "closed": [], "still_open": [], "regressions": []}
     before = _run_harness(original, timeout=timeout, force=force)
-    if before.get("error"):
+    no_handlers = (before.get("error") or "").startswith("no Flask-style")
+    if before.get("error") and not no_handlers:
         return {"verdict": "CANNOT_VERIFY", "reason": before["error"], "closed": [], "still_open": [], "regressions": []}
-    after = _run_harness(patched, timeout=timeout, force=force)
-    if after.get("error"):
-        return {"verdict": "CANNOT_VERIFY", "reason": "patched code: " + after["error"], "closed": [], "still_open": [], "regressions": []}
+    if no_handlers:
+        before = {"results": [], "handlers": 0, "isolation": ""}
+        after = {"results": [], "handlers": 0}
+    else:
+        after = _run_harness(patched, timeout=timeout, force=force)
+        if after.get("error") and not (after["error"].startswith("no Flask-style")):
+            return {"verdict": "CANNOT_VERIFY", "reason": "patched code: " + after["error"], "closed": [], "still_open": [], "regressions": []}
+        if after.get("error"):
+            after = {"results": [], "handlers": 0}
+    fb = fa = None
+    try:
+        from src.tools import probe_funcs
+        spec = probe_funcs.generate(original)
+        if spec["hypotheses"]:
+            fb = probe_funcs.run(original, spec, force=force, timeout=timeout)
+            fa = probe_funcs.run(patched, spec, force=force, timeout=timeout)
+            if fb.get("error") or fa.get("error"):
+                fb = fa = None
+    except Exception:
+        fb = fa = None
     b, a = _confirmed(before), _confirmed(after)
+    fbc, fac = _fn_confirmed(fb), _fn_confirmed(fa)
     names_before = {r["function"] for r in before["results"]}
     names_after = {r["function"] for r in after["results"]}
-    removed = sorted(names_before - names_after)
-    closed = sorted(b - a)
-    still = sorted(b & a)
-    regress = sorted(a - b)
+    removed = sorted((names_before - names_after) | _fn_gone(fa))
+    closed = sorted(b - a) + sorted(fbc - fac)
+    still = sorted(b & a) + sorted(fbc & fac)
+    regress = sorted(a - b) + sorted(fac - fbc)
     fmt = lambda xs: [f"{fn}:{chk}" for fn, chk in xs]  # noqa: E731
-    if not b:
+    if not b and not fbc:
         verdict, reason = "CANNOT_VERIFY", "no exploit was reproducible before the patch, nothing to compare"
     elif regress:
         verdict, reason = "REGRESSION", "the patch opens a new exploitable path"
@@ -216,7 +283,7 @@ def verify_patch(original: str, patched: str, *, force: bool = False, timeout: i
         verdict, reason = "CLOSES_EXPLOITS", "every exploit that worked before no longer works"
     return {"verdict": verdict, "reason": reason, "closed": fmt(closed), "still_open": fmt(still),
             "regressions": fmt(regress), "removed_handlers": removed,
-            "isolation": before.get("isolation", "")}
+            "isolation": before.get("isolation", "") or (fb or {}).get("isolation", "")}
 
 
 def render_verified_md(findings: list, doc: dict | None = None) -> str:

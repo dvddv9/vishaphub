@@ -6,6 +6,16 @@ All notable changes to Vishap. Format based on [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+### Added (function probes: proof by running plain functions, 2026-10-28)
+- `src/tools/probe_funcs.py` + `src/tools/proof_funcs_harness.py`: a hypothesis is data (function, arguments, rows, optional interleaved writer, invariant checks), the child process loads the module with a REAL in-memory sqlite3 behind a recording proxy (network, files, processes replaced by recorders, missing third-party modules stubbed, 3 s per call). CONFIRMED = the invariant was violated, NOT_REPRODUCED = it held, INCONCLUSIVE = the statement was never reached / the probe could not run.
+- Deterministic templates read the AST: negative and NaN amounts (stored data must not change), missing id (no crash, no success without effect), transfer to a missing recipient (sum conserved), check-then-act and lost update (another writer's UPDATE injected between the function's read and its write), SQL/command injection (probe text must not become part of the statement or command; `999 OR 1=1` must not touch more than one row), literal credential from the source accepted.
+- A model may add hypotheses (`probe_funcs.llm_hypotheses(code, runner)`): only declarative values, one-statement SELECT checks and fixed check types survive validation; nothing executable.
+- `proof.prove()` runs both probe families; a module without HTTP handlers is no longer an error when its functions were probed. Rule findings (`sqli-*`, `taint-flow`, `func-*`, `logic-fetchone-index`, `cmd-injection-py`) get `status`/`proof`; proven bugs no rule reported become findings with `source: probe`. A rule that fires on guarded code is refuted (`NOT_REPRODUCED`).
+- `verify_patch` replays the same function hypotheses on the patch: closed / still_open / regressions / removed functions.
+- Blind `user_service.py`: negative transfer, race overdraft (balance -60), lost update (110 instead of 160), NaN payment row, SQL injection wiping all rows, hard-coded reset token, command injection, crash on a missing row, money vanishing with a missing recipient: all CONFIRMED; guarded code (`process_payment(-5)`, `check_subscription(999)`) NOT_REPRODUCED. Tests: `tests/test_function_probes.py`.
+- Note: the transfer invariant is "stored data unchanged for a bad amount", not "sum of balances unchanged": with amount=-5 the sum stays 200 (105 + 95), the money only flows the wrong way.
+
+
 ### Fixed / Added (a blind `user_service.py` run exposed these, 2026-10-28)
 - **A quoted template is no longer a secret.** `password = '{new_password}'` inside an f-string SQL, `%s`, `:name` and `${X}` were matched by `secret-hardcoded`, `hardcoded_password` and `hardcoded_secret`. The scan reported a false "hard-coded password", and `redact_pii` blanked part of the query before the model saw it ("the SET clause is redacted"). Both patterns now skip templates (`TEMPLATE_VALUE` in `src/tools/patterns.py`).
 - **Redaction keeps the variable name.** `API_KEY = "sk_live_..."` becomes `API_KEY = "<STRIPE_LIVE_KEY_REDACTED>"` instead of `<SECRET_REDACTED>`, so the model no longer concludes that `API_KEY` is undefined (NameError). Idempotent.
