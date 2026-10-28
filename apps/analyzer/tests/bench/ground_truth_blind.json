@@ -3,7 +3,8 @@
  "files": [
   "shop_service.py",
   "orders_service.py",
-  "user_service.py"
+  "user_service.py",
+  "wallet_service.py"
  ],
  "dir": "blind",
  "bugs": [
@@ -1211,6 +1212,246 @@
     "leak"
    ],
    "provable": false
+  },
+  {
+   "id": "W01",
+   "title": "create_order accepts a negative or non-integer qty (stock grows, order with qty -5)",
+   "lines": [
+    19,
+    20
+   ],
+   "kind": "logic",
+   "rules": [
+    "func-amount-no-bounds"
+   ],
+   "keywords": [
+    "negative",
+    "qty",
+    "validate",
+    "int"
+   ],
+   "provable": true,
+   "file": "wallet_service.py"
+  },
+  {
+   "id": "W02",
+   "title": "create_order reads stock then updates it in a second step (oversell race)",
+   "lines": [
+    18,
+    19,
+    20
+   ],
+   "kind": "logic",
+   "rules": [
+    "func-check-then-act"
+   ],
+   "keywords": [
+    "race",
+    "atomic",
+    "stock",
+    "check-then-act",
+    "oversell"
+   ],
+   "provable": true,
+   "file": "wallet_service.py"
+  },
+  {
+   "id": "W03",
+   "title": "create_order crashes on a missing item (fetchone() is None, then indexed)",
+   "lines": [
+    18
+   ],
+   "kind": "logic",
+   "rules": [
+    "logic-fetchone-index"
+   ],
+   "keywords": [
+    "none",
+    "fetchone",
+    "missing",
+    "typeerror"
+   ],
+   "provable": true,
+   "file": "wallet_service.py"
+  },
+  {
+   "id": "W04",
+   "title": "withdraw has no amount validation and no balance check (negative credits, NaN, overdraft)",
+   "lines": [
+    30
+   ],
+   "kind": "logic",
+   "rules": [
+    "func-amount-no-bounds"
+   ],
+   "keywords": [
+    "withdraw",
+    "negative",
+    "nan",
+    "overdraft",
+    "balance"
+   ],
+   "provable": true,
+   "file": "wallet_service.py"
+  },
+  {
+   "id": "W05",
+   "title": "withdraw returns True although no wallet was touched",
+   "lines": [
+    30,
+    32
+   ],
+   "kind": "logic",
+   "rules": [
+    "func-unchecked-rowcount"
+   ],
+   "keywords": [
+    "withdraw",
+    "rowcount",
+    "unknown wallet",
+    "reports success"
+   ],
+   "provable": true,
+   "file": "wallet_service.py"
+  },
+  {
+   "id": "W06",
+   "title": "use_coupon reads uses_left, then writes uses_left - 1 (one coupon use lost, or coupon over-used)",
+   "lines": [
+    53,
+    54
+   ],
+   "kind": "logic",
+   "rules": [
+    "func-check-then-act"
+   ],
+   "keywords": [
+    "coupon",
+    "race",
+    "uses_left",
+    "lost update",
+    "atomic"
+   ],
+   "provable": true,
+   "file": "wallet_service.py"
+  },
+  {
+   "id": "W07",
+   "title": "SQL injection in list_orders (f-string)",
+   "lines": [
+    62
+   ],
+   "kind": "security",
+   "rules": [
+    "sqli-fstring"
+   ],
+   "keywords": [
+    "sql injection",
+    "sqli",
+    "f-string",
+    "parameteri"
+   ],
+   "provable": true,
+   "file": "wallet_service.py"
+  },
+  {
+   "id": "W08",
+   "title": "cancel_order reports success even when no order was deleted",
+   "lines": [
+    69,
+    71
+   ],
+   "kind": "logic",
+   "rules": [
+    "func-unchecked-rowcount"
+   ],
+   "keywords": [
+    "cancel_order",
+    "rowcount",
+    "reports success"
+   ],
+   "provable": true,
+   "file": "wallet_service.py"
+  },
+  {
+   "id": "W09",
+   "title": "Hard-coded admin key in source (module constant and again inside admin_reset_wallet)",
+   "lines": [
+    7,
+    75
+   ],
+   "kind": "security",
+   "rules": [],
+   "keywords": [
+    "hard-coded",
+    "hardcoded",
+    "admin",
+    "key",
+    "secret",
+    "compare_digest"
+   ],
+   "provable": true,
+   "file": "wallet_service.py"
+  },
+  {
+   "id": "W10",
+   "title": "admin_reset_wallet zeroes any wallet for anyone holding one static key and reports success for unknown wallets",
+   "lines": [
+    75,
+    77,
+    79
+   ],
+   "kind": "security",
+   "rules": [
+    "func-unchecked-rowcount"
+   ],
+   "keywords": [
+    "authorization",
+    "admin_reset_wallet",
+    "static key",
+    "rowcount"
+   ],
+   "provable": true,
+   "file": "wallet_service.py"
+  },
+  {
+   "id": "W11",
+   "title": "Command injection in send_receipt (shell=True with order_id and email)",
+   "lines": [
+    84
+   ],
+   "kind": "security",
+   "rules": [
+    "cmd-injection-py",
+    "shell-true"
+   ],
+   "keywords": [
+    "command injection",
+    "shell=true",
+    "subprocess",
+    "shell"
+   ],
+   "provable": true,
+   "file": "wallet_service.py"
+  },
+  {
+   "id": "W12",
+   "title": "Database connections are never closed and nothing is rolled back on error",
+   "lines": [
+    11
+   ],
+   "kind": "logic",
+   "rules": [],
+   "keywords": [
+    "never closed",
+    "not closed",
+    "connection leak",
+    "close()",
+    "context manager",
+    "rollback"
+   ],
+   "provable": false,
+   "file": "wallet_service.py"
   }
  ]
 }
