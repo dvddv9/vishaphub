@@ -2,6 +2,36 @@
 
 All notable changes to vishap-generator. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.5.0] - 2026-10-28
+
+Every part of the generator now follows the Vishap component that does the same job (mapping table in `docs/ARCHITECTURE.md`).
+The command line, the API and the JSON contract of the prompts are compatible with 0.4.1; new keys were added, none removed.
+
+### Changed
+- `pipeline/stages.py` is the registry of the five stages and holds `parse_json_response` (one place that reads a model's JSON answer) and `StageClock` (time and model use per stage, Vishap's `_meta`). The orchestrator records every stage; `PipelineResult` has `stages` and `usage`; `to_dict()` carries them.
+- `pipeline/verdict.py` is the single place that turns evidence into a verdict (`apply_build_errors`); `tools/quality_gate.py` evaluates the gate from `.vishap-generator.yml` (`fail_on`, `coverage_min`, `stale_days`, `max_critical_gaps`, `fail_on_analyzer`, `require_coverage`, `baseline`); `tools/static_scan.py` holds the AST rules with CWE/OWASP ids.
+- `llm/` is split like Vishap's: `custom_client.py` (the OpenAI-compatible call), `client.py` (`chat`), `_observe.py` (calls and tokens), `providers.py`, `_scrub.py`. The browser no longer sends a URL: it picks a provider id from the server's allow-list (`GET /api/providers`), so a request cannot make the server call an address of its choosing.
+- Prompts: `wrap_material` (was `wrap_data`, still importable) and `build_prompt(name, material, context) -> (system, user)`.
+- The web form starts a run as a job and shows the stage it is at and the log as it grows; the run page has a "Stages and model use" card and a Markdown report download.
+
+### Added
+- `tools/redact.py`: keys, tokens, private keys, JWTs, passwords in URLs and `password = ...` values are replaced by `[REDACTED:<kind>]` in everything that goes to the model; the text check matches quotes against the redacted text. Counts (never values) go into the trace.
+- `tools/provenance.py`: the trace has a `provenance` block (generator version, spec hash, model name and host, prompt hashes, redaction counts).
+- `pipeline/cost.py`: cost from `GENERATOR_PRICE_IN` / `GENERATOR_PRICE_OUT` (USD per 1M tokens); no price is invented, without them the cost is 0.0 and only token counts are shown.
+- `storage/history.py`: `<out>/.vishap/history.json`, one entry per written run; a spec that already has a passed run with the same hash is skipped by `batch`.
+- `observability/logging.py`: standard logging, `LOG_LEVEL`, `LOG_FORMAT=json|pretty`, run and request ids in every line, a filter that removes the model key. The server writes an access line (method, path, status, ms; never a body) and sends `X-Request-Id`.
+- `pipeline/batch.py` and commands `batch`, `baseline`, `history`, `info`; `generate --report FILE` (Markdown); a usage line after `generate`.
+- `tools/baseline.py`: `baseline spec.yaml` accepts the spec's current critical gaps on purpose; the gate lists them as accepted.
+- API: `POST /api/generate/async` and `GET /api/jobs/<id>?since=N` (jobs in memory, 1 hour); a request limit per client address (`GENERATOR_RATE_LIMIT`, default 30 a minute, 0 = off) with `Retry-After`; `markdown`, `stages`, `usage`, `provenance` in the answer.
+- `config.validate_config()` (shown by `info`), `.vishap-generator.yml.example`.
+
+### Not taken from Vishap (does not apply to a local tool)
+Tauri shell, Alembic, Postgres/Redis stores, accounts and billing, Celery, metrics and tracing exporters, Fernet storage of keys, SBOM/SCA, web search, landing and blog.
+
+### Not checked
+- No run against a real model in this session: the stage clock, token counts and prompts were exercised with a stand-in model server that returns fixed answers. Run `generate examples/spec-clean.yaml --out out/ --gate` once and compare with the earlier run (2 repair rounds).
+- Docker files, CI, pre-commit and `.ps1`/`.bat` were not executed.
+
 ## [0.4.1] - 2026-10-28
 
 ### Changed

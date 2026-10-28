@@ -14,8 +14,19 @@ class LayoutTests(unittest.TestCase):
     def test_the_folders_of_the_package(self):
         for d in ("api", "llm", "pipeline", "tools", "prompts", "web"):
             self.assertTrue((PACKAGE_DIR / d).is_dir(), d)
-        for d in ("api", "llm", "pipeline", "tools"):
+        for d in ("api", "llm", "pipeline", "tools", "storage", "observability"):
             self.assertTrue((PACKAGE_DIR / d / "__init__.py").is_file(), d)
+
+    def test_every_vishap_analog_named_in_the_docs_exists(self):
+        table = (ROOT / "docs/ARCHITECTURE.md").read_text("utf-8")
+        for module in ("pipeline/stages.py", "pipeline/verdict.py", "pipeline/cost.py", "pipeline/batch.py",
+                       "tools/quality_gate.py", "tools/baseline.py", "tools/static_scan.py", "tools/redact.py",
+                       "tools/provenance.py", "tools/report.py", "storage/history.py",
+                       "observability/logging.py", "api/rate_limit.py"):
+            self.assertTrue((PACKAGE_DIR / module).is_file(), module)
+            self.assertIn(module, table, module)
+        self.assertTrue((PACKAGE_DIR / "api/job_store.py").is_file())
+        self.assertIn("job_store", table)
 
     def test_no_old_flat_modules_are_left(self):
         for name in ("spec", "intake", "design", "build", "generate", "verify", "deliver",
@@ -33,7 +44,8 @@ class LayoutTests(unittest.TestCase):
                      ".pre-commit-config.yaml", ".github/workflows/ci.yml",
                      ".github/PULL_REQUEST_TEMPLATE.md", "deploy/README.md",
                      "docs/ARCHITECTURE.md", "docs/FAQ.md", "docs/LIMITATIONS.md",
-                     "docs/ROADMAP.md", "docs/VISHAP.md", "docs/HISTORY.md"):
+                     "docs/ROADMAP.md", "docs/VISHAP.md", "docs/HISTORY.md",
+                     ".vishap-generator.yml.example"):
             self.assertTrue((ROOT / name).is_file(), name)
 
 

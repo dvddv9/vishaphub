@@ -68,6 +68,21 @@ class BatchTests(unittest.TestCase):
         self.assertIn("down", rows[0].error)
 
 
+class ValidateConfigTests(unittest.TestCase):
+    def test_reports_problems_without_printing_a_key(self):
+        from generator.config import validate_config
+        errors, warnings = validate_config({"GENERATOR_PRICE_IN": "-1", "LOG_FORMAT": "xml", "LOG_LEVEL": "LOUD",
+                                            "CUSTOM_LLM_KEY": "supersecretkeyvalue"})
+        self.assertEqual(len(errors), 3)
+        self.assertNotIn("supersecretkeyvalue", " ".join(errors + warnings))
+
+    def test_a_clean_environment_has_no_errors(self):
+        from generator.config import validate_config
+        errors, _ = validate_config({"CUSTOM_LLM_URL": "https://api.deepseek.com", "CUSTOM_LLM_MODEL": "m",
+                                     "GENERATOR_PRICE_IN": "3", "GENERATOR_PRICE_OUT": "15"})
+        self.assertEqual(errors, [])
+
+
 class CliCommandTests(unittest.TestCase):
     def setUp(self):
         self._t = tempfile.TemporaryDirectory()

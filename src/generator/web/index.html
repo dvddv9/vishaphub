@@ -615,6 +615,13 @@ function tabBody(tab, run) {
       if (buildErrs.length) nodes.push(el("div", { class: "card", style: "margin-top:1rem" }, el("h3", null, "Build check"), el("ul", { class: "tight" }, buildErrs.map((x) => el("li", { style: "color:var(--bad)" }, x)))));
       if (v.problems.length) nodes.push(el("div", { class: "card", style: "margin-top:1rem" }, el("h3", null, "Problems"), el("ul", { class: "tight" }, v.problems.map((x) => el("li", { style: "color:var(--bad)" }, x)))));
       if (v.notes.length) nodes.push(el("div", { class: "card", style: "margin-top:1rem" }, el("h3", null, "Notes"), el("ul", { class: "tight" }, v.notes.map((x) => el("li", null, x)))));
+      if (r.stages && r.stages.length) {
+        const u = r.usage || {};
+        const total = u.llm_calls ? u.llm_calls + " model call(s), " + (u.tokens_in || u.tokens_out ? u.tokens_in + " tokens in / " + u.tokens_out + " out, " : "tokens not reported, ") + (u.duration_s || 0).toFixed(1) + " s" + (u.cost_usd ? ", $" + u.cost_usd.toFixed(4) : "") : "no model call";
+        nodes.push(el("div", { class: "card", style: "margin-top:1rem" }, el("h3", null, "Stages and model use"), el("p", { class: "muted" }, total),
+          el("ul", { class: "tight" }, r.stages.map((x) => el("li", null, x.title + ": " + x.duration_s.toFixed(1) + " s" + (x.runs > 1 ? ", " + x.runs + " runs" : "") + (x.llm_calls ? ", " + x.llm_calls + " model call(s)" : "")))),
+          r.markdown ? el("button", { class: "btn mini", type: "button", onclick: () => download("vishap-generator-report.md", r.markdown, "text/markdown") }, "Download the report (.md)") : null));
+      }
     } else {
       nodes.push(kvRow([["Mode", "Spec check, no model"], ["Requirements", String((r.requirements || []).length)], ["Gaps", String(d ? d.gaps.length : 0)],
         ["Critical gaps", String(d ? d.gaps.filter((g) => g.severity === "critical").length : 0)], ["Files planned", String(d ? d.files.length : 0)]]));

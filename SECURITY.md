@@ -3,7 +3,7 @@
 vishap-generator turns a spec into code by calling a language model, then runs that code to check it.
 Both facts are the risk. This is what is protected, what is not, and how to report a problem.
 
-**Version 0.4.1**
+**Version 0.5.0**
 
 ## Threat model
 
@@ -19,10 +19,11 @@ Both facts are the risk. This is what is protected, what is not, and how to repo
 
 1. **The key stays out of everything.** It is read from the environment only; it is replaced by `[key]` in error text (`llm/_scrub.py`), is not in a `repr`, and is never written to a trace, a log or a response. Keys sent by the browser live for one request and are not stored.
 2. **Plain http only for localhost.** A key never crosses the network unencrypted. There is no default URL: a forgotten variable cannot send a spec to a provider nobody chose.
+3. **Secrets are cut out before the model.** `tools/redact.py` replaces API keys, tokens, private keys, JWTs and passwords (in URLs and in `password = ...`) with `[REDACTED:<kind>]` in the spec text, requirements and problem lines. It catches the common shapes only: do not rely on it to make a spec with secrets safe. The trace records counts, never values.
 3. **Data is not instructions.** Spec text and tool output reach the model between random `VG_<LABEL>_<hex>` markers (`pipeline/prompts.py`), new on every call, so the text cannot close the block.
 4. **Writes stay inside `--out`.** Absolute paths, `..` and symlinks are rejected; a failure in the middle cancels the whole run and `rollback` restores the previous files (it refuses if a file changed since).
 5. **The gate** blocks writing when something is not proven (see README). `--force` is explicit and is recorded in the trace as `forced: true`.
-6. **Server.** Loopback by default; any other host needs `GENERATOR_API_TOKEN`. JSON bodies only, Host and Origin must match, 256 KB body limit, one generate run at a time (429). The API runs Deliver as a dry run into an empty temporary folder: it never reads or writes the server's disk.
+6. **Server.** Loopback by default; any other host needs `GENERATOR_API_TOKEN`. JSON bodies only, Host and Origin must match, 256 KB body limit, one generate run at a time (429), a request limit per client address (`GENERATOR_RATE_LIMIT`, `Retry-After`), job ids are random 128-bit values, `GET /api/jobs/<id>` needs the token when one is set. Logs hold method, path, status and ids, never a body or a key (a filter removes the configured key from every record). The browser picks a model provider from the server's allow-list and cannot name a URL. The API runs Deliver as a dry run into an empty temporary folder: it never reads or writes the server's disk.
 
 ## What is NOT protected
 

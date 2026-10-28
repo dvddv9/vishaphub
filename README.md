@@ -45,6 +45,10 @@
     vishap-generator generate spec.yaml --out src/ --dry-run
     vishap-generator generate spec.yaml --no-llm
     vishap-generator rollback 8f3a1c2e --out src/
+    vishap-generator batch specs/ --out out/ --workers 2
+    vishap-generator baseline spec.yaml        # принять текущие critical-дыры осознанно
+    vishap-generator history --out src/
+    vishap-generator info                      # версия, модель, хэши промптов, проблемы настройки
 
 (`python -m generator ...` работает так же.)
 
@@ -59,7 +63,9 @@
 | `--no-analyzer` | не запускать Анализатор |
 | `--no-text-check` | не просить модель сверить свободный `text` с требованиями |
 | `--repairs N` | раунды исправления (0 — без них) |
-| `--json FILE`, `--sarif FILE` | полный результат / SARIF 2.1.0 |
+| `--json FILE`, `--sarif FILE`, `--report FILE` | полный результат / SARIF 2.1.0 / отчёт Markdown |
+
+После прогона печатается строка `usage`: вызовы модели, токены, время и цена (цена только если заданы `GENERATOR_PRICE_IN` и `GENERATOR_PRICE_OUT`, USD за 1M токенов). Пороги гейта можно задать в `.vishap-generator.yml` (образец: `.vishap-generator.yml.example`).
 
 Без `--gate` файлы пишутся всегда, провалы и дыры остаются в отчёте. Коды выхода: 0 готово, 1 гейт заблокировал, 2 ошибка (спецификация, модель, запись).
 
@@ -73,9 +79,11 @@
 - Настройки модели в форме (URL, имя, ключ) живут в `sessionStorage` вкладки и уходят только в запрос; сервер их не хранит и не пишет в лог. Принимаются, когда сервер на loopback или задано `GENERATOR_ALLOW_CLIENT_LLM=1`; иначе используется модель из `CUSTOM_LLM_*` сервера.
 - `GET /health`, `GET /api/status` (какая модель настроена, есть ли Analyzer и coverage, нужен ли токен), `GET /api/examples` (три примера спецификации).
 - `POST /api/check` `{"spec": "<yaml>"}` — Intake и Design.
-- `POST /api/generate` `{"spec": "<yaml>", "gate": false, "repairs": 2, "no_analyzer": false}` — все этапы. Ничего не пишет на диск сервера: файлы, `diff`, `trace` и `log` приходят в ответе.
+- `POST /api/generate` `{"spec": "<yaml>", "gate": false, "repairs": 2, "no_analyzer": false}` — все этапы. Ничего не пишет на диск сервера: файлы, `diff`, `trace`, `log`, `markdown`, `stages` и `usage` приходят в ответе.
+- `POST /api/generate/async` (то же тело) → `202 {"job": "<id>"}`; `GET /api/jobs/<id>?since=N` → статус, текущая стадия, новые строки лога, а когда готово, тот же ответ, что у `/api/generate`. Форма использует именно его. Задачи живут в памяти сервера час.
+- `GET /api/providers` — провайдеры, которых может выбрать браузер (URL из запроса сервер не берёт).
 
-Защита: по умолчанию только `127.0.0.1`; для другого адреса обязателен `GENERATOR_API_TOKEN` (заголовок `Authorization: Bearer ...`). Принимается только `application/json`, проверяются `Host` и `Origin` (страница с чужого сайта не может потратить ваш ключ модели), тело до 256 КБ, одновременно один прогон (второй получает 429).
+Защита: по умолчанию только `127.0.0.1`; для другого адреса обязателен `GENERATOR_API_TOKEN` (заголовок `Authorization: Bearer ...`). Принимается только `application/json`, проверяются `Host` и `Origin` (страница с чужого сайта не может потратить ваш ключ модели), тело до 256 КБ, одновременно один прогон (второй получает 429), не больше `GENERATOR_RATE_LIMIT` запросов в минуту с одного адреса (по умолчанию 30, 0 — без лимита; ответ 429 с `Retry-After`). Журнал: `LOG_LEVEL`, `LOG_FORMAT=json`; в нём метод, путь, статус и id запроса, без тел.
 
 ## Спецификация
 
@@ -86,7 +94,7 @@
 - **Verify не изолирует код.** Сгенерированный код запускается подпроцессом с правами пользователя (чистое окружение без ключей, таймаут, `-X utf8`). Это проверка работы кооперативной модели, не защита от враждебного кода. Перед работой с чужими спецификациями нужен Docker или похожая изоляция.
 - Файлы пишутся только внутри `--out`: пути проверяются, абсолютные, `..` и симлинки отвергаются; сбой посреди записи отменяет прогон целиком.
 - `material_hash` считается на сервере по байтам спецификации.
-- Текст спецификации передаётся модели как данные между маркерами, не как инструкции.
+- Текст спецификации передаётся модели как данные между маркерами, не как инструкции. Перед этим из него вырезаются ключи, токены, приватные ключи, JWT и пароли (`tools/redact.py`). Это не гарантия: ловятся типичные формы секретов, не всё, что человек может напечатать.
 - Свободный `text` читается только моделью при Build. Требования создаются только из структурных полей: факт, сказанный лишь в `text`, считается отсутствующим.
 - Покрытие строчное, без веток. Атаки Verify идут без базы данных: ветки 200 и 404 доказаны тестами модели с подставной базой, на настоящей БД Verify не проверяет.
 - Не поддерживается: цели кроме `python/*` проверяются только на уровне плана и `ast`, атаки Verify работают для `http-endpoint` с входами в `query` и `header`.
@@ -101,12 +109,15 @@
 
     src/generator/
       version.py  config.py  cli.py  main.py        версия, настройки, командная строка, HTTP-сервер
-      api/        auth errors rate_limit llm_config reports jobs
-      llm/        providers (настройки из окружения), client (один вызов), _scrub
-      pipeline/   intake design build generate verify deliver textcheck
-                  orchestrator (все этапы)  stages (реестр)  prompts (загрузка)
+      api/        auth errors rate_limit llm_config reports jobs job_store job_store_memory
+      llm/        custom_client client _observe providers _scrub
+      pipeline/   intake design build generate verify verdict deliver textcheck batch cost
+                  orchestrator (все этапы)  stages (реестр, часы)  prompts (загрузка)
                   sandbox + _sandbox_runner (дочерний процесс)
-      tools/      spec gaps analyzer sarif examples
+      tools/      spec gaps analyzer sarif examples static_scan quality_gate baseline
+                  redact provenance report
+      storage/    history
+      observability/ logging
       prompts/    00_rules  02_design_textcheck  03_build  03_build_repair  (.md)
       web/        index.html
     tests/        по файлу на модуль, плюс test_prompts и test_structure

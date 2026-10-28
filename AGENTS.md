@@ -4,7 +4,7 @@ Guidance for AI coding agents working in this repository.
 
 ## Project
 
-vishap-generator (v0.4.1): a spec-to-code generator that proves its output. `spec.yaml` goes in; files, tests and
+vishap-generator (v0.5.0): a spec-to-code generator that proves its output. `spec.yaml` goes in; files, tests and
 a trace "requirement -> code -> test -> finding" come out. Five stages: Intake, Design, Build, Verify, Deliver.
 A requirement is `passed`, `failed`, `needs_verification` or `not_verified`; "not proven" is never reported as "passed".
 
@@ -27,11 +27,12 @@ Without `pip install -e .`, set `$env:PYTHONPATH = "src"` first.
 
     src/generator/
       version.py config.py cli.py main.py     version, settings, command line, HTTP server
-      api/        auth, errors, rate_limit, llm_config, reports, jobs   (what main.py needs)
-      llm/        providers.py (settings), client.py (one chat call), _scrub.py (keys out of text)
-      pipeline/   intake design build generate verify deliver textcheck, orchestrator, stages,
-                  prompts (loader), sandbox + _sandbox_runner (child process)
-      tools/      spec gaps analyzer sarif examples
+      api/        auth, errors, rate_limit, llm_config, reports, jobs, job_store(+_memory)  (what main.py needs)
+      llm/        custom_client.py (the call), client.py (chat), _observe.py (usage), providers.py (allow-list), _scrub.py
+      pipeline/   intake design build generate verify verdict deliver textcheck batch cost, orchestrator,
+                  stages (registry, StageClock), prompts (loader), sandbox + _sandbox_runner (child process)
+      tools/      spec gaps analyzer sarif examples static_scan quality_gate baseline redact provenance report
+      storage/    history.py          observability/  logging.py
       prompts/    00_rules 02_design_textcheck 03_build 03_build_repair (.md) - see prompts/README.md
       web/        index.html (single-file SPA)
 
@@ -39,8 +40,10 @@ Without `pip install -e .`, set `$env:PYTHONPATH = "src"` first.
 
 - Every prompt is a file in `prompts/`; no prompt text inside Python. A new prompt is listed in
   `pipeline/stages.py`; `tests/test_prompts.py` fails otherwise.
-- Data from the user or from tools reaches the model only through `wrap_data()` (random markers).
-- The gate (`deliver.gate_check`) blocks on: build errors, critical/high requirement not `passed`, analyzer failed,
+- Data from the user or from tools reaches the model only through `wrap_material()` / `build_prompt()` (random markers, secrets redacted by `tools/redact.py`). The text check matches quotes against the redacted text.
+- Each part follows the Vishap component of the same job (`docs/ARCHITECTURE.md`, table "Аналоги в Vishap"). Keep the names; add a row when you add a part.
+- A blocked run writes nothing, history included. A model key never reaches a log: use `observability.logging`, not `print`, for anything the server reports.
+- The gate (`tools/quality_gate.evaluate_gate`) blocks on: build errors, critical/high requirement not `passed`, analyzer failed,
   coverage under 80%, open critical gap, spec older than 90 days, Verify problems. Do not weaken it to make a test pass.
 - Verify's sandbox is a child process, not isolation. Never describe it as safe against hostile code.
 - The API never writes to the server's disk and never stores or logs model keys.
