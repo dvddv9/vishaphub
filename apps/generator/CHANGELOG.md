@@ -2,6 +2,14 @@
 
 All notable changes to vishap-generator. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.9.1] - 2026-10-28
+
+### Added
+- `scripts/deep_run.ps1`: one real run at deep effort on two example specs (`examples/spec-clean.yaml`, `examples/spec-create-user.yaml`), dry run, the model key asked for in the session and never saved; reports go to `reports\` (ignored by git).
+
+### Not verified
+The script was written without PowerShell at hand: it was not run.
+
 ## [0.9.0] - 2026-10-28
 
 What the generator should do when the model is a tool, not a judge: check the model's own work by running it, and ask the author instead of letting the model guess.
