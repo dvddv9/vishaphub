@@ -1,8 +1,11 @@
-# VishapHub — one public door, three services behind it.
+# VishapHub — one public door, one process behind it.
 #
-# The hub is what the world sees: the assistant with a voice, the page, the route.
-# The analyser, the generator and the validator are called by the hub and do not need
-# their own public entrance; their URLs live in the hub's environment.
+# The hub, the validator's six stages and the analyser's rules run in one image: the
+# pipeline calls them as libraries, so there is no second service to keep alive, no
+# URL to misconfigure and no cold start between two halves of the same answer.
+#
+# The key: the model is the caller's. A client may send its own key; the owner's key,
+# if any, is set in the Render panel and never lives in the repository.
 services:
   - type: web
     name: vishap-hub
@@ -11,17 +14,14 @@ services:
     region: frankfurt
     healthCheckPath: /health
     autoDeploy: true
-    dockerContext: ./apps/hub
+    # The Dockerfile copies packages/core, apps/validator, apps/analyzer and apps/hub,
+    # so the build context has to be the repository root, not ./apps/hub.
+    dockerContext: .
     dockerfilePath: ./apps/hub/Dockerfile
     envVars:
-      - key: VISHAP_ANALYSER_URL
-        value: https://vishap-zwpx.onrender.com
-      - key: VISHAP_GENERATOR_URL
-        value: https://vishap-generator.onrender.com
-      - key: VISHAP_VALIDATOR_URL
-        value: https://vishap-validator.onrender.com
+      - key: VISHAP_HUB_LLM_KEY
+        sync: false          # set in the panel; a client can also send api_key in the body
 
-# Kept as separate services today, reachable by URL, not advertised as doors:
-#   analyzer  https://vishap-zwpx.onrender.com
-#   generator https://vishap-generator.onrender.com
-#   validator https://vishap-validator.onrender.com
+# The separate services (analyzer, generator, validator) are deliberately absent: the
+# hub does not call them over the network any more. Their repositories still build and
+# deploy on their own.
