@@ -1,0 +1,149 @@
+# CI for the VishapHub monorepo.
+#
+# One job per piece, so a red cross says which piece broke. Every job installs what the
+# hub image installs, in the same order as apps/hub/Dockerfile: that Dockerfile is the one
+# place that already knows how these packages fit together.
+#
+# What this does NOT cover, on purpose of honesty:
+#   * the row-level-security tests in apps/analyzer skip themselves unless the database
+#     role is not a superuser and the migrations are applied; here they stay skipped;
+#   * the sandbox tests that need bubblewrap are skipped (not installed on the runner);
+#   * ruff runs for the generator only; core, validator and hub do not pass it yet
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"   # what apps/hub/Dockerfile runs
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install pytest -e ./packages/core
+      - run: python -m pytest -q
+        working-directory: packages/core
+
+  validator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install pytest -e ./packages/core -e ./apps/validator
+      # tests/ only: examples/bad/ holds deliberately broken code that pytest would collect and trip on
+      - run: python -m pytest -q tests
+        working-directory: apps/validator
+
+  hub:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: apps/analyzer/requirements.txt
+      - name: Install as the image does
+        run: |
+          # requirements.txt still names vishap-core as a git dependency; core is local here.
+          grep -v '^vishap-core' apps/analyzer/requirements.txt > "$RUNNER_TEMP/analyzer-reqs.txt"
+          pip install -e ./packages/core -e ./apps/validator
+          pip install -r "$RUNNER_TEMP/analyzer-reqs.txt"
+          pip install -e ./apps/analyzer --no-deps
+          pip install -e ./apps/hub
+          pip install edge-tts pytest
+      - run: python -m pytest -q
+        working-directory: apps/hub
+
+  analyzer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: vishap
+          POSTGRES_PASSWORD: vishap_dev
+          POSTGRES_DB: vishap
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vishap"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_POSTGRES_URL: postgresql+asyncpg://vishap:vishap_dev@localhost:5432/vishap
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: apps/analyzer/requirements.txt
+      - name: Install
+        run: |
+          grep -v '^vishap-core' requirements.txt > "$RUNNER_TEMP/analyzer-reqs.txt"
+          pip install -e ../../packages/core
+          pip install -r "$RUNNER_TEMP/analyzer-reqs.txt"
+        working-directory: apps/analyzer
+      # python -m, not bare pytest: the tests import "src.*" from the app's own directory.
+      - run: python -m pytest -q -rs
+        working-directory: apps/analyzer
+
+  generator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install -r requirements.txt ruff==0.17.3
+        working-directory: apps/generator
+      # lint and version sync first: they fail in seconds
+      - run: python scripts/check_version.py
+        working-directory: apps/generator
+      - run: ruff check src tests scripts
+        working-directory: apps/generator
+      # the project's own runner: unittest discover, no network, no model
+      - run: python run_tests.py
+        working-directory: apps/generator
+
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      # The context is the repository root: the Dockerfile copies packages/core and three apps.
+      # A context of ./apps/hub is what broke the deploy on 2026-10-28.
+      - name: Build
+        run: docker build -f apps/hub/Dockerfile -t vishap-hub:ci .
+      - name: The container answers /health
+        run: |
+          docker run -d --name hub -p 8080:8080 vishap-hub:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/health; then exit 0; fi
+            sleep 2
+          done
+          docker logs hub
+          exit 1

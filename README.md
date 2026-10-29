@@ -5,10 +5,10 @@ were slowly growing apart.
 
 ```
 apps/
-  analyzer/    the security analyst (FastAPI + Next.js UI) — live: vishap-zwpx.onrender.com
-  generator/   spec-to-code generator that proves its output — live: vishap-generator.onrender.com
-  hub/         carries a request between the three services — live: vishap-hub.onrender.com
-  validator/   does the code match the promise (six stages) — live: vishap-validator.onrender.com
+  analyzer/    the security analyst (FastAPI + Next.js UI)
+  generator/   spec-to-code generator that proves its output
+  hub/         runs the pipeline; the validator's six stages and the analyser's rules run inside it as libraries — live: vishap-hub.onrender.com
+  validator/   does the code match the promise (six stages)
 packages/
   core/        keys, limits, model choice, report shape — shared by all of them
 ```
@@ -59,9 +59,14 @@ cd apps/generator  && pytest -q && python -m generator
 ## Deploy
 
 Each app has its own Dockerfile and may be deployed separately; `render.yaml` at the
-root describes all four services so one file answers «what runs where».
+root describes the one service that runs in production: the hub image, with the validator and the analyser's rules inside it.
 
 ## A note on the merge
 
 Nothing was dropped. The five source repositories still exist and still build; this
 one is where a change to a shared rule is made once instead of twice.
+
+## Known gaps
+
+- **Tenant isolation (row-level security) is not tested anywhere.** The RLS tests in `apps/analyzer/tests/test_rls.py` skip themselves: the test database role is a superuser, which PostgreSQL exempts from RLS, and no RLS policy exists in the test database (one test reports `RLS policy not found`). Against a live Postgres, 27 of the 30 tests in the Postgres-backed files pass and these 3 skip, so a green run says nothing about isolation. To close it: create the policies in the test database and connect as the non-superuser `vishap_app` role.
+- **The sandbox tests are skipped outside Linux.** Three tests in `apps/analyzer/tests/test_scan_toolkit.py` need `bubblewrap`, one needs symlinks; CI does not install bubblewrap.

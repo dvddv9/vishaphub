@@ -1,0 +1,15 @@
+# The one pre-commit config of the monorepo. pre-commit reads only the file at the root
+# of the repository, so the configs that came in with each app (git subtree) never ran.
+#
+# Install once per clone:  pip install pre-commit && pre-commit install
+# Run by hand:             pre-commit run --all-files
+#
+# Narrow on purpose. ruff runs only where it passes today (apps/generator): core,
+# validator, hub and analyzer have findings that need their own autofix commit.
+# gitleaks is not here yet: its environment does not install on this machine.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.3
+    hooks:
+      - id: ruff-check
+        files: ^apps/generator/

@@ -12,7 +12,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project.optional-dependencies]
-full = ["coverage>=7", "ruff"]
+full = ["coverage>=7", "ruff==0.17.3"]
 
 [project.scripts]
 vishap-generator = "generator.cli:main"
