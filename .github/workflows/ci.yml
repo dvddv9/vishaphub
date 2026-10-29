@@ -110,13 +110,6 @@ jobs:
           pip install -r "$RUNNER_TEMP/analyzer-reqs.txt"
         working-directory: apps/analyzer
       # python -m, not bare pytest: the tests import "src.*" from the app's own directory.
-      - name: What the probes expect to exist
-        run: |
-          pwd
-          ls -la src/tools | head -5
-          test -f src/tools/proof_funcs_harness.py && echo "harness FOUND" || echo "harness MISSING"
-          python -c "from src.tools import proof; print('proof resolves to', proof.HARNESS_FUNCS, proof.HARNESS_FUNCS.exists())"
-        working-directory: apps/analyzer
       - run: python -m pytest -q -rs
         working-directory: apps/analyzer
 
