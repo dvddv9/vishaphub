@@ -9,6 +9,8 @@
 #     role is not a superuser and the migrations are applied; here they stay skipped;
 #   * the sandbox tests that need bubblewrap are skipped (not installed on the runner);
 #   * ruff runs for the generator only; core, validator and hub do not pass it yet
+#   * the git history is not scanned for secrets: the secrets job runs gitleaks with --no-git,
+#     on the checked-out files only
 name: ci
 
 on:
@@ -150,3 +152,21 @@ jobs:
           done
           docker logs hub
           exit 1
+
+  secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      # The release binary, not gitleaks-action: the action wants a license key.
+      # The archive is checked against the sha256 from the release's checksums.txt before
+      # anything is unpacked; `curl | tar` would run it unchecked.
+      - name: Install gitleaks 8.21.2
+        run: |
+          curl -sSfL -o gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz
+          echo "5bc41815076e6ed6ef8fbecc9d9b75bcae31f39029ceb55da08086315316e3ba  gitleaks.tar.gz" | sha256sum -c -
+          sudo tar -xz -C /usr/local/bin -f gitleaks.tar.gz gitleaks
+      # --no-git scans the checked-out files, not the history. --redact keeps secrets out of the log.
+      # The policy is .gitleaks.toml at the root.
+      - name: Scan the working tree
+        run: gitleaks detect --no-git --redact -v

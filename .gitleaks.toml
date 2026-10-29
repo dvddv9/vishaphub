@@ -1,0 +1,44 @@
+# One gitleaks policy for the whole monorepo. gitleaks reads the config of the tree it
+# scans, from its root only, so the per-app configs in apps/analyzer and apps/generator
+# were never applied by `gitleaks detect` run from the root. This file replaces both.
+title = "VishapHub secrets policy"
+
+[extend]
+# Keep every built-in rule. The allowlist below only removes known fixtures.
+useDefault = true
+
+[allowlist]
+description = "Fixtures and placeholders that look like secrets but are not"
+# Literal TOML strings ('...') on purpose: the regexes contain backslashes.
+paths = [
+    # Test code. The fake credentials in it are inputs on purpose: the redaction, scanning
+    # and hardening tests feed them in to check they get caught (AKIA + ABCDE... sequences,
+    # 'hunter2', 'sk-very-secret...', a three-line fake PEM block).
+    'apps/.*/tests/.*',
+    # Examples are deliberately insecure inputs for the analyzer; they exist to be flagged.
+    # apps/analyzer/examples/multi/k8s_insecure.yaml has a 27-character sk_live_ string
+    # (19 after the prefix; a real key is longer) next to SYS_ADMIN and a weak JWT secret.
+    'apps/.*/examples/.*',
+    # The redaction modules (analyzer and generator) hold the secret patterns and sample
+    # strings they scrub. They are code that detects secrets, not secrets.
+    'apps/.*/src/.*/redact\.py',
+    # A library of PII and compliance regexes, not credentials.
+    'apps/analyzer/src/tools/patterns\.py',
+    # Write-ups and result JSON of analyzer runs on public open-source projects (curl, DVWA,
+    # DVGA, Django): they quote those projects' code and the analyzer's own markers.
+    'apps/analyzer/docs/case-studies/.*',
+    # The Terraform demo the analyzer UI offers as "Terraform - cloud config"
+    # (apps/analyzer/ui-next/src/lib/examples.ts): public database, SSH open to the world,
+    # a short admin password. Insecure on purpose, so the analyzer has something to flag.
+    # One file, not the directory.
+    'apps/analyzer/main\.tf',
+]
+regexes = [
+    # Markers the redactor leaves where it removed a secret, e.g. <AWS_KEY_REDACTED>:
+    # the value is already gone.
+    '<[A-Z_]+_REDACTED>',
+    # Documentation placeholder for a DeepSeek key.
+    'sk-your-deepseek-key-here',
+    # Placeholder key used by apps/analyzer/tests/test_e2e.py.
+    'test-key-12345',
+]
