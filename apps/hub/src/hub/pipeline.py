@@ -33,7 +33,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 
-from . import local, proposal
+from . import fingerprint, local, proposal
 from .envelope import Envelope, Kind
 from .router import Plan, Stage
 from .verdicts import BLOCKING_VERDICTS, SEVERITY_ORDER, normalise, rank, strictest
@@ -79,6 +79,8 @@ class RunResult:
     model_verdict: str = ""
     rules_verdict: str = ""
     mode: str = "plan"
+    not_checked: list = field(default_factory=list)
+    fingerprint: dict = field(default_factory=dict)
 
     def as_dict(self) -> dict:
         return {
@@ -99,6 +101,8 @@ class RunResult:
             "model_verdict": self.model_verdict,
             "rules_verdict": self.rules_verdict,
             "trace": self.trace,
+            "not_checked": self.not_checked,
+            "fingerprint": self.fingerprint,
         }
 
 
@@ -130,10 +134,42 @@ def _analysis_pieces(material: str, patch: dict) -> list[tuple[str, str]]:
     return pieces
 
 
+def _not_checked(plan: Plan, checks: dict, has_proof: bool) -> list[str]:
+    """Everything this run did not answer — said before the client asks."""
+    missing: list[str] = []
+    stages = tuple(getattr(plan, "stages", ()) or ())
+    if Stage.VALIDATOR not in stages:
+        missing.append("the code was not compared with a spec: no validator stage in this plan")
+    if Stage.ANALYSER not in stages:
+        missing.append("security was not checked: no analyser stage in this plan")
+    if Stage.GENERATOR not in stages:
+        missing.append("nothing was generated: no generator stage in this plan")
+    if not (checks.get("validator") or {}).get("checks"):
+        missing.append("the validator's stage-by-stage detail is not in this answer")
+    if has_proof:
+        missing.append("the proof lines are the model's promise, not the output of a run")
+    return missing
+
+
 def run_plan(plan: Plan, material: str = "", files: dict | None = None,
              spec: object = None, filename: str = "input.txt",
-             question: str = "", api_key: str = "", model: str = "") -> RunResult:
-    """Execute the plan and return one honest verdict."""
+             question: str = "", api_key: str = "", model: str = "",
+             on_step=None) -> RunResult:
+    """Execute the plan and return one honest verdict.
+
+    ``on_step`` is called with ``(stage, payload)`` after every stage that produced a
+    verdict, so a streaming client can show progress instead of waiting for the whole
+    run in silence.
+    """
+
+    def emit(stage: str, payload: dict) -> None:
+        if on_step is None:
+            return
+        try:
+            on_step(stage, payload)
+        except Exception:  # noqa: BLE001 - a broken listener must not break the run
+            log.warning("on_step listener failed", exc_info=True)
+
     envelope = Envelope.build("hub", "analyser", Kind.QUESTION, {"filename": filename})
     steps: list[Step] = []
     trace = list(envelope.trace)
@@ -204,6 +240,8 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
                 steps.append(Step("generator", True, model_verdict,
                                   detail=f"{len(patch)} file(s) proposed · model recommendation"))
                 trace.append(f"pass {pass_no} generator -> {model_verdict} ({len(patch)} file(s))")
+                emit("generator", {"stage": "generator", "verdict": model_verdict, "ok": True,
+                                   "files": len(patch), "pass": pass_no})
                 continue
 
             if stage is Stage.VALIDATOR:
@@ -231,6 +269,9 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
                 steps.append(Step("validator", verdict not in BLOCKING_VERDICTS, verdict,
                                   detail=f"{report.get('finding_count', 0)} findings"))
                 trace.append(f"pass {pass_no} validator -> {verdict}")
+                emit("validator", {"stage": "validator", "verdict": verdict,
+                                   "ok": verdict not in BLOCKING_VERDICTS,
+                                   "findings": report.get("finding_count", 0), "pass": pass_no})
                 merge(verdict)
                 continue
 
@@ -267,6 +308,8 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
                 steps.append(Step("analyser", True, worst,
                                   detail=f"{len(found)} findings · {len(pieces)} piece(s) · rules only"))
                 trace.append(f"pass {pass_no} analyser -> {worst} ({len(pieces)} piece(s))")
+                emit("analyser", {"stage": "analyser", "verdict": worst, "ok": True,
+                                  "findings": len(found), "pieces": len(pieces), "pass": pass_no})
                 merge(worst)
                 continue
 
@@ -301,7 +344,7 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
     if model_verdict and rules_verdict and rank(model_verdict) > rank(rules_verdict):
         reason = (reason + " · " if reason else "") + "the model saw danger the rules did not"
 
-    return RunResult(
+    result = RunResult(
         ok=ok,
         verdict=final,
         steps=steps,
@@ -318,4 +361,14 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
         model=answer.get("model", ""),
         model_verdict=model_verdict,
         rules_verdict=rules_verdict,
+        not_checked=_not_checked(plan, checks, bool(answer.get("proof"))),
     )
+    result.fingerprint = fingerprint.of(
+        material=material,
+        spec=spec,
+        files=files,
+        plan=plan_dict,
+        verdict=final,
+        steps=[s.as_dict() for s in steps],
+    )
+    return result

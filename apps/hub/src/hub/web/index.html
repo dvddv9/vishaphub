@@ -149,6 +149,7 @@
     <span class="pill live"><span class="dot"></span>live</span>
     <span class="pill">process lead</span>
     <span class="spacer"></span>
+    <button class="btn ghost" id="lang" style="padding:9px 12px" title="language">RU</button>
     <button class="btn ghost" id="say" style="padding:9px 14px">▶ hear me</button>
   </nav>
 
@@ -157,18 +158,18 @@
     <div class="hero-in">
       <div>
         <span class="badge"><span class="dot"></span>generation · validation · security</span>
-        <h1>Carry the request.<br><em>Prove</em> the result.</h1>
-        <p class="lead">
+        <h1 data-i18n-html="title">Carry the request.<br><em>Prove</em> the result.</h1>
+        <p class="lead" data-i18n="lead">
           Paste code, a spec or logs. I route it: the generator writes code from the spec, the
           validator checks it against that spec, the analyser checks whether it is dangerous.
           I ask only what is missing and return what the pipeline said.
         </p>
-        <p class="meta">3 stages · 6 validator checks · strictest verdict wins · audit trail</p>
+        <p class="meta" data-i18n="meta">3 stages · 6 validator checks · strictest verdict wins · audit trail</p>
 
         <div class="cta">
-          <button class="btn" id="tryExample">Try with an example</button>
-          <button class="btn ghost" id="focusComposer">Talk to Vishap</button>
-          <a href="https://github.com/dvddv9/vishaphub" style="align-self:center;text-decoration:underline;text-underline-offset:4px">monorepo</a>
+          <button class="btn" id="tryExample" data-i18n="try">Try with an example</button>
+          <button class="btn ghost" id="focusComposer" data-i18n="talk">Talk to Vishap</button>
+          <a href="/runs" style="align-self:center;text-decoration:underline;text-underline-offset:4px" data-i18n="recent">recent runs</a>
         </div>
 
         <dl class="stats">
@@ -224,9 +225,9 @@
         <div class="msg sys">I answer with the hub’s own key. Bring yours only if you want the run to be yours.</div>
       </div>
       <div class="composer">
-        <textarea id="text" rows="1" placeholder="write, or press the mic and speak…"></textarea>
+        <textarea id="text" rows="1" placeholder="write, or press the mic and speak…" data-i18n-ph="textPh"></textarea>
         <button class="mic" id="mic" title="speak">🎙</button>
-        <button class="btn" id="send" style="padding:11px 16px">send</button>
+        <button class="btn" id="send" style="padding:11px 16px" data-i18n="send">send</button>
       </div>
       <div class="chips">
         <span class="chip" data-q="What can you do?">what can you do</span>
@@ -241,12 +242,12 @@
       <div id="drop" class="drop">drop a file here, or <b>click to choose</b><br>
         <span style="font-size:11.5px">it is read in the browser and sent as text</span></div>
       <input id="picker" type="file" style="display:none">
-      <textarea id="question" rows="2" placeholder="what do you want: «is this safe», «fix it», «write it from this spec»…" style="margin-top:8px"></textarea>
-      <textarea id="material" rows="6" placeholder="…or paste code, a spec or logs" style="margin-top:8px"></textarea>
+      <textarea id="question" rows="2" placeholder="what do you want: «is this safe», «fix it», «write it from this spec»…" style="margin-top:8px" data-i18n-ph="questionPh"></textarea>
+      <textarea id="material" rows="6" placeholder="…or paste code, a spec or logs" style="margin-top:8px" data-i18n-ph="materialPh"></textarea>
       <div class="row" style="margin-top:10px">
-        <button class="btn" id="run" style="padding:10px 16px">run</button>
-        <button class="btn ghost" id="hear" style="padding:10px 16px" disabled>🔊 read it</button>
-        <button class="btn ghost" id="download" style="padding:10px 16px" disabled>↓ json</button>
+        <button class="btn" id="run" style="padding:10px 16px" data-i18n="run">run</button>
+        <button class="btn ghost" id="hear" style="padding:10px 16px" disabled data-i18n="hear">🔊 read it</button>
+        <button class="btn ghost" id="download" style="padding:10px 16px" disabled data-i18n="json">↓ json</button>
       </div>
       <div class="progress" id="progress"></div>
       <div class="verdict" id="verdict"></div>
@@ -265,14 +266,70 @@
 
   <footer>
     <a href="https://github.com/dvddv9/vishaphub">monorepo</a>
-    <a href="https://vishap-validator.onrender.com">validator</a>
-    <a href="https://vishap-generator.onrender.com">generator</a>
+    <a href="/runs" data-i18n="recent">recent runs</a>
     <span style="margin-left:auto">hub v<span id="ver">?</span></span>
   </footer>
 </div>
 
 <audio id="voice" preload="auto" src="/greeting.mp3"></audio>
 <script>
+// Two languages, because the first client may not read English, and a product that
+// cannot say "what I did not check" in his language is a product he cannot use.
+const I18N = {
+  en: {
+    title: "Carry the request.<br><em>Prove</em> the result.",
+    lead: "Paste code, a spec or logs. I route it: the generator writes code from the spec, the validator checks it against that spec, the analyser checks whether it is dangerous. I ask only what is missing and return what the pipeline said.",
+    meta: "3 stages · 6 validator checks · strictest verdict wins · audit trail",
+    try: "Try with an example", talk: "Talk to Vishap", recent: "recent runs",
+    send: "send", run: "run", hear: "🔊 read it", json: "↓ json",
+    textPh: "write, or press the mic and speak…",
+    questionPh: "what do you want: «is this safe», «fix it», «write it from this spec»…",
+    materialPh: "…or paste code, a spec or logs",
+    exampleQuestion: "is this safe?",
+    working: "working…", nothing: "nothing to work on", refused: "refused",
+    verdictLabel: "verdict", notChecked: "not checked", openReport: "open the report",
+    reportAt: "run", copy: "copy", copied: "copied", noAccess: "no access",
+    micOff: "this browser has no speech input; Chrome and Edge do",
+    micNo: "microphone refused or unavailable",
+    savedKey: "key saved in this browser", clearedKey: "key cleared",
+    streamLost: "the stream ended without a verdict"
+  },
+  ru: {
+    title: "Принять запрос.<br><em>Доказать</em> результат.",
+    lead: "Вставь код, спеку или логи. Я разложу: генератор напишет код по спеке, валидатор сверит его со спекой, анализатор проверит, опасно ли. Спрошу только то, чего не хватает, и верну то, что сказал конвейер.",
+    meta: "3 стадии · 6 проверок валидатора · побеждает строжайший вердикт · след прогона",
+    try: "Показать на примере", talk: "Поговорить с Vishap", recent: "последние прогоны",
+    send: "отправить", run: "запустить", hear: "🔊 прочитать", json: "↓ json",
+    textPh: "напиши или нажми микрофон и говори…",
+    questionPh: "что нужно: «это безопасно», «почини», «напиши по этой спеке»…",
+    materialPh: "…или вставь код, спеку или логи",
+    exampleQuestion: "это безопасно?",
+    working: "работаю…", nothing: "нечего проверять", refused: "отказ",
+    verdictLabel: "вердикт", notChecked: "не проверено", openReport: "открыть отчёт",
+    reportAt: "прогон", copy: "копировать", copied: "скопировано", noAccess: "нет доступа",
+    micOff: "в этом браузере нет распознавания речи; есть в Chrome и Edge",
+    micNo: "микрофон недоступен или отклонён",
+    savedKey: "ключ сохранён в этом браузере", clearedKey: "ключ стёрт",
+    streamLost: "поток закончился без вердикта"
+  }
+};
+let lang = localStorage.getItem("vishap_lang")
+  || ((navigator.language || "en").toLowerCase().startsWith("ru") ? "ru" : "en");
+
+function t(key){
+  const table = I18N[lang] || I18N.en;
+  return table[key] !== undefined ? table[key] : (I18N.en[key] || key);
+}
+
+function applyLang(){
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll("[data-i18n-html]").forEach(el => { el.innerHTML = t(el.dataset.i18nHtml); });
+  document.querySelectorAll("[data-i18n-ph]").forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+  const btn = document.getElementById("lang");
+  if (btn) btn.textContent = lang === "ru" ? "EN" : "RU";
+}
+
 const $ = (id) => document.getElementById(id);
 const chat = $("chat");
 const voiceOn = {v:false};
@@ -305,11 +362,12 @@ $("say").onclick = () => {
 $("focusComposer").onclick = () => $("text").focus();
 $("tryExample").onclick = () => {
   $("material").value = "cur.execute(\"select * from users where name = '\" + name + \"'\")";
-  $("material").focus();
+  $("question").value = t("exampleQuestion");
+  pipeline();
 };
 
-$("save").onclick = () => { localStorage.setItem("vishap_key", $("key").value.trim()); bubble("sys","key saved in this browser"); };
-$("clear").onclick = () => { localStorage.removeItem("vishap_key"); $("key").value=""; bubble("sys","key cleared"); };
+$("save").onclick = () => { localStorage.setItem("vishap_key", $("key").value.trim()); bubble("sys", t("savedKey")); };
+$("clear").onclick = () => { localStorage.removeItem("vishap_key"); $("key").value=""; bubble("sys", t("clearedKey")); };
 $("key").value = localStorage.getItem("vishap_key") || "";
 
 async function ask(message){
@@ -329,7 +387,7 @@ async function ask(message){
   } catch (e) { thinking.remove(); bubble("sys", e.message); }
 }
 
-$("send").onclick = () => { const t = $("text").value; $("text").value=""; ask(t); };
+$("send").onclick = () => { const line = $("text").value; $("text").value=""; ask(line); };
 $("text").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey){ e.preventDefault(); $("send").click(); } });
 document.querySelectorAll(".chip").forEach(c => c.onclick = () => ask(c.dataset.q));
 
@@ -368,21 +426,32 @@ function renderReport(data){
   lastResult = data;
   const box = $("report");
   const panes = {
-    summary: (data.summary || "(model returned no summary)")
-      + ((data.questions || []).length ? "" : ""),
+    summary: (data.summary || "(model returned no summary)"),
     findings: (data.findings || []).length
-      ? data.findings.map(f => `${(f.severity||"").toUpperCase()}${f.rule ? " · " + f.rule : ""}${f.line ? " @ " + f.line : ""}\n  ${f.message||""}`).join("\n\n")
+      ? data.findings.map(f => `${(f.severity||"").toUpperCase()}${f.rule ? " · " + f.rule : ""}${f.line ? " @ " + f.line : ""}${f.source ? " [" + f.source + "]" : ""}\n  ${f.message||""}`).join("\n\n")
       : "nothing matched",
     patch: Object.keys(data.patch || {}).length
       ? Object.entries(data.patch).map(([n, c]) => `── ${n} ──\n${c}`).join("\n\n")
       : "no patch proposed",
     proof: (data.proof || []).length ? data.proof.map(p => "- " + p).join("\n") : "no proof lines",
+    [t("notChecked")]: (data.not_checked || []).length
+      ? "• " + (data.not_checked || []).join("\n• ")
+      : "everything this plan covers was checked",
   };
   const names = Object.keys(panes);
+  const fp = data.fingerprint || {};
+  const reportLink = fp.id
+    ? `<a href="/r/${encodeURIComponent(fp.id)}" target="_blank" rel="noopener"
+         style="color:var(--emerald);margin-left:auto">${escapeHtml(t("openReport"))} ↗</a>`
+    : "";
   box.innerHTML = `<div class="tabs">` + names.map((n, i) =>
-      `<span class="tab ${i===0?"on":""}" data-pane="${n}">${n}</span>`).join("")
-    + `<span class="copy" id="copy">copy</span></div>
+      `<span class="tab ${i===0?"on":""}" data-pane="${escapeHtml(n)}">${escapeHtml(n)}</span>`).join("")
+    + `<span class="copy" id="copy">${escapeHtml(t("copy"))}</span></div>
     <div class="pane" id="pane"></div>
+    <div class="row" style="margin-top:8px;font:11.5px var(--mono);color:var(--dim-2)">
+      ${fp.id ? `<span>${escapeHtml(t("reportAt"))} <code>${escapeHtml(fp.id)}</code></span>` : ""}
+      ${reportLink}
+    </div>
     <div id="qs"></div>`;
 
   const setPane = (name) => {
@@ -396,9 +465,9 @@ function renderReport(data){
   });
   $("copy").onclick = async () => {
     const text = $("pane").textContent;
-    try { await navigator.clipboard.writeText(text); $("copy").textContent = "copied"; }
-    catch (e) { $("copy").textContent = "no access"; }
-    setTimeout(() => { $("copy").textContent = "copy"; }, 1400);
+    try { await navigator.clipboard.writeText(text); $("copy").textContent = t("copied"); }
+    catch (e) { $("copy").textContent = t("noAccess"); }
+    setTimeout(() => { $("copy").textContent = t("copy"); }, 1400);
   };
 
   const qs = data.questions || [];
@@ -419,76 +488,113 @@ function setProgress(states){
     `<span class="step ${states[n]||""}"><span class="b"></span>${n}</span>`).join("");
 }
 
+function showResult(data, started){
+  if (!data.ok){
+    setProgress({"model":"fail"});
+    $("verdict").innerHTML = `<b>${escapeHtml(t("refused"))}</b> ${escapeHtml(data.error || "failed")}`;
+    if (data.fingerprint && data.fingerprint.id) renderReport(data);
+    return;
+  }
+
+  const checks = data.checks || {};
+  const states = {"model":"done"};
+  if (checks.analyser) states.rules = "done";
+  if (checks.validator) states.validator = "done";
+  states.verdict = /SAFE|PASS/i.test(data.verdict) ? "done" : "fail";
+  setProgress(states);
+
+  const bits = [];
+  if (checks.generator) bits.push(`generator <b>${escapeHtml(checks.generator.verdict)}</b>`);
+  if (checks.analyser) bits.push(`analyser <b>${escapeHtml(checks.analyser.verdict)}</b>`);
+  if (checks.validator) bits.push(`validator <b>${escapeHtml(checks.validator.verdict)}</b>`);
+  const secs = ((performance.now() - started) / 1000).toFixed(1);
+  $("verdict").innerHTML = `${escapeHtml(t("verdictLabel"))} <b>${escapeHtml(data.verdict)}</b>`
+    + (bits.length ? " · " + bits.join(" · ") : "")
+    + ` <span style="color:var(--dim-2)">· ${secs}s</span>`;
+
+  renderReport(data);
+  $("cardVerdict").textContent = data.verdict || "—";
+  const doneCount = [checks.analyser, checks.validator].filter(Boolean).length + 1;
+  $("cardChecks").textContent = `${doneCount} of 3`;
+  $("cardFindings").textContent = String((data.findings || []).length);
+  $("cardTag").textContent = "live";
+  $("hear").disabled = false;
+  $("download").disabled = false;
+
+  lastSpoken = `${data.summary || ""} ${t("verdictLabel")}: ${data.verdict}.`;
+  if (voiceOn.v) sayText(lastSpoken);
+}
+
 async function pipeline(){
   const material = $("material").value;
   const question = $("question").value;
-  if (!material.trim() && !question.trim()){ $("verdict").innerHTML = "<b>nothing to work on</b>"; return; }
+  if (!material.trim() && !question.trim()){ $("verdict").innerHTML = `<b>${escapeHtml(t("nothing"))}</b>`; return; }
 
   const started = performance.now();
-  $("verdict").textContent = "working…";
+  $("verdict").textContent = t("working");
   $("report").innerHTML = "";
   $("hear").disabled = true;
   $("download").disabled = true;
   setProgress({"model":"run"});
 
-  const slow = setTimeout(() => setProgress({"model":"done","rules":"run"}), 4000);
   const wake = setTimeout(() => { $("waking").style.display = "block"; }, 8000);
+  const body = JSON.stringify({material, question, spec: "",
+                               api_key: localStorage.getItem("vishap_key") || ""});
+  const clearWake = () => { clearTimeout(wake); $("waking").style.display = "none"; };
 
+  // The run is announced stage by stage: a minute of silence reads as broken.
   try {
-    const res = await fetch("/run", {method:"POST", headers:{"content-type":"application/json"},
-      body: JSON.stringify({material, question, spec: "", api_key: localStorage.getItem("vishap_key") || ""})});
-    clearTimeout(slow); clearTimeout(wake); $("waking").style.display = "none";
-    const data = await res.json();
-
-    if (!data.ok){
-      setProgress({"model":"fail"});
-      $("verdict").innerHTML = `<b>refused</b> ${escapeHtml(data.error || "failed")}`;
+    const res = await fetch("/run/stream", {method:"POST",
+      headers:{"content-type":"application/json"}, body});
+    const isStream = res.ok && res.body && (res.headers.get("content-type") || "").includes("event-stream");
+    if (!isStream) {
+      const plain = await fetch("/run", {method:"POST", headers:{"content-type":"application/json"}, body});
+      clearWake();
+      showResult(await plain.json(), started);
       return;
     }
 
-    const checks = data.checks || {};
-    const states = {"model":"done"};
-    if (checks.analyser) states.rules = "done";
-    if (checks.validator) states.validator = "done";
-    states.verdict = /SAFE|PASS/i.test(data.verdict) ? "done" : "fail";
-    setProgress(states);
-
-    const bits = [];
-    if (checks.analyser) bits.push(`analyser <b>${checks.analyser.verdict}</b>`);
-    if (checks.validator) bits.push(`validator <b>${checks.validator.verdict}</b>`);
-    const secs = ((performance.now() - started) / 1000).toFixed(1);
-    $("verdict").innerHTML = `verdict <b>${data.verdict}</b>`
-      + (bits.length ? " · " + bits.join(" · ") : "")
-      + ` <span style="color:var(--dim-2)">· ${secs}s</span>`;
-
-    renderReport(data);
-    $("cardVerdict").textContent = data.verdict || "—";
-    const doneCount = [checks.analyser, checks.validator].filter(Boolean).length + 1;
-    $("cardChecks").textContent = `${doneCount} of 3`;
-    $("cardFindings").textContent = String((data.findings || []).length);
-    $("cardTag").textContent = "live";
-    $("hear").disabled = false;
-    $("download").disabled = false;
-
-    lastSpoken = `${data.summary || ""} The verdict is ${data.verdict}.`;
-    if (voiceOn.v) sayText(lastSpoken);
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let done = null;
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      buffer += decoder.decode(chunk.value, {stream: true});
+      const parts = buffer.split("\n\n");
+      buffer = parts.pop() || "";
+      for (const part of parts) {
+        let name = "", payload = "";
+        for (const line of part.split("\n")) {
+          if (line.startsWith("event: ")) name = line.slice(7).trim();
+          else if (line.startsWith("data: ")) payload += line.slice(6);
+        }
+        if (!payload) continue;
+        let data = null;
+        try { data = JSON.parse(payload); } catch (e) { continue; }
+        if (name === "stage"){
+          const states = {"model":"done"};
+          if (data.stage === "validator") states.validator = "done";
+          if (data.stage === "analyser") states.rules = "done";
+          setProgress(states);
+        }
+        if (name === "done") done = data;
+        if (name === "error") done = {ok:false, error:data.error};
+      }
+    }
+    clearWake();
+    if (done) showResult(done, started);
+    else {
+      setProgress({"model":"fail"});
+      $("verdict").innerHTML = `<b>error</b> ${escapeHtml(t("streamLost"))}`;
+    }
   } catch (e) {
-    clearTimeout(slow); clearTimeout(wake); $("waking").style.display = "none";
+    clearWake();
     setProgress({"model":"fail"});
     $("verdict").innerHTML = `<b>error</b> ${escapeHtml(e.message)}`;
   }
 }
-
-$("say").onclick = () => {
-  voiceOn.v = true;
-  const a = $("voice"); a.currentTime = 0; a.play().catch(()=>{});
-  $("say").textContent = "♪ voice on";
-};
-$("focusComposer").onclick = () => $("text").focus();
-$("tryExample").onclick = () => {
-  $("material").value = "cur.execute(\"select * from users where name = '\" + name + \"\")";
-  $("material").focus();
-};
 
 $("run").onclick = pipeline;
 $("hear").onclick = () => sayText(lastSpoken);
@@ -503,6 +609,12 @@ $("download").onclick = () => {
 };
 
 setProgress({});
+applyLang();
+$("lang").onclick = () => {
+  lang = lang === "ru" ? "en" : "ru";
+  localStorage.setItem("vishap_lang", lang);
+  applyLang();
+};
 fetch("/health").then(r=>r.json()).then(d=>{$("ver").textContent = d.version;}).catch(()=>{});
 </script>
 </body>

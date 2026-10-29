@@ -31,6 +31,11 @@ def fake(**over):
 
 class RunCase(unittest.TestCase):
     def setUp(self):
+        from hub import limits, server as server_module
+        self._saved_limits = dict(server_module.LIMITERS)
+        for kind in server_module.LIMITERS:
+            server_module.LIMITERS[kind] = limits.RateLimiter(0)
+        self.addCleanup(lambda: server_module.LIMITERS.update(self._saved_limits))
         self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
         self.port = self.httpd.server_address[1]
         threading.Thread(target=self.httpd.serve_forever, daemon=True).start()

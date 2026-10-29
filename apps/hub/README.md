@@ -77,15 +77,61 @@ security, never asks more than three questions, and tells the client the truth a
 missing key. Without a key it still answers, from a local script: a page that says
 nothing is worse than a page that says «bring a key».
 
+## Doors
+
+| Door | What it does | Costs | Ceiling |
+|---|---|---|---|
+| `GET /` | the page: talk, paste, run, read the report | nothing | — |
+| `GET /health` | liveness for the platform | nothing | — |
+| `POST /chat` | the assistant answers | a model call on the caller's key | 20 a minute per address |
+| `POST /run` | one run, one verdict | a model call on the caller's key | 6 a minute per address |
+| `POST /run/stream` | the same run as server-sent events | same | same |
+| `POST /speak` | the voice | an outside synthesis service | 20 a minute, 600 characters, cached by the words |
+| `GET /r/<id>` | a finished run as a page | nothing | — |
+| `GET /runs` | the recent runs | nothing | last 200 kept |
+
+Every ceiling is an environment variable and `0` turns it off:
+`VISHAP_HUB_RATE_RUN`, `VISHAP_HUB_RATE_CHAT`, `VISHAP_HUB_RATE_SPEAK`,
+`VISHAP_HUB_TTS_MAX_CHARS`, `VISHAP_HUB_TTS_CACHE`, `VISHAP_HUB_RUNS_KEEP`,
+`VISHAP_HUB_RUNS_FILE` (a file to mirror the runs to, empty means memory only).
+
+## Runs are stored, not believed
+
+A finished run gets a fingerprint: the material, the spec, the plan, the verdict, the
+steps, and the versions of the rules that judged it, hashed as canonical JSON. The id
+is the first 16 hex characters of that hash, so the same run computed elsewhere gives
+the same id — and `GET /r/<id>` shows the verdict, every step, every finding with its
+source (`material` or `patch:<file>`), and **what was not checked**.
+
+That last section is the point. «Safety was not checked: no analyser stage in this
+plan» is the sentence that turns a result into a proof instead of an opinion. A run
+that ends in ERROR is stored too: a failure is a result.
+
+## The page
+
+- **Try with an example** fills the material and runs it, so the first result is ten
+  seconds away, not a decision about what to paste;
+- the run is read as a stream: each stage lights up as it finishes, because a minute of
+  silence reads as broken;
+- **open the report** opens `/r/<id>` — a link that can be sent to someone who was not
+  here;
+- **not checked** is a tab of its own, in the same place as the findings;
+- the microphone uses the browser's own speech recognition (Chrome and Edge; elsewhere
+  the button says so), and the voice answers through `/speak`;
+- English and Russian, switched in the header and remembered in the browser.
+
 ## Modules
 
 | Piece | What it does |
 |---|---|
-| `server.py` | `GET /` the page, `GET /health`, `POST /chat`, `POST /run`, `POST /speak` |
+| `server.py` | the five doors above, the limits, the run page |
 | `router.py` | intent → ordered plan; deterministic, no model |
 | `pipeline.py` | executes the plan; the only path to a verdict |
 | `proposal.py` | the only place that talks to a model; returns a proposal, never a verdict |
 | `verdicts.py` | one ranking for the whole hub: SAFE/PASS, *_REVIEW, FAIL, EMERGENCY, ERROR |
+| `fingerprint.py` | a run's identity: canonical hash over inputs, rules and verdict |
+| `store.py` | the recent runs: bounded, thread-safe, optional file mirror |
+| `limits.py` | the request budget per address and the voice cache |
 | `local.py` | the validator's stages and the analyser's rules as functions, not URLs |
 | `envelope.py` | the message shape and the trace |
 | `chat.py` | the assistant that speaks to the client |
@@ -94,6 +140,8 @@ nothing is worse than a page that says «bring a key».
 
 ## Status
 
-`0.1.0` — one path, 62 tests (`PYTHONPATH=src python -m pytest -q`).
+`0.3.0` — one path, 78 tests (`PYTHONPATH=src python -m pytest -q`).
 
-Not built yet: the microphone on the page — the voice speaks, the page does not listen.
+Known gaps: the store lives in memory unless `VISHAP_HUB_RUNS_FILE` is set (a free
+instance loses its runs on restart), and there is no queue: two runs at once both wait
+for the model.
