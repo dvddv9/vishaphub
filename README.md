@@ -1,5 +1,6 @@
-<img width="3327" height="1710" alt="Снимок экрана1 2026-10-29 200817" src="https://github.com/user-attachments/assets/25b962ab-41b1-4ff3-81a5-dad07cf3fdcf" />
-<img width="3261" height="1701" alt="Снимок экрана 2026-10-29 200645" src="https://github.com/user-attachments/assets/04c2b78b-e8b9-4ec2-ae50-bc1c0eb5766b" />
+<img width="3327" height="1683" alt="Снимок экрана3 2026-10-29 201505" src="https://github.com/user-attachments/assets/b2a21529-e613-4d23-9dc1-9590524f06c7" />
+
+
 # VishapHub
 
 One repository, one vocabulary, four pieces that used to be five repositories and
