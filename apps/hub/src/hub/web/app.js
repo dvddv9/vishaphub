@@ -6,6 +6,14 @@ const I18N = {
     lead: "Paste code, a spec or logs. I route it: the generator writes code from the spec, the validator checks it against that spec, the analyser checks whether it is dangerous. I ask only what is missing and return what the pipeline said.",
     meta: "3 stages · 6 validator checks · strictest verdict wins · audit trail",
     try: "Try with an example", talk: "Talk to Vishap", recent: "recent runs",
+    navHow: "How it works", navWork: "Try it",
+    howEyebrow: "how it works", howTitle: "One plan, three jobs, one verdict",
+    s1t: "Generate", s1p: "The model proposes code from your spec. It proposes; it never decides.",
+    s2t: "Validate", s2p: "Six checks compare the code with the promise: structure, syntax, contract, coverage, behavior, conformance.",
+    s3t: "Analyse", s3p: "The analyser checks whether the code is dangerous. Every finding is named, with its source.",
+    howFoot: "The strictest verdict wins. Whatever was not checked is listed, not hidden.",
+    workEyebrow: "workbench", workTitle: "Try it on your own code",
+    workLead: "Paste code, a spec or logs, or just ask. Every run gets a report you can open and forward.",
     send: "send", run: "run", hear: "🔊 read it", json: "↓ json",
     textPh: "write, or press the mic and speak…",
     questionPh: "what do you want: «is this safe», «fix it», «write it from this spec»…",
@@ -24,6 +32,14 @@ const I18N = {
     lead: "Вставь код, спеку или логи. Я разложу: генератор напишет код по спеке, валидатор сверит его со спекой, анализатор проверит, опасно ли. Спрошу только то, чего не хватает, и верну то, что сказал конвейер.",
     meta: "3 стадии · 6 проверок валидатора · побеждает строжайший вердикт · след прогона",
     try: "Показать на примере", talk: "Поговорить с Vishap", recent: "последние прогоны",
+    navHow: "Как это работает", navWork: "Попробовать",
+    howEyebrow: "как это работает", howTitle: "Один план, три задачи, один вердикт",
+    s1t: "Сгенерировать", s1p: "Модель предлагает код по твоей спеке. Она предлагает, но не решает.",
+    s2t: "Сверить", s2p: "Шесть проверок сравнивают код с обещанием: структура, синтаксис, контракт, покрытие, поведение, соответствие.",
+    s3t: "Проанализировать", s3p: "Анализатор проверяет, не опасен ли код. Каждая находка названа вместе с источником.",
+    howFoot: "Побеждает строжайший вердикт. Что не проверено, то перечислено, а не спрятано.",
+    workEyebrow: "рабочий стол", workTitle: "Попробуй на своём коде",
+    workLead: "Вставь код, спеку или логи, или просто спроси. У каждого прогона есть отчёт, который можно открыть и переслать.",
     send: "отправить", run: "запустить", hear: "🔊 прочитать", json: "↓ json",
     textPh: "напиши или нажми микрофон и говори…",
     questionPh: "что нужно: «это безопасно», «почини», «напиши по этой спеке»…",
@@ -249,8 +265,10 @@ function showResult(data, started){
     + (bits.length ? " · " + bits.join(" · ") : "")
     + ` <span class="dim">· ${secs}s</span>`;
 
+  $("verdict").dataset.v = data.verdict || "";
   renderReport(data);
   $("cardVerdict").textContent = data.verdict || "—";
+  $("cardVerdict").dataset.v = data.verdict || "";
   const doneCount = [checks.analyser, checks.validator].filter(Boolean).length + 1;
   $("cardChecks").textContent = `${doneCount} of 3`;
   $("cardFindings").textContent = String((data.findings || []).length);
@@ -268,7 +286,7 @@ async function pipeline(){
   if (!material.trim() && !question.trim()){ $("verdict").innerHTML = `<b>${escapeHtml(t("nothing"))}</b>`; return; }
 
   const started = performance.now();
-  $("verdict").textContent = t("working");
+  $("verdict").dataset.v = ""; $("verdict").textContent = t("working");
   $("report").innerHTML = "";
   $("hear").disabled = true;
   $("download").disabled = true;

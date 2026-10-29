@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>VishapHub — carry the request, prove the result</title>
 <meta name="description" content="VishapHub runs one plan over your code: the generator builds it from the spec, the validator checks it against the promise, the analyser checks whether it is dangerous. The model proposes; the rules decide; the strictest verdict wins.">
-<meta name="theme-color" content="#020617">
+<meta name="theme-color" content="#05070d">
 <meta name="color-scheme" content="dark">
 <meta property="og:type" content="website">
 <meta property="og:title" content="VishapHub — carry the request, prove the result">
@@ -18,137 +18,171 @@
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
-<div class="shell">
 
-  <header class="nav">
-    <div class="brand"><span class="mark" aria-hidden="true"></span>Vishap<b>Hub</b></div>
-    <span class="pill live"><span class="dot" aria-hidden="true"></span>live</span>
-    <span class="pill">process lead</span>
+<header class="nav">
+  <div class="nav-in">
+    <a class="brand" href="/" aria-label="VishapHub"><span class="mark" aria-hidden="true">V</span>Vishap<b>Hub</b></a>
+    <nav class="nav-links" aria-label="Sections">
+      <a href="#how" data-i18n="navHow">How it works</a>
+      <a href="#work" data-i18n="navWork">Try it</a>
+      <a href="/runs" data-i18n="recent">recent runs</a>
+    </nav>
     <span class="spacer"></span>
+    <span class="pill live"><span class="dot" aria-hidden="true"></span>live</span>
     <button type="button" class="btn ghost sm" id="lang" aria-label="Switch language">RU</button>
     <button type="button" class="btn ghost sm" id="say" aria-pressed="false">▶ hear me</button>
-  </header>
+  </div>
+</header>
 
+<div class="shell">
   <main id="main">
     <section class="hero" aria-labelledby="hero-title">
-      <div class="grid-bg" aria-hidden="true"></div>
-      <div class="hero-in">
-        <div>
-          <span class="badge"><span class="dot" aria-hidden="true"></span>generation · validation · security</span>
-          <h1 id="hero-title" data-i18n-html="title">Carry the request.<br><em>Prove</em> the result.</h1>
-          <p class="lead" data-i18n="lead">
-            Paste code, a spec or logs. I route it: the generator writes code from the spec, the
-            validator checks it against that spec, the analyser checks whether it is dangerous.
-            I ask only what is missing and return what the pipeline said.
-          </p>
-          <p class="meta" data-i18n="meta">3 stages · 6 validator checks · strictest verdict wins · audit trail</p>
-
-          <div class="cta">
-            <button type="button" class="btn" id="tryExample" data-i18n="try">Try with an example</button>
-            <button type="button" class="btn ghost" id="focusComposer" data-i18n="talk">Talk to Vishap</button>
-            <a href="/runs" class="cta-link" data-i18n="recent">recent runs</a>
-          </div>
-
-          <dl class="stats">
-            <div class="stat"><dt>generator</dt><dd>spec → code</dd></div>
-            <div class="stat"><dt>validator</dt><dd>6 checks</dd></div>
-            <div class="stat"><dt>analyser</dt><dd>CWE · STRIDE</dd></div>
-          </dl>
+      <div class="hero-copy">
+        <span class="badge"><span class="dot" aria-hidden="true"></span>generation · validation · security</span>
+        <h1 id="hero-title" data-i18n-html="title">Carry the request.<br><em>Prove</em> the result.</h1>
+        <p class="lead" data-i18n="lead">
+          Paste code, a spec or logs. I route it: the generator writes code from the spec, the
+          validator checks it against that spec, the analyser checks whether it is dangerous.
+          I ask only what is missing and return what the pipeline said.
+        </p>
+        <div class="cta">
+          <button type="button" class="btn" id="tryExample" data-i18n="try">Try with an example</button>
+          <button type="button" class="btn ghost" id="focusComposer" data-i18n="talk">Talk to Vishap</button>
+          <a href="/runs" class="cta-link" data-i18n="recent">recent runs</a>
         </div>
+        <p class="meta" data-i18n="meta">3 stages · 6 validator checks · strictest verdict wins · audit trail</p>
+        <dl class="stats">
+          <div class="stat"><dt>generator</dt><dd>spec → code</dd></div>
+          <div class="stat"><dt>validator</dt><dd>6 checks</dd></div>
+          <div class="stat"><dt>analyser</dt><dd>CWE · STRIDE</dd></div>
+        </dl>
+      </div>
 
-        <div>
-          <div class="card" aria-label="Example of a pipeline report">
-            <div class="head">▤ pipeline report <span class="right" id="cardTag">example</span></div>
-            <div class="cells">
-              <div class="cell accent"><k>verdict</k><v id="cardVerdict">REQUIRES_REVIEW</v></div>
-              <div class="cell"><k>checks</k><v id="cardChecks">3 of 3</v></div>
-              <div class="cell"><k>findings</k><v id="cardFindings">1</v></div>
-            </div>
-            <div class="body">
-              <div>
-                <p class="label">Risks</p>
-                <div class="row mt-sm">
-                  <span class="tag crit">critical</span>
-                  <span class="small">CWE-89</span>
-                  <span class="small">query built from request data</span>
-                </div>
-              </div>
-              <div>
-                <p class="label">Validator</p>
-                <div class="row mt-sm">
-                  <span class="tag ok">structure</span>
-                  <span class="tag ok">syntax</span>
-                  <span class="tag ok">contract</span>
-                  <span class="tag ok">coverage</span>
-                  <span class="tag ok">behavior</span>
-                  <span class="tag ok">conformance</span>
-                </div>
-              </div>
-              <div>
-                <p class="label">Trace</p>
-                <p class="small mt-xs">pass 1 generator → validator → analyser</p>
+      <div class="hero-art">
+        <div class="card" aria-label="Example of a pipeline report">
+          <div class="head">pipeline report <span class="right" id="cardTag">example</span></div>
+          <div class="cells">
+            <div class="cell accent"><k>verdict</k><v id="cardVerdict">REQUIRES_REVIEW</v></div>
+            <div class="cell"><k>checks</k><v id="cardChecks">3 of 3</v></div>
+            <div class="cell"><k>findings</k><v id="cardFindings">1</v></div>
+          </div>
+          <div class="body">
+            <div>
+              <p class="label">Risks</p>
+              <div class="row mt-sm">
+                <span class="tag crit">critical</span>
+                <span class="small">CWE-89</span>
+                <span class="small">query built from request data</span>
               </div>
             </div>
+            <div>
+              <p class="label">Validator</p>
+              <div class="row mt-sm">
+                <span class="tag ok">structure</span>
+                <span class="tag ok">syntax</span>
+                <span class="tag ok">contract</span>
+                <span class="tag ok">coverage</span>
+                <span class="tag ok">behavior</span>
+                <span class="tag ok">conformance</span>
+              </div>
+            </div>
+            <div>
+              <p class="label">Trace</p>
+              <p class="small mt-xs">pass 1 generator → validator → analyser</p>
+            </div>
           </div>
-          <p class="caption">Illustrative output, not a live result.</p>
         </div>
+        <p class="caption">Illustrative output, not a live result.</p>
       </div>
     </section>
 
-    <div class="work">
-      <section class="panel" aria-labelledby="chat-title">
-        <h2 class="k" id="chat-title">talk to Vishap</h2>
-        <div class="chat" id="chat" role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversation">
-          <div class="msg sys">I answer with the hub’s own key. Bring yours only if you want the run to be yours.</div>
-        </div>
-        <div class="composer">
-          <label class="sr-only" for="text">Message to Vishap</label>
-          <textarea id="text" rows="1" placeholder="write, or press the mic and speak…" data-i18n-ph="textPh"></textarea>
-          <button type="button" class="mic" id="mic" aria-label="Speak to Vishap" aria-pressed="false">🎙</button>
-          <button type="button" class="btn" id="send" data-i18n="send">send</button>
-        </div>
-        <div class="chips">
-          <button type="button" class="chip" data-q="What can you do?">what can you do</button>
-          <button type="button" class="chip" data-q="Check this code: cur.execute('select * from t where a = ' + x)">check code</button>
-          <button type="button" class="chip" data-q="Where do I get a key?">where is the key</button>
-        </div>
-        <p class="hint">▶ hear me turns on the product voice; answers are read aloud with it.</p>
-      </section>
+    <section id="how" class="how" aria-labelledby="how-title">
+      <div class="sec-head">
+        <span class="eyebrow" data-i18n="howEyebrow">how it works</span>
+        <h2 class="sec-title" id="how-title" data-i18n="howTitle">One plan, three jobs, one verdict</h2>
+      </div>
+      <ol class="steps3">
+        <li class="step3">
+          <span class="num" aria-hidden="true">1</span>
+          <h3 data-i18n="s1t">Generate</h3>
+          <p data-i18n="s1p">The model proposes code from your spec. It proposes; it never decides.</p>
+        </li>
+        <li class="step3">
+          <span class="num" aria-hidden="true">2</span>
+          <h3 data-i18n="s2t">Validate</h3>
+          <p data-i18n="s2p">Six checks compare the code with the promise: structure, syntax, contract, coverage, behavior, conformance.</p>
+        </li>
+        <li class="step3">
+          <span class="num" aria-hidden="true">3</span>
+          <h3 data-i18n="s3t">Analyse</h3>
+          <p data-i18n="s3p">The analyser checks whether the code is dangerous. Every finding is named, with its source.</p>
+        </li>
+      </ol>
+      <p class="how-foot" data-i18n="howFoot">The strictest verdict wins. Whatever was not checked is listed, not hidden.</p>
+    </section>
 
-      <section class="panel" aria-labelledby="run-title">
-        <h2 class="k" id="run-title">run the pipeline</h2>
-        <div id="drop" class="drop" role="button" tabindex="0" aria-label="Choose a file to load as material">
-          drop a file here, or <b>click to choose</b><br>
-          <span class="fine">it is read in the browser and sent as text</span>
-        </div>
-        <input id="picker" type="file" hidden>
-        <label class="sr-only" for="question">What you want</label>
-        <textarea id="question" rows="2" class="mt-sm" placeholder="what do you want: «is this safe», «fix it», «write it from this spec»…" data-i18n-ph="questionPh"></textarea>
-        <label class="sr-only" for="material">Material: code, a spec or logs</label>
-        <textarea id="material" rows="6" class="mt-sm" placeholder="…or paste code, a spec or logs" data-i18n-ph="materialPh"></textarea>
-        <div class="row mt">
-          <button type="button" class="btn run" id="run" data-i18n="run">run</button>
-          <button type="button" class="btn ghost run" id="hear" disabled data-i18n="hear">🔊 read it</button>
-          <button type="button" class="btn ghost run" id="download" disabled data-i18n="json">↓ json</button>
-        </div>
-        <div class="progress" id="progress" aria-live="polite"></div>
-        <div class="verdict" id="verdict" role="status" aria-live="polite"></div>
-        <div class="hint waking" id="waking">the free tier sleeps — the first run wakes it, ~20 s</div>
-        <div id="report" class="report"></div>
+    <section id="work" class="work-wrap" aria-labelledby="work-title">
+      <div class="sec-head">
+        <span class="eyebrow" data-i18n="workEyebrow">workbench</span>
+        <h2 class="sec-title" id="work-title" data-i18n="workTitle">Try it on your own code</h2>
+        <p class="sec-lead" data-i18n="workLead">Paste code, a spec or logs, or just ask. Every run gets a report you can open and forward.</p>
+      </div>
+      <div class="work">
+        <section class="panel" aria-labelledby="chat-title">
+          <h3 class="k" id="chat-title">talk to Vishap</h3>
+          <div class="chat" id="chat" role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversation">
+            <div class="msg sys">I answer with the hub’s own key. Bring yours only if you want the run to be yours.</div>
+          </div>
+          <div class="composer">
+            <label class="sr-only" for="text">Message to Vishap</label>
+            <textarea id="text" rows="1" placeholder="write, or press the mic and speak…" data-i18n-ph="textPh"></textarea>
+            <button type="button" class="mic" id="mic" aria-label="Speak to Vishap" aria-pressed="false">🎙</button>
+            <button type="button" class="btn" id="send" data-i18n="send">send</button>
+          </div>
+          <div class="chips">
+            <button type="button" class="chip" data-q="What can you do?">what can you do</button>
+            <button type="button" class="chip" data-q="Check this code: cur.execute('select * from t where a = ' + x)">check code</button>
+            <button type="button" class="chip" data-q="Where do I get a key?">where is the key</button>
+          </div>
+          <p class="hint">▶ hear me turns on the product voice; answers are read aloud with it.</p>
+        </section>
 
-        <h2 class="k k-gap">your model key</h2>
-        <label class="sr-only" for="key">Your model key</label>
-        <input id="key" type="password" autocomplete="off" placeholder="sk-ant-… (optional, kept in this browser)">
-        <div class="row mt-sm">
-          <button type="button" class="btn ghost sm" id="save">save</button>
-          <button type="button" class="btn ghost sm" id="clear">clear</button>
-        </div>
-        <p class="hint">Optional. Without a key the hub answers with its own — your run stays on the server, not in your name.</p>
-      </section>
-    </div>
+        <section class="panel" aria-labelledby="run-title">
+          <h3 class="k" id="run-title">run the pipeline</h3>
+          <div id="drop" class="drop" role="button" tabindex="0" aria-label="Choose a file to load as material">
+            drop a file here, or <b>click to choose</b><br>
+            <span class="fine">it is read in the browser and sent as text</span>
+          </div>
+          <input id="picker" type="file" hidden>
+          <label class="sr-only" for="question">What you want</label>
+          <textarea id="question" rows="2" class="mt-sm" placeholder="what do you want: «is this safe», «fix it», «write it from this spec»…" data-i18n-ph="questionPh"></textarea>
+          <label class="sr-only" for="material">Material: code, a spec or logs</label>
+          <textarea id="material" rows="6" class="mt-sm" placeholder="…or paste code, a spec or logs" data-i18n-ph="materialPh"></textarea>
+          <div class="row mt">
+            <button type="button" class="btn run" id="run" data-i18n="run">run</button>
+            <button type="button" class="btn ghost run" id="hear" disabled data-i18n="hear">🔊 read it</button>
+            <button type="button" class="btn ghost run" id="download" disabled data-i18n="json">↓ json</button>
+          </div>
+          <div class="progress" id="progress" aria-live="polite"></div>
+          <div class="verdict" id="verdict" role="status" aria-live="polite"></div>
+          <div class="hint waking" id="waking">the free tier sleeps — the first run wakes it, ~20 s</div>
+          <div id="report" class="report"></div>
+
+          <h3 class="k k-gap">your model key</h3>
+          <label class="sr-only" for="key">Your model key</label>
+          <input id="key" type="password" autocomplete="off" placeholder="sk-ant-… (optional, kept in this browser)">
+          <div class="row mt-sm">
+            <button type="button" class="btn ghost sm" id="save">save</button>
+            <button type="button" class="btn ghost sm" id="clear">clear</button>
+          </div>
+          <p class="hint">Optional. Without a key the hub answers with its own — your run stays on the server, not in your name.</p>
+        </section>
+      </div>
+    </section>
   </main>
 
   <footer>
+    <span class="foot-brand"><span class="mark" aria-hidden="true">V</span>VishapHub</span>
     <a href="https://github.com/dvddv9/vishaphub">monorepo</a>
     <a href="/runs" data-i18n="recent">recent runs</a>
     <span class="right">hub v<span id="ver">?</span></span>
