@@ -4,618 +4,157 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>VishapHub — carry the request, prove the result</title>
-<style>
-  :root{
-    --bg:#020617;            /* slate-950 */
-    --panel:#0f172a;         /* slate-900 */
-    --panel-2:#0b1220;
-    --line:#1e293b;          /* slate-800 */
-    --ink:#f1f5f9;           /* slate-100 */
-    --dim:#94a3b8;           /* slate-400 */
-    --dim-2:#64748b;         /* slate-500 */
-    --emerald:#34d399;       /* emerald-400 */
-    --emerald-soft:rgba(52,211,153,.12);
-    --amber:#fbbf24;
-    --rose:#fb7185;
-    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 var(--sans);min-height:100vh}
-  .shell{max-width:1180px;margin:0 auto;padding:28px 20px 72px}
-
-  .nav{display:flex;align-items:center;gap:14px;padding:6px 0 20px}
-  .brand{display:flex;align-items:center;gap:10px;font:600 17px var(--mono);letter-spacing:.01em}
-  .mark{width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,var(--emerald),#0ea5e9);
-    box-shadow:0 0 18px rgba(52,211,153,.35)}
-  .brand b{color:var(--emerald)}
-  .nav .spacer{flex:1}
-  .pill{font:11px var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--dim);
-    border:1px solid var(--line);border-radius:999px;padding:5px 11px}
-  .pill.live{color:var(--emerald);border-color:rgba(52,211,153,.35);background:var(--emerald-soft)}
-  .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--emerald);margin-right:6px;
-    animation:pulse 2s infinite}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-
-  .hero{position:relative;overflow:hidden;border-radius:18px;border:1px solid var(--line);
-    background:radial-gradient(900px 380px at 50% -20%,rgba(52,211,153,.16),transparent 60%),var(--panel-2)}
-  .hero .grid-bg{position:absolute;inset:0;opacity:.18;pointer-events:none;
-    background-image:linear-gradient(to right,rgba(148,163,184,.35) 1px,transparent 1px),
-      linear-gradient(to bottom,rgba(148,163,184,.35) 1px,transparent 1px);
-    background-size:56px 56px;
-    -webkit-mask-image:radial-gradient(ellipse 70% 60% at 50% 0%,#000 40%,transparent 100%);
-    mask-image:radial-gradient(ellipse 70% 60% at 50% 0%,#000 40%,transparent 100%)}
-  .hero-in{position:relative;display:grid;grid-template-columns:1.05fr .95fr;gap:36px;padding:40px 32px}
-  @media(max-width:900px){.hero-in{grid-template-columns:1fr;padding:28px 20px}}
-  .badge{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(52,211,153,.3);
-    background:var(--emerald-soft);color:var(--emerald);border-radius:999px;padding:5px 12px;
-    font:11px var(--mono);text-transform:uppercase;letter-spacing:.12em}
-  h1{font-size:44px;line-height:1.04;letter-spacing:-.02em;margin:18px 0 0;font-weight:600}
-  h1 em{font-style:normal;color:var(--emerald)}
-  .lead{color:#cbd5e1;margin:16px 0 0;max-width:33em;font-size:15.5px}
-  .meta{color:var(--dim);font:12px var(--mono);margin-top:12px}
-  .cta{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
-  .btn{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:9px;padding:12px 20px;
-    font:600 14px var(--sans);cursor:pointer;background:var(--emerald);color:#04120c;transition:.15s}
-  .btn:hover{background:#6ee7b7}
-  .btn.ghost{background:transparent;color:var(--ink);border:1px solid #334155}
-  .btn.ghost:hover{border-color:#64748b;background:rgba(148,163,184,.06)}
-  .btn:disabled{opacity:.4;cursor:default}
-  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:26px}
-  .stat{border:1px solid var(--line);background:rgba(15,23,42,.6);border-radius:12px;padding:10px 12px}
-  .stat dt{font:10px var(--mono);text-transform:uppercase;letter-spacing:.14em;color:var(--dim);margin:0}
-  .stat dd{margin:3px 0 0;font:600 13px var(--sans);color:#e2e8f0}
-
-  .card{position:relative;border:1px solid var(--line);background:rgba(15,23,42,.8);border-radius:16px;overflow:hidden;
-    box-shadow:0 30px 60px -30px rgba(0,0,0,.9)}
-  .card .head{display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line);padding:12px 14px;
-    font:11px var(--mono);color:var(--dim)}
-  .card .head .right{margin-left:auto;color:var(--dim-2)}
-  .cells{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--line);text-align:center}
-  .cell{padding:11px 6px;border-right:1px solid var(--line)}
-  .cell:last-child{border-right:0}
-  .cell k{display:block;font:10px var(--mono);text-transform:uppercase;letter-spacing:.14em;color:var(--dim)}
-  .cell v{display:block;margin-top:2px;font:600 12.5px var(--mono);color:#e2e8f0;word-break:break-word}
-  .cell.accent v{color:var(--amber)}
-  .card .body{padding:14px 16px;display:flex;flex-direction:column;gap:14px}
-  .label{font:10px var(--mono);text-transform:uppercase;letter-spacing:.14em;color:var(--dim);margin:0}
-  .tag{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:2px 9px;font:11px var(--mono)}
-  .tag.crit{border:1px solid rgba(251,113,133,.4);background:rgba(251,113,133,.1);color:#fda4af}
-  .tag.ok{border:1px solid rgba(52,211,153,.4);background:var(--emerald-soft);color:var(--emerald)}
-  .small{font:12px var(--mono);color:#cbd5e1}
-  .caption{text-align:center;color:var(--dim-2);font-size:12px;margin-top:10px}
-
-  .work{display:grid;grid-template-columns:1.12fr .88fr;gap:16px;margin-top:18px}
-  @media(max-width:900px){.work{grid-template-columns:1fr}}
-  .panel{border:1px solid var(--line);background:rgba(15,23,42,.72);border-radius:16px;padding:16px}
-  .panel .k{font:10px var(--mono);text-transform:uppercase;letter-spacing:.14em;color:var(--dim);margin:0 0 10px}
-  .chat{display:flex;flex-direction:column;gap:10px;max-height:44vh;overflow:auto;padding-right:4px}
-  .msg{max-width:86%;padding:10px 13px;border-radius:12px;border:1px solid var(--line);
-    background:#0b1220;white-space:pre-wrap;font-size:14px}
-  .msg.me{align-self:flex-end;border-color:rgba(52,211,153,.35);background:rgba(52,211,153,.08)}
-  .msg.sys{align-self:center;color:var(--dim);font:11px var(--mono);border-style:dashed;text-align:center}
-  .composer{display:flex;gap:8px;margin-top:12px;align-items:flex-end}
-  textarea,input{width:100%;background:#070d18;color:var(--ink);border:1px solid var(--line);border-radius:10px;
-    padding:11px 12px;font:14px var(--mono);resize:vertical}
-  textarea:focus,input:focus{outline:2px solid rgba(52,211,153,.45);outline-offset:1px;border-color:transparent}
-  .mic{width:44px;height:44px;padding:0;border-radius:10px;display:grid;place-items:center;font-size:17px;
-    background:transparent;color:var(--ink);border:1px solid var(--line);cursor:pointer}
-  .mic.on{background:rgba(251,113,133,.18);border-color:rgba(251,113,133,.5);color:#fda4af;
-    animation:ring 1.4s infinite}
-  @keyframes ring{0%,100%{box-shadow:0 0 0 0 rgba(251,113,133,.45)}50%{box-shadow:0 0 0 9px rgba(251,113,133,0)}}
-  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  .chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
-  .chip{font:11.5px var(--mono);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:var(--dim);cursor:pointer}
-  .chip:hover{color:var(--ink);border-color:rgba(52,211,153,.45)}
-  .hint{font:11.5px var(--mono);color:var(--dim-2);margin-top:9px}
-  .verdict{margin-top:10px;font:13px var(--mono);color:var(--dim)}
-  .verdict b{color:var(--emerald)}
-  .drop{border:1px dashed #263449;border-radius:10px;padding:18px 12px;text-align:center;color:var(--dim);
-    font:12px var(--mono);cursor:pointer;transition:.15s}
-  .drop.hot{border-color:var(--emerald);color:var(--ink);background:rgba(52,211,153,.06)}
-  .tabs{display:flex;gap:6px;margin:12px 0 8px;flex-wrap:wrap}
-  .tab{font:11px var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--dim);
-    border:1px solid var(--line);border-radius:999px;padding:4px 11px;cursor:pointer}
-  .tab.on{color:#04120c;background:var(--emerald);border-color:transparent}
-  .pane{font:12px var(--mono);color:#cbd5e1;max-height:32vh;overflow:auto;white-space:pre-wrap;
-    border:1px solid var(--line);border-radius:10px;padding:12px;background:#070d18}
-  .rowline{padding:5px 0;border-bottom:1px dotted #1e293b}
-  .progress{display:flex;gap:6px;margin:10px 0 2px;flex-wrap:wrap}
-  .step{display:inline-flex;align-items:center;gap:7px;font:11px var(--mono);color:var(--dim-2);
-    border:1px solid var(--line);border-radius:999px;padding:4px 10px}
-  .step .b{width:7px;height:7px;border-radius:50%;background:#334155}
-  .step.run{color:var(--amber);border-color:rgba(251,191,36,.4)}
-  .step.run .b{background:var(--amber);animation:pulse 1s infinite}
-  .step.done{color:var(--emerald);border-color:rgba(52,211,153,.4)}
-  .step.done .b{background:var(--emerald)}
-  .step.fail{color:var(--rose);border-color:rgba(251,113,133,.4)}
-  .step.fail .b{background:var(--rose)}
-  .copy{float:right;font:10px var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--dim);
-    border:1px solid var(--line);border-radius:6px;padding:2px 8px;cursor:pointer;background:transparent}
-  .copy:hover{color:var(--emerald);border-color:rgba(52,211,153,.4)}
-  .q{display:inline-block;margin:4px 6px 0 0;font:12px var(--mono);color:#cbd5e1;border:1px dashed #334155;
-    border-radius:8px;padding:6px 10px;cursor:pointer}
-  .q:hover{border-color:var(--emerald);color:var(--ink)}
-  footer{margin-top:30px;border-top:1px solid var(--line);padding-top:14px;color:var(--dim-2);font:11.5px var(--mono);
-    display:flex;gap:14px;flex-wrap:wrap}
-  a{color:var(--dim);text-decoration:none}
-  a:hover{color:var(--emerald)}
-</style>
+<meta name="description" content="VishapHub runs one plan over your code: the generator builds it from the spec, the validator checks it against the promise, the analyser checks whether it is dangerous. The model proposes; the rules decide; the strictest verdict wins.">
+<meta name="theme-color" content="#020617">
+<meta name="color-scheme" content="dark">
+<meta property="og:type" content="website">
+<meta property="og:title" content="VishapHub — carry the request, prove the result">
+<meta property="og:description" content="One plan, one verdict: generation, validation and security, with the rules deciding and the model only proposing.">
+<meta name="twitter:card" content="summary">
+<link rel="canonical" href="/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/styles.css">
+<script src="/app.js" defer></script>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 <div class="shell">
-  <nav class="nav">
-    <div class="brand"><span class="mark"></span>Vishap<b>Hub</b></div>
-    <span class="pill live"><span class="dot"></span>live</span>
+
+  <header class="nav">
+    <div class="brand"><span class="mark" aria-hidden="true"></span>Vishap<b>Hub</b></div>
+    <span class="pill live"><span class="dot" aria-hidden="true"></span>live</span>
     <span class="pill">process lead</span>
     <span class="spacer"></span>
-    <button class="btn ghost" id="lang" style="padding:9px 12px" title="language">RU</button>
-    <button class="btn ghost" id="say" style="padding:9px 14px">▶ hear me</button>
-  </nav>
+    <button type="button" class="btn ghost sm" id="lang" aria-label="Switch language">RU</button>
+    <button type="button" class="btn ghost sm" id="say" aria-pressed="false">▶ hear me</button>
+  </header>
 
-  <section class="hero">
-    <div class="grid-bg"></div>
-    <div class="hero-in">
-      <div>
-        <span class="badge"><span class="dot"></span>generation · validation · security</span>
-        <h1 data-i18n-html="title">Carry the request.<br><em>Prove</em> the result.</h1>
-        <p class="lead" data-i18n="lead">
-          Paste code, a spec or logs. I route it: the generator writes code from the spec, the
-          validator checks it against that spec, the analyser checks whether it is dangerous.
-          I ask only what is missing and return what the pipeline said.
-        </p>
-        <p class="meta" data-i18n="meta">3 stages · 6 validator checks · strictest verdict wins · audit trail</p>
+  <main id="main">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="grid-bg" aria-hidden="true"></div>
+      <div class="hero-in">
+        <div>
+          <span class="badge"><span class="dot" aria-hidden="true"></span>generation · validation · security</span>
+          <h1 id="hero-title" data-i18n-html="title">Carry the request.<br><em>Prove</em> the result.</h1>
+          <p class="lead" data-i18n="lead">
+            Paste code, a spec or logs. I route it: the generator writes code from the spec, the
+            validator checks it against that spec, the analyser checks whether it is dangerous.
+            I ask only what is missing and return what the pipeline said.
+          </p>
+          <p class="meta" data-i18n="meta">3 stages · 6 validator checks · strictest verdict wins · audit trail</p>
 
-        <div class="cta">
-          <button class="btn" id="tryExample" data-i18n="try">Try with an example</button>
-          <button class="btn ghost" id="focusComposer" data-i18n="talk">Talk to Vishap</button>
-          <a href="/runs" style="align-self:center;text-decoration:underline;text-underline-offset:4px" data-i18n="recent">recent runs</a>
+          <div class="cta">
+            <button type="button" class="btn" id="tryExample" data-i18n="try">Try with an example</button>
+            <button type="button" class="btn ghost" id="focusComposer" data-i18n="talk">Talk to Vishap</button>
+            <a href="/runs" class="cta-link" data-i18n="recent">recent runs</a>
+          </div>
+
+          <dl class="stats">
+            <div class="stat"><dt>generator</dt><dd>spec → code</dd></div>
+            <div class="stat"><dt>validator</dt><dd>6 checks</dd></div>
+            <div class="stat"><dt>analyser</dt><dd>CWE · STRIDE</dd></div>
+          </dl>
         </div>
 
-        <dl class="stats">
-          <div class="stat"><dt>generator</dt><dd>spec → code</dd></div>
-          <div class="stat"><dt>validator</dt><dd>6 checks</dd></div>
-          <div class="stat"><dt>analyser</dt><dd>CWE · STRIDE</dd></div>
-        </dl>
-      </div>
-
-      <div>
-        <div class="card">
-          <div class="head">▤ pipeline report <span class="right" id="cardTag">example</span></div>
-          <div class="cells">
-            <div class="cell accent"><k>verdict</k><v id="cardVerdict">REQUIRES_REVIEW</v></div>
-            <div class="cell"><k>checks</k><v id="cardChecks">3 of 3</v></div>
-            <div class="cell"><k>findings</k><v id="cardFindings">1</v></div>
-          </div>
-          <div class="body">
-            <div>
-              <p class="label">Risks</p>
-              <div class="row" style="margin-top:8px">
-                <span class="tag crit">critical</span>
-                <span class="small">CWE-89</span>
-                <span style="color:#cbd5e1;font-size:13px">query built from request data</span>
+        <div>
+          <div class="card" aria-label="Example of a pipeline report">
+            <div class="head">▤ pipeline report <span class="right" id="cardTag">example</span></div>
+            <div class="cells">
+              <div class="cell accent"><k>verdict</k><v id="cardVerdict">REQUIRES_REVIEW</v></div>
+              <div class="cell"><k>checks</k><v id="cardChecks">3 of 3</v></div>
+              <div class="cell"><k>findings</k><v id="cardFindings">1</v></div>
+            </div>
+            <div class="body">
+              <div>
+                <p class="label">Risks</p>
+                <div class="row mt-sm">
+                  <span class="tag crit">critical</span>
+                  <span class="small">CWE-89</span>
+                  <span class="small">query built from request data</span>
+                </div>
+              </div>
+              <div>
+                <p class="label">Validator</p>
+                <div class="row mt-sm">
+                  <span class="tag ok">structure</span>
+                  <span class="tag ok">syntax</span>
+                  <span class="tag ok">contract</span>
+                  <span class="tag ok">coverage</span>
+                  <span class="tag ok">behavior</span>
+                  <span class="tag ok">conformance</span>
+                </div>
+              </div>
+              <div>
+                <p class="label">Trace</p>
+                <p class="small mt-xs">pass 1 generator → validator → analyser</p>
               </div>
             </div>
-            <div>
-              <p class="label">Validator</p>
-              <div class="row" style="margin-top:8px">
-                <span class="tag ok">structure</span>
-                <span class="tag ok">syntax</span>
-                <span class="tag ok">contract</span>
-                <span class="tag ok">coverage</span>
-                <span class="tag ok">behavior</span>
-                <span class="tag ok">conformance</span>
-              </div>
-            </div>
-            <div>
-              <p class="label">Trace</p>
-              <p class="small" style="margin:6px 0 0">pass 1 generator → validator → analyser</p>
-            </div>
           </div>
+          <p class="caption">Illustrative output, not a live result.</p>
         </div>
-        <p class="caption">Illustrative output, not a live result.</p>
       </div>
+    </section>
+
+    <div class="work">
+      <section class="panel" aria-labelledby="chat-title">
+        <h2 class="k" id="chat-title">talk to Vishap</h2>
+        <div class="chat" id="chat" role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversation">
+          <div class="msg sys">I answer with the hub’s own key. Bring yours only if you want the run to be yours.</div>
+        </div>
+        <div class="composer">
+          <label class="sr-only" for="text">Message to Vishap</label>
+          <textarea id="text" rows="1" placeholder="write, or press the mic and speak…" data-i18n-ph="textPh"></textarea>
+          <button type="button" class="mic" id="mic" aria-label="Speak to Vishap" aria-pressed="false">🎙</button>
+          <button type="button" class="btn" id="send" data-i18n="send">send</button>
+        </div>
+        <div class="chips">
+          <button type="button" class="chip" data-q="What can you do?">what can you do</button>
+          <button type="button" class="chip" data-q="Check this code: cur.execute('select * from t where a = ' + x)">check code</button>
+          <button type="button" class="chip" data-q="Where do I get a key?">where is the key</button>
+        </div>
+        <p class="hint">▶ hear me turns on the product voice; answers are read aloud with it.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="run-title">
+        <h2 class="k" id="run-title">run the pipeline</h2>
+        <div id="drop" class="drop" role="button" tabindex="0" aria-label="Choose a file to load as material">
+          drop a file here, or <b>click to choose</b><br>
+          <span class="fine">it is read in the browser and sent as text</span>
+        </div>
+        <input id="picker" type="file" hidden>
+        <label class="sr-only" for="question">What you want</label>
+        <textarea id="question" rows="2" class="mt-sm" placeholder="what do you want: «is this safe», «fix it», «write it from this spec»…" data-i18n-ph="questionPh"></textarea>
+        <label class="sr-only" for="material">Material: code, a spec or logs</label>
+        <textarea id="material" rows="6" class="mt-sm" placeholder="…or paste code, a spec or logs" data-i18n-ph="materialPh"></textarea>
+        <div class="row mt">
+          <button type="button" class="btn run" id="run" data-i18n="run">run</button>
+          <button type="button" class="btn ghost run" id="hear" disabled data-i18n="hear">🔊 read it</button>
+          <button type="button" class="btn ghost run" id="download" disabled data-i18n="json">↓ json</button>
+        </div>
+        <div class="progress" id="progress" aria-live="polite"></div>
+        <div class="verdict" id="verdict" role="status" aria-live="polite"></div>
+        <div class="hint waking" id="waking">the free tier sleeps — the first run wakes it, ~20 s</div>
+        <div id="report" class="report"></div>
+
+        <h2 class="k k-gap">your model key</h2>
+        <label class="sr-only" for="key">Your model key</label>
+        <input id="key" type="password" autocomplete="off" placeholder="sk-ant-… (optional, kept in this browser)">
+        <div class="row mt-sm">
+          <button type="button" class="btn ghost sm" id="save">save</button>
+          <button type="button" class="btn ghost sm" id="clear">clear</button>
+        </div>
+        <p class="hint">Optional. Without a key the hub answers with its own — your run stays on the server, not in your name.</p>
+      </section>
     </div>
-  </section>
-
-  <div class="work">
-    <section class="panel">
-      <p class="k">talk to Vishap</p>
-      <div class="chat" id="chat">
-        <div class="msg sys">I answer with the hub’s own key. Bring yours only if you want the run to be yours.</div>
-      </div>
-      <div class="composer">
-        <textarea id="text" rows="1" placeholder="write, or press the mic and speak…" data-i18n-ph="textPh"></textarea>
-        <button class="mic" id="mic" title="speak">🎙</button>
-        <button class="btn" id="send" style="padding:11px 16px" data-i18n="send">send</button>
-      </div>
-      <div class="chips">
-        <span class="chip" data-q="What can you do?">what can you do</span>
-        <span class="chip" data-q="Check this code: cur.execute('select * from t where a = ' + x)">check code</span>
-        <span class="chip" data-q="Where do I get a key?">where is the key</span>
-      </div>
-      <p class="hint">▶ hear me turns on the product voice; answers are read aloud with it.</p>
-    </section>
-
-    <section class="panel">
-      <p class="k">run the pipeline</p>
-      <div id="drop" class="drop">drop a file here, or <b>click to choose</b><br>
-        <span style="font-size:11.5px">it is read in the browser and sent as text</span></div>
-      <input id="picker" type="file" style="display:none">
-      <textarea id="question" rows="2" placeholder="what do you want: «is this safe», «fix it», «write it from this spec»…" style="margin-top:8px" data-i18n-ph="questionPh"></textarea>
-      <textarea id="material" rows="6" placeholder="…or paste code, a spec or logs" style="margin-top:8px" data-i18n-ph="materialPh"></textarea>
-      <div class="row" style="margin-top:10px">
-        <button class="btn" id="run" style="padding:10px 16px" data-i18n="run">run</button>
-        <button class="btn ghost" id="hear" style="padding:10px 16px" disabled data-i18n="hear">🔊 read it</button>
-        <button class="btn ghost" id="download" style="padding:10px 16px" disabled data-i18n="json">↓ json</button>
-      </div>
-      <div class="progress" id="progress"></div>
-      <div class="verdict" id="verdict"></div>
-      <div class="hint" id="waking" style="display:none">the free tier sleeps — the first run wakes it, ~20 s</div>
-      <div id="report" style="margin-top:12px"></div>
-
-      <p class="k" style="margin-top:18px">your model key</p>
-      <input id="key" type="password" placeholder="sk-ant-… (optional, kept in this browser)">
-      <div class="row" style="margin-top:9px">
-        <button class="btn ghost" id="save" style="padding:8px 13px">save</button>
-        <button class="btn ghost" id="clear" style="padding:8px 13px">clear</button>
-      </div>
-      <p class="hint">Optional. Without a key the hub answers with its own — your run stays on the server, not in your name.</p>
-    </section>
-  </div>
+  </main>
 
   <footer>
     <a href="https://github.com/dvddv9/vishaphub">monorepo</a>
     <a href="/runs" data-i18n="recent">recent runs</a>
-    <span style="margin-left:auto">hub v<span id="ver">?</span></span>
+    <span class="right">hub v<span id="ver">?</span></span>
   </footer>
 </div>
 
 <audio id="voice" preload="auto" src="/greeting.mp3"></audio>
-<script>
-// Two languages, because the first client may not read English, and a product that
-// cannot say "what I did not check" in his language is a product he cannot use.
-const I18N = {
-  en: {
-    title: "Carry the request.<br><em>Prove</em> the result.",
-    lead: "Paste code, a spec or logs. I route it: the generator writes code from the spec, the validator checks it against that spec, the analyser checks whether it is dangerous. I ask only what is missing and return what the pipeline said.",
-    meta: "3 stages · 6 validator checks · strictest verdict wins · audit trail",
-    try: "Try with an example", talk: "Talk to Vishap", recent: "recent runs",
-    send: "send", run: "run", hear: "🔊 read it", json: "↓ json",
-    textPh: "write, or press the mic and speak…",
-    questionPh: "what do you want: «is this safe», «fix it», «write it from this spec»…",
-    materialPh: "…or paste code, a spec or logs",
-    exampleQuestion: "is this safe?",
-    working: "working…", nothing: "nothing to work on", refused: "refused",
-    verdictLabel: "verdict", notChecked: "not checked", openReport: "open the report",
-    reportAt: "run", copy: "copy", copied: "copied", noAccess: "no access",
-    micOff: "this browser has no speech input; Chrome and Edge do",
-    micNo: "microphone refused or unavailable",
-    savedKey: "key saved in this browser", clearedKey: "key cleared",
-    streamLost: "the stream ended without a verdict"
-  },
-  ru: {
-    title: "Принять запрос.<br><em>Доказать</em> результат.",
-    lead: "Вставь код, спеку или логи. Я разложу: генератор напишет код по спеке, валидатор сверит его со спекой, анализатор проверит, опасно ли. Спрошу только то, чего не хватает, и верну то, что сказал конвейер.",
-    meta: "3 стадии · 6 проверок валидатора · побеждает строжайший вердикт · след прогона",
-    try: "Показать на примере", talk: "Поговорить с Vishap", recent: "последние прогоны",
-    send: "отправить", run: "запустить", hear: "🔊 прочитать", json: "↓ json",
-    textPh: "напиши или нажми микрофон и говори…",
-    questionPh: "что нужно: «это безопасно», «почини», «напиши по этой спеке»…",
-    materialPh: "…или вставь код, спеку или логи",
-    exampleQuestion: "это безопасно?",
-    working: "работаю…", nothing: "нечего проверять", refused: "отказ",
-    verdictLabel: "вердикт", notChecked: "не проверено", openReport: "открыть отчёт",
-    reportAt: "прогон", copy: "копировать", copied: "скопировано", noAccess: "нет доступа",
-    micOff: "в этом браузере нет распознавания речи; есть в Chrome и Edge",
-    micNo: "микрофон недоступен или отклонён",
-    savedKey: "ключ сохранён в этом браузере", clearedKey: "ключ стёрт",
-    streamLost: "поток закончился без вердикта"
-  }
-};
-let lang = localStorage.getItem("vishap_lang")
-  || ((navigator.language || "en").toLowerCase().startsWith("ru") ? "ru" : "en");
-
-function t(key){
-  const table = I18N[lang] || I18N.en;
-  return table[key] !== undefined ? table[key] : (I18N.en[key] || key);
-}
-
-function applyLang(){
-  document.documentElement.lang = lang;
-  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.dataset.i18n); });
-  document.querySelectorAll("[data-i18n-html]").forEach(el => { el.innerHTML = t(el.dataset.i18nHtml); });
-  document.querySelectorAll("[data-i18n-ph]").forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
-  const btn = document.getElementById("lang");
-  if (btn) btn.textContent = lang === "ru" ? "EN" : "RU";
-}
-
-const $ = (id) => document.getElementById(id);
-const chat = $("chat");
-const voiceOn = {v:false};
-const history = [];
-
-function bubble(role, text){
-  const div = document.createElement("div");
-  div.className = "msg " + (role === "user" ? "me" : role === "assistant" ? "him" : "sys");
-  div.textContent = text;
-  chat.appendChild(div); chat.scrollTop = chat.scrollHeight;
-  return div;
-}
-
-async function sayText(text){
-  if (!text) return;
-  try {
-    const res = await fetch("/speak", {method:"POST", headers:{"content-type":"application/json"},
-      body: JSON.stringify({text})});
-    if (!res.ok) return;
-    const blob = await res.blob();
-    await new Audio(URL.createObjectURL(blob)).play().catch(()=>{});
-  } catch (e) { /* silence beats a modal here */ }
-}
-
-$("say").onclick = () => {
-  voiceOn.v = true;
-  const a = $("voice"); a.currentTime = 0; a.play().catch(()=>{});
-  $("say").textContent = "♪ voice on";
-};
-$("focusComposer").onclick = () => $("text").focus();
-$("tryExample").onclick = () => {
-  $("material").value = "cur.execute(\"select * from users where name = '\" + name + \"'\")";
-  $("question").value = t("exampleQuestion");
-  pipeline();
-};
-
-$("save").onclick = () => { localStorage.setItem("vishap_key", $("key").value.trim()); bubble("sys", t("savedKey")); };
-$("clear").onclick = () => { localStorage.removeItem("vishap_key"); $("key").value=""; bubble("sys", t("clearedKey")); };
-$("key").value = localStorage.getItem("vishap_key") || "";
-
-async function ask(message){
-  if (!message.trim()) return;
-  bubble("user", message);
-  history.push({role:"user", content:message});
-  const thinking = bubble("sys", "…");
-  try {
-    const res = await fetch("/chat", {method:"POST", headers:{"content-type":"application/json"},
-      body: JSON.stringify({message, messages: history, api_key: localStorage.getItem("vishap_key") || ""})});
-    const data = await res.json();
-    thinking.remove();
-    if (!data.ok){ bubble("sys", data.error || "failed"); return; }
-    bubble("assistant", data.text);
-    history.push({role:"assistant", content:data.text});
-    if (voiceOn.v) sayText(data.text);
-  } catch (e) { thinking.remove(); bubble("sys", e.message); }
-}
-
-$("send").onclick = () => { const line = $("text").value; $("text").value=""; ask(line); };
-$("text").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey){ e.preventDefault(); $("send").click(); } });
-document.querySelectorAll(".chip").forEach(c => c.onclick = () => ask(c.dataset.q));
-
-$("drop").onclick = () => $("picker").click();
-$("picker").onchange = async (e) => {
-  const f = e.target.files && e.target.files[0];
-  if (!f) return;
-  $("material").value = await f.text();
-  bubble("sys", `loaded ${f.name} (${$("material").value.length} chars)`);
-};
-["dragenter","dragover"].forEach(ev => $("drop").addEventListener(ev, e => { e.preventDefault(); $("drop").classList.add("hot"); }));
-["dragleave","drop"].forEach(ev => $("drop").addEventListener(ev, e => { e.preventDefault(); $("drop").classList.remove("hot"); }));
-$("drop").addEventListener("drop", async e => {
-  const f = e.dataTransfer.files && e.dataTransfer.files[0];
-  if (!f) return;
-  $("material").value = await f.text();
-  bubble("sys", `loaded ${f.name} (${$("material").value.length} chars)`);
-});
-
-const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-$("mic").onclick = () => {
-  if (!Recognition){ bubble("sys","this browser has no speech input; Chrome and Edge do"); return; }
-  const r = new Recognition(); r.lang = "en-US"; r.interimResults = false; r.maxAlternatives = 1;
-  $("mic").classList.add("on");
-  r.onresult = (e) => { const said = e.results[0][0].transcript; $("mic").classList.remove("on"); ask(said); };
-  r.onerror = () => { $("mic").classList.remove("on"); bubble("sys","microphone refused or unavailable"); };
-  r.onend = () => $("mic").classList.remove("on");
-  r.start();
-};
-
-let lastSpoken = "";
-
-let lastResult = null;
-
-function renderReport(data){
-  lastResult = data;
-  const box = $("report");
-  const panes = {
-    summary: (data.summary || "(model returned no summary)"),
-    findings: (data.findings || []).length
-      ? data.findings.map(f => `${(f.severity||"").toUpperCase()}${f.rule ? " · " + f.rule : ""}${f.line ? " @ " + f.line : ""}${f.source ? " [" + f.source + "]" : ""}\n  ${f.message||""}`).join("\n\n")
-      : "nothing matched",
-    patch: Object.keys(data.patch || {}).length
-      ? Object.entries(data.patch).map(([n, c]) => `── ${n} ──\n${c}`).join("\n\n")
-      : "no patch proposed",
-    proof: (data.proof || []).length ? data.proof.map(p => "- " + p).join("\n") : "no proof lines",
-    [t("notChecked")]: (data.not_checked || []).length
-      ? "• " + (data.not_checked || []).join("\n• ")
-      : "everything this plan covers was checked",
-  };
-  const names = Object.keys(panes);
-  const fp = data.fingerprint || {};
-  const reportLink = fp.id
-    ? `<a href="/r/${encodeURIComponent(fp.id)}" target="_blank" rel="noopener"
-         style="color:var(--emerald);margin-left:auto">${escapeHtml(t("openReport"))} ↗</a>`
-    : "";
-  box.innerHTML = `<div class="tabs">` + names.map((n, i) =>
-      `<span class="tab ${i===0?"on":""}" data-pane="${escapeHtml(n)}">${escapeHtml(n)}</span>`).join("")
-    + `<span class="copy" id="copy">${escapeHtml(t("copy"))}</span></div>
-    <div class="pane" id="pane"></div>
-    <div class="row" style="margin-top:8px;font:11.5px var(--mono);color:var(--dim-2)">
-      ${fp.id ? `<span>${escapeHtml(t("reportAt"))} <code>${escapeHtml(fp.id)}</code></span>` : ""}
-      ${reportLink}
-    </div>
-    <div id="qs"></div>`;
-
-  const setPane = (name) => {
-    $("pane").textContent = panes[name] || "";
-  };
-  setPane(names[0]);
-  box.querySelectorAll(".tab").forEach(tab => tab.onclick = () => {
-    box.querySelectorAll(".tab").forEach(x => x.classList.remove("on"));
-    tab.classList.add("on");
-    setPane(tab.dataset.pane);
-  });
-  $("copy").onclick = async () => {
-    const text = $("pane").textContent;
-    try { await navigator.clipboard.writeText(text); $("copy").textContent = t("copied"); }
-    catch (e) { $("copy").textContent = t("noAccess"); }
-    setTimeout(() => { $("copy").textContent = t("copy"); }, 1400);
-  };
-
-  const qs = data.questions || [];
-  if (qs.length){
-    $("qs").innerHTML = `<div style="margin-top:10px;font:11px var(--mono);color:var(--dim-2)">the model needs an answer:</div>`
-      + qs.map((q, i) => `<span class="q" data-q="${escapeHtml(q)}">${escapeHtml(q)}</span>`).join("");
-    $("qs").querySelectorAll(".q").forEach(el => el.onclick = () => ask(el.dataset.q));
-  }
-}
-
-function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-}
-
-function setProgress(states){
-  const names = ["model", "rules", "validator", "verdict"];
-  $("progress").innerHTML = names.map(n =>
-    `<span class="step ${states[n]||""}"><span class="b"></span>${n}</span>`).join("");
-}
-
-function showResult(data, started){
-  if (!data.ok){
-    setProgress({"model":"fail"});
-    $("verdict").innerHTML = `<b>${escapeHtml(t("refused"))}</b> ${escapeHtml(data.error || "failed")}`;
-    if (data.fingerprint && data.fingerprint.id) renderReport(data);
-    return;
-  }
-
-  const checks = data.checks || {};
-  const states = {"model":"done"};
-  if (checks.analyser) states.rules = "done";
-  if (checks.validator) states.validator = "done";
-  states.verdict = /SAFE|PASS/i.test(data.verdict) ? "done" : "fail";
-  setProgress(states);
-
-  const bits = [];
-  if (checks.generator) bits.push(`generator <b>${escapeHtml(checks.generator.verdict)}</b>`);
-  if (checks.analyser) bits.push(`analyser <b>${escapeHtml(checks.analyser.verdict)}</b>`);
-  if (checks.validator) bits.push(`validator <b>${escapeHtml(checks.validator.verdict)}</b>`);
-  const secs = ((performance.now() - started) / 1000).toFixed(1);
-  $("verdict").innerHTML = `${escapeHtml(t("verdictLabel"))} <b>${escapeHtml(data.verdict)}</b>`
-    + (bits.length ? " · " + bits.join(" · ") : "")
-    + ` <span style="color:var(--dim-2)">· ${secs}s</span>`;
-
-  renderReport(data);
-  $("cardVerdict").textContent = data.verdict || "—";
-  const doneCount = [checks.analyser, checks.validator].filter(Boolean).length + 1;
-  $("cardChecks").textContent = `${doneCount} of 3`;
-  $("cardFindings").textContent = String((data.findings || []).length);
-  $("cardTag").textContent = "live";
-  $("hear").disabled = false;
-  $("download").disabled = false;
-
-  lastSpoken = `${data.summary || ""} ${t("verdictLabel")}: ${data.verdict}.`;
-  if (voiceOn.v) sayText(lastSpoken);
-}
-
-async function pipeline(){
-  const material = $("material").value;
-  const question = $("question").value;
-  if (!material.trim() && !question.trim()){ $("verdict").innerHTML = `<b>${escapeHtml(t("nothing"))}</b>`; return; }
-
-  const started = performance.now();
-  $("verdict").textContent = t("working");
-  $("report").innerHTML = "";
-  $("hear").disabled = true;
-  $("download").disabled = true;
-  setProgress({"model":"run"});
-
-  const wake = setTimeout(() => { $("waking").style.display = "block"; }, 8000);
-  const body = JSON.stringify({material, question, spec: "",
-                               api_key: localStorage.getItem("vishap_key") || ""});
-  const clearWake = () => { clearTimeout(wake); $("waking").style.display = "none"; };
-
-  // The run is announced stage by stage: a minute of silence reads as broken.
-  try {
-    const res = await fetch("/run/stream", {method:"POST",
-      headers:{"content-type":"application/json"}, body});
-    const isStream = res.ok && res.body && (res.headers.get("content-type") || "").includes("event-stream");
-    if (!isStream) {
-      const plain = await fetch("/run", {method:"POST", headers:{"content-type":"application/json"}, body});
-      clearWake();
-      showResult(await plain.json(), started);
-      return;
-    }
-
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    let done = null;
-    while (true) {
-      const chunk = await reader.read();
-      if (chunk.done) break;
-      buffer += decoder.decode(chunk.value, {stream: true});
-      const parts = buffer.split("\n\n");
-      buffer = parts.pop() || "";
-      for (const part of parts) {
-        let name = "", payload = "";
-        for (const line of part.split("\n")) {
-          if (line.startsWith("event: ")) name = line.slice(7).trim();
-          else if (line.startsWith("data: ")) payload += line.slice(6);
-        }
-        if (!payload) continue;
-        let data = null;
-        try { data = JSON.parse(payload); } catch (e) { continue; }
-        if (name === "stage"){
-          const states = {"model":"done"};
-          if (data.stage === "validator") states.validator = "done";
-          if (data.stage === "analyser") states.rules = "done";
-          setProgress(states);
-        }
-        if (name === "done") done = data;
-        if (name === "error") done = {ok:false, error:data.error};
-      }
-    }
-    clearWake();
-    if (done) showResult(done, started);
-    else {
-      setProgress({"model":"fail"});
-      $("verdict").innerHTML = `<b>error</b> ${escapeHtml(t("streamLost"))}`;
-    }
-  } catch (e) {
-    clearWake();
-    setProgress({"model":"fail"});
-    $("verdict").innerHTML = `<b>error</b> ${escapeHtml(e.message)}`;
-  }
-}
-
-$("run").onclick = pipeline;
-$("hear").onclick = () => sayText(lastSpoken);
-$("download").onclick = () => {
-  if (!lastResult) return;
-  const blob = new Blob([JSON.stringify(lastResult, null, 2)], {type:"application/json"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "vishap-report.json";
-  a.click();
-  URL.revokeObjectURL(a.href);
-};
-
-setProgress({});
-applyLang();
-$("lang").onclick = () => {
-  lang = lang === "ru" ? "en" : "ru";
-  localStorage.setItem("vishap_lang", lang);
-  applyLang();
-};
-fetch("/health").then(r=>r.json()).then(d=>{$("ver").textContent = d.version;}).catch(()=>{});
-</script>
 </body>
 </html>

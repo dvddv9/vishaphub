@@ -11,12 +11,11 @@ The same words are synthesised once, not once per visitor.
 """
 from __future__ import annotations
 
-import html
 import json
 import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import fingerprint, limits
+from . import fingerprint, limits, templates
 from .chat import reply
 from .pipeline import run_plan
 from .router import RouteError, plan_for
@@ -26,9 +25,14 @@ from .version import __version__
 
 MAX_BODY = 4_000_000
 WEB = os.path.join(os.path.dirname(__file__), "web")
+#: filename, content type, and whether it may be cached for a while (fixed name, rarely changed)
 STATIC = {
-    "/greeting.mp3": ("greeting.mp3", "audio/mpeg"),
+    "/styles.css": ("styles.css", "text/css", True),
+    "/app.js": ("app.js", "application/javascript", True),
+    "/favicon.svg": ("favicon.svg", "image/svg+xml", True),
+    "/greeting.mp3": ("greeting.mp3", "audio/mpeg", True),
 }
+STATIC_MAX_AGE = "300"
 
 LIMITERS = {kind: limits.RateLimiter(limits.per_minute(kind)) for kind in ("run", "chat", "speak")}
 TTS_CACHE = limits.TTSCache(limits.int_env("VISHAP_HUB_TTS_CACHE", limits.DEFAULT_TTS_ITEMS))
@@ -49,7 +53,7 @@ SECURITY_HEADERS = {
     "referrer-policy": "strict-origin-when-cross-origin",
     "content-security-policy": (
         "default-src 'self'; img-src 'self' data:; media-src 'self'; "
-        "style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; "
+        "style-src 'self'; script-src 'self'; "
         "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'"
     ),
 }
@@ -72,69 +76,6 @@ def _intent_for(body: dict, material: str, spec: str) -> str:
     if material.strip():
         return "analyse"
     return "ask"
-
-
-REPORT_CSS = """
- body{background:#020617;color:#f1f5f9;font:15px/1.55 ui-sans-serif,system-ui,sans-serif;margin:0;padding:32px 20px}
- main{max-width:860px;margin:0 auto}
- h1{font-size:20px;margin:0 0 4px}
- h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#94a3b8;margin:26px 0 8px}
- .verdict{display:inline-block;padding:6px 12px;border-radius:8px;font:13px ui-monospace,monospace;border:1px solid #1e293b}
- .verdict-ok{color:#34d399;border-color:#065f46;background:rgba(52,211,153,.08)}
- .verdict-bad{color:#fb7185;border-color:#7f1d1d;background:rgba(251,113,133,.08)}
- table{width:100%;border-collapse:collapse;font:13px ui-monospace,monospace}
- td,th{text-align:left;padding:6px 8px;border-bottom:1px solid #1e293b;vertical-align:top}
- .dim{color:#94a3b8}
- code{font:13px ui-monospace,monospace;color:#a5b4fc}
- a{color:#34d399}
-"""
-
-
-def _report_html(record: dict) -> str:
-    """One run as a page: the verdict, the steps, the findings, and what was not checked."""
-    e = html.escape
-    result = record.get("result") or {}
-    fp = result.get("fingerprint") or {}
-    not_checked = result.get("not_checked") or []
-    findings = result.get("findings") or []
-    steps = result.get("steps") or []
-
-    def block(title: str, body: str) -> str:
-        return f"<section><h2>{e(title)}</h2>{body}</section>"
-
-    verdict = e(str(result.get("verdict") or record.get("verdict") or "-"))
-    ok = "verdict-ok" if result.get("ok") else "verdict-bad"
-
-    rows = "".join(
-        f"<tr><td>{e(str(s.get('stage')))}</td><td>{e(str(s.get('verdict') or '-'))}</td>"
-        f"<td>{'ok' if s.get('ok') else 'fail'}</td><td>{e(str(s.get('detail') or ''))}</td></tr>"
-        for s in steps
-    )
-    found = "".join(
-        f"<li><b>{e(str(f.get('severity') or ''))}</b> {e(str(f.get('rule') or ''))}"
-        f"{' @ ' + e(str(f.get('line'))) if f.get('line') else ''}: {e(str(f.get('message') or ''))}"
-        f"{' <i>(' + e(str(f.get('source'))) + ')</i>' if f.get('source') else ''}</li>"
-        for f in findings
-    ) or "<li>nothing matched</li>"
-    missed = "".join(f"<li>{e(str(item))}</li>" for item in not_checked) or "<li>-</li>"
-    plan = " -> ".join((result.get("plan") or {}).get("stages") or [])
-
-    return f"""<!doctype html>
-<html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Run {e(str(record.get('id') or ''))} - VishapHub</title>
-<style>{REPORT_CSS}</style></head><body><main>
-<h1>Run {e(str(record.get('id') or ''))}</h1>
-<p class="dim">at <code>{e(str(record.get('at') or ''))}</code> | plan <code>{e(plan)}</code> |
-fingerprint <code>{e(str(fp.get('digest') or ''))[:32]}</code></p>
-<p><span class="verdict {ok}">{verdict}</span> <span class="dim">{e(str(result.get('reason') or ''))}</span></p>
-<p>{e(str(result.get('summary') or ''))}</p>
-{block("Steps", f"<table><tr><th>stage</th><th>verdict</th><th>state</th><th>detail</th></tr>{rows}</table>")}
-{block("Findings", f"<ul>{found}</ul>")}
-{block("Not checked", f"<ul>{missed}</ul>")}
-{block("Rules that judged", "<p><code>" + e(json.dumps(fp.get("rules") or {}, ensure_ascii=False)) + "</code></p>")}
-<p class="dim"><a href="/">VishapHub</a> | <a href="/runs">recent runs</a></p>
-</main></body></html>"""
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -212,46 +153,67 @@ class Handler(BaseHTTPRequestHandler):
 
     # ---- GET ------------------------------------------------------------
 
+    def _html(self, code: int, markup: str) -> None:
+        self._send(code, markup, "text/html")
+
+    def _static(self, path: str) -> bool:
+        name, kind, cacheable = STATIC[path]
+        full = os.path.join(WEB, name)
+        if not os.path.exists(full):
+            self._send(404, {"error": "asset missing"})
+            return True
+        with open(full, "rb") as fh:
+            body = fh.read()
+        extra = {"cache-control": f"public, max-age={STATIC_MAX_AGE}, must-revalidate"} if cacheable else {}
+        self._send(200, body, kind, extra=extra)
+        return True
+
     def do_GET(self) -> None:  # noqa: N802 - stdlib naming
         path = self.path.split("?", 1)[0]
+
+        # --- machine doors: JSON only, never a page
         if path == "/health":
             self._send(200, {"ok": True, "version": __version__})
             return
-        if path == "/runs":
+        if path == "/api/runs":
             self._send(200, {"runs": RUNS.list(20)})
             return
-        if path.startswith("/runs/"):
-            record = RUNS.get(path[len("/runs/"):].removesuffix(".json"))
+        if path.startswith("/api/runs/"):
+            record = RUNS.get(path[len("/api/runs/"):].removesuffix(".json"))
             if record is None:
                 self._send(404, {"error": "no such run, or it is older than the stored ones"})
                 return
             self._send(200, record)
             return
+        if path.startswith("/api/") or path == "/api":
+            self._send(404, {"error": "not found"})
+            return
+
+        # --- pages
+        if path in STATIC:
+            self._static(path)
+            return
+        if path == "/runs":
+            self._html(200, templates.runs_page(RUNS.list(20)))
+            return
         if path.startswith("/r/") and len(path) > 3:
             record = RUNS.get(path[3:])
             if record is None:
-                self._send(404, {"error": "no such run, or it is older than the stored ones"})
+                self._html(404, templates.message_page(
+                    "No such run", "It is older than the runs this hub still keeps, or the link is wrong."))
                 return
-            self._send(200, _report_html(record), "text/html")
-            return
-        if path in STATIC:
-            name, kind = STATIC[path]
-            full = os.path.join(WEB, name)
-            if os.path.exists(full):
-                with open(full, "rb") as fh:
-                    self._send(200, fh.read(), kind)
-            else:
-                self._send(404, {"error": "asset missing"})
+            self._html(200, templates.report_page(record))
             return
         if path in ("/", "/index.html"):
             page = os.path.join(WEB, "index.html")
             if os.path.exists(page):
                 with open(page, encoding="utf-8") as fh:
-                    self._send(200, fh.read(), "text/html")
+                    self._send(200, fh.read(), "text/html",
+                               extra={"cache-control": "no-cache"})
             else:
                 self._send(500, {"error": "page missing from the image"})
             return
-        self._send(404, {"error": "not found"})
+        self._html(404, templates.message_page("Not found", "There is nothing at this address."))
 
     # ---- POST -----------------------------------------------------------
 

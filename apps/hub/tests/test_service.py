@@ -61,6 +61,13 @@ class ServerCase(unittest.TestCase):
         except urllib.error.HTTPError as exc:
             return exc.code, exc.read()
 
+    def get_with_headers(self, path):
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{self.port}{path}", timeout=30) as response:
+                return response.status, {k.lower(): v for k, v in response.headers.items()}, response.read()
+        except urllib.error.HTTPError as exc:
+            return exc.code, {k.lower(): v for k, v in exc.headers.items()}, exc.read()
+
 
 # limits -----------------------------------------------------------------------
 
@@ -156,12 +163,54 @@ class RunReportTests(ServerCase):
         assert "PASS" in text and run_id in text
         assert "Not checked" in text
 
-        status, raw = self.get(f"/runs/{run_id}.json")
+        status, raw = self.get(f"/api/runs/{run_id}.json")
         assert status == 200
         assert json.loads(raw)["result"]["verdict"] == "PASS"
 
-        runs = json.loads(self.get("/runs")[1])
+        runs = json.loads(self.get("/api/runs")[1])
         assert any(r["id"] == run_id for r in runs["runs"])
+
+        status, listing = self.get("/runs")
+        assert status == 200
+        assert run_id in listing.decode()
+
+
+class PagesTests(ServerCase):
+    def test_the_page_is_one_document_with_external_assets(self):
+        status, body = self.get("/")
+        assert status == 200
+        text = body.decode()
+        assert '<link rel="stylesheet" href="/styles.css">' in text
+        assert '<script src="/app.js" defer></script>' in text
+        assert "<style>" not in text and "<script>" not in text
+
+    def test_the_stylesheet_and_the_script_are_served_and_cacheable(self):
+        for path, kind in (("/styles.css", "text/css"), ("/app.js", "javascript"),
+                           ("/favicon.svg", "image/svg+xml")):
+            status, headers, body = self.get_with_headers(path)
+            assert status == 200, path
+            assert kind in headers.get("content-type", ""), path
+            assert "max-age" in headers.get("cache-control", ""), path
+            assert body
+
+    def test_the_csp_no_longer_allows_inline_code(self):
+        status, headers, _ = self.get_with_headers("/")
+        csp = headers.get("content-security-policy", "")
+        assert "script-src 'self'" in csp
+        assert "style-src 'self'" in csp
+        assert "unsafe-inline" not in csp
+
+    def test_an_unknown_run_is_a_page_not_json(self):
+        status, body = self.get("/r/deadbeefdeadbeef")
+        assert status == 404
+        text = body.decode()
+        assert "<!doctype html>" in text
+        assert "No such run" in text
+
+    def test_the_api_is_json_only(self):
+        status, body = self.get("/api/nope")
+        assert status == 404
+        assert json.loads(body)["error"] == "not found"
 
     def test_a_refused_run_is_kept_with_its_reason(self):
         import os
@@ -170,7 +219,7 @@ class RunReportTests(ServerCase):
         payload = json.loads(body)
         assert status == 502
         run_id = payload["fingerprint"]["id"]
-        status, raw = self.get(f"/runs/{run_id}.json")
+        status, raw = self.get(f"/api/runs/{run_id}.json")
         assert status == 200
         kept = json.loads(raw)
         assert kept["result"]["verdict"] == "ERROR"
@@ -178,7 +227,7 @@ class RunReportTests(ServerCase):
 
     def test_an_unknown_run_is_a_404(self):
         assert self.get("/r/deadbeefdeadbeef")[0] == 404
-        assert self.get("/runs/deadbeefdeadbeef.json")[0] == 404
+        assert self.get("/api/runs/deadbeefdeadbeef.json")[0] == 404
 
 
 # the fingerprint --------------------------------------------------------------

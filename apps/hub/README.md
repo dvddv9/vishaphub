@@ -88,7 +88,14 @@ nothing is worse than a page that says «bring a key».
 | `POST /run/stream` | the same run as server-sent events | same | same |
 | `POST /speak` | the voice | an outside synthesis service | 20 a minute, 600 characters, cached by the words |
 | `GET /r/<id>` | a finished run as a page | nothing | — |
-| `GET /runs` | the recent runs | nothing | last 200 kept |
+| `GET /api/runs` | the recent runs, JSON | nothing | last 200 kept |
+| `GET /api/runs/<id>.json` | one run, JSON | nothing | — |
+| `GET /styles.css`, `/app.js`, `/favicon.svg` | the page's own assets | nothing | `max-age=300`, must-revalidate |
+
+One rule separates the two halves of the surface: **`/api/*` is JSON, everything else
+is a page**. A wrong address under `/api` answers a JSON error; a wrong address
+anywhere else answers an HTML page with a way back. That is why `/runs` is a list you
+can read and `/api/runs` is the same list a program can parse.
 
 Every ceiling is an environment variable and `0` turns it off:
 `VISHAP_HUB_RATE_RUN`, `VISHAP_HUB_RATE_CHAT`, `VISHAP_HUB_RATE_SPEAK`,
@@ -120,11 +127,31 @@ that ends in ERROR is stored too: a failure is a result.
   the button says so), and the voice answers through `/speak`;
 - English and Russian, switched in the header and remembered in the browser.
 
+## How the page is built
+
+- **one document, external assets.** `index.html` is markup only; `styles.css` and
+  `app.js` are served from `/` with a cache header. Nothing is inline, so the Content
+  Security Policy is `script-src 'self'; style-src 'self'` — no `unsafe-inline`;
+- **semantics first.** `header` / `main` / `section` / `footer`, one `h1`, `h2` per
+  panel, `role="log"` and `aria-live` on the conversation, `role="status"` on the
+  verdict, a skip link, a visually hidden `label` for every field;
+- **keyboard and focus.** every control is a real `button`, the file drop zone is
+  `role="button" tabindex="0"` and answers Enter and Space, and `:focus-visible` draws a
+  ring that the mouse never sees;
+- **motion is optional.** `prefers-reduced-motion` turns off the pulses and the mic
+  animation;
+- **one breakpoint that matters.** under 900px the two columns become one; under 640px
+  the stats stack, the report cells stack, type shrinks and fields sit at 16px so iOS
+  does not zoom into them;
+- **shareable.** `title`, `description`, `theme-color`, an SVG favicon, and a canonical
+  link; a run report carries its own title and description.
+
 ## Modules
 
 | Piece | What it does |
 |---|---|
-| `server.py` | the five doors above, the limits, the run page |
+| `server.py` | the doors above, the limits, the static assets and their cache headers |
+| `templates.py` | the run page, the runs page and the error page: one layout, one escape |
 | `router.py` | intent → ordered plan; deterministic, no model |
 | `pipeline.py` | executes the plan; the only path to a verdict |
 | `proposal.py` | the only place that talks to a model; returns a proposal, never a verdict |
@@ -140,7 +167,7 @@ that ends in ERROR is stored too: a failure is a result.
 
 ## Status
 
-`0.3.0` — one path, 78 tests (`PYTHONPATH=src python -m pytest -q`).
+`0.3.0` — one path, 83 tests (`PYTHONPATH=src python -m pytest -q`).
 
 Known gaps: the store lives in memory unless `VISHAP_HUB_RUNS_FILE` is set (a free
 instance loses its runs on restart), and there is no queue: two runs at once both wait
