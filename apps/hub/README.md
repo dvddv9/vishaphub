@@ -44,5 +44,16 @@ than three questions, and tells the client the truth about a missing key.
 
 ## Status
 
-`0.1.0` — envelope and router work; the transport to the three services is next.
-Tests are deliberately left for the end of the build.
+`0.1.0` — the envelope, the router and the transport are in place:
+
+| Piece | What it does |
+|---|---|
+| `server.py` | `GET /` the page, `GET /health`, `POST /chat` the assistant, `POST /run` the pipeline |
+| `chat.py` | Vishap talking to the client; the model is the caller's, the hub holds no key, and without one it answers from a local script |
+| `pipeline.py` | executes the plan, keeps the session, stops when the verdict stops improving; fails closed — nothing ran is not a pass |
+| `local.py` | in-process services: the validator's stages and the analyser's rules are functions, not URLs |
+| `services.py` | adapters for the remote services; a call returns `{"ok": false, ...}`, it never raises |
+| `tts.py` | the voice of the greeting (`en-US-ChristopherNeural`), synthesised where the voice lives |
+
+Tests: 44, run with `PYTHONPATH=src python -m pytest -q`. Not built yet: the microphone
+on the page — the voice speaks, the page does not listen.
