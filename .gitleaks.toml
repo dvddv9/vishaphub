@@ -37,8 +37,7 @@ regexes = [
     # Markers the redactor leaves where it removed a secret, e.g. <AWS_KEY_REDACTED>:
     # the value is already gone.
     '<[A-Z_]+_REDACTED>',
-    # Documentation placeholder for a DeepSeek key.
-    'sk-your-deepseek-key-here',
-    # Placeholder key used by apps/analyzer/tests/test_e2e.py.
+    # Placeholder key used by apps/analyzer/tests/test_e2e.py. Redundant while the tests
+    # path is allowlisted, but it names the exact value, so it survives a path change.
     'test-key-12345',
 ]
