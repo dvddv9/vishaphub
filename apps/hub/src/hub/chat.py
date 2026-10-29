@@ -72,7 +72,9 @@ def reply(message: str, messages: list, api_key: str, model: str = "") -> dict:
 
     payload = {
         "model": (model or os.getenv("VISHAP_HUB_LLM_MODEL") or DEFAULT_MODEL).strip(),
-        "max_tokens": 1200,
+        # Measured 2026-10-29: the worst full answer took 1298 output tokens, and thinking
+        # is about 60% of what is spent. 1200 cut one long answer in three; 2400 leaves room.
+        "max_tokens": 2400,
         "system": _prompt(),
         "messages": [*_history(messages), {"role": "user", "content": text[:4000]}],
     }
@@ -100,8 +102,11 @@ def reply(message: str, messages: list, api_key: str, model: str = "") -> dict:
     parts = [b.get("text", "") for b in blocks if isinstance(b, dict) and b.get("type") == "text"]
     answer = "\n".join(part for part in parts if part).strip()
     if data.get("stop_reason") == "max_tokens":
-        # Half an answer is not an answer: say it was cut, instead of handing the client a
-        # sentence that stops in the middle and pretending it is complete.
+        # Cut by the limit. Text that came out is still worth showing, but it is marked
+        # "truncated" so the client cannot mistake it for a whole answer. No text at all
+        # (the budget went to thinking) is not an answer and stays a failure.
+        if answer:
+            return {"ok": True, "truncated": True, "text": answer, "error": ""}
         return {"ok": False, "text": "", "error": "answer truncated by the token limit"}
     if not answer:
         return {"ok": False, "text": "", "error": "the model returned no text"}

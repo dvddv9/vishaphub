@@ -69,9 +69,19 @@ def test_propose_reports_the_truncation_to_its_caller(monkeypatch):
 
 # chat -------------------------------------------------------------------------
 
-def test_a_chat_answer_cut_by_the_limit_is_not_ok(monkeypatch):
+def test_a_chat_answer_cut_by_the_limit_keeps_its_text_and_says_truncated(monkeypatch):
     monkeypatch.setattr(chat.urllib.request, "urlopen",
                         lambda *a, **k: FakeResponse(api("max_tokens", "Half a sentence that")))
+    result = chat.reply("hello", [], "k")
+    assert result["ok"] is True
+    assert result["truncated"] is True
+    assert result["text"] == "Half a sentence that"
+    assert result["error"] == ""
+
+
+def test_a_chat_answer_cut_before_any_text_is_not_ok(monkeypatch):
+    monkeypatch.setattr(chat.urllib.request, "urlopen",
+                        lambda *a, **k: FakeResponse(api("max_tokens", None)))
     result = chat.reply("hello", [], "k")
     assert result["ok"] is False
     assert result["text"] == ""

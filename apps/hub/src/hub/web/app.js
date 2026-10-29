@@ -25,7 +25,8 @@ const I18N = {
     micOff: "this browser has no speech input; Chrome and Edge do",
     micNo: "microphone refused or unavailable",
     savedKey: "key saved in this browser", clearedKey: "key cleared",
-    streamLost: "the stream ended without a verdict"
+    streamLost: "the stream ended without a verdict",
+    truncated: "…the answer was cut by the token limit; ask to continue if it matters"
   },
   ru: {
     title: "Принять запрос.<br><em>Доказать</em> результат.",
@@ -51,7 +52,8 @@ const I18N = {
     micOff: "в этом браузере нет распознавания речи; есть в Chrome и Edge",
     micNo: "микрофон недоступен или отклонён",
     savedKey: "ключ сохранён в этом браузере", clearedKey: "ключ стёрт",
-    streamLost: "поток закончился без вердикта"
+    streamLost: "поток закончился без вердикта",
+    truncated: "…ответ обрезан лимитом токенов; если важно — попроси продолжить"
   }
 };
 let lang = localStorage.getItem("vishap_lang")
@@ -127,7 +129,9 @@ async function ask(message){
     const data = await res.json();
     thinking.remove();
     if (!data.ok){ bubble("sys", data.error || "failed"); return; }
-    bubble("assistant", data.text);
+    // A truncated answer is shown, but never as a whole one: the mark is the difference
+    // between «it stopped there» and «it said everything».
+    bubble("assistant", data.truncated ? `${data.text}\n\n${t("truncated")}` : data.text);
     history.push({role:"assistant", content:data.text});
     if (voiceOn.v) sayText(data.text);
   } catch (e) { thinking.remove(); bubble("sys", e.message); }
