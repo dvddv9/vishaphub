@@ -8,7 +8,7 @@
 #   * the row-level-security tests in apps/analyzer skip themselves unless the database
 #     role is not a superuser and the migrations are applied; here they stay skipped;
 #   * the sandbox tests that need bubblewrap are skipped (not installed on the runner);
-#   * ruff runs for the generator only; core, validator and hub do not pass it yet
+#   * ruff does not run on the analyzer yet: part of its findings (tests/bench/blind) are inputs, not code
 #   * the git history is not scanned for secrets: the secrets job runs gitleaks with --no-git,
 #     on the checked-out files only
 name: ci
@@ -38,6 +38,10 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pip install pytest -e ./packages/core
+      - run: pip install ruff==0.17.3
+      # lint first: it fails in a second
+      - run: ruff check
+        working-directory: packages/core
       - run: python -m pytest -q
         working-directory: packages/core
 
@@ -50,6 +54,10 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pip install pytest -e ./packages/core -e ./apps/validator
+      - run: pip install ruff==0.17.3
+      # examples/bad is excluded in apps/validator/pyproject.toml, so a plain ruff check is enough
+      - run: ruff check
+        working-directory: apps/validator
       # tests/ only: examples/bad/ holds deliberately broken code that pytest would collect and trip on
       - run: python -m pytest -q tests
         working-directory: apps/validator
@@ -73,6 +81,9 @@ jobs:
           pip install -e ./apps/analyzer --no-deps
           pip install -e ./apps/hub
           pip install edge-tts pytest
+      - run: pip install ruff==0.17.3
+      - run: ruff check
+        working-directory: apps/hub
       - run: python -m pytest -q
         working-directory: apps/hub
 

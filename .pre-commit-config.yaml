@@ -4,12 +4,14 @@
 # Install once per clone:  pip install pre-commit && pre-commit install
 # Run by hand:             pre-commit run --all-files
 #
-# Narrow on purpose. ruff runs only where it passes today (apps/generator): core,
-# validator, hub and analyzer have findings that need their own autofix commit.
-# gitleaks is not here yet: its environment does not install on this machine.
+# ruff covers the whole monorepo except the analyzer.
+# gitleaks is not a hook here: its first install downloads a Go toolchain (about 25 minutes
+# on a slow link) and `gitleaks protect --staged` looks at staged changes only. The CI job
+# `secrets` scans the whole tree instead.
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.17.3
     hooks:
       - id: ruff-check
-        files: ^apps/generator/
+        # analyzer ждёт отдельной задачи: часть замечаний в tests/bench/blind — это входные данные, а не код
+        exclude: ^apps/analyzer/
