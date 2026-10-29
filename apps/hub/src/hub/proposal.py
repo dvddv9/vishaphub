@@ -107,6 +107,11 @@ def _call(key: str, model: str, material: str, spec: str, question: str) -> dict
     parts = [b.get("text", "") for b in (data.get("content") or [])
              if isinstance(b, dict) and b.get("type") == "text"]
     text = "\n".join(parts).strip()
+    if data.get("stop_reason") == "max_tokens":
+        # A truncated answer is not a model that refused to answer in JSON: the JSON was
+        # cut mid-way. Naming the real cause keeps the reader from fixing the wrong thing,
+        # and with thinking on by default the whole budget can go before any text appears.
+        return {"ok": False, "error": "answer truncated by the token limit", "text": text[:600]}
     parsed = _extract_json(text)
     if parsed is None:
         return {"ok": False, "error": "the model did not return JSON", "text": text[:600]}

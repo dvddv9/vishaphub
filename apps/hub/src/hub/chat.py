@@ -25,11 +25,12 @@ MAX_TURNS = 12
 PROMPT_PATH = os.path.join(os.path.dirname(__file__), "prompt", "vishap.md")
 
 FALLBACK = (
-    "I am Vishap. I carry a request between three services: the generator writes code "
-    "from a spec, the validator checks it against that spec, the analyser checks whether "
-    "it is dangerous. I can route the request and explain the result, but the verdict is "
-    "theirs, not mine. Without a model key I can only tell you this and point at "
-    "console.anthropic.com for a key."
+    "I am Vishap. One process does three jobs on the same material: the generator writes "
+    "code from a spec, the validator checks it against that spec, the analyser checks "
+    "whether it is dangerous — and I run them in order, returning the strictest verdict. "
+    "I can route the request and explain the result, but the verdict is theirs, not mine. "
+    "Without a model key I can only tell you this and point at console.anthropic.com for "
+    "a key."
 )
 
 
@@ -98,6 +99,10 @@ def reply(message: str, messages: list, api_key: str, model: str = "") -> dict:
     blocks = data.get("content") or []
     parts = [b.get("text", "") for b in blocks if isinstance(b, dict) and b.get("type") == "text"]
     answer = "\n".join(part for part in parts if part).strip()
+    if data.get("stop_reason") == "max_tokens":
+        # Half an answer is not an answer: say it was cut, instead of handing the client a
+        # sentence that stops in the middle and pretending it is complete.
+        return {"ok": False, "text": "", "error": "answer truncated by the token limit"}
     if not answer:
         return {"ok": False, "text": "", "error": "the model returned no text"}
     return {"ok": True, "model": payload["model"], "text": answer}
