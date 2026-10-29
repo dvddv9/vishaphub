@@ -58,6 +58,7 @@ def run(root: str, spec: Spec) -> CheckResult:
             capture_output=True,
             text=True,
             timeout=TIMEOUT_SECONDS,
+            check=False,
         )
     except subprocess.TimeoutExpired:
         return CheckResult(

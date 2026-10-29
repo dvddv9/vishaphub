@@ -5,7 +5,6 @@ from hub.envelope import Envelope, Kind
 from hub.pipeline import run_plan
 from hub.router import CANONICAL_ORDER, MAX_ITERATIONS, RouteError, Stage, plan_for
 
-
 # envelope -------------------------------------------------------------------
 
 def test_envelope_rejects_unknown_participants():

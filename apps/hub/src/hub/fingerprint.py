@@ -29,7 +29,7 @@ def _version(*modules: str) -> str:
         for name in (module, f"{module}.version"):
             try:
                 value = getattr(import_module(name), "__version__", "")
-            except Exception:  # noqa: BLE001 - an absent package is a fact, not a failure
+            except Exception:  # noqa: BLE001, S112 - an absent package is a fact, not a failure
                 continue
             if value:
                 return str(value)

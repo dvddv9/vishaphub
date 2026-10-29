@@ -31,7 +31,8 @@ def fake(**over):
 
 class RunCase(unittest.TestCase):
     def setUp(self):
-        from hub import limits, server as server_module
+        from hub import limits
+        from hub import server as server_module
         self._saved_limits = dict(server_module.LIMITERS)
         for kind in server_module.LIMITERS:
             server_module.LIMITERS[kind] = limits.RateLimiter(0)
@@ -73,11 +74,13 @@ class WithoutKeyTests(RunCase):
 class ContractTests(RunCase):
     def test_the_page_gets_every_key_it_renders(self):
         from unittest import mock
-        with mock.patch.object(proposal, "propose", lambda **kw: fake(
-                patch={"app.py": "print(1)\n"}, proof=["python app.py"], summary="fine")):
-            with mock.patch.object(local, "validate_code", lambda files, spec: {
-                    "ok": True, "report": {"verdict": "PASS", "finding_count": 0, "checks": []}}):
-                status, out = self.call("/run", {"spec": "name: demo\n", "api_key": "k"})
+        with (
+            mock.patch.object(proposal, "propose", lambda **kw: fake(
+                patch={"app.py": "print(1)\n"}, proof=["python app.py"], summary="fine")),
+            mock.patch.object(local, "validate_code", lambda files, spec: {
+                "ok": True, "report": {"verdict": "PASS", "finding_count": 0, "checks": []}}),
+        ):
+            status, out = self.call("/run", {"spec": "name: demo\n", "api_key": "k"})
 
         assert status == 200
         for key in ("ok", "verdict", "summary", "findings", "patch", "questions", "proof",

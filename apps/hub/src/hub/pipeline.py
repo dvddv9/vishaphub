@@ -36,7 +36,7 @@ from dataclasses import dataclass, field
 from . import fingerprint, local, proposal
 from .envelope import Envelope, Kind
 from .router import Plan, Stage
-from .verdicts import BLOCKING_VERDICTS, SEVERITY_ORDER, normalise, rank, strictest
+from .verdicts import BLOCKING_VERDICTS, normalise, rank, strictest
 
 log = logging.getLogger(__name__)
 
@@ -167,7 +167,7 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
             return
         try:
             on_step(stage, payload)
-        except Exception:  # noqa: BLE001 - a broken listener must not break the run
+        except Exception:  # a broken listener must not break the run
             log.warning("on_step listener failed", exc_info=True)
 
     envelope = Envelope.build("hub", "analyser", Kind.QUESTION, {"filename": filename})

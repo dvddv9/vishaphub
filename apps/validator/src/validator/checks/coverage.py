@@ -23,9 +23,12 @@ def _public_defs(path: str) -> list[str]:
         return []
     names: list[str] = []
     for node in tree.body:
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-            if not node.name.startswith("_") and node.name not in SKIP_NAMES:
-                names.append(node.name)
+        if (
+            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
+            and not node.name.startswith("_")
+            and node.name not in SKIP_NAMES
+        ):
+            names.append(node.name)
     return names
 
 
@@ -53,10 +56,7 @@ def run(root: str, spec: Spec) -> CheckResult:
     targets: list[tuple[str, str]] = []
     if os.path.isdir(module_dir):
         for name in sorted(os.listdir(module_dir)):
-            if name.endswith(".py") and name != "__init__.py":
-                for public in _public_defs(os.path.join(module_dir, name)):
-                    targets.append((name, public))
-            elif name == "__init__.py":
+            if name.endswith(".py"):
                 for public in _public_defs(os.path.join(module_dir, name)):
                     targets.append((name, public))
     elif os.path.isfile(module_dir):

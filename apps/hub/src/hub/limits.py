@@ -78,7 +78,7 @@ class TTSCache:
 
     @staticmethod
     def key(text: str, voice: str) -> str:
-        return hashlib.sha256(f"{voice}\x00{text}".encode("utf-8")).hexdigest()
+        return hashlib.sha256(f"{voice}\x00{text}".encode()).hexdigest()
 
     def get(self, key: str) -> bytes | None:
         with self._lock:

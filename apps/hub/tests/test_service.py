@@ -194,7 +194,7 @@ class PagesTests(ServerCase):
             assert body
 
     def test_the_csp_no_longer_allows_inline_code(self):
-        status, headers, _ = self.get_with_headers("/")
+        _status, headers, _ = self.get_with_headers("/")
         csp = headers.get("content-security-policy", "")
         assert "script-src 'self'" in csp
         assert "style-src 'self'" in csp
@@ -234,16 +234,16 @@ class PagesTests(ServerCase):
 
 class FingerprintTests(unittest.TestCase):
     def test_the_same_run_has_the_same_digest(self):
-        args = dict(material="x = 1", spec="name: demo\n", files=GOOD,
-                    plan={"stages": ["analyser"], "iterations": 1}, verdict="SAFE",
-                    steps=[{"stage": "analyser", "verdict": "SAFE", "ok": True}])
+        args = {"material": "x = 1", "spec": "name: demo\n", "files": GOOD,
+                "plan": {"stages": ["analyser"], "iterations": 1}, "verdict": "SAFE",
+                "steps": [{"stage": "analyser", "verdict": "SAFE", "ok": True}]}
         first = fingerprint.of(**args)
         second = fingerprint.of(**args)
         assert first["digest"] == second["digest"]
         assert first["id"] == first["digest"][:16]
 
     def test_a_different_verdict_is_a_different_run(self):
-        base = dict(material="x = 1", spec="", files={}, plan={"stages": []}, steps=[])
+        base = {"material": "x = 1", "spec": "", "files": {}, "plan": {"stages": []}, "steps": []}
         assert fingerprint.of(verdict="SAFE", **base)["digest"] != \
             fingerprint.of(verdict="FAIL", **base)["digest"]
 

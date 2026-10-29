@@ -53,7 +53,7 @@ def _extract_json(text: str) -> dict | None:
     """Pull the first JSON object out of a reply, tolerating fences and prose."""
     if not text:
         return None
-    fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.S)
+    fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
     candidate = fenced.group(1) if fenced else text
     start = candidate.find("{")
     end = candidate.rfind("}")

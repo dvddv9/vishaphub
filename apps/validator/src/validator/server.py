@@ -44,7 +44,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def do_GET(self) -> None:  # noqa: N802 - stdlib naming
+    def do_GET(self) -> None:  # stdlib naming
         path = self.path.split("?", 1)[0]
         if path == "/health":
             self._send(200, {"ok": True, "version": __version__})
@@ -57,7 +57,7 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self._send(404, {"error": "not found"})
 
-    def do_POST(self) -> None:  # noqa: N802 - stdlib naming
+    def do_POST(self) -> None:  # stdlib naming
         if self.path.split("?", 1)[0] != "/check":
             self._send(404, {"error": "not found"})
             return

@@ -1,4 +1,6 @@
 """Key policy: the order of checks is the contract."""
+import dataclasses
+
 import pytest
 
 from core.auth import Decision, KeyPolicy, check_key
@@ -48,5 +50,5 @@ def test_whitespace_is_trimmed_before_comparison(provided):
 
 def test_policy_is_frozen():
     policy = KeyPolicy(expected_key="secret")
-    with pytest.raises(Exception):
+    with pytest.raises(dataclasses.FrozenInstanceError):
         policy.expected_key = "other"  # type: ignore[misc]

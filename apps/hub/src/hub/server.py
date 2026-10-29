@@ -20,7 +20,9 @@ from .chat import reply
 from .pipeline import run_plan
 from .router import RouteError, plan_for
 from .store import RunStore
-from .tts import VOICE, available as tts_available, speak as tts_speak
+from .tts import VOICE
+from .tts import available as tts_available
+from .tts import speak as tts_speak
 from .version import __version__
 
 MAX_BODY = 4_000_000
@@ -168,7 +170,7 @@ class Handler(BaseHTTPRequestHandler):
         self._send(200, body, kind, extra=extra)
         return True
 
-    def do_GET(self) -> None:  # noqa: N802 - stdlib naming
+    def do_GET(self) -> None:  # stdlib naming
         path = self.path.split("?", 1)[0]
 
         # --- machine doors: JSON only, never a page
@@ -278,7 +280,7 @@ class Handler(BaseHTTPRequestHandler):
         except _ClientGone:
             return
 
-    def do_POST(self) -> None:  # noqa: N802 - stdlib naming
+    def do_POST(self) -> None:  # stdlib naming
         path = self.path.split("?", 1)[0]
 
         if path == "/chat":

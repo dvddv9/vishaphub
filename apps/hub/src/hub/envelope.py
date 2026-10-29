@@ -33,7 +33,7 @@ class Envelope:
     trace: list[str] = field(default_factory=list)
     created_at: float = field(default_factory=time.time)
 
-    def hop(self, note: str) -> "Envelope":
+    def hop(self, note: str) -> Envelope:
         """Return a copy with one more trace line — never mutate the original."""
         return Envelope(
             sender=self.sender,
@@ -57,7 +57,7 @@ class Envelope:
         }
 
     @staticmethod
-    def build(sender: str, recipient: str, kind: Kind, payload: dict, session_id: str = "") -> "Envelope":
+    def build(sender: str, recipient: str, kind: Kind, payload: dict, session_id: str = "") -> Envelope:
         if sender not in PARTICIPANTS or recipient not in PARTICIPANTS:
             raise ValueError(f"unknown participant: {sender!r} -> {recipient!r}")
         env = Envelope(sender=sender, recipient=recipient, kind=kind, payload=payload)

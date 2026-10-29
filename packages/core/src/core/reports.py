@@ -50,7 +50,7 @@ class Report:
     partial: bool = False
     stages: list[str] = field(default_factory=list)
 
-    def merge(self, other: "Report") -> "Report":
+    def merge(self, other: Report) -> Report:
         """Combine two reports without losing either side's evidence or conditions."""
         return Report(
             title=self.title or other.title,

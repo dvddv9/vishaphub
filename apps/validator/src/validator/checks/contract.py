@@ -47,6 +47,7 @@ def run(root: str, spec: Spec) -> CheckResult:
             text=True,
             timeout=60,
             cwd=root,
+            check=False,
         )
     except subprocess.TimeoutExpired:
         return CheckResult(

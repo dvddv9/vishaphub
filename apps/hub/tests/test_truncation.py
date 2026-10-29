@@ -7,8 +7,6 @@ sent the reader to fix the wrong thing.
 """
 import json
 
-import pytest
-
 from hub import chat, proposal
 
 

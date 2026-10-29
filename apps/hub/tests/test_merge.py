@@ -4,7 +4,6 @@ These tests pin the merge of the two former mechanisms — the routed pipeline a
 single-pass run — into `run_plan`. The model is always faked: nothing here spends a
 token or needs a key.
 """
-import pytest
 
 from hub import local, proposal
 from hub.pipeline import run_plan
