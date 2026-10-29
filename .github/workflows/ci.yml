@@ -93,6 +93,9 @@ jobs:
           --health-retries 10
     env:
       TEST_POSTGRES_URL: postgresql+asyncpg://vishap:vishap_dev@localhost:5432/vishap
+      # The app is fail-closed without an API key; the tests run without one on purpose.
+      # Same switch the local .env uses, and it only skips the key requirement, not a check.
+      VISHAP_ALLOW_NO_KEY: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

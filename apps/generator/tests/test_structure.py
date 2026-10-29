@@ -52,11 +52,13 @@ class LayoutTests(unittest.TestCase):
         self.assertTrue(WEB_INDEX.is_file())
 
     def test_project_files_exist(self):
+        # .pre-commit-config.yaml is not here on purpose: the monorepo keeps one config at
+        # the repository root, and pre-commit reads only that one.
         for name in ("LICENSE", "README.md", "AGENTS.md", "SECURITY.md", "CHANGELOG.md",
                      "CONTRIBUTING.md", "Dockerfile", "docker-compose.yml", ".env.example",
                      ".dockerignore", ".gitignore", "ruff.toml", "requirements.txt",
                      "pyproject.toml", "run_tests.py", "run_local.ps1", "start_generator.bat",
-                     ".pre-commit-config.yaml", ".github/workflows/ci.yml",
+                     ".github/workflows/ci.yml",
                      ".github/PULL_REQUEST_TEMPLATE.md", "deploy/README.md",
                      "docs/ARCHITECTURE.md", "docs/FAQ.md", "docs/LIMITATIONS.md",
                      "docs/ROADMAP.md", "docs/VISHAP.md", "docs/HISTORY.md",
