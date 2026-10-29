@@ -1,15 +1,65 @@
 # VishapHub
 
-The layer that carries a request between the client and three services:
+The layer that carries a request between the client and three jobs:
 **generator** (code from a spec), **validator** (does the code match the promise),
 **analyser** (is it safe).
 
 The hub does not decide the verdict. It routes, keeps the session, and speaks to the
-client — the verdict belongs to the pipeline that produced it.
+client — the verdict belongs to the rules that produced it.
 
-## Two pieces so far
+## One path
 
-**`envelope.py`** — one message shape for every hop:
+There used to be two mechanisms: a routed pipeline of stages, and a single-pass run that
+asked the model once and glued the answers together. They ranked verdicts with two
+different tables and could disagree about the same material. Now there is one:
+
+```
+POST /run  →  router (what was asked)  →  run_plan
+                                          ├── generator  : the model proposes — a patch, findings, questions, proof
+                                          ├── validator  : six stages on the patch that was proposed
+                                          └── analyser   : patterns on the material AND on the proposed code
+                                         → verdicts.py: the strictest verdict wins
+```
+
+Three rules hold the whole thing together:
+
+- **the model proposes, the rules decide.** The model's own verdict is a recommendation:
+  merged by rank, it can make an answer stricter, never softer. «Looks safe» cannot lift
+  a failing test; a model that smells danger can raise the alarm.
+- **generated code is checked like any other code.** The patch is written to a temp
+  directory and given to the validator and the analyser — the hub does not take the
+  author's word for its own output.
+- **nothing ran is not a pass.** An empty plan, a missing stage verdict, a crashed stage,
+  a missing key — all end in `ERROR`, and `ok` is true only when the verdict is safe.
+
+## The planner
+
+`router.py` is deterministic and has no model inside:
+
+| Intent | Stages |
+|---|---|
+| `ask` | generator (the model answers; nothing is checked) |
+| `analyse` | analyser |
+| `generate` | generator |
+| `validate` | validator |
+| `generate+validate` | generator → validator |
+| `validate+analyse` | validator → analyser |
+| `generate+validate+analyse` | generator → validator → analyser |
+
+`POST /run` infers the intent when the client does not name one: spec + material means
+the full route, spec alone means generate and validate, material alone means analyse, a
+question alone means ask.
+
+Rules that matter:
+
+- **order is fixed**: generation, validation, security — dangerous code does not travel further;
+- **iterations** capped at 3, and only for multi-stage routes; stop early when the verdict stops improving;
+- **the generator runs once** — later passes re-check the same patch instead of paying the model again;
+- **partial runs are marked**: a single stage returns `partial: true` with a note, so the client never reads «done» where «not verified» is true.
+
+## The envelope
+
+`envelope.py` — one message shape for every hop:
 
 | Field | Why |
 |---|---|
@@ -19,41 +69,31 @@ client — the verdict belongs to the pipeline that produced it.
 | `payload` | the report or the code |
 | `trace` | append-only: `hop()` returns a copy, the past is never rewritten |
 
-**`router.py`** — deterministic planning, no model inside:
-
-| Intent | Stages |
-|---|---|
-| `analyse` | analyser |
-| `generate` | generator |
-| `validate` | validator |
-| `generate+validate` | generator → validator |
-| `validate+analyse` | validator → analyser |
-| `generate+validate+analyse` | generator → validator → analyser |
-
-Rules that matter:
-
-- **order is fixed**: generation, validation, security — dangerous code does not travel further;
-- **iterations** capped at 3, and only for multi-stage routes; stop early when the verdict stops improving;
-- **partial runs are marked**: a single stage returns `partial: true` with a note, so the client never reads «done» where «not verified» is true.
-
 ## The assistant
 
-`prompt/vishap.md` — the business version of the persona: tone and discipline without
-anything personal. It never gives a verdict, never re-audits security, never asks more
-than three questions, and tells the client the truth about a missing key.
+`chat.py` and `prompt/vishap.md` — the business version of the persona: tone and
+discipline without anything personal. It never gives a verdict, never re-audits
+security, never asks more than three questions, and tells the client the truth about a
+missing key. Without a key it still answers, from a local script: a page that says
+nothing is worse than a page that says «bring a key».
 
-## Status
-
-`0.1.0` — the envelope, the router and the transport are in place:
+## Modules
 
 | Piece | What it does |
 |---|---|
-| `server.py` | `GET /` the page, `GET /health`, `POST /chat` the assistant, `POST /run` the pipeline |
-| `chat.py` | Vishap talking to the client; the model is the caller's, the hub holds no key, and without one it answers from a local script |
-| `pipeline.py` | executes the plan, keeps the session, stops when the verdict stops improving; fails closed — nothing ran is not a pass |
-| `local.py` | in-process services: the validator's stages and the analyser's rules are functions, not URLs |
-| `services.py` | adapters for the remote services; a call returns `{"ok": false, ...}`, it never raises |
-| `tts.py` | the voice of the greeting (`en-US-ChristopherNeural`), synthesised where the voice lives |
+| `server.py` | `GET /` the page, `GET /health`, `POST /chat`, `POST /run`, `POST /speak` |
+| `router.py` | intent → ordered plan; deterministic, no model |
+| `pipeline.py` | executes the plan; the only path to a verdict |
+| `proposal.py` | the only place that talks to a model; returns a proposal, never a verdict |
+| `verdicts.py` | one ranking for the whole hub: SAFE/PASS, *_REVIEW, FAIL, EMERGENCY, ERROR |
+| `local.py` | the validator's stages and the analyser's rules as functions, not URLs |
+| `envelope.py` | the message shape and the trace |
+| `chat.py` | the assistant that speaks to the client |
+| `tts.py` | the greeting's voice (`en-US-ChristopherNeural`), synthesised where the voice lives |
+| `cli.py` | `vishap-hub run --intent …` — the same `run_plan` as the HTTP face |
 
-Tests: 44, run with `PYTHONPATH=src python -m pytest -q`. Not built yet: the microphone
-on the page — the voice speaks, the page does not listen.
+## Status
+
+`0.1.0` — one path, 62 tests (`PYTHONPATH=src python -m pytest -q`).
+
+Not built yet: the microphone on the page — the voice speaks, the page does not listen.

@@ -20,6 +20,7 @@ class Stage(str, Enum):
 
 
 ROUTES: dict[str, tuple[Stage, ...]] = {
+    "ask": (Stage.GENERATOR,),
     "analyse": (Stage.ANALYSER,),
     "generate": (Stage.GENERATOR,),
     "validate": (Stage.VALIDATOR,),
@@ -69,12 +70,9 @@ def plan_for(intent: str, iterations: int = 1) -> Plan:
     stages = tuple(s for s in CANONICAL_ORDER if s in requested)
 
     if len(stages) == 1:
-        return Plan(
-            stages=stages,
-            iterations=1,
-            partial=True,
-            note=f"only {stages[0].value} — the result is not verified by the other stages",
-        )
+        note = ("only the model answered; no rule checked the answer" if key == "ask"
+                else f"only {stages[0].value} — the result is not verified by the other stages")
+        return Plan(stages=stages, iterations=1, partial=True, note=note)
 
     iterations = max(1, min(int(iterations), MAX_ITERATIONS))
     note = "" if iterations == 1 else f"{iterations} passes; stop early if the verdict stops improving"

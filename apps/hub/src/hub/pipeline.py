@@ -1,9 +1,10 @@
 """Pipeline: execute a plan, keep the session, stop when nothing improves.
 
-Everything runs here, in this process. One URL means one deployment: the analyser's
-rules and the validator's six stages are plain functions, so calling them over the
-network would add a cold start and a second place where a key can be wrong, and buy
-nothing.
+One path, one verdict. The model proposes (``proposal.py``), the rules decide
+(``local.py``: the validator's six stages, the analyser's patterns), and this module
+merges what came back. Everything runs in this process: one URL means one deployment,
+and calling our own services over the network would add a cold start and a second
+place where a key can be wrong.
 
 The rules that make the loop honest:
 
@@ -15,11 +16,16 @@ The rules that make the loop honest:
 * **a FAIL verdict does not stop the run.** Failing tests and a security finding are
   different questions, and dangerous code must still reach the analyser. The verdict is
   the strictest seen, never the last one.
+* **the model may only make it stricter.** Its own verdict is a recommendation: merged
+  with the rules by rank, so «looks safe» can never soften a failing test, while a
+  model that smells danger can raise it.
+* **generated code is checked like any other code.** Whatever the model proposes as a
+  patch goes through the validator and the analyser — the hub does not take the
+  author's word for its own output.
 * **iterations stop early** when no stage changes its answer: the same words twice mean
-  the next pass spends the same tokens for the same result.
-* **verdicts are normalised.** Lower case, unknown words and an empty string are not
-  silently ranked as safe — an unknown verdict is an ERROR, because a gate that cannot
-  read its own answer must not open.
+  the next pass spends the same tokens for the same result. The generator runs once;
+  later passes re-check the same patch instead of paying the model again.
+* **verdicts are normalised** by ``verdicts.py`` — one ranking for the whole hub.
 * every hop is appended to the trace, so the client can replay the run.
 """
 from __future__ import annotations
@@ -27,26 +33,12 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 
-from . import local
+from . import local, proposal
 from .envelope import Envelope, Kind
 from .router import Plan, Stage
+from .verdicts import BLOCKING_VERDICTS, SEVERITY_ORDER, normalise, rank, strictest
 
 log = logging.getLogger(__name__)
-
-#: Rank decides which verdict survives a merge. Higher is stricter.
-#: EMERGENCY sits above FAIL: a security signal must not be hidden by a failing test.
-SEVERITY_ORDER = {
-    "SAFE": 0,
-    "PASS": 0,
-    "NEEDS_REVIEW": 1,
-    "REQUIRES_REVIEW": 1,
-    "FAIL": 3,
-    "EMERGENCY": 4,
-    "ERROR": 5,
-}
-
-#: A run that ends in one of these did not pass its own gates.
-BLOCKING_VERDICTS = {"FAIL", "ERROR", "EMERGENCY"}
 
 #: Bounds. The router also caps iterations; this is the last line before a run starts.
 MAX_MATERIAL = 200_000
@@ -55,21 +47,6 @@ MAX_ITERATIONS = 3
 
 #: Text shown to the client when an internal call fails. The real message goes to the log.
 INTERNAL_ERROR = "an internal check failed; the run is not a pass"
-
-
-def normalise(verdict: object) -> str:
-    """Upper-case a verdict and reject anything the ranking does not know."""
-    text = str(verdict or "").strip().upper()
-    if text not in SEVERITY_ORDER:
-        raise ValueError(f"unknown verdict: {verdict!r}")
-    return text
-
-
-def _rank(verdict: str) -> int:
-    try:
-        return SEVERITY_ORDER[normalise(verdict)]
-    except ValueError:
-        return SEVERITY_ORDER["ERROR"]
 
 
 @dataclass
@@ -91,66 +68,155 @@ class RunResult:
     session_id: str = ""
     trace: list[str] = field(default_factory=list)
     reason: str = ""
+    plan: dict = field(default_factory=dict)
+    checks: dict = field(default_factory=dict)
+    summary: str = ""
+    findings: list = field(default_factory=list)
+    patch: dict = field(default_factory=dict)
+    questions: list = field(default_factory=list)
+    proof: list = field(default_factory=list)
+    model: str = ""
+    model_verdict: str = ""
+    rules_verdict: str = ""
+    mode: str = "plan"
 
     def as_dict(self) -> dict:
         return {
             "ok": self.ok,
+            "mode": self.mode,
             "verdict": self.verdict,
             "reason": self.reason,
             "session_id": self.session_id,
+            "plan": self.plan,
             "steps": [s.as_dict() for s in self.steps],
+            "checks": self.checks,
+            "summary": self.summary,
+            "findings": self.findings,
+            "patch": self.patch,
+            "questions": self.questions,
+            "proof": self.proof,
+            "model": self.model,
+            "model_verdict": self.model_verdict,
+            "rules_verdict": self.rules_verdict,
             "trace": self.trace,
         }
 
 
-def _error(steps: list[Step], session_id: str, trace: list[str], reason: str) -> RunResult:
-    return RunResult(False, "ERROR", steps, session_id, trace, reason)
+def _error(steps: list[Step], session_id: str, trace: list[str], reason: str,
+           plan: dict | None = None) -> RunResult:
+    return RunResult(False, "ERROR", steps, session_id, trace, reason, plan or {})
+
+
+def _spec_for_validator(spec: object, files: dict) -> dict:
+    """The validator wants a dict; a spec written for the generator is a YAML string.
+
+    Passing a string through would raise inside the validator and turn an honest
+    «cannot compare» into a crash, so a spec that is not already a dict becomes the
+    one thing we do know: the file list of the deliverable.
+    """
+    if isinstance(spec, dict) and spec:
+        return spec
+    return {"files": list(files)}
+
+
+def _analysis_pieces(material: str, patch: dict) -> list[tuple[str, str]]:
+    """Everything that must pass the analyser: the material and the proposed code."""
+    pieces: list[tuple[str, str]] = []
+    if material.strip():
+        pieces.append(("material", material))
+    for name, text in sorted(patch.items()):
+        if text.strip():
+            pieces.append((f"patch:{name}", text))
+    return pieces
 
 
 def run_plan(plan: Plan, material: str = "", files: dict | None = None,
-             spec: dict | None = None, filename: str = "input.txt") -> RunResult:
+             spec: object = None, filename: str = "input.txt",
+             question: str = "", api_key: str = "", model: str = "") -> RunResult:
     """Execute the plan and return one honest verdict."""
     envelope = Envelope.build("hub", "analyser", Kind.QUESTION, {"filename": filename})
     steps: list[Step] = []
     trace = list(envelope.trace)
-    files = files or {}
-    spec = spec or {}
+    plan_dict = plan.as_dict() if hasattr(plan, "as_dict") else {}
+    files = dict(files or {})
+    question = str(question or "")
 
     # ---- gates: nothing to do is not a pass -------------------------------
     if not getattr(plan, "stages", None):
-        return _error(steps, envelope.session_id, trace, "the plan has no stages; nothing would be checked")
+        return _error(steps, envelope.session_id, trace, "the plan has no stages; nothing would be checked", plan_dict)
     if int(getattr(plan, "iterations", 0) or 0) <= 0:
-        return _error(steps, envelope.session_id, trace, "iterations must be at least 1")
+        return _error(steps, envelope.session_id, trace, "iterations must be at least 1", plan_dict)
     if int(plan.iterations) > MAX_ITERATIONS:
-        return _error(steps, envelope.session_id, trace, f"iterations above {MAX_ITERATIONS} are refused")
+        return _error(steps, envelope.session_id, trace, f"iterations above {MAX_ITERATIONS} are refused", plan_dict)
     if len(material) > MAX_MATERIAL:
-        return _error(steps, envelope.session_id, trace, f"material above {MAX_MATERIAL} characters is refused")
+        return _error(steps, envelope.session_id, trace,
+                      f"material above {MAX_MATERIAL} characters is refused", plan_dict)
     if len(files) > MAX_FILES:
-        return _error(steps, envelope.session_id, trace, f"more than {MAX_FILES} files is refused")
+        return _error(steps, envelope.session_id, trace, f"more than {MAX_FILES} files is refused", plan_dict)
 
-    strictest: str | None = None
+    strictest_verdict: str | None = None
+    model_verdict = ""
+    rules_verdict = ""
+    checks: dict = {"generator": None, "validator": None, "analyser": None}
+    answer: dict = {}
     previous: dict[str, str] = {}
+
+    def merge(verdict: str) -> None:
+        nonlocal strictest_verdict
+        strictest_verdict = verdict if strictest_verdict is None else strictest(strictest_verdict, verdict)
 
     for pass_no in range(1, int(plan.iterations) + 1):
         current: dict[str, str] = {}
 
         for stage in plan.stages:
             if stage is Stage.GENERATOR:
-                steps.append(Step("generator", False, detail="generation is not wired into this process"))
-                return _error(steps, envelope.session_id, trace,
-                              "generation is not available in this deployment")
+                if pass_no > 1:
+                    trace.append(f"pass {pass_no} generator -> reused the pass 1 proposal")
+                    if "generator" in current:
+                        merge(current["generator"])
+                    continue
+                if not (material.strip() or str(spec or "").strip() or question.strip()):
+                    steps.append(Step("generator", False, detail="no spec, no material, no question"))
+                    return _error(steps, envelope.session_id, trace,
+                                  "generation needs a spec, material or a question; nothing was sent", plan_dict)
+
+                result = proposal.propose(material=material, spec=str(spec or "") if not isinstance(spec, dict) else "",
+                                          question=question, api_key=api_key, model=model)
+                if not result.get("ok"):
+                    reason = result.get("error") or "the model did not answer"
+                    log.warning("generator failed: %s", reason)
+                    steps.append(Step("generator", False, detail=reason))
+                    return _error(steps, envelope.session_id, trace,
+                                  f"no proposal: {reason}", plan_dict)
+
+                answer = result
+                model_verdict = result["verdict"]
+                patch = result.get("patch") or {}
+                if patch and not files:
+                    files = dict(patch)
+                checks["generator"] = {
+                    "model": result.get("model", ""),
+                    "verdict": model_verdict,
+                    "files": len(patch),
+                    "summary_findings": len(result.get("findings") or []),
+                }
+                current["generator"] = model_verdict
+                steps.append(Step("generator", True, model_verdict,
+                                  detail=f"{len(patch)} file(s) proposed · model recommendation"))
+                trace.append(f"pass {pass_no} generator -> {model_verdict} ({len(patch)} file(s))")
+                continue
 
             if stage is Stage.VALIDATOR:
                 if not files:
                     steps.append(Step("validator", False, detail="no files supplied"))
                     return _error(steps, envelope.session_id, trace,
-                                  "validation needs files; nothing was sent")
-                result = local.validate_code(files, spec)
+                                  "validation needs files; nothing was sent", plan_dict)
+                result = local.validate_code(files, _spec_for_validator(spec, files))
                 if not result.get("ok"):
                     log.warning("validator failed: %s", result.get("error"))
                     steps.append(Step("validator", False, detail=INTERNAL_ERROR))
                     return _error(steps, envelope.session_id, trace,
-                                  "validator failed; the deliverable is unverified")
+                                  "validator failed; the deliverable is unverified", plan_dict)
                 report = result.get("report") or {}
                 try:
                     verdict = normalise(report.get("verdict"))
@@ -159,41 +225,49 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
                     steps.append(Step("validator", False, verdict="",
                                       detail="the report carried no usable verdict"))
                     return _error(steps, envelope.session_id, trace,
-                                  "validator returned no verdict; nothing was verified")
+                                  "validator returned no verdict; nothing was verified", plan_dict)
+                checks["validator"] = {"verdict": verdict, "checks": report.get("checks", [])}
                 current["validator"] = verdict
-                steps.append(Step("validator", verdict not in BLOCKING_VERDICTS,
-                                  verdict, detail=f"{report.get('finding_count', 0)} findings"))
+                steps.append(Step("validator", verdict not in BLOCKING_VERDICTS, verdict,
+                                  detail=f"{report.get('finding_count', 0)} findings"))
                 trace.append(f"pass {pass_no} validator -> {verdict}")
-                if strictest is None or _rank(verdict) > _rank(strictest):
-                    strictest = verdict
+                merge(verdict)
                 continue
 
             if stage is Stage.ANALYSER:
-                if not material.strip():
+                pieces = _analysis_pieces(material, files if checks["generator"] else {})
+                if not pieces:
                     steps.append(Step("analyser", False, detail="no material supplied"))
                     return _error(steps, envelope.session_id, trace,
-                                  "analysis needs material; nothing was sent")
-                result = local.analyse_static(material)
-                if not result.get("ok"):
-                    log.warning("analyser failed: %s", result.get("error"))
-                    steps.append(Step("analyser", False, detail=INTERNAL_ERROR))
-                    return _error(steps, envelope.session_id, trace,
-                                  "analyser failed; no security verdict available")
-                try:
-                    verdict = normalise(result.get("verdict"))
-                except ValueError:
-                    log.warning("analyser returned an unusable verdict: %r", result.get("verdict"))
-                    steps.append(Step("analyser", False, verdict="",
-                                      detail="the result carried no usable verdict"))
-                    return _error(steps, envelope.session_id, trace,
-                                  "analyser returned no verdict; no security answer available")
-                current["analyser"] = verdict
-                found = len(result.get("findings") or [])
-                steps.append(Step("analyser", True, verdict,
-                                  detail=f"{found} findings · rules only" if found else "rules only, nothing matched"))
-                trace.append(f"pass {pass_no} analyser -> {verdict}")
-                if strictest is None or _rank(verdict) > _rank(strictest):
-                    strictest = verdict
+                                  "analysis needs material; nothing was sent", plan_dict)
+
+                worst = "SAFE"
+                found: list[dict] = []
+                for source, text in pieces:
+                    result = local.analyse_static(text)
+                    if not result.get("ok"):
+                        log.warning("analyser failed on %s: %s", source, result.get("error"))
+                        steps.append(Step("analyser", False, detail=INTERNAL_ERROR))
+                        return _error(steps, envelope.session_id, trace,
+                                      "analyser failed; no security verdict available", plan_dict)
+                    try:
+                        piece_verdict = normalise(result.get("verdict"))
+                    except ValueError:
+                        log.warning("analyser returned an unusable verdict: %r", result.get("verdict"))
+                        steps.append(Step("analyser", False, verdict="",
+                                          detail="the result carried no usable verdict"))
+                        return _error(steps, envelope.session_id, trace,
+                                      "analyser returned no verdict; no security answer available", plan_dict)
+                    worst = strictest(worst, piece_verdict)
+                    for item in result.get("findings") or []:
+                        found.append({**item, "source": source})
+
+                checks["analyser"] = {"verdict": worst, "findings": found, "mode": "rules_only"}
+                current["analyser"] = worst
+                steps.append(Step("analyser", True, worst,
+                                  detail=f"{len(found)} findings · {len(pieces)} piece(s) · rules only"))
+                trace.append(f"pass {pass_no} analyser -> {worst} ({len(pieces)} piece(s))")
+                merge(worst)
                 continue
 
         if int(plan.iterations) > 1 and previous and current == previous:
@@ -202,15 +276,46 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
         previous = current
 
     # ---- nothing produced a verdict: this is a failure, not a pass --------
-    if strictest is None:
-        return _error(steps, envelope.session_id, trace,
-                      "no stage produced a verdict; an empty run is not a pass")
+    rules_parts = [check["verdict"] for check in (checks["validator"], checks["analyser"])
+                   if check and check.get("verdict")]
+    rules_verdict = strictest(*rules_parts) if rules_parts else ""
 
-    final = strictest
+    # The model is a recommendation, so it is merged last and only upwards: on a tie
+    # the rules keep their own word (PASS from the validator, not SAFE from a model),
+    # and a model that says «looks safe» cannot lift a FAIL.
+    if rules_verdict:
+        final = rules_verdict if not model_verdict or rank(model_verdict) <= rank(rules_verdict) else model_verdict
+    else:
+        final = model_verdict or strictest_verdict or ""
+
+    if not final:
+        return _error(steps, envelope.session_id, trace,
+                      "no stage produced a verdict; an empty run is not a pass", plan_dict)
+
     # `ok` answers «did the run survive its own gates», not «is the material clean»:
     # REQUIRES_REVIEW is a successful run that found something.
     ok = final not in BLOCKING_VERDICTS
-    reason = plan.note or ("strictest verdict across passes" if int(plan.iterations) > 1 else "")
+    reason = plan.note or ""
     if final == "EMERGENCY":
         reason = (reason + " · " if reason else "") + "an emergency-level security signal is present"
-    return RunResult(ok, final, steps, envelope.session_id, trace, reason)
+    if model_verdict and rules_verdict and rank(model_verdict) > rank(rules_verdict):
+        reason = (reason + " · " if reason else "") + "the model saw danger the rules did not"
+
+    return RunResult(
+        ok=ok,
+        verdict=final,
+        steps=steps,
+        session_id=envelope.session_id,
+        trace=trace,
+        reason=reason,
+        plan=plan_dict,
+        checks=checks,
+        summary=answer.get("summary", ""),
+        findings=[*(answer.get("findings") or []), *((checks["analyser"] or {}).get("findings") or [])],
+        patch=answer.get("patch") or {},
+        questions=answer.get("questions") or [],
+        proof=answer.get("proof") or [],
+        model=answer.get("model", ""),
+        model_verdict=model_verdict,
+        rules_verdict=rules_verdict,
+    )

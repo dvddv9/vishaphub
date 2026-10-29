@@ -69,10 +69,12 @@ SPEC = {"entry": "calc", "files": ["calc/__init__.py", "test_calc.py"],
         "exports": ["add"], "tests": ["test_calc.py"]}
 
 
-def test_pipeline_reports_generator_as_unavailable():
+def test_pipeline_generator_refuses_without_a_key(monkeypatch):
+    monkeypatch.delenv("VISHAP_HUB_LLM_KEY", raising=False)
     result = run_plan(plan_for("generate+validate"), material="x", files=GOOD, spec=SPEC)
     assert result.verdict == "ERROR"
-    assert "generation is not available" in result.reason
+    assert "no model key" in result.reason
+    assert result.steps[0].stage == "generator"
 
 
 def test_pipeline_needs_material_for_analysis():

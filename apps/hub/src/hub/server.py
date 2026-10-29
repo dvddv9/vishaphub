@@ -10,7 +10,6 @@ import json
 import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import one
 from .chat import reply
 from .pipeline import run_plan
 from .tts import available as tts_available, speak as tts_speak
@@ -38,15 +37,23 @@ SECURITY_HEADERS = {
 }
 
 
-def _plan_for(body: dict):
-    intent = str(body.get("intent") or "").strip()
-    if not intent:
-        raise ValueError("intent is required: analyse | generate | validate | generate+validate+analyse")
-    try:
-        iterations = int(body.get("iterations") or 1)
-    except (TypeError, ValueError):
-        raise ValueError("iterations must be an integer")
-    return plan_for(intent, iterations)
+def _intent_for(body: dict, material: str, spec: str) -> str:
+    """What the client asked for, inferred from what it sent when it did not say.
+
+    An explicit ``intent`` always wins. Otherwise the request is read literally: a spec
+    and material means build it and check it, a spec alone means build and validate, a
+    material alone means look at it, and a bare question is for the model to answer.
+    """
+    explicit = str(body.get("intent") or "").strip()
+    if explicit:
+        return explicit
+    if material.strip() and spec.strip():
+        return "generate+validate+analyse"
+    if spec.strip():
+        return "generate+validate"
+    if material.strip():
+        return "analyse"
+    return "ask"
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -146,15 +153,31 @@ class Handler(BaseHTTPRequestHandler):
             body = self._body()
             if body is None:
                 return
+            material = str(body.get("material") or "")
             spec_text = body.get("spec") if isinstance(body.get("spec"), str) else ""
-            result = one.run(
-                material=str(body.get("material") or ""),
-                spec=spec_text,
-                question=str(body.get("question") or ""),
+            question = str(body.get("question") or "")
+            files = body.get("files") if isinstance(body.get("files"), dict) else {}
+
+            try:
+                plan = plan_for(_intent_for(body, material, spec_text),
+                                int(body.get("iterations") or 1))
+            except (RouteError, ValueError) as exc:
+                self._send(400, {"ok": False, "error": f"cannot route: {exc}"})
+                return
+
+            result = run_plan(
+                plan,
+                material=material,
+                files=files,
+                spec=body.get("spec") if isinstance(body.get("spec"), dict) else spec_text,
+                question=question,
                 api_key=str(body.get("api_key") or ""),
                 model=str(body.get("model") or ""),
             )
-            self._send(200 if result.get("ok") else 502, result)
+            payload = result.as_dict()
+            if not payload["ok"]:
+                payload["error"] = payload.get("reason") or "the run did not pass its gates"
+            self._send(200 if payload["ok"] else 502, payload)
             return
 
         self._send(404, {"error": "not found"})

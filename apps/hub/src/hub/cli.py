@@ -1,4 +1,8 @@
-"""CLI: `vishap-hub run --intent generate+validate+analyse --material file.py`."""
+"""CLI: `vishap-hub run --intent generate+validate+analyse --spec spec.yaml --material app.py`.
+
+The same path the HTTP face takes — `run_plan` — so a run from the terminal and a run
+from the page cannot disagree about what a verdict means.
+"""
 from __future__ import annotations
 
 import argparse
@@ -8,23 +12,48 @@ import sys
 
 from .pipeline import run_plan
 from .router import RouteError, plan_for
-from .services import ServiceConfig
 from .version import __version__
+
+TEXT_SUFFIXES = (".py", ".js", ".ts", ".tsx", ".go", ".java", ".rb", ".php", ".sql", ".sh", ".yaml", ".yml", ".json", ".md")
+
+
+def _read(path: str) -> str:
+    with open(path, encoding="utf-8-sig", errors="replace") as fh:
+        return fh.read()
+
+
+def _deliverable(root: str) -> dict:
+    """Every text file under a directory, keyed by its relative path."""
+    files: dict[str, str] = {}
+    for base, _dirs, names in os.walk(root):
+        for name in names:
+            if not name.lower().endswith(TEXT_SUFFIXES):
+                continue
+            full = os.path.join(base, name)
+            rel = os.path.relpath(full, root).replace(os.sep, "/")
+            try:
+                files[rel] = _read(full)
+            except OSError as exc:
+                print(f"skip {rel}: {exc}", file=sys.stderr)
+    return files
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="vishap-hub", description="Carry a request through the Vishap services.")
+    parser = argparse.ArgumentParser(prog="vishap-hub", description="Carry a request through one plan.")
     parser.add_argument("--version", action="version", version=f"vishap-hub {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
 
     run = sub.add_parser("run", help="plan and execute")
     run.add_argument("--intent", required=True,
-                     help="analyse | generate | validate | generate+validate | validate+analyse | generate+validate+analyse")
-    run.add_argument("--material", default="", help="file to analyse")
-    run.add_argument("--spec", default="", help="spec file for the generator")
-    run.add_argument("--validator-spec", default="", help="spec.json for the validator")
-    run.add_argument("--out", default="", help="output directory for generated code")
+                     help="ask | analyse | generate | validate | generate+validate | "
+                          "validate+analyse | generate+validate+analyse")
+    run.add_argument("--material", default="", help="file or directory to analyse")
+    run.add_argument("--spec", default="", help="spec file (YAML text) for the generator")
+    run.add_argument("--question", default="", help="a question for the model")
+    run.add_argument("--deliverable", default="", help="directory of code to validate as the deliverable")
     run.add_argument("--iterations", type=int, default=1)
+    run.add_argument("--api-key", default="", help="model key; defaults to VISHAP_HUB_LLM_KEY")
+    run.add_argument("--model", default="", help="model name; defaults to the hub's own choice")
     run.add_argument("--json", action="store_true")
 
     args = parser.parse_args(argv)
@@ -39,31 +68,20 @@ def main(argv: list[str] | None = None) -> int:
 
     material = ""
     if args.material:
+        if os.path.isdir(args.material):
+            print(f"--material is a directory; use --deliverable for code: {args.material}", file=sys.stderr)
+            return 2
         if not os.path.isfile(args.material):
             print(f"no such file: {args.material}", file=sys.stderr)
             return 2
-        with open(args.material, encoding="utf-8", errors="replace") as fh:
-            material = fh.read()
+        material = _read(args.material)
 
-    spec_text = ""
-    if args.spec:
-        with open(args.spec, encoding="utf-8-sig", errors="replace") as fh:
-            spec_text = fh.read()
+    spec_text = _read(args.spec) if args.spec and os.path.isfile(args.spec) else ""
 
-    validator_spec = {}
-    if args.validator_spec:
-        with open(args.validator_spec, encoding="utf-8-sig") as fh:
-            validator_spec = json.load(fh)
+    files = _deliverable(args.deliverable) if args.deliverable else {}
 
-    result = run_plan(
-        ServiceConfig(),
-        plan,
-        material=material,
-        spec=spec_text,
-        filename=os.path.basename(args.material) if args.material else "input.txt",
-        out_dir=args.out,
-        validator_spec=validator_spec,
-    )
+    result = run_plan(plan, material=material, files=files, spec=spec_text,
+                      question=args.question, api_key=args.api_key, model=args.model)
 
     payload = {"plan": plan.as_dict(), "result": result.as_dict()}
     if args.json:
