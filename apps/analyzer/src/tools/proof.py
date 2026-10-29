@@ -119,11 +119,15 @@ def _run_harness(code: str, timeout: int = 20, force: bool = False, harness: Pat
         # the real interpreter (venv python is a symlink) and, if that interpreter itself lives under /home or
         # /root (pyenv, uv), put just its prefix back read-only.
         exe = os.path.realpath(sys.executable)
-        cmd = [exe, "-I", str(harness or HARNESS), str(target)] + extra
+        harness_path = Path(harness or HARNESS)
+        cmd = [exe, "-I", str(harness_path), str(target)] + extra
         kw: dict = {}
         if level == "bwrap":
             visible = []
-            for d in {os.path.realpath(sys.base_prefix), os.path.dirname(exe)}:
+            # The harness itself usually lives under /home or /root, and the sandbox empties
+            # both: without this bind the child starts, cannot read its own script, and every
+            # probe reports «can't open file» - a CI-only failure that looks like a missing file.
+            for d in {os.path.realpath(sys.base_prefix), os.path.dirname(exe), str(harness_path.parent)}:
                 if d.startswith(("/home/", "/root/")):
                     visible += ["--ro-bind", d, d]
             cmd = ["bwrap", "--unshare-all", "--die-with-parent", "--new-session", "--ro-bind", "/", "/",
