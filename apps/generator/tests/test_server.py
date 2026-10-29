@@ -11,7 +11,7 @@ from tests.test_pipeline import Stub, answer
 from tests.test_verify import GOOD, TODAY
 
 from generator import main as server
-from generator.api.rate_limit import RUN_LOCK
+from generator.api.rate_limit import RUN_LOCK, RateLimiter
 from generator.api.errors import ApiError
 from generator.api.jobs import handle_generate
 from generator.main import make_handler
@@ -26,7 +26,10 @@ class ServerCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.stub = Stub(answer(GOOD))
-        handler = make_handler(cls.token, set(LOOPBACK), run_kwargs={
+        # The request limit is a subject of its own (`TokenAndLimitTests`). Here it would only turn
+        # a class that makes more than thirty requests into a 429; health and the form are never
+        # limited, so nothing else about this server changes.
+        handler = make_handler(cls.token, set(LOOPBACK), limiter=RateLimiter(0), run_kwargs={
             "chat_fn": cls.stub, "analyzer": None, "today": TODAY})
         cls.httpd = ThreadingHTTPServer(("127.0.0.1", 0), handler)
         cls.port = cls.httpd.server_address[1]

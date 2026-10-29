@@ -161,7 +161,11 @@ class ChatTests(unittest.TestCase):
         cfg = LLMConfig(url=f"http://127.0.0.1:{port}/v1", model="m1", key=KEY, timeout=2)
         with self.assertRaises(LLMError) as cm:
             chat([{"role": "user", "content": "x"}], cfg)
-        self.assertIn("not reachable", str(cm.exception))
+        # A refused connection and a connection that never answers are both "nothing came back".
+        # Which one Windows reports depends on the stack: on this machine a closed loopback port
+        # surfaces as the timeout, on Linux as the refusal.
+        msg = str(cm.exception)
+        self.assertTrue("not reachable" in msg or "no answer within" in msg, msg)
         self.stub = Stub()  # so tearDown has something to close
 
 

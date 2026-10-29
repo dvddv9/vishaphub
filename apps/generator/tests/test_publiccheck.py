@@ -12,6 +12,7 @@ from tests.test_server import SPEC_TEXT
 from tests.test_verify import GOOD, TODAY
 
 from generator import main as server
+from generator.api.rate_limit import RateLimiter
 from generator.config import LOOPBACK, public_check
 
 HOST = "gen.example.onrender.com"
@@ -52,6 +53,7 @@ class OneServiceTests(unittest.TestCase):
     def setUpClass(cls):
         cls.stub = Stub(answer(GOOD))
         handler = server.make_handler(TOKEN, set(LOOPBACK) | {HOST}, client_llm=False, loopback=False, open_check=True,
+                                      limiter=RateLimiter(0),
                                       run_kwargs={"chat_fn": cls.stub, "analyzer": None, "today": TODAY})
         cls.httpd = ThreadingHTTPServer(("127.0.0.1", 0), handler)
         cls.port = cls.httpd.server_address[1]
@@ -119,7 +121,8 @@ class OneServiceTests(unittest.TestCase):
 
 class WithoutOpenCheckTests(unittest.TestCase):
     def test_the_check_needs_the_token_when_it_is_not_open(self):
-        handler = server.make_handler(TOKEN, set(LOOPBACK) | {HOST}, client_llm=False, loopback=False)
+        handler = server.make_handler(TOKEN, set(LOOPBACK) | {HOST}, client_llm=False, loopback=False,
+                                      limiter=RateLimiter(0))
         httpd = ThreadingHTTPServer(("127.0.0.1", 0), handler)
         threading.Thread(target=httpd.serve_forever, daemon=True).start()
         try:

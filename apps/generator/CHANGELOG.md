@@ -2,6 +2,18 @@
 
 All notable changes to vishap-generator. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.9.2] - 2026-10-29
+
+### Fixed
+- **A refused POST no longer loses its answer on Windows.** When the server refused a request (401, 403, 404, 413, 415, 429) it answered without reading the body that was already in the socket; closing a connection with unread data makes Windows report the answer to the client as a reset (`WinError 10053`) instead of the status line. The request body is now read and dropped before every refusal, up to four bodies (a 413 sits inside that ceiling, a flood is still not read), so `curl` and the form see the status they were sent.
+
+### Changed (tests only)
+- The API test server runs with the request limit off (`limiter=RateLimiter(0)`): a class that makes more than thirty requests used to turn its own later tests into 429. The limit keeps its own tests (`TokenAndLimitTests`), including the 429 with `Retry-After`.
+- `test_unreachable` accepts either wording: a closed loopback port surfaces as a timeout on this Windows stack and as a refusal on Linux.
+
+### Verified
+- Full suite: 555 passed, 1 skipped, 57 subtests. Five consecutive runs of the server, public-check and jobs modules: green, and `test_body_rules` alone: ten runs, green. Analyzer 974 passed / 15 skipped; core 41; hub 44; validator 34.
+
 ## [0.9.1] - 2026-10-28
 
 ### Added

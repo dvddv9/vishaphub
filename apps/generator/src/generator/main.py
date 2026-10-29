@@ -91,10 +91,31 @@ def make_handler(token: str | None, host_names: set[str], run=run_pipeline, run_
             access.info("%s %s %d", self.command, urlsplit(self.path).path.split("?")[0], status,
                         extra={"fields": {"ms": round((time.perf_counter() - getattr(self, "_t0", time.perf_counter())) * 1000)}})
 
+        def _drain(self) -> None:
+            """Read and drop the request body before refusing it.
+
+            A refusal sent while the body is still unread closes the connection with data in the
+            socket, and Windows then reports the answer to the client as a reset (WinError 10053)
+            instead of the status line. Reading first keeps the answer readable. The ceiling is four
+            bodies: a 413 (a body over MAX_BODY) is inside it and still gets a clean answer, while a
+            flood is not read at all and the connection is simply closed.
+            """
+            try:
+                length = int(self.headers.get("Content-Length", "") or 0)
+            except ValueError:
+                return
+            if 0 < length <= 4 * MAX_BODY:
+                try:
+                    self.rfile.read(length)
+                except OSError:
+                    pass
+
         def _limited(self) -> bool:
             wait = limiter.check(self.client_address[0])
             if not wait:
                 return False
+            if self.command == "POST":
+                self._drain()
             self._send(429, {"error": "too many requests"}, extra={"Retry-After": str(int(wait) + 1)})
             return True
 
@@ -137,25 +158,31 @@ def make_handler(token: str | None, host_names: set[str], run=run_pipeline, run_
         def do_POST(self):
             self._begin()
             if not self._host_ok():
+                self._drain()
                 return self._send(403, {"error": "bad Host or Origin"})
             path = urlsplit(self.path).path
             if path not in ("/api/generate", "/api/generate/async", "/api/check"):
+                self._drain()
                 return self._send(404, {"error": "not found"})
             # a spec check calls no model and runs no code: it may be open while generating needs the token
             if not self._auth_ok() and not (open_check and path == "/api/check"):
+                self._drain()
                 return self._send(401, {"error": "missing or wrong token"})
             if check_only and path != "/api/check":
+                self._drain()
                 return self._send(403, {"error": "this server only checks specs: no model is called and no code is run. "
                                                  "Run the generator on your own computer to generate code."})
             if self._limited():
                 return
             if (self.headers.get("Content-Type") or "").split(";")[0].strip().lower() != "application/json":
+                self._drain()
                 return self._send(415, {"error": "Content-Type must be application/json"})
             try:
                 length = int(self.headers.get("Content-Length", ""))
             except ValueError:
                 return self._send(411, {"error": "Content-Length is required"})
             if length < 0 or length > MAX_BODY:
+                self._drain()
                 return self._send(413, {"error": "body is too large"})
             try:
                 body = json.loads(self.rfile.read(length).decode("utf-8"))
