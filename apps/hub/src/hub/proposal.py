@@ -78,12 +78,28 @@ def _recommendation(raw: object) -> str:
     return text if text in SEVERITY_ORDER else "REQUIRES_REVIEW"
 
 
+def _redact(material: str) -> tuple[str, dict]:
+    """PII and secrets out of the material before it leaves for a model.
+
+    Borrowed from the analyser (`src.tools.redact`), one implementation, no copy. The
+    analyser learned this the hard way: detection used to run after the stages, so PII
+    reached the cloud first. Without the analyser in the image nothing is redacted and
+    the run says so, rather than pretending.
+    """
+    try:
+        from src.tools.redact import redact_pii
+    except ImportError:
+        return material, {}
+    return redact_pii(material)
+
+
 def _call(key: str, model: str, material: str, spec: str, question: str) -> dict:
     user = []
     if question.strip():
         user.append(f"Client question:\n{question.strip()[:MAX_QUESTION]}")
     if spec.strip():
         user.append(f"Spec:\n{spec.strip()[:MAX_SPEC]}")
+    material, redactions = _redact(material)
     user.append(f"Material:\n{material.strip()[:MAX_MATERIAL]}")
     payload = {
         "model": model or DEFAULT_MODEL,
@@ -117,7 +133,8 @@ def _call(key: str, model: str, material: str, spec: str, question: str) -> dict
     parsed = _extract_json(text)
     if parsed is None:
         return {"ok": False, "error": "the model did not return JSON", "text": text[:600]}
-    return {"ok": True, "model": payload["model"], "parsed": parsed, "text": text}
+    return {"ok": True, "model": payload["model"], "parsed": parsed, "text": text,
+            "redactions": redactions}
 
 
 def propose(material: str = "", spec: str = "", question: str = "",

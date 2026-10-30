@@ -28,7 +28,7 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs
 
-from . import access, alerts, demo, fingerprint, limits, meter, templates
+from . import access, alerts, demo, fingerprint, limits, meter, sarif, templates
 from .chat import reply
 from .pipeline import run_plan
 from .router import RouteError, plan_for
@@ -428,6 +428,24 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(404, {"error": "no such run in your team, or it has expired"}, extra=PRIVATE)
                 return
             self._send(200, record, extra=PRIVATE)
+            return
+        if path.startswith("/api/runs/") and path.endswith(".sarif"):
+            run_id = path[len("/api/runs/"):].removesuffix(".sarif")
+            if principal is not None:
+                ok, record = self._team(TEAMS.get, principal, run_id, ip)
+                if not ok:
+                    return
+            else:
+                token = self._token()
+                record = RUNS.get_for(run_id, owner_key(token) if token else None)
+            if record is None:
+                self._send(404, {"error": "no such run, or it is not yours"}, extra=PRIVATE)
+                return
+            document = sarif.of_run(record)
+            if document is None:
+                self._send(501, {"error": "the SARIF writer is not in this image"})
+                return
+            self._send(200, document, "application/sarif+json", extra=PRIVATE)
             return
         if path.startswith("/api/runs/"):
             token = self._token()
