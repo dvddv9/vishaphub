@@ -4,6 +4,10 @@ All notable changes to VishapHub. Format based on [Keep a Changelog](https://kee
 
 ## [Unreleased]
 
+### Security
+
+- **Validator 0.3.0: the visitor's tests no longer see the hub's environment.** The hub runs a deliverable's own tests and imports its entry point inside the service process; those subprocesses used to inherit every variable of the host (model key, database URLs). They now get `PATH`, temp dirs and locale only. A spec path that is absolute, climbs with `..` or an entry that is not a dotted module name is refused (`FAIL`, nothing run) - a test file outside the deliverable used to be executed. Pytest exiting 0 with every test skipped is no longer a green run; `todos`/`stubborn` in code are no longer `stub` markers. Not a sandbox: the code under test can still reach the network.
+
 ### Changed
 
 - **Run page and report.** The rules' findings about the model's own patch sit in their own block (their line numbers refer to the patch); the model's summary is labelled as the model's, with a note that the hub did not run its patch; a second route the rules flag without authentication says which model finding may already cover it (`possibly_covered_by`; nothing is dropped).

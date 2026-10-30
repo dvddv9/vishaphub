@@ -7,12 +7,37 @@ divergence — and the cheapest place to catch it is here, before anyone trusts 
 from __future__ import annotations
 
 import ast
+import io
 import os
+import re
+import tokenize
 
 from ..models import CheckResult, Finding, Severity, Spec
 
 PLACEHOLDER_CALLS = {"NotImplementedError", "NotImplemented"}
-STUB_MARKERS = ("TODO", "FIXME", "not implemented", "stub")
+#: Markers are looked for in comments only, as whole words: `todos = []`, `stubborn` and a docstring that says
+#: "not implemented in Python 2" are code, not placeholders. TODO / FIXME are the upper-case convention.
+MARKER_PATTERNS = (
+    ("TODO", re.compile(r"\bTODO\b")),
+    ("FIXME", re.compile(r"\bFIXME\b")),
+    ("not implemented", re.compile(r"\bnot implemented\b", re.IGNORECASE)),
+    ("stub", re.compile(r"\bstubs?\b", re.IGNORECASE)),
+)
+
+
+def _markers(source: str) -> list[tuple[str, int]]:
+    """(marker, line) for the first comment that carries each marker."""
+    seen: dict[str, int] = {}
+    try:
+        for token in tokenize.generate_tokens(io.StringIO(source).readline):
+            if token.type != tokenize.COMMENT:
+                continue
+            for name, pattern in MARKER_PATTERNS:
+                if name not in seen and pattern.search(token.string):
+                    seen[name] = token.start[0]
+    except (tokenize.TokenError, IndentationError, SyntaxError):
+        pass
+    return list(seen.items())
 
 
 def _scan_file(path: str, rel: str) -> list[Finding]:
@@ -60,13 +85,10 @@ def _scan_file(path: str, rel: str) -> list[Finding]:
                                             location=f"{rel}:{node.lineno}"))
                     continue
 
-    lowered = source.lower()
-    for marker in STUB_MARKERS:
-        if marker.lower() in lowered:
-            line = next((i + 1 for i, text in enumerate(source.splitlines()) if marker in text.lower()), 0)
-            findings.append(Finding(check="conformance", severity=Severity.LOW,
-                                    message=f"placeholder marker in the deliverable: {marker!r}",
-                                    location=f"{rel}:{line}"))
+    for marker, line in _markers(source):
+        findings.append(Finding(check="conformance", severity=Severity.LOW,
+                                message=f"placeholder marker in the deliverable: {marker!r}",
+                                location=f"{rel}:{line}"))
     return findings
 
 

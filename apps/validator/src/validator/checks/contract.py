@@ -12,6 +12,7 @@ import sys
 import tempfile
 
 from ..models import CheckResult, Finding, Severity, Spec
+from ..safe import clean_env
 
 PROBE = r"""
 import importlib, json, sys
@@ -47,6 +48,7 @@ def run(root: str, spec: Spec) -> CheckResult:
             text=True,
             timeout=60,
             cwd=root,
+            env=clean_env(),
             check=False,
         )
     except subprocess.TimeoutExpired:

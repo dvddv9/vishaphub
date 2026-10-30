@@ -7,11 +7,13 @@ the spec promised and what the code does.
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 import tempfile
 
 from ..models import CheckResult, Finding, Severity, Spec
+from ..safe import clean_env
 
 TIMEOUT_SECONDS = 120
 TAIL_CHARS = 1500
@@ -47,8 +49,7 @@ def run(root: str, spec: Spec) -> CheckResult:
     ini_path = os.path.join(tempfile.gettempdir(), f"vishap-validator-{os.getpid()}.ini")
     with open(ini_path, "w", encoding="utf-8") as fh:
         fh.write("[pytest]\n")
-    env = os.environ.copy()
-    env["PYTHONDONTWRITEBYTECODE"] = "1"
+    env = clean_env()
     try:
         proc = subprocess.run(
             [sys.executable, "-m", "pytest", *spec.tests, "-q", "--no-header", "--tb=short",
@@ -75,6 +76,15 @@ def run(root: str, spec: Spec) -> CheckResult:
         )
 
     if proc.returncode == 0:
+        out = ((proc.stdout or "") + (proc.stderr or "")).strip()
+        # Exit 0 also means "everything was skipped" or "nothing was collected into a failure". A promise
+        # nobody checked is not a kept promise.
+        if not re.search(r"\b[1-9]\d* passed\b", out):
+            return CheckResult(
+                name="behavior", ok=False,
+                findings=[Finding(check="behavior", severity=Severity.HIGH,
+                                  message=f"pytest exited 0 but no test passed (all skipped?): {out[-TAIL_CHARS:]}",
+                                  location=", ".join(spec.tests))])
         return CheckResult(name="behavior", ok=True)
 
     tail = ((proc.stdout or "") + (proc.stderr or "")).strip()

@@ -1,6 +1,6 @@
 [project]
 name = "vishap-validator"
-version = "0.2.0"
+version = "0.3.0"
 description = "Validates generated code against the spec it was generated from: six stages, one verdict."
 readme = "README.md"
 requires-python = ">=3.11"

@@ -16,7 +16,8 @@ Verdict rules:
 from __future__ import annotations
 
 from .checks import behavior, conformance, contract, coverage, structure, syntax
-from .models import CheckResult, Report, Severity, Spec, Verdict
+from .models import CheckResult, Finding, Report, Severity, Spec, Verdict
+from .safe import spec_problems
 
 ORDER = (structure, syntax, contract, coverage, behavior, conformance)
 STOP_ON_FAILURE = {"structure", "syntax"}
@@ -24,6 +25,15 @@ STOP_ON_FAILURE = {"structure", "syntax"}
 
 def validate(root: str, spec: Spec) -> Report:
     checks: list[CheckResult] = []
+    # A spec that names a path outside the deliverable is refused before anything is read or run: a test
+    # file outside the folder would otherwise be executed as if it were part of the deliverable.
+    problems = spec_problems(root, spec)
+    if problems:
+        spec_check = CheckResult(
+            name="spec", ok=False,
+            findings=[Finding(check="spec", severity=Severity.CRITICAL, message=text) for text in problems])
+        return Report(verdict=Verdict.FAIL, checks=[spec_check],
+                      reason="the spec points outside the deliverable; nothing was run")
     try:
         for module in ORDER:
             result = module.run(root, spec)
