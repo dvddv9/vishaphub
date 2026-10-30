@@ -23,6 +23,9 @@ def clean_env() -> dict[str, str]:
     env = {key: os.environ[key] for key in _KEEP if key in os.environ}
     env["PYTHONDONTWRITEBYTECODE"] = "1"
     env["PYTHONIOENCODING"] = "utf-8"
+    guard = network_guard_dir()
+    if guard:
+        env["PYTHONPATH"] = guard
     return env
 
 
@@ -103,3 +106,54 @@ def rlimits():
                 continue
 
     return apply
+
+
+# --- the network guard ---------------------------------------------------------------------------
+# `unshare -n` needs a privilege a non-root user in a container does not have (checked in the hub
+# image: "Operation not permitted", with and without -r). There `network_off()` is `[]` and the code
+# under test would keep the whole network. The guard needs no privilege: `_netguard.py` is loaded as
+# `sitecustomize` by the child Python and refuses every non-UNIX socket. It stops the ordinary ways
+# out (requests, urllib, sockets, DNS), not ctypes / raw `_socket` / a `curl` subprocess; only a
+# network namespace or `docker run --network none` stops those. `isolation()` says which one a run had.
+
+_GUARD_DIR: str | None = None
+
+
+def _off() -> bool:
+    return os.getenv("VISHAP_VALIDATOR_NO_NETWORK", "1") == "0"
+
+
+def network_guard_dir() -> str:
+    """Directory whose `sitecustomize.py` is the guard, or "" when the guard is switched off."""
+    global _GUARD_DIR
+    if _off():
+        return ""
+    if _GUARD_DIR is None or not os.path.isfile(os.path.join(_GUARD_DIR, "sitecustomize.py")):
+        import atexit
+        import tempfile
+
+        _GUARD_DIR = tempfile.mkdtemp(prefix="vishap-guard-")
+        shutil.copyfile(os.path.join(os.path.dirname(__file__), "_netguard.py"),
+                        os.path.join(_GUARD_DIR, "sitecustomize.py"))
+        atexit.register(shutil.rmtree, _GUARD_DIR, True)
+    return _GUARD_DIR
+
+
+def isolation() -> str:
+    """How the network is kept from the code under test: "netns", "guard" or "none"."""
+    if _off():
+        return "none"
+    return "netns" if network_off() else "guard"
+
+
+def refusal(require_netns: bool = False) -> str:
+    """Why submitted code must not be run on this host at all, or "".
+
+    VISHAP_VALIDATOR_REQUIRE_NETNS=1 is for a host that serves other people: without a real network
+    namespace nothing submitted is run.
+    """
+    require = require_netns or os.getenv("VISHAP_VALIDATOR_REQUIRE_NETNS") == "1"
+    if require and isolation() != "netns":
+        return ("this host cannot cut the network off from submitted code (no network namespace) "
+                "and strict network isolation is required; nothing was run")
+    return ""

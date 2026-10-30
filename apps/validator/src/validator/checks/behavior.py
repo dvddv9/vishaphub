@@ -13,13 +13,20 @@ import sys
 import tempfile
 
 from ..models import CheckResult, Finding, Severity, Spec
-from ..safe import clean_env, network_off, rlimits
+from ..safe import clean_env, isolation, network_off, rlimits
 
 TIMEOUT_SECONDS = 120
 TAIL_CHARS = 1500
 
 
 def run(root: str, spec: Spec) -> CheckResult:
+    result = _run(root, spec)
+    if not result.skipped:
+        result.note = f"network: {isolation()}"
+    return result
+
+
+def _run(root: str, spec: Spec) -> CheckResult:
     if not spec.tests:
         return CheckResult(
             name="behavior",

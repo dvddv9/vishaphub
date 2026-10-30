@@ -51,6 +51,7 @@ class CheckResult:
     findings: list[Finding] = field(default_factory=list)
     skipped: bool = False
     skip_reason: str = ""
+    note: str = ""
 
     def as_dict(self) -> dict:
         return {
@@ -59,6 +60,7 @@ class CheckResult:
             "skipped": self.skipped,
             "skip_reason": self.skip_reason,
             "findings": [f.as_dict() for f in self.findings],
+            **({"note": self.note} if self.note else {}),
         }
 
 
