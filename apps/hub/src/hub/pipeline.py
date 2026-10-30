@@ -34,7 +34,7 @@ import logging
 from dataclasses import dataclass, field
 
 from . import findings as findings_mod
-from . import fingerprint, local, proposal
+from . import fingerprint, local, proposal, statuses
 from .envelope import Envelope, Kind
 from .router import Plan, Stage
 from .verdicts import BLOCKING_VERDICTS, normalise, rank, strictest
@@ -84,6 +84,8 @@ class RunResult:
     fingerprint: dict = field(default_factory=dict)
     #: How the model's findings and the rules' findings overlapped; empty unless both read the material.
     agreement: dict = field(default_factory=dict)
+    #: The result of a real patch check, when one ran; empty means none did (fix status FIX_UNVERIFIED).
+    patch_check: dict = field(default_factory=dict)
 
     def as_dict(self) -> dict:
         return {
@@ -107,6 +109,9 @@ class RunResult:
             "not_checked": self.not_checked,
             "agreement": self.agreement,
             "fingerprint": self.fingerprint,
+            "statuses": statuses.compute(ok=self.ok, verdict=self.verdict, checks=self.checks, plan=self.plan,
+                                         patch=self.patch, model_verdict=self.model_verdict,
+                                         not_checked=self.not_checked, patch_check=self.patch_check or None),
         }
 
 
