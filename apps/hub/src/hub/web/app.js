@@ -22,6 +22,7 @@ const I18N = {
     sampleBtn: "paste a sample and run",
     keySys: "The hub holds no model key. The rules check your code for free; to have the model read it too, add your own Anthropic key below (it stays in this browser).",
     keyHint: "Optional. Without a key only the rules run; with your key the model reads the code as well, and the stricter verdict wins. The key is kept in this browser and sent with your run.",
+    noModelSummary: "No model read this run, so there is no model summary. The rules found {n} finding(s): open FINDINGS. Add your own key below to have the model read the code too.",
     verdictHint: "REQUIRES_REVIEW means a person should read the findings. The hub does not issue SAFE yet: its rules are not measured well enough for any language.",
     working: "working…", nothing: "nothing to work on", refused: "refused",
     verdictLabel: "verdict", notChecked: "not checked", openReport: "open the report",
@@ -53,6 +54,7 @@ const I18N = {
     sampleBtn: "вставить пример и запустить",
     keySys: "У хаба нет ключа модели. Правила проверяют код бесплатно; чтобы код читала ещё и модель, добавь свой ключ Anthropic ниже (он остаётся в этом браузере).",
     keyHint: "Не обязательно. Без ключа работают только правила; с твоим ключом код читает ещё и модель, и побеждает более строгий вердикт. Ключ хранится в этом браузере и уходит вместе с твоим запуском.",
+    noModelSummary: "\u042d\u0442\u0443 \u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0443 \u043d\u0435 \u0447\u0438\u0442\u0430\u043b\u0430 \u043c\u043e\u0434\u0435\u043b\u044c, \u043f\u043e\u044d\u0442\u043e\u043c\u0443 \u0441\u0432\u043e\u0434\u043a\u0438 \u043c\u043e\u0434\u0435\u043b\u0438 \u043d\u0435\u0442. \u041f\u0440\u0430\u0432\u0438\u043b\u0430 \u043d\u0430\u0448\u043b\u0438 \u043d\u0430\u0445\u043e\u0434\u043e\u043a: {n}. \u041e\u0442\u043a\u0440\u043e\u0439 \u0432\u043a\u043b\u0430\u0434\u043a\u0443 findings. \u0414\u043e\u0431\u0430\u0432\u044c \u0441\u0432\u043e\u0439 \u043a\u043b\u044e\u0447 \u043d\u0438\u0436\u0435, \u0447\u0442\u043e\u0431\u044b \u043a\u043e\u0434 \u043f\u0440\u043e\u0447\u0438\u0442\u0430\u043b\u0430 \u0435\u0449\u0451 \u0438 \u043c\u043e\u0434\u0435\u043b\u044c.",
     verdictHint: "REQUIRES_REVIEW значит: человеку стоит прочитать находки. SAFE хаб пока не выдаёт: его правила не измерены достаточно хорошо ни для одного языка.",
     working: "работаю…", nothing: "нечего проверять", refused: "отказ",
     verdictLabel: "вердикт", notChecked: "не проверено", openReport: "открыть отчёт",
@@ -203,7 +205,7 @@ function renderReport(data){
     : "";  const panes = {
     summary: data.summary
       ? (data.model ? "MODEL SUMMARY" + (Object.keys(data.patch || {}).length ? " (the hub did not run the patch)" : "") + "\n\n" : "") + data.summary
-      : "(model returned no summary)",
+      : (data.model ? "(model returned no summary)" : t("noModelSummary").replace("{n}", String((data.findings || []).length))),
     findings: (data.findings || []).length
       ? head + groupFindings(data.findings, f => {
         const by = (f.seen_by || []).length > 1 ? "rules + model" : (f.source || "");
@@ -277,7 +279,7 @@ function showResult(data, started){
   }
 
   const checks = data.checks || {};
-  const states = {"model":"done"};
+  const states = {"model": checks.generator ? "done" : ""};
   if (checks.analyser) states.rules = "done";
   if (checks.validator) states.validator = "done";
   states.verdict = /SAFE|PASS/i.test(data.verdict) ? "done" : "fail";
@@ -340,6 +342,7 @@ async function pipeline(){
     const decoder = new TextDecoder();
     let buffer = "";
     let done = null;
+    let modelSeen = false;
     while (true) {
       const chunk = await reader.read();
       if (chunk.done) break;
@@ -356,7 +359,8 @@ async function pipeline(){
         let data = null;
         try { data = JSON.parse(payload); } catch (e) { continue; }
         if (name === "stage"){
-          const states = {"model":"done"};
+          if (data.stage === "generator") modelSeen = true;
+          const states = {"model": modelSeen ? "done" : ""};
           if (data.stage === "validator") states.validator = "done";
           if (data.stage === "analyser") states.rules = "done";
           setProgress(states);
