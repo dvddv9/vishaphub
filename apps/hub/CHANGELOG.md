@@ -4,6 +4,15 @@ All notable changes to VishapHub. Format based on [Keep a Changelog](https://kee
 
 ## [Unreleased]
 
+### Changed (image)
+
+- **A lighter image: 1.06 GB to 264 MB, build 221 s to 78 s.** The hub imports nothing from the analyser's
+  `requirements.txt`: its static rules are standard-library only (loaded over all 104 labelled examples in 11
+  languages, no third-party module is imported). The image no longer installs fastapi, celery, stripe,
+  opentelemetry and the rest, nor a compiler. What it does install is pinned: `pytest` (the validator's
+  `behavior` check runs the deliverable's tests with it), `edge-tts` (the voice) and `psycopg[binary]` (team
+  mode). A `.dockerignore` keeps `.git`, caches and `.env` files out of the build context.
+
 ### Security
 
 - **A silent or malformed connection can no longer hold the hub's threads.** A read timeout (30 s, `VISHAP_HUB_READ_TIMEOUT`), a ceiling on runs in flight (4, `VISHAP_HUB_MAX_CONCURRENT_RUNS`; the 5th is a `503` before it spends any budget), and a `Content-Length` that is not a number is a `400` instead of a dropped connection (`/run`, `/chat`, `/speak`, `/login`).

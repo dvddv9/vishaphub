@@ -215,3 +215,7 @@ Known gaps: the store lives in memory unless `VISHAP_HUB_RUNS_FILE` or the team 
 Postgres is configured (a free instance loses its runs on restart); there is no queue, so
 two runs at once both wait for the model; card numbers are not redacted (no PAN pattern
 in the analyser's list); and the SARIF export needs the analyser in the image.
+
+The spend ceilings count in memory, per process: a restart or a redeploy resets them. They are a brake, not a
+bill. For any model key the hub itself holds (`VISHAP_HUB_LLM_KEY`), set the real cap at the provider (a spend
+limit in the Anthropic Console). A visitor's own key is the visitor's to cap.
