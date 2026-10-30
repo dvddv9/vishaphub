@@ -4,6 +4,10 @@ All notable changes to VishapHub. Format based on [Keep a Changelog](https://kee
 
 ## [Unreleased]
 
+### Changed
+
+- **Run page and report.** The rules' findings about the model's own patch sit in their own block (their line numbers refer to the patch); the model's summary is labelled as the model's, with a note that the hub did not run its patch; a second route the rules flag without authentication says which model finding may already cover it (`possibly_covered_by`; nothing is dropped).
+
 ### Added
 
 - **`review`.** Material with a question now means the model reads it and the rules check it
