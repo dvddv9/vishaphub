@@ -5,7 +5,6 @@ and connects as vishap_hub_app (NOSUPERUSER, NOBYPASSRLS), then drops it. Withou
 skip - the only way they skip; CI sets it and fails the build if any of them skipped.
 """
 import contextlib
-import http.client
 import json
 import os
 import threading
@@ -591,7 +590,9 @@ class QuotaTests(TeamCase):
             status = self.run_status("alice", f"race = {n}")[0]
             with lock:
                 statuses.append(status)
-        with mock.patch.object(server, "run_plan", lambda **kw: _Said()):
+        # the quota is the subject here, not the ceiling on runs in flight (that one has its own tests)
+        with mock.patch.object(server, "RUN_SLOTS", None), \
+                mock.patch.object(server, "run_plan", lambda **kw: _Said()):
             threads = [threading.Thread(target=go, args=(n,)) for n in range(8)]
             for thread in threads:
                 thread.start()
@@ -666,9 +667,9 @@ class UsageTests(TeamCase):
         def boom(**kw):
             meter.record({"input_tokens": 77, "output_tokens": 5})
             raise RuntimeError("the pipeline fell over")
-        with mock.patch.object(server, "run_plan", boom), \
-                self.assertRaises((http.client.HTTPException, ConnectionError, urllib.error.URLError)):
-            self.call("POST", "/run", self.keys["alice"], {"material": "c = 1", "api_key": "k"})
+        with mock.patch.object(server, "run_plan", boom):
+            status, _h, body = self.call("POST", "/run", self.keys["alice"], {"material": "c = 1", "api_key": "k"})
+        assert status == 500 and b"the pipeline fell over" not in body       # answered, and without the exception text
         (_k, rid, t_in, t_out, _c, measured, _e, _x, outcome, _ch), = self.usage()
         assert (rid, t_in, t_out, measured, outcome) == (None, 77, 5, 1, "error")
 
