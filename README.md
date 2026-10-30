@@ -111,6 +111,20 @@ Team mode is off until `VISHAP_HUB_DATABASE_URL` is set. Without it nothing belo
 - **Operator.** `python -m hub.admin migrate | create-team | create-user | issue-key | revoke-key | disable-user | list | set-quota | usage | purge-expired | audit | purge-team`, with `VISHAP_HUB_ADMIN_DATABASE_URL` (the database owner). The server connects with `VISHAP_HUB_DATABASE_URL` (the `vishap_hub_app` role) and cannot migrate.
 - **Not built.** Self-service signup, key rotation by the users themselves, SSO, sharing a single run outside its team, a cap on audit growth, connection pooling. The anonymous browser mode is memory-only and has no delete.
 
+## What SAFE means
+
+A verdict of **SAFE** from the hub's rules means exactly this: for the language of the text, the rules have been **measured** against an independently labelled blind set and passed the gates written down before the measurement; the scan could read **all** of the text (language recognised, no line cut, no part of the analysis quietly failed); and the rules **found nothing**. It is not a claim that the code has no vulnerabilities, and the rules do not look for every class of defect (authorization, business logic, dependencies, runtime configuration). Every response carries the `reason` and a `meaning` that says this.
+
+Everything else is **REQUIRES_REVIEW**, with the reason: any finding of any severity (a critical one says so), a language that is not measured or failed its gates (*unknown coverage*), a text the scan could not read in full. A missing or unreadable `src/tools/quality.json` fails closed: nothing is SAFE. The decision is made in one place, `apps/analyzer/src/tools/safe_gate.py`.
+
+SAFE is currently issued for: no language.
+
+The gates, the sampling and the model-mode gates were committed before any example was fetched (`apps/analyzer/tests/bench/blind_public/CRITERION.md`, `SAMPLING.md`); the 402 examples come from three sources that label their own code (OWASP Benchmark for Java, DVWA for PHP, Bandit's examples for Python), are pinned by commit and SHA-256 and are not copied into this repository. The first run, kept untouched as `RESULTS.first-run.md`, found the rules alone calling SAFE 101 of 132 dangerous Java examples (12 of 24 critical), 29 of 38 PHP (8 of 10 critical) and 44 of 76 Python (15 of 24 critical), when the file name is given; and pasted without a name the engine reads Java as Python and PHP as unknown, which is what the hub sees. So the answer today is that none of it may be called SAFE. JavaScript, TypeScript, Go, C, C++, Terraform, YAML and Dockerfile have no blind set and are unmeasured. PHP (19 safe examples, one of them an empty file in its source) and Python (5) are below the registered minimum of 20.
+
+**The hub's verdicts with a model are measured separately and have not been.** `python -m tests.bench.blind_public.model_eval` runs the same sample three times per example through the real model; it spends the key's money, needs `--confirm-spend`, and `--estimate` prints the size (about 372 calls and roughly 340 thousand input tokens by the characters / 4 estimate; no price, because nothing here knows the tariff). Until its result is committed the hub issues no SAFE with a model, in any language. A person who is not the author must also label a small sample of the team's real code (or an anonymised stand-in) for each language the team uses; `python -m tests.bench.blind_public.blind_score --human labels.csv --dir <folder>` scores it with the same code.
+
+**Until then a pilot should use synthetic or anonymised examples.** What the hub says is a list of reasons to look, not an assurance.
+
 ## Known gaps
 
 - **The sandbox tests skip outside Linux.** Three tests in `apps/analyzer/tests/test_scan_toolkit.py` need `bubblewrap` and one needs symlinks, so on a Windows machine they skip. In CI they must run: the job installs bubblewrap, probes it, and `.github/scripts/assert_no_skips.py` fails the build if any test in `test_rls`, `test_scan_toolkit` or the Postgres job-store tests was skipped.

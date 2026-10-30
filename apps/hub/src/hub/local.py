@@ -70,13 +70,14 @@ def validate_code(files: dict, spec: dict) -> dict:
         shutil.rmtree(root, ignore_errors=True)
 
 
-def analyse_static(material: str) -> dict:
+def analyse_static(material: str, model_verdict: str = "") -> dict:
     """Static rules only: no model, no network, a verdict in milliseconds.
 
     This is honest about what it is: `rules_only` in the report, so nobody mistakes a
     pattern match for a six-stage analysis.
     """
     try:
+        from src.tools.safe_gate import decide
         from src.tools.static_scan import scan_material
     except ImportError:
         return {"ok": False, "error": "analyser is not installed in this image"}
@@ -111,15 +112,21 @@ def analyse_static(material: str) -> dict:
         else:
             items.append({"rule": str(finding), "severity": "", "message": "", "line": 0})
 
-    critical = any(str(i["severity"]).lower() in ("critical", "high") for i in items)
-    verdict = "REQUIRES_REVIEW" if items else "SAFE"
+    # SAFE is not "no findings". safe_gate.decide says SAFE only for a language whose rules have passed the registered
+    # gates on an independent blind set, for a text the scan could read in full, with nothing found; every other
+    # outcome is REQUIRES_REVIEW with the reason (tests/bench/blind_public/CRITERION.md).
+    decision = decide(scan if isinstance(scan, dict) else {"findings": raw}, model_verdict=model_verdict)
+    verdict = decision["verdict"]
     return {
         "ok": True,
         "verdict": verdict,
         "risk_verdict": verdict,
+        "reason": decision["reason"],
+        "meaning": decision["meaning"],
+        "coverage": scan.get("coverage") if isinstance(scan, dict) else None,
         "cwe_ids": sorted({i["rule"] for i in items if i["rule"]}),
         "findings": items,
         "mode": "rules_only",
         "markdown": "",
-        "raw": {"findings": items, "mode": "rules_only", "critical": critical},
+        "raw": {"findings": items, "mode": "rules_only", "critical": decision["critical"]},
     }

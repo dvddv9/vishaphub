@@ -284,8 +284,10 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
 
                 worst = "SAFE"
                 found: list[dict] = []
+                reasons: list[str] = []
+                meaning = ""
                 for source, text in pieces:
-                    result = local.analyse_static(text)
+                    result = local.analyse_static(text, model_verdict=model_verdict)
                     if not result.get("ok"):
                         log.warning("analyser failed on %s: %s", source, result.get("error"))
                         steps.append(Step("analyser", False, detail=INTERNAL_ERROR))
@@ -300,13 +302,17 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
                         return _error(steps, envelope.session_id, trace,
                                       "analyser returned no verdict; no security answer available", plan_dict)
                     worst = strictest(worst, piece_verdict)
+                    meaning = meaning or str(result.get("meaning") or "")
+                    reasons.append(f"{source}: {result.get('reason') or piece_verdict}")
                     for item in result.get("findings") or []:
                         found.append({**item, "source": source})
 
-                checks["analyser"] = {"verdict": worst, "findings": found, "mode": "rules_only"}
+                checks["analyser"] = {"verdict": worst, "findings": found, "mode": "rules_only",
+                                      "reasons": reasons, "meaning": meaning}
                 current["analyser"] = worst
+                why = "" if worst == "SAFE" else (reasons[0] if len(reasons) == 1 else "see the reasons")
                 steps.append(Step("analyser", True, worst,
-                                  detail=f"{len(found)} findings · {len(pieces)} piece(s) · rules only"))
+                                  detail=f"{len(found)} findings · {len(pieces)} piece(s) · rules only" + (f" - {why}" if why else "")))
                 trace.append(f"pass {pass_no} analyser -> {worst} ({len(pieces)} piece(s))")
                 emit("analyser", {"stage": "analyser", "verdict": worst, "ok": True,
                                   "findings": len(found), "pieces": len(pieces), "pass": pass_no})

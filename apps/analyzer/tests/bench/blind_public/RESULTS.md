@@ -45,7 +45,7 @@ Informational: the hub does not call the engine this way. Same gates, same count
 | dvwa | php | dangerous | medium | 16 | 11 (69%) | - |
 | dvwa | php | safe | none | 19 | 15 (79%) | - |
 
-Time per example: median 4.53 ms, max 41.61 ms.
+Time per example: median 4.81 ms, max 39.11 ms.
 
 OWASP Benchmark, dangerous examples called raw SAFE by category (mode `named`): cmdi 11/12, crypto 0/12, hash 5/12, ldapi 12/12, pathtraver 12/12, securecookie 12/12, sqli 1/12, trustbound 12/12, weakrand 12/12, xpathi 12/12, xss 12/12.
 
@@ -66,13 +66,17 @@ OWASP Benchmark, dangerous examples called raw SAFE by category (mode `named`): 
 | dvwa | php | dangerous | medium | 16 | 5 (31%) | - |
 | dvwa | php | safe | none | 19 | 2 (11%) | - |
 
-Time per example: median 11.96 ms, max 71.87 ms.
+Time per example: median 12.53 ms, max 79.96 ms.
 
 OWASP Benchmark, dangerous examples called raw SAFE by category (mode `pasted`): cmdi 12/12, crypto 0/12, hash 5/12, ldapi 12/12, pathtraver 12/12, securecookie 12/12, sqli 1/12, trustbound 12/12, weakrand 12/12, xpathi 12/12, xss 12/12.
 
 ## Examples added after the first run: 0
 
 None.
+
+## Known flaws in the sample
+
+1 example(s) are empty files in their source (dvwa:javascript/impossible). The sampling rule had no exception for an empty file and the rules say an example is never removed after the first run, so it is kept and counted as the source labelled it. It is a defect of the sample, not a finding about the rules.
 
 ## Left out of the sample, and why
 

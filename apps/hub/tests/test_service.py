@@ -455,6 +455,18 @@ class ReadmeTests(unittest.TestCase):
         person = Principal(team_id="t", user_id="u", key_id="k", role="member", user_name="n")
         assert TeamStore("postgresql://unused", 30).retention_note(person) in readme
 
+    def test_the_readme_says_for_which_languages_safe_is_issued_and_it_is_true(self):
+        import re
+        from pathlib import Path
+
+        from src.tools import safe_gate
+        readme = (Path(__file__).resolve().parents[3] / "README.md").read_text(encoding="utf-8")
+        said = re.search(r"SAFE is currently issued for: ([^.\n]+)\.", readme)
+        assert said, "the README must say for which languages SAFE is issued"
+        table = safe_gate.load_quality()["languages"]
+        allowed = sorted(lang for lang, q in table.items() if q.get("safe_allowed") or (q.get("model_mode") or {}).get("safe_allowed"))
+        assert said.group(1).strip() == (", ".join(allowed) if allowed else "no language")
+
     def test_the_readme_names_every_env_var_the_budget_reads(self):
         from pathlib import Path
         readme = (Path(__file__).resolve().parents[3] / "README.md").read_text(encoding="utf-8")

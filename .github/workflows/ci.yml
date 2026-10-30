@@ -11,7 +11,7 @@
 #   * analyzer: the row-level-security tests build a database of their own, run the migrations
 #     and connect as vishap_app (NOSUPERUSER, NOBYPASSRLS); the sandbox tests run inside bubblewrap.
 #     pytest counts a skip as a pass, so assert_no_skips.py fails the build if any test in
-#     test_rls, test_scan_toolkit or the Postgres job-store tests was skipped. A runner that
+#     test_rls, test_scan_toolkit, test_blind_public or the Postgres job-store tests was skipped. A runner that
 #     stops allowing user namespaces turns this job red; it does not skip quietly.
 #   * secrets: the checked-out files. secrets-history: every commit. A finding in history is a
 #     credential to revoke; the few known fixtures there are named one by one in .gitleaksignore.
@@ -135,6 +135,8 @@ jobs:
       # The app is fail-closed without an API key; the tests run without one on purpose.
       # Same switch the local .env uses, and it only skips the key requirement, not a check.
       VISHAP_ALLOW_NO_KEY: "1"
+      # fetch the blind set's files when the cache is empty, so its re-run test runs instead of skipping
+      BLIND_FETCH: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -147,7 +149,14 @@ jobs:
           grep -v '^vishap-core' requirements.txt > "$RUNNER_TEMP/analyzer-reqs.txt"
           pip install -e ../../packages/core
           pip install -r "$RUNNER_TEMP/analyzer-reqs.txt"
+          pip install -e ../../apps/hub    # no dependencies; the model-mode harness is tested here without a model
         working-directory: apps/analyzer
+      # The blind set's example files are not in the repository (their licences differ): they are downloaded from the
+      # pinned URLs and checked against the manifest's SHA-256. The cache only saves the download.
+      - uses: actions/cache@v4
+        with:
+          path: apps/analyzer/tests/bench/blind_public/.cache
+          key: blind-public-${{ hashFiles('apps/analyzer/tests/bench/blind_public/manifest.json') }}
       # The sandbox tests need bubblewrap, and bubblewrap needs unprivileged user namespaces,
       # which the Ubuntu 24.04 runner blocks through AppArmor. The last line is the probe
       # src/tools/proof.py runs: a runner that cannot do it fails here, not as a skipped test.
@@ -162,7 +171,7 @@ jobs:
         working-directory: apps/analyzer
       - name: The security tests ran, none was skipped
         if: always()
-        run: python ../../.github/scripts/assert_no_skips.py junit.xml test_rls test_scan_toolkit test_job_store_postgres
+        run: python ../../.github/scripts/assert_no_skips.py junit.xml test_rls test_scan_toolkit test_job_store_postgres test_blind_public
         working-directory: apps/analyzer
 
   generator:

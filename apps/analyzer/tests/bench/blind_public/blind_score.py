@@ -234,6 +234,12 @@ def render(results: dict, manifest: dict, criterion: dict) -> str:
     post = [i for i, r in results["pasted"].items() if r["post_run"]]
     lines += [f"## Examples added after the first run: {len(post)}", "",
               "Reported apart and never counted in a gate." if post else "None.", ""]
+    empty = [e["id"] for e in manifest["examples"] if e["bytes"] == 0]
+    lines += ["## Known flaws in the sample", "",
+              (f"{len(empty)} example(s) are empty files in their source ({', '.join(empty)}). The sampling rule had no "
+               "exception for an empty file and the rules say an example is never removed after the first run, so it is kept "
+               "and counted as the source labelled it. It is a defect of the sample, not a finding about the rules.")
+              if empty else "None known.", ""]
     lines += ["## Left out of the sample, and why", ""]
     lines += [f"- {x}" for x in manifest.get("left_out", [])] + [""]
     return "\n".join(lines)

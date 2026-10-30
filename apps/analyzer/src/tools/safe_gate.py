@@ -77,8 +77,13 @@ def evaluate_gates(stats: dict, criterion: dict) -> dict:
             "safe_allowed": measured and g1 and g2, "why": why}
 
 
-def decide(scan: dict, quality: dict | None = None) -> dict:
-    """The verdict for one scan: {verdict, reason, critical, meaning}. SAFE or REQUIRES_REVIEW, never anything softer."""
+def decide(scan: dict, quality: dict | None = None, model_verdict: str = "") -> dict:
+    """The verdict for one scan: {verdict, reason, critical, meaning}. SAFE or REQUIRES_REVIEW, never anything softer.
+
+    `model_verdict` is what the model said about the same text, when a model took part. It can never lower a verdict
+    (a finding, a coverage gap, an unmeasured language are decided by the rules); it can only lend its agreement,
+    and only for a language whose model-assisted mode passed its own registered gates (quality[lang]["model_mode"]).
+    """
     quality = quality if quality is not None else load_quality()
     findings = scan.get("findings") or []
     coverage = scan.get("coverage") or {}
@@ -97,6 +102,12 @@ def decide(scan: dict, quality: dict | None = None) -> dict:
     if not coverage.get("complete"):
         return review("unknown coverage: " + "; ".join(coverage.get("gaps") or ["incomplete scan"]))
     entry = (quality.get("languages") or {}).get(lang)
+    with_model = (entry or {}).get("model_mode") or {}
+    if entry and not entry.get("safe_allowed") and with_model.get("safe_allowed") and str(model_verdict).upper() == "SAFE":
+        return {"verdict": "SAFE", "critical": False, "meaning": MEANING,
+                "reason": (f"the rules found nothing in the {lang} text and the model agreed; that combination was measured on "
+                           f"{with_model['dangerous']} dangerous and {with_model['safe']} safe independent examples, "
+                           f"false-SAFE upper bound {with_model['false_safe_upper_95']:.0%}")}
     if not entry or not entry.get("safe_allowed"):
         why = (entry or {}).get("why") or f"{lang or 'this language'} has no measurement"
         return review(f"unknown coverage: the rules for {lang or 'this language'} have no passing measurement ({why})")

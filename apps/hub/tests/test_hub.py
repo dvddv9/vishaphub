@@ -104,7 +104,7 @@ def test_pipeline_analyses_the_material_in_process():
 def test_pipeline_takes_the_strictest_verdict(monkeypatch):
     monkeypatch.setattr("hub.local.validate_code", lambda files, spec: {
         "ok": True, "report": {"verdict": "PASS", "finding_count": 0}})
-    monkeypatch.setattr("hub.local.analyse_static", lambda material: {
+    monkeypatch.setattr("hub.local.analyse_static", lambda material, **kw: {
         "ok": True, "verdict": "REQUIRES_REVIEW", "findings": []})
     result = run_plan(plan_for("validate+analyse"), material="x", files=GOOD, spec=SPEC)
     assert result.verdict == "REQUIRES_REVIEW"
@@ -114,7 +114,7 @@ def test_pipeline_takes_the_strictest_verdict(monkeypatch):
 def test_pipeline_fail_beats_review(monkeypatch):
     monkeypatch.setattr("hub.local.validate_code", lambda files, spec: {
         "ok": True, "report": {"verdict": "FAIL", "finding_count": 2}})
-    monkeypatch.setattr("hub.local.analyse_static", lambda material: {
+    monkeypatch.setattr("hub.local.analyse_static", lambda material, **kw: {
         "ok": True, "verdict": "SAFE", "findings": []})
     result = run_plan(plan_for("validate+analyse"), material="x", files=GOOD, spec=SPEC)
     assert result.verdict == "FAIL"
@@ -129,7 +129,7 @@ def test_pipeline_stops_when_no_stage_changes_its_verdict(monkeypatch):
         return {"ok": True, "report": {"verdict": "PASS", "finding_count": 0}}
 
     monkeypatch.setattr("hub.local.validate_code", validate)
-    monkeypatch.setattr("hub.local.analyse_static", lambda material: {
+    monkeypatch.setattr("hub.local.analyse_static", lambda material, **kw: {
         "ok": True, "verdict": "SAFE", "findings": []})
     result = run_plan(plan_for("validate+analyse", 3), material="x", files=GOOD, spec=SPEC)
     assert calls["n"] == 2
