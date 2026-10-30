@@ -40,3 +40,43 @@ def test_validate_config_passes_when_all_set(monkeypatch):
     monkeypatch.delenv("VISHAP_DEV", raising=False)
 
     assert config.validate_config() == []
+
+
+# === v6.6: a placeholder pepper is not a secret ===
+
+def test_validate_secrets_rejects_placeholder_pepper(monkeypatch):
+    monkeypatch.setenv("API_KEY_PEPPER", "change-me-in-production")
+    monkeypatch.setenv("VISHAP_TENANT_KEYS", "true")
+
+    with pytest.raises(RuntimeError) as excinfo:
+        config.validate_secrets(strict=True)
+
+    assert "placeholder" in str(excinfo.value)
+
+
+def test_validate_secrets_rejects_missing_pepper_when_tenants_on(monkeypatch):
+    monkeypatch.delenv("API_KEY_PEPPER", raising=False)
+    monkeypatch.setenv("VISHAP_TENANT_KEYS", "true")
+
+    with pytest.raises(RuntimeError) as excinfo:
+        config.validate_secrets(strict=True)
+
+    assert "not set" in str(excinfo.value)
+
+
+def test_validate_secrets_accepts_real_pepper(monkeypatch):
+    monkeypatch.setenv("API_KEY_PEPPER", "k9Xq2Lm7vT4bR1sN8yH3wZ6aD0fG5jC")
+    monkeypatch.setenv("VISHAP_TENANT_KEYS", "true")
+
+    assert config.validate_secrets() == []
+
+
+def test_validate_secrets_warns_but_starts_when_tenants_off(monkeypatch):
+    monkeypatch.setenv("API_KEY_PEPPER", "change-me-in-production")
+    monkeypatch.setenv("VISHAP_TENANT_KEYS", "false")
+    monkeypatch.setenv("VISHAP_DEV", "true")
+
+    with pytest.warns(RuntimeWarning):
+        problems = config.validate_secrets()
+
+    assert problems

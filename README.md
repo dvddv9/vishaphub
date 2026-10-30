@@ -75,3 +75,17 @@ one is where a change to a shared rule is made once instead of twice.
 - **The sandbox tests are skipped outside Linux.** Three tests in `apps/analyzer/tests/test_scan_toolkit.py` need `bubblewrap`, one needs symlinks; CI does not install bubblewrap.
 - **Secrets are checked on the working tree only.** The `secrets` CI job runs gitleaks (`gitleaks detect --no-git`, policy in `.gitleaks.toml`) over the checked-out files. `--no-git` does not look at the past, so a secret that was committed and later removed is not found: the history is not scanned.
 - **The tests allowlist is broad on purpose.** `apps/*/tests/**` is allowlisted as a path, so a real key committed into a test file would not be reported. The fixtures behind that entry were checked one by one; the wider blind spot is accepted to keep the job green, and narrowing it to named values is the next step.
+
+## Secrets live outside the project tree
+
+Agents (Codex, Claude, any MCP client) open this folder as a project and can run
+`shell` inside it. A `.env` in the tree is therefore a readable file, not a secret:
+it is git-ignored, but ignored is not hidden.
+
+- Keys belong in user environment variables (`setx VISHAP_LLM_KEY "..."`) or in a file
+  outside the repository, loaded by the launcher — not in `apps/*/.env`.
+- The repository keeps `.env.example` with placeholders and nothing else.
+- `API_KEY_PEPPER` is checked at startup (`src/config.validate_secrets`): if
+  `VISHAP_TENANT_KEYS` is on and the pepper is empty or still a placeholder from
+  `.env.example`, the API refuses to start. A placeholder pepper makes every issued
+  tenant key forgeable by anyone who read the example.

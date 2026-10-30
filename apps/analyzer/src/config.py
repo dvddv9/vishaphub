@@ -138,3 +138,46 @@ def validate_config(strict: bool | None = None) -> list[str]:
     warnings.warn(detail, RuntimeWarning, stacklevel=2)
     return missing
 
+
+# === Secrets: a placeholder is not a secret (v6.6) ===
+#: Values that appear in documentation and examples. A live secret never looks
+#: like one of these; if it does, everyone who read the example knows it too.
+DEFAULT_PEPPERS = {
+    "change-me-in-production",
+    "change-me",
+    "changeme",
+    "change_me",
+    "pepper",
+    "secret",
+    "test-pepper",
+}
+
+
+def validate_secrets(strict: bool | None = None) -> list[str]:
+    """Fail fast when API_KEY_PEPPER is a placeholder.
+
+    Tenant API keys are HMAC-SHA256 keyed with this pepper, so a placeholder makes
+    every issued key forgeable by anyone who read `.env.example`. Checked hard only
+    while ``VISHAP_TENANT_KEYS`` is on; otherwise it warns and lets dev start.
+    """
+    pepper = os.getenv("API_KEY_PEPPER", "").strip()
+    tenants_on = os.getenv("VISHAP_TENANT_KEYS", "").strip().lower() in _TRUE_VALUES
+
+    problems: list[str] = []
+    if not pepper:
+        if tenants_on:
+            problems.append("API_KEY_PEPPER is not set while VISHAP_TENANT_KEYS is on")
+    elif pepper.lower() in DEFAULT_PEPPERS:
+        problems.append("API_KEY_PEPPER is a placeholder copied from .env.example")
+
+    if not problems:
+        return []
+
+    detail = "; ".join(problems)
+    if strict is None:
+        strict = not is_dev_mode()
+    if strict and tenants_on:
+        raise RuntimeError(detail)
+
+    warnings.warn(detail, RuntimeWarning, stacklevel=2)
+    return problems

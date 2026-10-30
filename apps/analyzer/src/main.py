@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from src.config import APP_NAME, PORT, DATA_DIR, validate_config
+from src.config import APP_NAME, PORT, DATA_DIR, validate_config, validate_secrets
 from src.version import __version__
 from src.observability.logging import (
     setup_logging,
@@ -51,6 +51,7 @@ from src.api import llm_config
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     validate_config()
+    validate_secrets()
     print(f"=== {APP_NAME} API запускается ===")
     print(f"Документация: http://localhost:{PORT}/docs")
     yield
