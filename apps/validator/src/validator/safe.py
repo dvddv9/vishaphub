@@ -139,21 +139,110 @@ def network_guard_dir() -> str:
     return _GUARD_DIR
 
 
+# --- a worker container that is itself the network cut-off -----------------------------------------
+# `docker run --network none --read-only` cuts the network off by construction, but the validator inside
+# cannot take that on faith: a runner that forgot the flag would otherwise be believed. So the container
+# is only trusted when the runner declares it (VISHAP_VALIDATOR_ISOLATION=container) AND the process
+# confirms it from inside: nothing but loopback, outbound connections refused, the root filesystem
+# mounted read-only, no credential-looking variables in its own environment. The evidence goes into the report; a failed check means no code is run.
+
+_CONTAINER: dict | None = None
+_PROBE_HOSTS = ("1.1.1.1", "9.9.9.9")
+
+
+def _outbound_refused() -> bool:
+    import socket
+
+    for host in _PROBE_HOSTS:
+        try:
+            socket.create_connection((host, 443), timeout=2).close()
+        except OSError:
+            continue
+        return False
+    return True
+
+
+def _root_read_only() -> bool:
+    try:
+        with open("/proc/mounts", encoding="utf-8") as fh:
+            for line in fh:
+                parts = line.split()
+                if len(parts) > 3 and parts[1] == "/":
+                    return "ro" in parts[3].split(",")
+    except OSError:
+        return False
+    return False
+
+
+#: Names that look like a credential. The code under test can read the worker's own start-up
+#: environment from /proc/<ppid>/environ, and no filtering inside the process hides that: the only
+#: control is that the worker is started without secrets. This is a tripwire on names, not a scanner of
+#: values. GPG_KEY is the public key id the python base image ships.
+_SECRET_HINTS = ("KEY", "TOKEN", "SECRET", "PASSWORD", "PASSWD", "CREDENTIAL", "OIDC", "AUTH")
+_PUBLIC_ENV = frozenset({"GPG_KEY"})
+
+
+def _secret_env_names() -> list[str]:
+    try:
+        with open("/proc/self/environ", "rb") as fh:
+            raw = fh.read()
+    except OSError:
+        return ["<environment unreadable>"]
+    names = [item.split(b"=", 1)[0].decode("utf-8", "replace") for item in raw.split(b"\0") if item]
+    return sorted(n for n in names if n not in _PUBLIC_ENV and any(h in n.upper() for h in _SECRET_HINTS))
+
+def container_evidence() -> dict:
+    """What this process could confirm about being the inside of an isolated worker container."""
+    global _CONTAINER
+    if _CONTAINER is not None:
+        return _CONTAINER
+    ev: dict = {"declared": os.getenv("VISHAP_VALIDATOR_ISOLATION") == "container", "ok": False}
+    if ev["declared"] and os.name == "posix":
+        try:
+            ev["interfaces"] = sorted(os.listdir("/sys/class/net"))
+        except OSError:
+            ev["interfaces"] = None
+        ev["only_loopback"] = ev["interfaces"] == ["lo"]
+        ev["outbound_refused"] = _outbound_refused()
+        ev["root_read_only"] = _root_read_only()
+        ev["secret_env_names"] = _secret_env_names()
+        ev["env_clean"] = not ev["secret_env_names"]
+        ev["ok"] = bool(ev["only_loopback"] and ev["outbound_refused"] and ev["root_read_only"] and ev["env_clean"])
+    _CONTAINER = ev
+    return ev
+
+
 def isolation() -> str:
-    """How the network is kept from the code under test: "netns", "guard" or "none"."""
+    """How the network is kept from the code under test: "netns", "container", "guard" or "none"."""
     if _off():
         return "none"
-    return "netns" if network_off() else "guard"
+    if network_off():
+        return "netns"
+    return "container" if container_evidence()["ok"] else "guard"
+
+
+def isolation_note() -> str:
+    """The line a check puts in the report, with the evidence when a container was what held."""
+    if isolation() != "container":
+        return f"network: {isolation()}"
+    return "network: container (loopback only, outbound refused, root read-only, no secrets in env)"
 
 
 def refusal(require_netns: bool = False) -> str:
     """Why submitted code must not be run on this host at all, or "".
 
     VISHAP_VALIDATOR_REQUIRE_NETNS=1 is for a host that serves other people: without a real network
-    namespace nothing submitted is run.
+    namespace, or a worker container that confirmed its own isolation, nothing submitted is run.
     """
     require = require_netns or os.getenv("VISHAP_VALIDATOR_REQUIRE_NETNS") == "1"
-    if require and isolation() != "netns":
+    if require and isolation() not in ("netns", "container"):
+        ev = container_evidence()
+        if ev["declared"]:
+            failed = [k for k in ("only_loopback", "outbound_refused", "root_read_only", "env_clean") if not ev.get(k)]
+            if "env_clean" in failed:
+                failed[failed.index("env_clean")] = "secrets in the worker environment: " + ", ".join(ev.get("secret_env_names", []))
+            return ("the worker container was declared isolated but did not confirm it "
+                    f"({', '.join(failed) or 'not a POSIX host'}); nothing was run")
         return ("this host cannot cut the network off from submitted code (no network namespace) "
                 "and strict network isolation is required; nothing was run")
     return ""
