@@ -1,0 +1,35 @@
+# Findings in the git HISTORY that are known fixtures, one exact fingerprint each
+# (commit:file:rule:line). The history carries the layouts the apps had before the monorepo
+# (tests/..., examples/..., main.tf at the root), so the path allowlist in .gitleaks.toml
+# does not reach them, and widening it to those paths would hide new findings too.
+#
+# Each was read for what it is, not just where it is: AKIA + ABCDE... sequences, a 16-,
+# 19- and 20-character 'secret', a 27-character sk_live_ string (a real one is ~100), a
+# 75-character PEM block (a real key is 1600+), the demo Terraform admin password.
+# None is a working credential, so none was revoked. If one turns out to be, revoke it
+# first and only then think about this file.
+
+# stripe-access-token  examples/multi/k8s_insecure.yaml:26
+8e77abfc4f3f50582a18bdfe146b805d2eb6e4ef:examples/multi/k8s_insecure.yaml:stripe-access-token:26
+# hashicorp-tf-password  main.tf:24
+fb76b0f5cdbdfe640aab289ca37458a169646ca1:main.tf:hashicorp-tf-password:24
+# generic-api-key  tests/test_core_fixes_1028.py:30
+2b258db014aef3c5e47de0edfdbff25edf771104:tests/test_core_fixes_1028.py:generic-api-key:30
+# aws-access-token  tests/test_redact.py:13
+f32ccaa82e269a68cf4b46ff8128bec75c4334fd:tests/test_redact.py:aws-access-token:13
+# private-key  tests/test_redact.py:20
+f32ccaa82e269a68cf4b46ff8128bec75c4334fd:tests/test_redact.py:private-key:20
+# generic-api-key  tests/test_server.py:161
+a93f876f40b12faebfbe64502e28066719223de6:tests/test_server.py:generic-api-key:161
+# generic-api-key  tests/test_server.py:165
+1c7fab64facd193616c90011c19db4ab7bbab5b8:tests/test_server.py:generic-api-key:165
+# aws-access-token  tests/test_static_scan.py:37
+b938fdb10859f395446556b4de04bb0fd50ea1db:tests/test_static_scan.py:aws-access-token:37
+# aws-access-token  tests/test_static_scan.py:41
+b938fdb10859f395446556b4de04bb0fd50ea1db:tests/test_static_scan.py:aws-access-token:41
+# aws-access-token  tests/test_static_scan.py:42
+b938fdb10859f395446556b4de04bb0fd50ea1db:tests/test_static_scan.py:aws-access-token:42
+# generic-api-key  tests/test_v747_p1.py:101
+cbe394ab137d3070200d3700acc0370452de66b7:tests/test_v747_p1.py:generic-api-key:101
+# stripe-access-token  tests/test_v747_p1.py:104
+cbe394ab137d3070200d3700acc0370452de66b7:tests/test_v747_p1.py:stripe-access-token:104

@@ -5,12 +5,16 @@
 # place that already knows how these packages fit together.
 #
 # What this does NOT cover, on purpose of honesty:
-#   * the row-level-security tests in apps/analyzer skip themselves unless the database
-#     role is not a superuser and the migrations are applied; here they stay skipped;
-#   * the sandbox tests that need bubblewrap are skipped (not installed on the runner);
 #   * ruff does not run on the analyzer yet: part of its findings (tests/bench/blind) are inputs, not code
-#   * the git history is not scanned for secrets: the secrets job runs gitleaks with --no-git,
-#     on the checked-out files only
+#
+# What the security jobs do, and how they fail:
+#   * analyzer: the row-level-security tests build a database of their own, run the migrations
+#     and connect as vishap_app (NOSUPERUSER, NOBYPASSRLS); the sandbox tests run inside bubblewrap.
+#     pytest counts a skip as a pass, so assert_no_skips.py fails the build if any test in
+#     test_rls, test_scan_toolkit or the Postgres job-store tests was skipped. A runner that
+#     stops allowing user namespaces turns this job red; it does not skip quietly.
+#   * secrets: the checked-out files. secrets-history: every commit. A finding in history is a
+#     credential to revoke; the few known fixtures there are named one by one in .gitleaksignore.
 name: ci
 
 on:
@@ -122,8 +126,21 @@ jobs:
           pip install -e ../../packages/core
           pip install -r "$RUNNER_TEMP/analyzer-reqs.txt"
         working-directory: apps/analyzer
+      # The sandbox tests need bubblewrap, and bubblewrap needs unprivileged user namespaces,
+      # which the Ubuntu 24.04 runner blocks through AppArmor. The last line is the probe
+      # src/tools/proof.py runs: a runner that cannot do it fails here, not as a skipped test.
+      - name: Install bubblewrap
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          bwrap --unshare-all --die-with-parent --ro-bind / / --dev /dev --proc /proc true
       # python -m, not bare pytest: the tests import "src.*" from the app's own directory.
-      - run: python -m pytest -q -rs
+      - run: python -m pytest -q -rs --junitxml=junit.xml
+        working-directory: apps/analyzer
+      - name: The security tests ran, none was skipped
+        if: always()
+        run: python ../../.github/scripts/assert_no_skips.py junit.xml test_rls test_scan_toolkit test_job_store_postgres
         working-directory: apps/analyzer
 
   generator:
@@ -181,3 +198,21 @@ jobs:
       # The policy is .gitleaks.toml at the root.
       - name: Scan the working tree
         run: gitleaks detect --no-git --redact -v
+
+  # Every commit, not the tip: a secret that was committed and then deleted is still in every clone.
+  # A finding here is a credential to revoke. Fixtures that are not one are named, one fingerprint
+  # each, in .gitleaksignore - the path allowlist is not widened to hide history.
+  secrets-history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks 8.21.2
+        run: |
+          curl -sSfL -o gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz
+          echo "5bc41815076e6ed6ef8fbecc9d9b75bcae31f39029ceb55da08086315316e3ba  gitleaks.tar.gz" | sha256sum -c -
+          sudo tar -xz -C /usr/local/bin -f gitleaks.tar.gz gitleaks
+      - name: Scan the history
+        run: gitleaks detect --redact -v

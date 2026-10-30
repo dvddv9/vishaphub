@@ -1,14 +1,21 @@
 # -*- coding: utf-8 -*-
-"""Multi-tenant isolation (RLS) tests — unit plus Postgres integration (skipped offline).
+"""Multi-tenant isolation (RLS) tests - unit plus Postgres integration.
 
-Integration tests need a live database with revision 002 applied:
+The integration tests need a Postgres where TEST_POSTGRES_URL names a superuser (they
+create a database of their own, run the migrations there and reach it as ``vishap_app``):
 
     $env:TEST_POSTGRES_URL="postgresql+asyncpg://vishap:vishap_dev@localhost:5432/vishap"
     python -m pytest tests/test_rls.py -v
+
+Without TEST_POSTGRES_URL the integration tests are skipped - that is the only way they
+skip. With it, a missing policy, a missing role or a role that bypasses RLS is a failure:
+a test that skips when isolation is absent proves nothing about isolation.
 """
 import asyncio
 import importlib.util
 import os
+import subprocess
+import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -25,38 +32,67 @@ ROOT = Path(__file__).resolve().parent.parent
 MIGRATION = ROOT / "alembic" / "versions" / "002_add_rls_jobs.py"
 PG_URL = os.getenv("TEST_POSTGRES_URL", "")
 
-needs_pg = pytest.mark.skipif(not PG_URL, reason="TEST_POSTGRES_URL not set")
+
+APP_ROLE = "vishap_app"
+APP_PASSWORD = "vishap_app_test_only"
+RLS_DB = "vishap_rls_test"
 
 
-async def _rls_bypassed() -> bool:
-    """True when the test connection bypasses RLS (superuser / BYPASSRLS role).
+def _pg_url(role: str | None = None, database: str | None = None) -> str:
+    from sqlalchemy.engine import make_url
 
-    PostgreSQL does not apply row-level security to superusers or to roles with
-    BYPASSRLS, not even with ``FORCE ROW LEVEL SECURITY``. The local dev
-    database connects as ``vishap``, which is a superuser, so integration tests
-    that assert isolation have to skip rather than fail.
-    """
-    if not PG_URL:
-        return False
+    url = make_url(PG_URL)
+    if role:
+        url = url.set(username=role, password=APP_PASSWORD)
+    if database:
+        url = url.set(database=database)
+    return url.render_as_string(hide_password=False)
 
+
+async def _admin(sql: str):
+    """Run one statement as the admin of TEST_POSTGRES_URL (autocommit: DDL on databases and roles)."""
     from sqlalchemy import text
     from sqlalchemy.ext.asyncio import create_async_engine
 
-    engine = create_async_engine(PG_URL)
+    engine = create_async_engine(_pg_url(database="postgres"), isolation_level="AUTOCOMMIT")
     try:
         async with engine.connect() as conn:
-            result = await conn.execute(
-                text(
-                    "SELECT current_setting('is_superuser') = 'on' "
-                    "OR COALESCE((SELECT rolbypassrls FROM pg_roles "
-                    "WHERE rolname = current_user), false)"
-                )
-            )
-            return bool(result.scalar())
-    except Exception:
-        return False
+            result = await conn.execute(text(sql))
+            return result.first() if result.returns_rows else None
     finally:
         await engine.dispose()
+
+
+@pytest.fixture(scope="module")
+def rls_url():
+    """A database of its own, migrated to head, reached as ``vishap_app``.
+
+    The job-store integration tests drop and recreate ``jobs`` - and its policy with it -
+    so isolation cannot be checked on their database. Here the migrations run for real,
+    in a scratch database, and the connection is the application's role, not the admin.
+    Everything is removed afterwards, the role goes back to NOLOGIN as migration 002 made it.
+    """
+    if not PG_URL:
+        pytest.skip("TEST_POSTGRES_URL not set")
+    asyncio.run(_admin(f"DROP DATABASE IF EXISTS {RLS_DB} WITH (FORCE)"))
+    asyncio.run(_admin(f"CREATE DATABASE {RLS_DB}"))
+    try:
+        run = subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "head"], cwd=ROOT, capture_output=True, text=True,
+            env={**os.environ, "DATABASE_URL": _pg_url(database=RLS_DB)}, check=False,
+        )
+        assert run.returncode == 0, run.stderr[-2000:]
+        asyncio.run(_admin(f"ALTER ROLE {APP_ROLE} LOGIN PASSWORD '{APP_PASSWORD}'"))
+        flags = asyncio.run(_admin(
+            f"SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = '{APP_ROLE}'"))
+        assert tuple(flags) == (False, False), f"{APP_ROLE} must be NOSUPERUSER NOBYPASSRLS, got {flags}"
+        yield _pg_url(APP_ROLE, RLS_DB)
+    finally:
+        try:
+            asyncio.run(_admin(f"ALTER ROLE {APP_ROLE} NOLOGIN PASSWORD NULL"))
+        except Exception:  # noqa: BLE001 - the role may not exist if the migration itself failed
+            pass
+        asyncio.run(_admin(f"DROP DATABASE IF EXISTS {RLS_DB} WITH (FORCE)"))
 
 
 @pytest.fixture(autouse=True)
@@ -287,59 +323,54 @@ def test_migration_does_not_duplicate_existing_index():
 # F. Postgres integration (requires TEST_POSTGRES_URL)
 # ============================================================
 
-@needs_pg
 @pytest.mark.asyncio
-async def test_rls_policy_exists_in_pg():
+async def test_rls_policy_exists_in_pg(rls_url):
+    """After the migrations the table has the tenant policy, with RLS enabled and forced."""
     from sqlalchemy import text
     from sqlalchemy.ext.asyncio import create_async_engine
 
-    engine = create_async_engine(PG_URL)
-    async with engine.connect() as conn:
-        rows = (
-            await conn.execute(
-                text(
-                    "SELECT polname, relrowsecurity FROM pg_policy p "
-                    "JOIN pg_class c ON c.oid = p.polrelid WHERE c.relname = 'jobs'"
+    engine = create_async_engine(rls_url)
+    try:
+        async with engine.connect() as conn:
+            rows = (
+                await conn.execute(
+                    text(
+                        "SELECT p.polname, c.relrowsecurity, c.relforcerowsecurity FROM pg_policy p "
+                        "JOIN pg_class c ON c.oid = p.polrelid WHERE c.relname = 'jobs'"
+                    )
                 )
-            )
-        ).all()
-    await engine.dispose()
+            ).all()
+    finally:
+        await engine.dispose()
 
-    if not any(row[0] == "tenant_isolation_policy" for row in rows):
-        pytest.skip(f"RLS policy not found in CI (rows={rows})")
-    assert rows and rows[0][1] is True
+    policy = [row for row in rows if row[0] == "tenant_isolation_policy"]
+    assert policy, f"tenant_isolation_policy is missing (rows={rows})"
+    assert policy[0][1] is True and policy[0][2] is True, policy
 
 
-@needs_pg
 @pytest.mark.asyncio
-async def test_tenant_isolation_in_pg():
+async def test_tenant_isolation_in_pg(rls_url):
     """Two tenants cannot read each other's jobs through the app role."""
-    if await _rls_bypassed():
-        pytest.skip("RLS does not apply to superusers. Use the vishap_app role in production.")
-
     from sqlalchemy import text
-    from sqlalchemy.exc import DBAPIError
     from sqlalchemy.ext.asyncio import create_async_engine
 
     from src.api.job_store_postgres import PostgresJobStore
 
-    engine = create_async_engine(PG_URL)
+    engine = create_async_engine(rls_url)
     async with engine.connect() as conn:
-        try:
-            await conn.execute(text("SET ROLE vishap_app"))
-        except DBAPIError:
-            await engine.dispose()
-            pytest.skip("role vishap_app unavailable; RLS bypassed for table owner")
-        await conn.rollback()
+        who = (await conn.execute(text("SELECT current_user, current_setting('is_superuser')"))).one()
     await engine.dispose()
+    assert tuple(who) == (APP_ROLE, "off"), who
 
-    store = PostgresJobStore(PG_URL)
+    store = PostgresJobStore(rls_url)
     try:
         store.set_tenant("tenant-a")
         job_a = await store.create("a.py")
         store.set_tenant("tenant-b")
         job_b = await store.create("b.py")
 
+        store.set_tenant("tenant-a")
+        assert await store.get(job_a.job_id) is not None      # isolation is not "nobody sees anything"
         store.set_tenant("tenant-b")
         assert await store.get(job_a.job_id) is None
         assert await store.get(job_b.job_id) is not None
@@ -405,34 +436,24 @@ def test_status_and_report_hide_other_tenants():
         app.dependency_overrides.pop(current_tenant, None)
 
 
-@needs_pg
 @pytest.mark.asyncio
-async def test_postgres_fail_closed_without_tenant():
-    """No tenant set -> RLS denies everything (no rows, no exception)."""
-    if await _rls_bypassed():
-        pytest.skip("RLS does not apply to superusers. Use the vishap_app role in production.")
-
-    from sqlalchemy import text
-    from sqlalchemy.exc import DBAPIError
-    from sqlalchemy.ext.asyncio import create_async_engine
-
+async def test_postgres_fail_closed_without_tenant(rls_url):
+    """No tenant set -> RLS denies everything (no rows, no exception), even when rows exist."""
     from src.api.job_store_postgres import PostgresJobStore
 
-    engine = create_async_engine(PG_URL)
-    async with engine.connect() as conn:
-        try:
-            await conn.execute(text("SET ROLE vishap_app"))
-        except DBAPIError:
-            await engine.dispose()
-            pytest.skip("role vishap_app unavailable; RLS bypassed for table owner")
-        await conn.rollback()
-    await engine.dispose()
-
-    store = PostgresJobStore(PG_URL)
+    store = PostgresJobStore(rls_url)
     try:
+        store.set_tenant("tenant-a")
+        job = await store.create("a.py")
+        assert await store.count() == 1                       # the row is really there
+
         set_tenant(None)
         assert await store.list_jobs() == []
         assert await store.count() == 0
     finally:
-        set_tenant(None)
-        await store._engine.dispose()
+        try:
+            store.set_tenant("tenant-a")
+            await store.delete(job.job_id)
+        finally:
+            set_tenant(None)
+            await store._engine.dispose()

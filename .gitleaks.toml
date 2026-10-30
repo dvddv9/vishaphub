@@ -11,10 +11,16 @@ useDefault = true
 description = "Fixtures and placeholders that look like secrets but are not"
 # Literal TOML strings ('...') on purpose: the regexes contain backslashes.
 paths = [
-    # Test code. The fake credentials in it are inputs on purpose: the redaction, scanning
-    # and hardening tests feed them in to check they get caught (AKIA + ABCDE... sequences,
-    # 'hunter2', 'sk-very-secret...', a three-line fake PEM block).
-    'apps/.*/tests/.*',
+    # The five test files that hold deliberate fake credentials, by name. They are inputs on
+    # purpose: the redaction, scanning and hardening tests feed them in to check they get
+    # caught (AKIA + ABCDE... sequences, 'hunter2', 'sk-very-secret...', a three-line fake PEM
+    # block, a 20-character sk_live_ string). Every other file under tests/ is scanned: a real
+    # key pasted into one is a finding, not a fixture. A new fixture file is added here by name.
+    'apps/analyzer/tests/test_core_fixes_1028\.py',
+    'apps/analyzer/tests/test_static_scan\.py',
+    'apps/analyzer/tests/test_v747_p1\.py',
+    'apps/generator/tests/test_redact\.py',
+    'apps/generator/tests/test_server\.py',
     # Examples are deliberately insecure inputs for the analyzer; they exist to be flagged.
     # apps/analyzer/examples/multi/k8s_insecure.yaml has a 27-character sk_live_ string
     # (19 after the prefix; a real key is longer) next to SYS_ADMIN and a weak JWT secret.
@@ -37,7 +43,7 @@ regexes = [
     # Markers the redactor leaves where it removed a secret, e.g. <AWS_KEY_REDACTED>:
     # the value is already gone.
     '<[A-Z_]+_REDACTED>',
-    # Placeholder key used by apps/analyzer/tests/test_e2e.py. Redundant while the tests
-    # path is allowlisted, but it names the exact value, so it survives a path change.
+    # Placeholder key used by apps/analyzer/tests/test_e2e.py. That file is scanned, so this
+    # names the exact value.
     'test-key-12345',
 ]
