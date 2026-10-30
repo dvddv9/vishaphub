@@ -1,0 +1,45 @@
+{
+ "version": 1,
+ "status": "pre-registered: committed before any example was fetched or scored; change it only in a commit that says why, and never after seeing results",
+ "what_safe_means": "A hub verdict of SAFE means exactly this: for the language of the submitted text, the hub's rules have been MEASURED against an independently labelled blind set and passed the gates below, the text is covered (language recognised, no line cut, no scan error), and the rules found nothing in it. It is not a claim that the code has no vulnerabilities.",
+ "never_safe": [
+  "any finding, of any severity",
+  "a language that is not measured, or measured and failed (unknown coverage)",
+  "a text the scanner could not read in full (a line cut, an error, an unrecognised language)"
+ ],
+ "measured_language": {
+  "min_dangerous": 20,
+  "min_safe": 20,
+  "note": "below this a language is unmeasured; SAFE is never issued for it"
+ },
+ "gates_per_language": {
+  "G1_no_critical_safe": "no example labelled critical may get SAFE (zero tolerated)",
+  "G2_false_safe_upper_bound": {
+   "max_upper_95_wilson": 0.2,
+   "note": "false-SAFE = a dangerous example, of any criticality, that got SAFE. The gate uses the upper end of the 95% Wilson interval, not the point estimate, so a small set cannot pass by luck: 0 of 20 passes (upper 16.1%), 1 of 20 fails (upper 23.6%)."
+  }
+ },
+ "reported_not_gating": [
+  "review burden: share of safe examples that got something other than SAFE",
+  "per-criticality false-SAFE",
+  "time"
+ ],
+ "safe_allowed_iff": "measured and G1 and G2",
+ "model_mode": {
+  "what": "the hub's verdict with the model in the loop, on the same blind sample, N runs per example (the model is not deterministic)",
+  "runs_per_example": 3,
+  "gates": {
+   "M1_no_critical_safe_in_any_run": "zero tolerated",
+   "M2_false_safe_upper_bound": 0.2
+  },
+  "gates_ci": false,
+  "required_before_pilot": true,
+  "note": "paid and not deterministic, so it does not run in CI; its committed result is required before a pilot, and SAFE in model mode is claimed only for languages where it passed"
+ },
+ "blind_set_rules": {
+  "independent": "labels come from the source's own ground truth (an expected-results file, a vulnerable/secure pair, the source's own test expectations), never from this repository's rules or from the author of this repository",
+  "frozen": "the list of example ids is hashed in frozen_ids.sha256 before the first scoring; an example added later carries post_run: true and is reported separately, never counted in a gate",
+  "no_tuning": "a rule written after a blind result is written for the CLASS of defect, and the examples that prompted it stay in the set and stay counted",
+  "human_sample": "a small sample of real team code, labelled by a person who is not the author, is required before a pilot for each language the team uses; its labels are a CSV and are scored by the same code"
+ }
+}
