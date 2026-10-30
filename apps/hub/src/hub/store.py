@@ -123,6 +123,13 @@ class RunStore:
             records = list(self._runs.values())[-limit:]
         return [_summary(r) for r in reversed(records)]
 
+    def retention(self) -> str:
+        """How long a run lives here, in the words the report page and the README both use."""
+        if self.path:
+            return (f"Kept on the server in a file: the last {self.keep} runs, until newer ones "
+                    "push it out or the file is deleted.")
+        return f"Kept in memory until the service restarts: the last {self.keep} runs, older ones are dropped."
+
     def __len__(self) -> int:
         with self._lock:
             return len(self._runs)

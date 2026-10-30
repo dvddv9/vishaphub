@@ -65,7 +65,7 @@ def _verdict_class(verdict: str) -> str:
     return "warn" if v and v != "-" else ""
 
 
-def report_page(record: dict) -> str:
+def report_page(record: dict, retention: str = "") -> str:
     """One run: the verdict, every step, every finding with its source, what was not checked."""
     result = record.get("result") or {}
     fp = result.get("fingerprint") or {}
@@ -113,6 +113,7 @@ def report_page(record: dict) -> str:
 <div class="meta-row"><span>at {e(str(record.get('at') or ''))}</span><span>plan {e(plan)}</span><span>fingerprint <code>{e(str(fp.get('digest') or ''))[:32]}</code></span></div>
 {f'<p class="rep-sum">{e(summary)}</p>' if summary else ''}
 {f'<p class="rep-reason">{e(reason)}</p>' if reason else ''}
+{f'<p class="meta">{e(retention)}</p>' if retention else ''}
 </div>
 </section>
 {_block("Steps", f'<div class="table-wrap"><table><tr><th>stage</th><th>verdict</th><th>state</th><th>detail</th></tr>{rows}</table></div>')}

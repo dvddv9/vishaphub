@@ -1,6 +1,6 @@
 [project]
 name = "vishap-hub"
-version = "0.3.0"
+version = "0.3.2"
 description = "Carries a request between the client, the generator, the validator and the analyser."
 readme = "README.md"
 requires-python = ">=3.11"

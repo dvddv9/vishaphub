@@ -276,7 +276,7 @@ class Handler(BaseHTTPRequestHandler):
                     "No run with this id is open to you: it may be older than the runs this hub keeps, "
                     "the link may be wrong, or it may belong to someone else."), extra=PRIVATE)
                 return
-            self._html(200, templates.report_page(record), extra=PRIVATE)
+            self._html(200, templates.report_page(record, RUNS.retention()), extra=PRIVATE)
             return
         if path in ("/", "/index.html"):
             page = os.path.join(WEB, "index.html")

@@ -64,17 +64,29 @@ cd apps/generator  && pytest -q && python -m generator
 Each app has its own Dockerfile and may be deployed separately; `render.yaml` at the
 root describes the one service that runs in production: the hub image, with the validator and the analyser's rules inside it.
 
+The hub's version is the one in `apps/hub/src/hub/version.py` (a test keeps `pyproject.toml` equal to it) and `/health` reports it; the repository has no git tags, so a deployed build is identified by its commit, not by a tag.
+
 ## A note on the merge
 
 Nothing was dropped. The five source repositories still exist and still build; this
 one is where a change to a shared rule is made once instead of twice.
 
+## What happens to the data
+
+- **Where a run lives.** In the memory of the one hub process: the last 200 runs (`VISHAP_HUB_RUNS_KEEP`), older ones are dropped, and a restart empties it. Postgres plays no part in the hub; the database in `apps/analyzer` is a separate thing.
+- **The file mirror.** Off unless `VISHAP_HUB_RUNS_FILE` is set. With it, runs are also written to that file and read back at start, and a run then lives until newer ones push it out or the file is deleted. Whether it is on for the live service is a setting of that service, not of this repository.
+- **What is stored.** The result of the run, not the submitted code as such: the verdict, the steps, the findings, the summary, the patch the model proposed (which contains code derived from the submission) and a fingerprint (hashes of the input). Findings can quote lines of the submitted code. The model key a client sends is never stored.
+- **Who can open it.** The browser that made it. The first `/run` hands that browser a random token in a cookie (30 days; `HttpOnly`, `SameSite=Lax`); an API client can send the same kind of token as `x-vishap-owner`. The store keeps only a hash of the token. `/api/runs` and `/runs` need a token (403 without one) and list only that token's runs. A run opened by id is a 404 for anyone else, the same 404 as a run that never existed. These are not accounts: clearing the cookie loses access to the runs, and two visitors who submit the same code get the same run id and can both open it. One run is public: the example the page offers under "Try with an example" (`apps/hub/src/hub/demo.py`).
+- **How to delete.** There is no delete. Restarting the service empties the memory (and with the file mirror on, delete the file too). Permanent deletion comes with a database, which is not built.
+- **What each run cost.** Every kept run records the characters it was sent and the size of what came back (`cost`); tokens are not metered. All runs also draw on one budget for the whole process, `VISHAP_HUB_GLOBAL_RUNS_PER_DAY` (default 200) and `VISHAP_HUB_GLOBAL_CHARS_PER_DAY`, in a sliding day; when it is spent `/run` answers 429 and says why, and `/health` still answers. That budget is in memory too: a restart resets it, so it bounds one process's day, not a provider bill. Chat and voice have a per-address limit only.
+
+The report page says the same in one line, taken from the store: `Kept in memory until the service restarts: the last 200 runs, older ones are dropped.`
+
 ## Known gaps
 
-- **Tenant isolation (row-level security) is not tested anywhere.** The RLS tests in `apps/analyzer/tests/test_rls.py` skip themselves: the test database role is a superuser, which PostgreSQL exempts from RLS, and no RLS policy exists in the test database (one test reports `RLS policy not found`). Against a live Postgres, 27 of the 30 tests in the Postgres-backed files pass and these 3 skip, so a green run says nothing about isolation. To close it: create the policies in the test database and connect as the non-superuser `vishap_app` role.
-- **The sandbox tests are skipped outside Linux.** Three tests in `apps/analyzer/tests/test_scan_toolkit.py` need `bubblewrap`, one needs symlinks; CI does not install bubblewrap.
-- **Secrets are checked on the working tree only.** The `secrets` CI job runs gitleaks (`gitleaks detect --no-git`, policy in `.gitleaks.toml`) over the checked-out files. `--no-git` does not look at the past, so a secret that was committed and later removed is not found: the history is not scanned.
-- **The tests allowlist is broad on purpose.** `apps/*/tests/**` is allowlisted as a path, so a real key committed into a test file would not be reported. The fixtures behind that entry were checked one by one; the wider blind spot is accepted to keep the job green, and narrowing it to named values is the next step.
+- **The sandbox tests skip outside Linux.** Three tests in `apps/analyzer/tests/test_scan_toolkit.py` need `bubblewrap` and one needs symlinks, so on a Windows machine they skip. In CI they must run: the job installs bubblewrap, probes it, and `.github/scripts/assert_no_skips.py` fails the build if any test in `test_rls`, `test_scan_toolkit` or the Postgres job-store tests was skipped.
+- **Secrets in history are named, not hidden.** CI scans the whole history (`secrets-history`). Twelve old findings are test fixtures from before the monorepo (short `AKIA` sequences, a 27-character `sk_live_` string, a 75-character PEM block, the demo Terraform password); each is one exact fingerprint in `.gitleaksignore`, and the path allowlist in `.gitleaks.toml` names the five test files that hold fake credentials instead of allowing every file under `tests/`.
+- **Tenant isolation is checked in CI, not on every developer machine.** `test_rls.py` builds a scratch database, runs the migrations and connects as `vishap_app` (NOSUPERUSER, NOBYPASSRLS); without `TEST_POSTGRES_URL` it skips, with it a missing policy or a role that bypasses RLS fails.
 
 ## Secrets live outside the project tree
 

@@ -416,6 +416,51 @@ class OwnershipTests(ServerCase):
             assert json.dumps(question, ensure_ascii=False) in script
 
 
+class RetentionTests(ServerCase):
+    def setUp(self):
+        super().setUp()
+        patcher = mock.patch.object(server, "RUNS", RunStore(keep=7))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_the_report_page_says_how_long_the_run_lives(self):
+        with mock.patch.object(server, "run_plan", lambda **kw: _Done()):
+            _status, headers, raw = self.post("/run", {"material": "r = 1", "api_key": "k"})
+        run_id = json.loads(raw)["fingerprint"]["id"]
+        _status, page = self.get(f"/r/{run_id}", self.cookie_of(headers))
+        assert server.RUNS.retention() in page.decode()
+        assert "until the service restarts" in page.decode() and "last 7 runs" in page.decode()
+
+    def test_with_the_file_mirror_it_says_so(self):
+        import tempfile
+        store = RunStore(keep=7, path=tempfile.mktemp(suffix=".json"))
+        assert "in a file" in store.retention() and "restarts" not in store.retention()
+
+
+class ReadmeTests(unittest.TestCase):
+    def test_the_readme_quotes_the_line_the_report_page_shows(self):
+        from pathlib import Path
+        readme = (Path(__file__).resolve().parents[3] / "README.md").read_text(encoding="utf-8")
+        assert RunStore(keep=200).retention() in readme
+
+    def test_the_readme_names_every_env_var_the_budget_reads(self):
+        from pathlib import Path
+        readme = (Path(__file__).resolve().parents[3] / "README.md").read_text(encoding="utf-8")
+        for name in ("VISHAP_HUB_RUNS_KEEP", "VISHAP_HUB_RUNS_FILE", "VISHAP_HUB_GLOBAL_RUNS_PER_DAY",
+                     "VISHAP_HUB_GLOBAL_CHARS_PER_DAY"):
+            assert name in readme, name
+
+
+class VersionTests(unittest.TestCase):
+    def test_pyproject_and_the_code_report_the_same_version(self):
+        import tomllib
+        from pathlib import Path
+
+        from hub.version import __version__
+        pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
+        assert tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["version"] == __version__
+
+
 class StoreOwnershipTests(unittest.TestCase):
     def test_get_for_and_list_for_are_the_only_filtered_doors(self):
         store = RunStore(keep=5)
