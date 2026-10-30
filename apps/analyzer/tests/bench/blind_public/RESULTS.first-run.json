@@ -1,0 +1,3227 @@
+{
+ "criterion_sha256": "095a02ddb4f0879aca1d1d0e9364f619bd85a6736e47d6f7f90594cb49b37647",
+ "frozen_ids_sha256": "65bf534b5830d412480919303bfab44658db9353618fcec2580b05959c5dcef0",
+ "examples": 402,
+ "per_example": {
+  "named": {
+   "benchmark:BenchmarkTest02431": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01609": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01531": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02150": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02512": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02343": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00740": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01689": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00979": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02411": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest00981": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01690": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00741": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00978": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00659": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01516": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest01779": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest01794": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01943": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00090": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01793": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01182": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest02413": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest01530": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01320": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest01489": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest01823": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest01325": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest00685": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest02663": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest01742": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest01318": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest00448": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest00857": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest00856": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest00005": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest01487": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02551": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00523": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02191": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01982": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest01825": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00613": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02460": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01826": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01567": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest01824": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01153": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest00634": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest01248": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02388": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest00868": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest01166": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest01654": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02478": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00046": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest02392": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01580": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02675": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest00536": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest01125": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00965": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01656": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01126": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01993": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01582": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01121": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02309": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01578": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01847": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00967": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00466": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02036": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01242": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01831": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01568": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01832": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00044": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02472": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02299": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02305": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02196": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00012": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01490": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01491": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02376": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02104": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00701": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01402": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00530": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02553": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01024": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00139": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01903": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02572": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01756": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01408": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02465": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00062": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00011": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00264": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00619": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01403": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00525": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00785": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01571": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00061": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01032": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00862": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00064": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02207": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00622": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00786": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02557": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01837": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02568": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02031": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01158": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00866": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02029": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01283": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01280": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01683": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01186": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00087": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00821": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01185": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00736": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02709": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02427": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02142": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01134": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02711": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02006": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02065": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01359": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01062": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01605": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00089": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01863": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00904": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01604": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02248": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02066": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00606": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest00600": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest01005": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest01381": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest01084": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest00342": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest02364": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest00770": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest02092": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest00106": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest00198": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest00762": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02728": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest00513": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest02727": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest01808": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest01216": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest02536": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest02629": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00331": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest00344": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest00432": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest02173": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest00837": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02261": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00670": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01708": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01619": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01081": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02446": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00754": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00994": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00004": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00426": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00671": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00098": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00669": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02085": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02722": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00322": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02086": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02168": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02523": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01207": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00099": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01454": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01205": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00252": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02416": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00164": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02498": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00398": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01788": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02700": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02702": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01058": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00733": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01931": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02497": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00974": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02256": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00188": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02162": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02440": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02079": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02009": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01696": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00316": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01452": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01197": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00243": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00919": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01224": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01974": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01561": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01894": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01478": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01316": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01736": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00207": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02100": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00607": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01892": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01734": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02457": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01893": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01014": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00852": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00118": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01479": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01821": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00941": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00520": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01397": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01562": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01632": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01263": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02234": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01666": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01050": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01268": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00644": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00155": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02608": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00554": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02133": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00384": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02129": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00884": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00474": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01175": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02330": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00646": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02313": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00892": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00286": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02681": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01664": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00468": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02712": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:api/low": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:api/medium": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:api/impossible": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:authbypass/low": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:authbypass/medium": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:authbypass/impossible": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:bac/low": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:bac/medium": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:bac/impossible": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:brute/low": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "dvwa:brute/medium": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "dvwa:brute/impossible": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "dvwa:captcha/low": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "dvwa:captcha/medium": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "dvwa:captcha/impossible": {
+    "raw_safe": false,
+    "findings": 3
+   },
+   "dvwa:cryptography/low": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:cryptography/medium": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:cryptography/impossible": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:csp/low": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:csp/medium": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:csp/impossible": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:csrf/low": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "dvwa:csrf/medium": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "dvwa:csrf/impossible": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "dvwa:exec/low": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "dvwa:exec/medium": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "dvwa:exec/impossible": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "dvwa:fi/low": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:fi/medium": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:fi/impossible": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:javascript/low": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "dvwa:javascript/medium": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:javascript/impossible": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:open_redirect/low": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:open_redirect/medium": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:open_redirect/impossible": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:sqli/low": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:sqli/medium": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:sqli/impossible": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:sqli_blind/low": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:sqli_blind/medium": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:sqli_blind/impossible": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:upload/low": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:upload/medium": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:upload/impossible": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:weak_id/low": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:weak_id/medium": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:weak_id/impossible": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:xss_d/low": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:xss_d/medium": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:xss_d/impossible": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:xss_r/low": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:xss_r/medium": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:xss_r/impossible": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:xss_s/low": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:xss_s/medium": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:xss_s/impossible": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:binding.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:crypto-md5.py": {
+    "raw_safe": false,
+    "findings": 8
+   },
+   "bandit:ciphers.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:cipher-modes.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:eval.py": {
+    "raw_safe": false,
+    "findings": 4
+   },
+   "bandit:mark_safe.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:exec.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:hardcoded-passwords.py": {
+    "raw_safe": false,
+    "findings": 3
+   },
+   "bandit:hardcoded-tmp.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:imports-aliases.py": {
+    "raw_safe": false,
+    "findings": 5
+   },
+   "bandit:imports-from.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:imports-function.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:telnetlib.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:ftplib.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:imports.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:imports-with-importlib.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:mktemp.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:okay.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:init-py-test/subdirectory-okay.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:os-chmod.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:os-exec.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:os-popen.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:os-spawn.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:os-startfile.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:os_system.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:pickle_deserialize.py": {
+    "raw_safe": false,
+    "findings": 3
+   },
+   "bandit:dill.py": {
+    "raw_safe": false,
+    "findings": 3
+   },
+   "bandit:shelve_open.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:jsonpickle.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:pandas_read_pickle.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:popen_wrappers.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:random_module.py": {
+    "raw_safe": false,
+    "findings": 4
+   },
+   "bandit:requests-ssl-verify-disabled.py": {
+    "raw_safe": false,
+    "findings": 18
+   },
+   "bandit:requests-missing-timeout.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:skip.py": {
+    "raw_safe": false,
+    "findings": 5
+   },
+   "bandit:sql_statements.py": {
+    "raw_safe": false,
+    "findings": 35
+   },
+   "bandit:ssl-insecure-version.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:subprocess_shell.py": {
+    "raw_safe": false,
+    "findings": 42
+   },
+   "bandit:urlopen.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:wildcard-injection.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:django_sql_injection_extra.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:django_sql_injection_raw.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:yaml_load.py": {
+    "raw_safe": false,
+    "findings": 6
+   },
+   "bandit:no_host_key_verification.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:jinja2_templating.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:mako_templating.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:mark_safe_secure.py": {
+    "raw_safe": false,
+    "findings": 19
+   },
+   "bandit:mark_safe_insecure.py": {
+    "raw_safe": false,
+    "findings": 29
+   },
+   "bandit:xml_etree_celementtree.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:xml_expatbuilder.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:xml_pulldom.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:xml_xmlrpc.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:xml_etree_elementtree.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:xml_expatreader.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:xml_minidom.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:xml_sax.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:httpoxy_cgihandler.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:httpoxy_twisted_script.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:httpoxy_twisted_directory.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:assert.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:paramiko_injection.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:partial_path_process.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:try_except_continue.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:try_except_pass.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:weak_cryptographic_key_sizes.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:flask_debug.py": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "bandit:nosec.py": {
+    "raw_safe": false,
+    "findings": 25
+   },
+   "bandit:unverified_context.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:hashlib_new_insecure_functions.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:pycrypto.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:pycryptodome.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:pyghmi.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:snmp.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:tarfile_extractall.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:pytorch_load.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:trojansource.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:trojansource_latin1.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:markupsafe_markup_xss.py": {
+    "raw_safe": false,
+    "findings": 8
+   },
+   "bandit:markupsafe_markup_xss_extend_markup_names.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:markupsafe_markup_xss_allowed_calls.py": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "bandit:huggingface_unsafe_download.py": {
+    "raw_safe": true,
+    "findings": 0
+   }
+  },
+  "pasted": {
+   "benchmark:BenchmarkTest02431": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01609": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01531": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02150": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02512": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02343": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00740": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01689": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00979": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02411": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00981": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01690": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00741": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00978": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00659": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01516": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01779": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01794": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01943": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00090": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01793": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01182": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02413": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01530": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01320": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest01489": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest01823": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest01325": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest00685": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest02663": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest01742": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest01318": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest00448": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest00857": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest00856": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest00005": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest01487": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02551": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00523": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02191": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01982": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest01825": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00613": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02460": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01826": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01567": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest01824": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01153": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest00634": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest01248": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02388": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest00868": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest01166": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest01654": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02478": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00046": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest02392": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01580": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02675": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest00536": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest01125": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00965": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01656": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01126": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01993": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01582": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01121": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02309": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01578": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01847": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00967": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00466": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02036": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01242": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01831": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01568": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01832": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00044": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02472": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02299": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02305": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02196": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00012": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01490": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01491": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02376": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02104": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00701": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01402": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00530": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02553": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01024": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00139": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01903": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02572": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01756": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01408": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02465": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00062": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00011": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00264": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00619": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01403": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00525": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00785": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01571": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00061": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01032": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00862": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00064": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02207": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00622": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00786": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02557": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01837": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02568": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02031": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01158": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00866": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02029": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01283": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01280": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01683": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01186": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00087": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00821": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01185": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00736": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02709": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02427": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02142": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01134": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02711": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02006": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02065": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01359": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01062": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01605": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00089": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01863": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00904": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01604": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02248": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02066": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00606": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest00600": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest01005": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest01381": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest01084": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest00342": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest02364": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest00770": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest02092": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest00106": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest00198": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest00762": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02728": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest00513": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest02727": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest01808": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "benchmark:BenchmarkTest01216": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest02536": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest02629": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00331": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest00344": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest00432": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest02173": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "benchmark:BenchmarkTest00837": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02261": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00670": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01708": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01619": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01081": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02446": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00754": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00994": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00004": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00426": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00671": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00098": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00669": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02085": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02722": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00322": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02086": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02168": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02523": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01207": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00099": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01454": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01205": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00252": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02416": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00164": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02498": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00398": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01788": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02700": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02702": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01058": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00733": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01931": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02497": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00974": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02256": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00188": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02162": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02440": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02079": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02009": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01696": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00316": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01452": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01197": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00243": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00919": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01224": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01974": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01561": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01894": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01478": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01316": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01736": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00207": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02100": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00607": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01892": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01734": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02457": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01893": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01014": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00852": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00118": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01479": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01821": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00941": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00520": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01397": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01562": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01632": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01263": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02234": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01666": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01050": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01268": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00644": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00155": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02608": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00554": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02133": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00384": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02129": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00884": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00474": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01175": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02330": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00646": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02313": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00892": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00286": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02681": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest01664": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest00468": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "benchmark:BenchmarkTest02712": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:api/low": {
+    "raw_safe": false,
+    "findings": 4
+   },
+   "dvwa:api/medium": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "dvwa:api/impossible": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:authbypass/low": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:authbypass/medium": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:authbypass/impossible": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:bac/low": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:bac/medium": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:bac/impossible": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:brute/low": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "dvwa:brute/medium": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "dvwa:brute/impossible": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "dvwa:captcha/low": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "dvwa:captcha/medium": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "dvwa:captcha/impossible": {
+    "raw_safe": false,
+    "findings": 3
+   },
+   "dvwa:cryptography/low": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:cryptography/medium": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:cryptography/impossible": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:csp/low": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:csp/medium": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:csp/impossible": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:csrf/low": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "dvwa:csrf/medium": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "dvwa:csrf/impossible": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "dvwa:exec/low": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "dvwa:exec/medium": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "dvwa:exec/impossible": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "dvwa:fi/low": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:fi/medium": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:fi/impossible": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:javascript/low": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "dvwa:javascript/medium": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:javascript/impossible": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:open_redirect/low": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:open_redirect/medium": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:open_redirect/impossible": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:sqli/low": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:sqli/medium": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:sqli/impossible": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:sqli_blind/low": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:sqli_blind/medium": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:sqli_blind/impossible": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:upload/low": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:upload/medium": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:upload/impossible": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:weak_id/low": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:weak_id/medium": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:weak_id/impossible": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:xss_d/low": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:xss_d/medium": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:xss_d/impossible": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:xss_r/low": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:xss_r/medium": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:xss_r/impossible": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:xss_s/low": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:xss_s/medium": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "dvwa:xss_s/impossible": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "bandit:binding.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:crypto-md5.py": {
+    "raw_safe": false,
+    "findings": 8
+   },
+   "bandit:ciphers.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:cipher-modes.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:eval.py": {
+    "raw_safe": false,
+    "findings": 4
+   },
+   "bandit:mark_safe.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:exec.py": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "bandit:hardcoded-passwords.py": {
+    "raw_safe": false,
+    "findings": 3
+   },
+   "bandit:hardcoded-tmp.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:imports-aliases.py": {
+    "raw_safe": false,
+    "findings": 5
+   },
+   "bandit:imports-from.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:imports-function.py": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "bandit:telnetlib.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:ftplib.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:imports.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:imports-with-importlib.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:mktemp.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:okay.py": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "bandit:init-py-test/subdirectory-okay.py": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "bandit:os-chmod.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:os-exec.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:os-popen.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:os-spawn.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:os-startfile.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:os_system.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:pickle_deserialize.py": {
+    "raw_safe": false,
+    "findings": 3
+   },
+   "bandit:dill.py": {
+    "raw_safe": false,
+    "findings": 3
+   },
+   "bandit:shelve_open.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:jsonpickle.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:pandas_read_pickle.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:popen_wrappers.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:random_module.py": {
+    "raw_safe": false,
+    "findings": 4
+   },
+   "bandit:requests-ssl-verify-disabled.py": {
+    "raw_safe": false,
+    "findings": 18
+   },
+   "bandit:requests-missing-timeout.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:skip.py": {
+    "raw_safe": false,
+    "findings": 5
+   },
+   "bandit:sql_statements.py": {
+    "raw_safe": false,
+    "findings": 35
+   },
+   "bandit:ssl-insecure-version.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:subprocess_shell.py": {
+    "raw_safe": false,
+    "findings": 42
+   },
+   "bandit:urlopen.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:wildcard-injection.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:django_sql_injection_extra.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:django_sql_injection_raw.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:yaml_load.py": {
+    "raw_safe": false,
+    "findings": 6
+   },
+   "bandit:no_host_key_verification.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:jinja2_templating.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:mako_templating.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:mark_safe_secure.py": {
+    "raw_safe": false,
+    "findings": 19
+   },
+   "bandit:mark_safe_insecure.py": {
+    "raw_safe": false,
+    "findings": 29
+   },
+   "bandit:xml_etree_celementtree.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:xml_expatbuilder.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:xml_pulldom.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:xml_xmlrpc.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:xml_etree_elementtree.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:xml_expatreader.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:xml_minidom.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:xml_sax.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:httpoxy_cgihandler.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:httpoxy_twisted_script.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:httpoxy_twisted_directory.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:assert.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:paramiko_injection.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:partial_path_process.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:try_except_continue.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:try_except_pass.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:weak_cryptographic_key_sizes.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:flask_debug.py": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "bandit:nosec.py": {
+    "raw_safe": false,
+    "findings": 25
+   },
+   "bandit:unverified_context.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:hashlib_new_insecure_functions.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:pycrypto.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:pycryptodome.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:pyghmi.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:snmp.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:tarfile_extractall.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:pytorch_load.py": {
+    "raw_safe": true,
+    "findings": 0
+   },
+   "bandit:trojansource.py": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "bandit:trojansource_latin1.py": {
+    "raw_safe": false,
+    "findings": 0
+   },
+   "bandit:markupsafe_markup_xss.py": {
+    "raw_safe": false,
+    "findings": 8
+   },
+   "bandit:markupsafe_markup_xss_extend_markup_names.py": {
+    "raw_safe": false,
+    "findings": 1
+   },
+   "bandit:markupsafe_markup_xss_allowed_calls.py": {
+    "raw_safe": false,
+    "findings": 2
+   },
+   "bandit:huggingface_unsafe_download.py": {
+    "raw_safe": true,
+    "findings": 0
+   }
+  }
+ }
+}

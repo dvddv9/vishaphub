@@ -1,0 +1,29 @@
+{
+ "criterion_sha256": "095a02ddb4f0879aca1d1d0e9364f619bd85a6736e47d6f7f90594cb49b37647",
+ "frozen_ids_sha256": "65bf534b5830d412480919303bfab44658db9353618fcec2580b05959c5dcef0",
+ "keyed_by": "the language the engine detects when text is pasted without a file name",
+ "languages": {
+  "javascript": {
+   "dangerous": 7,
+   "safe": 1,
+   "false_safe": 4,
+   "critical_false_safe": 1,
+   "false_safe_upper_95": 0.8418,
+   "review_burden": 0.0,
+   "measured": false,
+   "safe_allowed": false,
+   "why": "unmeasured: 7 dangerous and 1 safe examples, 20 and 20 are needed"
+  },
+  "python": {
+   "dangerous": 205,
+   "safe": 135,
+   "false_safe": 146,
+   "critical_false_safe": 27,
+   "false_safe_upper_95": 0.7698,
+   "review_burden": 0.104,
+   "measured": true,
+   "safe_allowed": false,
+   "why": "G1 failed: 27 critical example(s) got SAFE"
+  }
+ }
+}

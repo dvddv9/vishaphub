@@ -458,8 +458,12 @@ def scan_material(material: str, filename: str = "") -> dict:
                     "line": i, "snippet": _snippet(line, rule, m), "fix": rule.fix,
                 })
     except Exception as e:  # pragma: no cover - defensive: a scan bug must not kill a job
-        return _result(lang, [], {}, error=f"{type(e).__name__}: {e}")
+        failed = _result(lang, [], {}, error=f"{type(e).__name__}: {e}")
+        failed["coverage"] = coverage_of(lang, 0, 0, [f"the scan failed: {type(e).__name__}: {e}"])
+        return failed
 
+    degraded: list[str] = []       # parts of the analysis that quietly did not run: each one is a gap in coverage
+    cut = sum(1 for raw in material.splitlines() if len(raw) > MAX_LINE)
     flow: dict = {}
     if lang == "python":
         try:
@@ -467,6 +471,7 @@ def scan_material(material: str, filename: str = "") -> dict:
             flow = analyze_dataflow(material, language="python") or {}
         except Exception:
             flow = {}
+            degraded.append("the data-flow analysis failed")
         if flow and flow.get("sink"):
             sink_line = flow["sink"].get("line")
             hit = next((f for f in findings if f["line"] == sink_line), None)
@@ -494,6 +499,7 @@ def scan_material(material: str, filename: str = "") -> dict:
             findings.append(f)
     except Exception:
         routes = []
+        degraded.append("the route checklist failed")
     merged = 0
     try:
         merged = collapse_repeats(findings, material.splitlines())
@@ -506,9 +512,32 @@ def scan_material(material: str, filename: str = "") -> dict:
     except Exception:
         pass
     result = _result(lang, findings, flow, routes=routes)
+    result["coverage"] = coverage_of(lang, len(findings), cut, degraded)
     if merged:
         result["repeats_collapsed"] = merged   # the same code was submitted more than once
     return result
+
+
+def coverage_of(lang: str, n_findings: int, cut_lines: int, degraded: list[str] | None = None) -> dict:
+    """What the scan could and could not see of this text. `complete` is False when anything below applies.
+
+    A scan with no findings is only evidence of safety if the scan was able to look: the language is known and has
+    rules of its own, no line was cut, and no part of the analysis quietly failed. Otherwise "nothing found" means
+    "nothing looked at", and a verdict built on it must not say SAFE.
+    """
+    gaps = list(degraded or [])
+    specific = sum(1 for r in RULES if r.langs and lang in r.langs)
+    if lang in ("", "unknown"):
+        gaps.append("the language was not recognised")
+    elif lang == "log":
+        gaps.append("log material is checked for attack patterns, not read as code")
+    elif specific == 0:
+        gaps.append(f"no rule is specific to {lang}: only language-independent rules were applied")
+    if cut_lines:
+        gaps.append(f"{cut_lines} line(s) longer than {MAX_LINE} characters were cut before matching")
+    if n_findings >= MAX_FINDINGS:
+        gaps.append(f"the finding cap ({MAX_FINDINGS}) was reached")
+    return {"language": lang, "language_rules": specific, "complete": not gaps, "gaps": gaps}
 
 
 def to_rules_view(findings: list) -> list:
