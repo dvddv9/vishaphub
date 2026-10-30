@@ -33,6 +33,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 
+from . import evidence as evidence_mod
 from . import findings as findings_mod
 from . import fingerprint, local, proposal, statuses
 from .envelope import Envelope, Kind
@@ -220,12 +221,16 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
     answer: dict = {}
     model_trouble = ""
     previous: dict[str, str] = {}
+    supplied_files = dict(files)
+    passes_run = 0
+    stop_reason = ""
 
     def merge(verdict: str) -> None:
         nonlocal strictest_verdict
         strictest_verdict = verdict if strictest_verdict is None else strictest(strictest_verdict, verdict)
 
     for pass_no in range(1, int(plan.iterations) + 1):
+        passes_run = pass_no
         current: dict[str, str] = {}
 
         for stage in plan.stages:
@@ -352,6 +357,7 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
 
         if int(plan.iterations) > 1 and previous and current == previous:
             trace.append(f"stop after pass {pass_no}: no stage changed its verdict")
+            stop_reason = f"no stage changed its verdict after pass {pass_no}"
             break
         previous = current
 
@@ -414,5 +420,10 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
         plan=plan_dict,
         verdict=final,
         steps=[s.as_dict() for s in steps],
+        evidence=evidence_mod.build(
+            supplied_files=supplied_files, checked_files=files, patch=result.patch, checks=checks, answer=answer,
+            model_verdict=model_verdict, rules=fingerprint.rules_version(), attempts=passes_run,
+            stop_reason=stop_reason or f"the plan ran to its end ({passes_run} pass(es))",
+            not_checked=result.not_checked),
     )
     return result

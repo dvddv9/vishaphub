@@ -20,6 +20,20 @@ REPORT_PREFIX = "VISHAP_REPORT:"
 DEFAULT_LIMITS = {"memory": "256m", "cpus": "1", "pids": "64", "tmpfs": "32m"}
 
 
+PROFILE_NAME = "worker-v1"
+
+
+def profile(limits: dict | None = None) -> dict:
+    """The sandbox profile a run used, as data: the flags and caps `run_in_container` applies.
+
+    Deterministic on purpose (no container name, no time): it goes into the run's fingerprint, and
+    another run with the same profile must produce the same bytes.
+    """
+    lim = {**DEFAULT_LIMITS, **(limits or {})}
+    return {"name": PROFILE_NAME, "network": "none", "root": "read-only", "cap_drop": "ALL",
+            "no_new_privileges": True, "tmpfs": f"{lim['tmpfs']},noexec,nosuid", "pids": lim["pids"],
+            "memory": lim["memory"], "cpus": lim["cpus"], "deliverable": "read-only snapshot copy"}
+
 def _docker(docker: str, *args: str, timeout: float) -> subprocess.CompletedProcess:
     return subprocess.run([docker, *args], capture_output=True, text=True, encoding="utf-8",
                           errors="replace", timeout=timeout, check=False)
