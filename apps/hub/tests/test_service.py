@@ -5,6 +5,8 @@ budgeted per address and the voice is cached by its words. Every finished run ge
 fingerprint and a page, so «the verdict was X» can be opened again instead of believed.
 """
 import json
+import os
+import secrets
 import threading
 import unittest
 import urllib.error
@@ -12,8 +14,8 @@ import urllib.request
 from http.server import ThreadingHTTPServer
 from unittest import mock
 
-from hub import fingerprint, limits, local, proposal, server
-from hub.store import RunStore
+from hub import demo, fingerprint, limits, local, proposal, server
+from hub.store import RunStore, owner_key
 
 GOOD = {
     "calc/__init__.py": "def add(a, b):\n    return a + b\n",
@@ -44,26 +46,44 @@ class ServerCase(unittest.TestCase):
         threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
         self.addCleanup(lambda: (self.httpd.shutdown(), self.httpd.server_close()))
 
-    def post(self, path, body):
+    @staticmethod
+    def cookie_of(headers) -> str:
+        """`vishap_owner=<token>` from a response's Set-Cookie, or an empty string."""
+        raw = {k.lower(): v for k, v in headers.items()}.get("set-cookie", "")
+        return raw.split(";", 1)[0]
+
+    @staticmethod
+    def _who(cookie, headers):
+        merged = dict(headers or {})
+        if cookie:
+            merged["Cookie"] = cookie
+        return merged
+
+    def post(self, path, body, cookie=None, headers=None):
         data = json.dumps(body).encode()
         request = urllib.request.Request(f"http://127.0.0.1:{self.port}{path}", data=data,
-                                         headers={"Content-Type": "application/json"}, method="POST")
+                                         headers={"Content-Type": "application/json",
+                                                  **self._who(cookie, headers)}, method="POST")
         try:
             with urllib.request.urlopen(request, timeout=30) as response:
                 return response.status, dict(response.headers), response.read()
         except urllib.error.HTTPError as exc:
             return exc.code, dict(exc.headers), exc.read()
 
-    def get(self, path):
+    def get(self, path, cookie=None, headers=None):
+        request = urllib.request.Request(f"http://127.0.0.1:{self.port}{path}",
+                                         headers=self._who(cookie, headers))
         try:
-            with urllib.request.urlopen(f"http://127.0.0.1:{self.port}{path}", timeout=30) as response:
+            with urllib.request.urlopen(request, timeout=30) as response:
                 return response.status, response.read()
         except urllib.error.HTTPError as exc:
             return exc.code, exc.read()
 
-    def get_with_headers(self, path):
+    def get_with_headers(self, path, cookie=None, headers=None):
+        request = urllib.request.Request(f"http://127.0.0.1:{self.port}{path}",
+                                         headers=self._who(cookie, headers))
         try:
-            with urllib.request.urlopen(f"http://127.0.0.1:{self.port}{path}", timeout=30) as response:
+            with urllib.request.urlopen(request, timeout=30) as response:
                 return response.status, {k.lower(): v for k, v in response.headers.items()}, response.read()
         except urllib.error.HTTPError as exc:
             return exc.code, {k.lower(): v for k, v in exc.headers.items()}, exc.read()
@@ -150,27 +170,29 @@ class RunReportTests(ServerCase):
         with mock.patch.object(proposal, "propose", lambda **kw: fake(summary="checked")), \
                 mock.patch.object(local, "validate_code", lambda files, spec: {
                     "ok": True, "report": {"verdict": "PASS", "finding_count": 0, "checks": []}}):
-            status, _h, body = self.post("/run", {"spec": "name: demo\n", "api_key": "k",
-                                                  "files": GOOD})
+            status, headers, body = self.post("/run", {"spec": "name: demo\n", "api_key": "k",
+                                                       "files": GOOD})
         payload = json.loads(body)
         assert status == 200
         run_id = payload["fingerprint"]["id"]
         assert run_id
+        cookie = self.cookie_of(headers)
+        assert cookie.startswith("vishap_owner=")
 
-        status, page = self.get(f"/r/{run_id}")
+        status, page = self.get(f"/r/{run_id}", cookie)
         assert status == 200
         text = page.decode()
         assert "PASS" in text and run_id in text
         assert "Not checked" in text
 
-        status, raw = self.get(f"/api/runs/{run_id}.json")
+        status, raw = self.get(f"/api/runs/{run_id}.json", cookie)
         assert status == 200
         assert json.loads(raw)["result"]["verdict"] == "PASS"
 
-        runs = json.loads(self.get("/api/runs")[1])
+        runs = json.loads(self.get("/api/runs", cookie)[1])
         assert any(r["id"] == run_id for r in runs["runs"])
 
-        status, listing = self.get("/runs")
+        status, listing = self.get("/runs", cookie)
         assert status == 200
         assert run_id in listing.decode()
 
@@ -215,11 +237,11 @@ class PagesTests(ServerCase):
     def test_a_refused_run_is_kept_with_its_reason(self):
         import os
         os.environ.pop("VISHAP_HUB_LLM_KEY", None)
-        status, _h, body = self.post("/run", {"spec": "name: demo\n"})
+        status, headers, body = self.post("/run", {"spec": "name: demo\n"})
         payload = json.loads(body)
         assert status == 502
         run_id = payload["fingerprint"]["id"]
-        status, raw = self.get(f"/api/runs/{run_id}.json")
+        status, raw = self.get(f"/api/runs/{run_id}.json", self.cookie_of(headers))
         assert status == 200
         kept = json.loads(raw)
         assert kept["result"]["verdict"] == "ERROR"
@@ -228,6 +250,187 @@ class PagesTests(ServerCase):
     def test_an_unknown_run_is_a_404(self):
         assert self.get("/r/deadbeefdeadbeef")[0] == 404
         assert self.get("/api/runs/deadbeefdeadbeef.json")[0] == 404
+
+
+# ownership --------------------------------------------------------------------
+
+class _Done:
+    """What run_plan returns, with nothing in it that depends on a model or on the analyser."""
+
+    def as_dict(self):
+        return {"ok": True, "verdict": "SAFE", "plan": {"stages": ["analyser"], "iterations": 1},
+                "steps": [], "summary": "looks fine"}
+
+
+class OwnershipTests(ServerCase):
+    """A run is its maker's. The id is not a credential, and the list is not a window."""
+
+    def setUp(self):
+        super().setUp()
+        patcher = mock.patch.object(server, "RUNS", RunStore(keep=50))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def run_as(self, material, cookie=None, headers=None, **extra):
+        body = {"material": material, "api_key": "k", **extra}
+        with mock.patch.object(server, "run_plan", lambda **kw: _Done()):
+            status, response_headers, raw = self.post("/run", body, cookie=cookie, headers=headers)
+        assert status == 200, raw
+        return json.loads(raw)["fingerprint"]["id"], response_headers
+
+    # who gets a token
+
+    def test_the_first_run_hands_out_a_token_and_a_later_one_does_not(self):
+        _id, headers = self.run_as("a = 1")
+        cookie = self.cookie_of(headers)
+        assert cookie.startswith("vishap_owner=") and len(cookie.split("=", 1)[1]) >= 24
+        _id, again = self.run_as("a = 2", cookie=cookie)
+        assert self.cookie_of(again) == ""
+
+    def test_the_cookie_is_not_readable_by_scripts_and_is_secure_behind_https(self):
+        _id, headers = self.run_as("a = 1")
+        flags = {k.lower(): v for k, v in headers.items()}["set-cookie"]
+        assert "HttpOnly" in flags and "SameSite=Lax" in flags and "Secure" not in flags
+        _id, behind = self.run_as("a = 3", headers={"x-forwarded-proto": "https"})
+        assert "Secure" in {k.lower(): v for k, v in behind.items()}["set-cookie"]
+
+    def test_the_token_is_stored_as_a_hash_and_never_returned(self):
+        run_id, headers = self.run_as("secret = 1")
+        cookie = self.cookie_of(headers)
+        token = cookie.split("=", 1)[1]
+        stored = server.RUNS.get(run_id)
+        assert stored["owners"] == [owner_key(token)]
+        assert token not in json.dumps(stored)
+        _status, raw = self.get(f"/api/runs/{run_id}.json", cookie)
+        assert "owners" not in json.loads(raw)
+
+    def test_a_streamed_run_hands_out_a_token_too(self):
+        with mock.patch.object(server, "run_plan", lambda **kw: _Done()):
+            status, headers, body = self.post("/run/stream", {"material": "s = 1", "api_key": "k"})
+        assert status == 200
+        cookie = self.cookie_of(headers)
+        assert cookie.startswith("vishap_owner=")
+        done = body.decode().split("event: done\ndata: ", 1)[1].split("\n", 1)[0]
+        run_id = json.loads(done)["fingerprint"]["id"]
+        assert self.get(f"/api/runs/{run_id}.json", cookie)[0] == 200
+        assert self.get(f"/api/runs/{run_id}.json")[0] == 404
+
+    # the list
+
+    def test_the_list_without_an_owner_is_forbidden_not_empty(self):
+        self.run_as("a = 1")
+        status, raw = self.get("/api/runs")
+        assert status == 403
+        assert "error" in json.loads(raw)
+        status, page = self.get("/runs")
+        assert status == 403
+        assert "<!doctype html>" in page.decode()
+
+    def test_a_malformed_token_is_no_token(self):
+        assert self.get("/api/runs", headers={"x-vishap-owner": "short"})[0] == 403
+        assert self.get("/api/runs", cookie="vishap_owner=short")[0] == 403
+
+    def test_each_owner_lists_only_their_own_runs(self):
+        a_id, a_headers = self.run_as("a = 1")
+        b_id, b_headers = self.run_as("b = 2")
+        a_list = json.loads(self.get("/api/runs", self.cookie_of(a_headers))[1])["runs"]
+        b_list = json.loads(self.get("/api/runs", self.cookie_of(b_headers))[1])["runs"]
+        assert [r["id"] for r in a_list] == [a_id]
+        assert [r["id"] for r in b_list] == [b_id]
+        _status, page = self.get("/runs", self.cookie_of(a_headers))
+        assert a_id in page.decode() and b_id not in page.decode()
+
+    # a run by id
+
+    def test_a_stranger_gets_a_404_not_the_run(self):
+        run_id, _h = self.run_as("a = 1")
+        status, page = self.get(f"/r/{run_id}")
+        assert status == 404
+        assert run_id not in page.decode()
+        status, raw = self.get(f"/api/runs/{run_id}.json")
+        assert status == 404
+        assert "result" not in json.loads(raw)
+
+    def test_another_owner_gets_a_404_on_a_run_that_is_not_theirs(self):
+        a_id, a_headers = self.run_as("a = 1")
+        _b_id, b_headers = self.run_as("b = 2")
+        a, b = self.cookie_of(a_headers), self.cookie_of(b_headers)
+        assert self.get(f"/r/{a_id}", b)[0] == 404
+        assert self.get(f"/api/runs/{a_id}.json", b)[0] == 404
+        # and the answer is the one a run that never existed gets
+        assert self.get("/r/0000000000000000", b)[1] == self.get(f"/r/{a_id}", b)[1]
+        assert self.get(f"/r/{a_id}", a)[0] == 200
+        assert self.get(f"/api/runs/{a_id}.json", a)[0] == 200
+
+    def test_the_header_is_an_owner_like_the_cookie(self):
+        token = secrets.token_urlsafe(24)
+        run_id, headers = self.run_as("h = 1", headers={"x-vishap-owner": token})
+        assert self.cookie_of(headers) == ""
+        assert self.get(f"/api/runs/{run_id}.json", headers={"x-vishap-owner": token})[0] == 200
+        assert self.get(f"/r/{run_id}", headers={"x-vishap-owner": token})[0] == 200
+        assert self.get(f"/r/{run_id}", headers={"x-vishap-owner": secrets.token_urlsafe(24)})[0] == 404
+
+    def test_two_visitors_with_the_same_code_both_keep_their_run(self):
+        a_id, a_headers = self.run_as("same = 1")
+        b_id, b_headers = self.run_as("same = 1")
+        assert a_id == b_id
+        a, b = self.cookie_of(a_headers), self.cookie_of(b_headers)
+        assert self.get(f"/r/{a_id}", a)[0] == 200 and self.get(f"/r/{a_id}", b)[0] == 200
+        assert self.get(f"/r/{a_id}")[0] == 404
+
+    def test_private_answers_are_not_cacheable(self):
+        run_id, headers = self.run_as("a = 1")
+        cookie = self.cookie_of(headers)
+        for path, who in (("/api/runs", cookie), (f"/r/{run_id}", cookie), (f"/r/{run_id}", None), ("/runs", None)):
+            _s, response_headers, _b = self.get_with_headers(path, who)
+            assert response_headers.get("cache-control") == "private, no-store", path
+
+    # the one public run
+
+    def test_the_pages_own_example_is_the_only_run_anyone_may_open(self):
+        run_id, _h = self.run_as(demo.EXAMPLE_MATERIAL, question="is this safe?")
+        assert self.get(f"/r/{run_id}")[0] == 200
+        status, raw = self.get(f"/api/runs/{run_id}.json")
+        assert status == 200 and "owners" not in json.loads(raw)
+        assert self.get("/api/runs")[0] == 403      # public to open by id, not to list
+
+    def test_a_flag_in_the_request_does_not_make_a_run_public(self):
+        run_id, _h = self.run_as("private = 1", demo=True)
+        assert self.get(f"/r/{run_id}")[0] == 404
+
+    def test_the_example_with_anything_attached_is_not_a_demo(self):
+        with_files, _h = self.run_as(demo.EXAMPLE_MATERIAL, files={"a.py": "x = 1"})
+        assert self.get(f"/r/{with_files}")[0] == 404
+        own_question, _h = self.run_as(demo.EXAMPLE_MATERIAL, question="what else is in my database?")
+        assert self.get(f"/r/{own_question}")[0] == 404
+
+    def test_the_demo_strings_are_the_ones_the_page_sends(self):
+        with open(os.path.join(server.WEB, "app.js"), encoding="utf-8") as fh:
+            script = fh.read()
+        assert json.dumps(demo.EXAMPLE_MATERIAL) in script
+        for question in demo.EXAMPLE_QUESTIONS - {""}:
+            assert json.dumps(question, ensure_ascii=False) in script
+
+
+class StoreOwnershipTests(unittest.TestCase):
+    def test_get_for_and_list_for_are_the_only_filtered_doors(self):
+        store = RunStore(keep=5)
+        store.save({"id": "mine", "verdict": "SAFE", "ok": True, "at": "1", "owners": ["a"]})
+        store.save({"id": "theirs", "verdict": "SAFE", "ok": True, "at": "2", "owners": ["b"]})
+        store.save({"id": "public", "verdict": "SAFE", "ok": True, "at": "3", "owners": ["b"], "demo": True})
+        assert store.get_for("mine", "a")["id"] == "mine"
+        assert store.get_for("theirs", "a") is None
+        assert store.get_for("theirs", None) is None
+        assert store.get_for("public", None)["id"] == "public"
+        assert [r["id"] for r in store.list_for("a")] == ["mine"]
+        assert store.list_for(None) == []
+
+    def test_owners_merge_and_a_demo_flag_is_not_inherited(self):
+        store = RunStore(keep=5)
+        store.save({"id": "x", "owners": ["a"], "demo": True})
+        store.save({"id": "x", "owners": ["b"], "demo": False})
+        assert store.get("x")["owners"] == ["a", "b"]
+        assert store.get_for("x", None) is None
 
 
 # the fingerprint --------------------------------------------------------------

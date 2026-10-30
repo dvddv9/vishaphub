@@ -5,6 +5,12 @@
 `GET /r/<id>` a run as a page, `GET /runs` the recent runs. Standard library only:
 the service must start in a second, and a framework is not what makes routing correct.
 
+A run belongs to whoever made it. The first `/run` hands the browser a random token in a
+cookie (an API client may send it as `x-vishap-owner` instead); the store keeps only its
+hash. The list of runs needs a token (403 without one) and shows only that token's runs;
+a run opened by id is a 404 for anyone else - the same 404 as a run that never existed,
+so the id proves nothing. The page's own example (`demo.py`) is the one public run.
+
 Every door that spends something has a ceiling: a request budget per address for the
 run, the chat and the voice, a length limit on the text, and a cache for the voice.
 The same words are synthesised once, not once per visitor.
@@ -13,13 +19,15 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import secrets
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from . import fingerprint, limits, templates
+from . import demo, fingerprint, limits, templates
 from .chat import reply
 from .pipeline import run_plan
 from .router import RouteError, plan_for
-from .store import RunStore
+from .store import RunStore, owner_key
 from .tts import VOICE
 from .tts import available as tts_available
 from .tts import speak as tts_speak
@@ -35,6 +43,13 @@ STATIC = {
     "/greeting.mp3": ("greeting.mp3", "audio/mpeg", True),
 }
 STATIC_MAX_AGE = "300"
+
+OWNER_COOKIE = "vishap_owner"
+OWNER_HEADER = "x-vishap-owner"
+OWNER_COOKIE_MAX_AGE = 30 * 24 * 3600
+_TOKEN = re.compile(r"[A-Za-z0-9_-]{24,128}")
+#: what a private answer must not be: kept by a proxy or a shared cache
+PRIVATE = {"cache-control": "private, no-store"}
 
 LIMITERS = {kind: limits.RateLimiter(limits.per_minute(kind)) for kind in ("run", "chat", "speak")}
 TTS_CACHE = limits.TTSCache(limits.int_env("VISHAP_HUB_TTS_CACHE", limits.DEFAULT_TTS_ITEMS))
@@ -105,6 +120,35 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    # ---- who is asking --------------------------------------------------
+
+    def _token(self) -> str | None:
+        """The owner token the client presented: the header first, then the cookie.
+
+        None when there is none or it is malformed. The address is not an identity: it is
+        shared by everyone behind one NAT, and the key in a run's body is the client's
+        model key, not a name.
+        """
+        candidate = (self.headers.get(OWNER_HEADER) or "").strip()
+        if not candidate:
+            for part in (self.headers.get("cookie") or "").split(";"):
+                name, _, value = part.strip().partition("=")
+                if name == OWNER_COOKIE:
+                    candidate = value.strip()
+                    break
+        return candidate if _TOKEN.fullmatch(candidate) else None
+
+    def _owner_for_run(self) -> tuple[str, dict]:
+        """The owner of the run about to be made, and the headers that give a new browser its token."""
+        token = self._token()
+        if token:
+            return owner_key(token), {}
+        token = secrets.token_urlsafe(24)
+        cookie = f"{OWNER_COOKIE}={token}; Path=/; HttpOnly; SameSite=Lax; Max-Age={OWNER_COOKIE_MAX_AGE}"
+        if (self.headers.get("x-forwarded-proto") or "").lower() == "https":
+            cookie += "; Secure"
+        return owner_key(token), {"set-cookie": cookie}
+
     def _limited(self, kind: str) -> bool:
         allowed, wait = LIMITERS[kind].allow(self.client_address[0])
         if allowed:
@@ -128,7 +172,7 @@ class Handler(BaseHTTPRequestHandler):
             return None
         return body
 
-    def _remember(self, payload: dict, args: dict | None = None) -> None:
+    def _remember(self, payload: dict, args: dict | None = None, owner: str = "") -> None:
         """Keep the run, and give even a refused run an id: a failure is a result too."""
         fp = payload.get("fingerprint") or {}
         if not fp.get("id") and args:
@@ -151,12 +195,14 @@ class Handler(BaseHTTPRequestHandler):
             "plan": payload.get("plan"),
             "summary": payload.get("summary", ""),
             "result": payload,
+            "owners": [owner] if owner else [],
+            "demo": bool(args) and demo.is_demo(args),
         })
 
     # ---- GET ------------------------------------------------------------
 
-    def _html(self, code: int, markup: str) -> None:
-        self._send(code, markup, "text/html")
+    def _html(self, code: int, markup: str, extra: dict | None = None) -> None:
+        self._send(code, markup, "text/html", extra=extra)
 
     def _static(self, path: str) -> bool:
         name, kind, cacheable = STATIC[path]
@@ -178,14 +224,22 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, {"ok": True, "version": __version__})
             return
         if path == "/api/runs":
-            self._send(200, {"runs": RUNS.list(20)})
+            token = self._token()
+            if token is None:
+                self._send(403, {"error": "no owner: make a run from this browser first, "
+                                          f"or send the {OWNER_HEADER} header you made it with"}, extra=PRIVATE)
+                return
+            self._send(200, {"runs": RUNS.list_for(owner_key(token), 20)}, extra=PRIVATE)
             return
         if path.startswith("/api/runs/"):
-            record = RUNS.get(path[len("/api/runs/"):].removesuffix(".json"))
+            token = self._token()
+            record = RUNS.get_for(path[len("/api/runs/"):].removesuffix(".json"),
+                                  owner_key(token) if token else None)
             if record is None:
-                self._send(404, {"error": "no such run, or it is older than the stored ones"})
+                self._send(404, {"error": "no such run, or it is not yours, or it is older than the stored ones"},
+                           extra=PRIVATE)
                 return
-            self._send(200, record)
+            self._send(200, record, extra=PRIVATE)
             return
         if path.startswith("/api/") or path == "/api":
             self._send(404, {"error": "not found"})
@@ -196,15 +250,25 @@ class Handler(BaseHTTPRequestHandler):
             self._static(path)
             return
         if path == "/runs":
-            self._html(200, templates.runs_page(RUNS.list(20)))
+            token = self._token()
+            if token is None:
+                self._html(403, templates.message_page(
+                    "Runs are private",
+                    "A run is listed only for the browser that made it. Make a run here and it will appear."),
+                    extra=PRIVATE)
+                return
+            self._html(200, templates.runs_page(RUNS.list_for(owner_key(token), 20)), extra=PRIVATE)
             return
         if path.startswith("/r/") and len(path) > 3:
-            record = RUNS.get(path[3:])
+            token = self._token()
+            record = RUNS.get_for(path[3:], owner_key(token) if token else None)
             if record is None:
                 self._html(404, templates.message_page(
-                    "No such run", "It is older than the runs this hub still keeps, or the link is wrong."))
+                    "No such run",
+                    "No run with this id is open to you: it may be older than the runs this hub keeps, "
+                    "the link may be wrong, or it may belong to someone else."), extra=PRIVATE)
                 return
-            self._html(200, templates.report_page(record))
+            self._html(200, templates.report_page(record), extra=PRIVATE)
             return
         if path in ("/", "/index.html"):
             page = os.path.join(WEB, "index.html")
@@ -237,14 +301,14 @@ class Handler(BaseHTTPRequestHandler):
             "model": str(body.get("model") or ""),
         }
 
-    def _respond(self, result, args: dict | None = None) -> None:
+    def _respond(self, result, args: dict | None = None, owner: str = "", extra: dict | None = None) -> None:
         payload = result.as_dict()
         if not payload["ok"]:
             payload["error"] = payload.get("reason") or "the run did not pass its gates"
-        self._remember(payload, args)
-        self._send(200 if payload["ok"] else 502, payload)
+        self._remember(payload, args, owner)
+        self._send(200 if payload["ok"] else 502, payload, extra=extra)
 
-    def _stream(self, args: dict) -> None:
+    def _stream(self, args: dict, owner: str = "", extra: dict | None = None) -> None:
         """The same run, announced stage by stage: a minute of silence reads as broken."""
         self.send_response(200)
         for name, value in SECURITY_HEADERS.items():
@@ -252,6 +316,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("content-type", "text/event-stream; charset=utf-8")
         self.send_header("cache-control", "no-store")
         self.send_header("x-accel-buffering", "no")
+        for name, value in (extra or {}).items():
+            self.send_header(name, value)
         self.end_headers()
 
         def event(name: str, payload: dict) -> None:
@@ -274,7 +340,7 @@ class Handler(BaseHTTPRequestHandler):
         payload = result.as_dict()
         if not payload["ok"]:
             payload["error"] = payload.get("reason") or "the run did not pass its gates"
-        self._remember(payload, args)
+        self._remember(payload, args, owner)
         try:
             event("done", payload)
         except _ClientGone:
@@ -337,10 +403,11 @@ class Handler(BaseHTTPRequestHandler):
             args = self._run_args(body)
             if args is None:
                 return
+            owner, cookie = self._owner_for_run()
             if path == "/run/stream":
-                self._stream(args)
+                self._stream(args, owner, cookie)
                 return
-            self._respond(run_plan(**args), args)
+            self._respond(run_plan(**args), args, owner, cookie)
             return
 
         self._send(404, {"error": "not found"})
