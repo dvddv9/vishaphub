@@ -25,8 +25,14 @@ RUN pip install -e ./packages/core -e ./apps/validator \
     && pip install -e ./apps/hub \
     && pip install "psycopg[binary]==3.3.6" "pytest==9.1.1" "edge-tts==7.3.1"
 
+# Non-root on purpose: the code under test is somebody else's code.
 RUN useradd -m -u 1000 hub
 USER hub
+
+# The image is meant to run read-only: nothing is written outside /tmp (runs live in memory
+# unless VISHAP_HUB_RUNS_FILE says otherwise; the voice cache is in memory). Run it as
+#   docker run --read-only --tmpfs /tmp:size=128m --pids-limit 256 --memory 1g ...
+# so a submission cannot rewrite the code that judges it.
 
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \

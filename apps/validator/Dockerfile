@@ -8,6 +8,9 @@ COPY src/ ./src/
 # pytest is what the behaviour stage runs; without it every deliverable would look broken.
 RUN pip install --no-cache-dir . pytest
 
+# Non-root, and the image is meant to run read-only: the deliverable is unpacked into a
+# temporary directory and its tests run from there. Run it as
+#   docker run --read-only --tmpfs /tmp:size=256m --network none --pids-limit 256 --memory 1g ...
 RUN useradd -m -u 1000 validator
 USER validator
 
