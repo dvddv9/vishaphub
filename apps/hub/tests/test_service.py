@@ -45,6 +45,9 @@ class ServerCase(unittest.TestCase):
         budget = mock.patch.object(server, "BUDGET", limits.RunBudget(0, 0))
         budget.start()
         self.addCleanup(budget.stop)
+        chat_budget = mock.patch.object(server, "CHAT_BUDGET", limits.RunBudget(0, 0))
+        chat_budget.start()
+        self.addCleanup(chat_budget.stop)
         self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
         self.port = self.httpd.server_address[1]
         threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
@@ -640,7 +643,7 @@ class StreamTests(ServerCase):
     def test_anonymous_chat_spends_the_global_budget(self):
         """A keyless page answered locally is free; a chat that reaches a model is a run."""
         model_reply = {"ok": True, "model": "test-model", "text": "pong"}
-        with mock.patch.object(server, "BUDGET", limits.RunBudget(1, 0)), \
+        with mock.patch.object(server, "CHAT_BUDGET", limits.RunBudget(1, 0)), \
              mock.patch.object(server, "reply", lambda *a, **k: model_reply), \
              mock.patch.dict(os.environ, {"VISHAP_HUB_LLM_KEY": "test-key"}):
             first, _, _ = self.post("/chat", {"message": "ping"})
@@ -654,10 +657,24 @@ class StreamTests(ServerCase):
     def test_keyless_chat_does_not_spend_the_budget(self):
         """Without a key the answer is local, so it costs nothing and must not use the ceiling."""
         local_reply = {"ok": True, "model": "local", "text": "bring a key", "key_required": True}
-        with mock.patch.object(server, "BUDGET", limits.RunBudget(1, 0)), \
+        with mock.patch.object(server, "CHAT_BUDGET", limits.RunBudget(1, 0)), \
              mock.patch.object(server, "reply", lambda *a, **k: local_reply), \
              mock.patch.dict(os.environ, {"VISHAP_HUB_LLM_KEY": ""}):
             first, _, _ = self.post("/chat", {"message": "ping"})
             second, _, _ = self.post("/chat", {"message": "ping"})
 
         self.assertEqual([first, second], [200, 200])
+
+    def test_chat_does_not_spend_the_run_budget(self):
+        """A stranger talking on the site must not close the door for runs."""
+        run_budget = limits.RunBudget(10, 0)
+        model_reply = {"ok": True, "model": "test-model", "text": "pong"}
+        with mock.patch.object(server, "BUDGET", run_budget), \
+             mock.patch.object(server, "CHAT_BUDGET", limits.RunBudget(5, 0)), \
+             mock.patch.object(server, "reply", lambda *a, **k: model_reply), \
+             mock.patch.dict(os.environ, {"VISHAP_HUB_LLM_KEY": "test-key"}):
+            for _ in range(3):
+                status, _, _ = self.post("/chat", {"message": "ping"})
+                self.assertEqual(status, 200)
+
+        self.assertEqual(run_budget.used()["runs"], 0)

@@ -59,6 +59,8 @@ PRIVATE = {"cache-control": "private, no-store"}
 
 LIMITERS = {kind: limits.RateLimiter(limits.per_minute(kind)) for kind in ("run", "chat", "speak")}
 BUDGET = limits.RunBudget(limits.global_runs_per_day(), limits.global_chars_per_day())
+#: the chat pays its own bill: a conversation on the site cannot spend the run budget
+CHAT_BUDGET = limits.RunBudget(limits.global_chats_per_day(), limits.global_chat_chars_per_day())
 TTS_CACHE = limits.TTSCache(limits.int_env("VISHAP_HUB_TTS_CACHE", limits.DEFAULT_TTS_ITEMS))
 RUNS = RunStore(keep=limits.int_env("VISHAP_HUB_RUNS_KEEP", 200),
                 path=os.getenv("VISHAP_HUB_RUNS_FILE", ""))
@@ -279,9 +281,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def _alerts_after_chat(self) -> None:
         """The same threshold watch the run door has, for the anonymous chat."""
-        used = BUDGET.used()
-        ALERTS.check("anonymous:runs", used["runs"], BUDGET.runs, "anonymous runs")
-        ALERTS.check("anonymous:chars", used["chars"], BUDGET.chars, "anonymous chat characters")
+        used = CHAT_BUDGET.used()
+        ALERTS.check("anonymous:chats", used["runs"], CHAT_BUDGET.runs, "anonymous chat messages")
+        ALERTS.check("anonymous:chat-chars", used["chars"], CHAT_BUDGET.chars, "anonymous chat characters")
 
     def _limited(self, kind: str) -> bool:
         allowed, wait = LIMITERS[kind].allow(self.client_address[0])
@@ -609,7 +611,7 @@ class Handler(BaseHTTPRequestHandler):
                 # The site's chat spends the owner's key: an anonymous message that reaches a
                 # model is a bill too. A keyless message is answered locally and costs nothing.
                 key_present = bool((str(body.get("api_key") or "") or os.getenv("VISHAP_HUB_LLM_KEY") or "").strip())
-                spend = BUDGET.take(len(message)) if key_present else limits.Spend(True)
+                spend = CHAT_BUDGET.take(len(message)) if key_present else limits.Spend(True)
                 if not spend.allowed:
                     self._send(413 if spend.too_big else 429, {"ok": False, "error": spend.reason},
                                extra={} if spend.too_big else {"retry-after": str(int(spend.wait) + 1)})

@@ -20,6 +20,9 @@ DEFAULT_PER_MINUTE = {"run": 6, "chat": 20, "speak": 20}
 #: the whole process, whoever asks - a stranger behind a thousand addresses is still one bill
 DEFAULT_GLOBAL_RUNS_PER_DAY = 200
 DEFAULT_GLOBAL_CHARS_PER_DAY = 5_000_000
+#: the chat has its own ceiling: a page conversation must not eat the run budget
+DEFAULT_GLOBAL_CHATS_PER_DAY = 200
+DEFAULT_GLOBAL_CHAT_CHARS_PER_DAY = 2_000_000
 DAY = 86_400.0
 DEFAULT_TTS_CHARS = 600
 DEFAULT_TTS_ITEMS = 64
@@ -50,6 +53,16 @@ def global_runs_per_day() -> int:
 def global_chars_per_day() -> int:
     """Characters the whole process sends toward a model in a sliding day; 0 turns it off."""
     return int_env("VISHAP_HUB_GLOBAL_CHARS_PER_DAY", DEFAULT_GLOBAL_CHARS_PER_DAY)
+
+
+def global_chats_per_day() -> int:
+    """Chat messages the whole process allows itself in a sliding day; own ceiling, own bill."""
+    return int_env("VISHAP_HUB_GLOBAL_CHATS_PER_DAY", DEFAULT_GLOBAL_CHATS_PER_DAY)
+
+
+def global_chat_chars_per_day() -> int:
+    """Characters the anonymous chat may send toward a model in a sliding day."""
+    return int_env("VISHAP_HUB_GLOBAL_CHAT_CHARS_PER_DAY", DEFAULT_GLOBAL_CHAT_CHARS_PER_DAY)
 
 
 def input_chars(args: dict) -> int:
