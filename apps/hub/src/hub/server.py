@@ -277,6 +277,12 @@ class Handler(BaseHTTPRequestHandler):
             return None
         return {k: v[0] for k, v in parse_qs(self.rfile.read(length).decode("utf-8", "replace")).items()}
 
+    def _alerts_after_chat(self) -> None:
+        """The same threshold watch the run door has, for the anonymous chat."""
+        used = BUDGET.used()
+        ALERTS.check("anonymous:runs", used["runs"], BUDGET.runs, "anonymous runs")
+        ALERTS.check("anonymous:chars", used["chars"], BUDGET.chars, "anonymous chat characters")
+
     def _limited(self, kind: str) -> bool:
         allowed, wait = LIMITERS[kind].allow(self.client_address[0])
         if allowed:
@@ -599,6 +605,16 @@ class Handler(BaseHTTPRequestHandler):
             messages = body.get("messages") if isinstance(body.get("messages"), list) else []
             if principal is not None and not self._reserve(principal, "chat", len(message)):
                 return
+            if principal is None:
+                # The site's chat spends the owner's key: an anonymous message that reaches a
+                # model is a bill too. A keyless message is answered locally and costs nothing.
+                key_present = bool((str(body.get("api_key") or "") or os.getenv("VISHAP_HUB_LLM_KEY") or "").strip())
+                spend = BUDGET.take(len(message)) if key_present else limits.Spend(True)
+                if not spend.allowed:
+                    self._send(413 if spend.too_big else 429, {"ok": False, "error": spend.reason},
+                               extra={} if spend.too_big else {"retry-after": str(int(spend.wait) + 1)})
+                    return
+                self._alerts_after_chat()
             with meter.metering() as m:
                 self._meter = m
                 try:

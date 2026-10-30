@@ -636,3 +636,28 @@ class StreamTests(ServerCase):
         stages = [line for line in text.splitlines() if line.startswith("data: ") and '"stage"' in line]
         assert any('"generator"' in line for line in stages)
         assert any('"validator"' in line for line in stages)
+
+    def test_anonymous_chat_spends_the_global_budget(self):
+        """A keyless page answered locally is free; a chat that reaches a model is a run."""
+        model_reply = {"ok": True, "model": "test-model", "text": "pong"}
+        with mock.patch.object(server, "BUDGET", limits.RunBudget(1, 0)), \
+             mock.patch.object(server, "reply", lambda *a, **k: model_reply), \
+             mock.patch.dict(os.environ, {"VISHAP_HUB_LLM_KEY": "test-key"}):
+            first, _, _ = self.post("/chat", {"message": "ping"})
+            second, headers, body = self.post("/chat", {"message": "ping"})
+
+        self.assertEqual(first, 200)
+        self.assertEqual(second, 429)
+        self.assertIn("budget", json.loads(body)["error"])
+        self.assertIn("retry-after", {k.lower() for k in headers})
+
+    def test_keyless_chat_does_not_spend_the_budget(self):
+        """Without a key the answer is local, so it costs nothing and must not use the ceiling."""
+        local_reply = {"ok": True, "model": "local", "text": "bring a key", "key_required": True}
+        with mock.patch.object(server, "BUDGET", limits.RunBudget(1, 0)), \
+             mock.patch.object(server, "reply", lambda *a, **k: local_reply), \
+             mock.patch.dict(os.environ, {"VISHAP_HUB_LLM_KEY": ""}):
+            first, _, _ = self.post("/chat", {"message": "ping"})
+            second, _, _ = self.post("/chat", {"message": "ping"})
+
+        self.assertEqual([first, second], [200, 200])
