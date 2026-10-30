@@ -13,12 +13,16 @@ const I18N = {
     s3t: "Analyse", s3p: "The analyser checks whether the code is dangerous. Every finding is named, with its source.",
     howFoot: "The strictest verdict wins. Whatever was not checked is listed, not hidden.",
     workEyebrow: "workbench", workTitle: "Try it on your own code",
-    workLead: "Paste code, a spec or logs, or just ask. Every run gets a report you can open and forward.",
+    workLead: "Paste code, a spec or logs below and press run. You get a verdict, what is wrong and how to fix it, and a report you can forward.",
     send: "send", run: "run", hear: "🔊 read it", json: "↓ json",
     textPh: "write, or press the mic and speak…",
-    questionPh: "what do you want: «is this safe», «fix it», «write it from this spec»…",
-    materialPh: "…or paste code, a spec or logs",
+    questionPh: "optional: what you want to know, e.g. “is this safe?” or “fix it”",
+    materialPh: "e.g. paste something like this:\n\n@app.get(\"/user\")\ndef user():\n    name = request.args.get(\"name\", \"\")\n    cur.execute(f\"select * from users where name = '{name}'\")",
     exampleQuestion: "is this safe?",
+    sampleBtn: "paste a sample and run",
+    keySys: "The hub holds no model key. The rules check your code for free; to have the model read it too, add your own Anthropic key below (it stays in this browser).",
+    keyHint: "Optional. Without a key only the rules run; with your key the model reads the code as well, and the stricter verdict wins. The key is kept in this browser and sent with your run.",
+    verdictHint: "REQUIRES_REVIEW means a person should read the findings. The hub does not issue SAFE yet: its rules are not measured well enough for any language.",
     working: "working…", nothing: "nothing to work on", refused: "refused",
     verdictLabel: "verdict", notChecked: "not checked", openReport: "open the report",
     reportAt: "run", copy: "copy", copied: "copied", noAccess: "no access",
@@ -40,12 +44,16 @@ const I18N = {
     s3t: "Проанализировать", s3p: "Анализатор проверяет, не опасен ли код. Каждая находка названа вместе с источником.",
     howFoot: "Побеждает строжайший вердикт. Что не проверено, то перечислено, а не спрятано.",
     workEyebrow: "рабочий стол", workTitle: "Попробуй на своём коде",
-    workLead: "Вставь код, спеку или логи, или просто спроси. У каждого прогона есть отчёт, который можно открыть и переслать.",
+    workLead: "Вставь код, спеку или логи ниже и нажми «запустить». Получишь вердикт, что не так и как исправить, и отчёт, который можно переслать.",
     send: "отправить", run: "запустить", hear: "🔊 прочитать", json: "↓ json",
     textPh: "напиши или нажми микрофон и говори…",
-    questionPh: "что нужно: «это безопасно», «почини», «напиши по этой спеке»…",
-    materialPh: "…или вставь код, спеку или логи",
+    questionPh: "по желанию: что хочешь узнать, например «это безопасно?» или «почини»",
+    materialPh: "например, вставь что-то такое:\n\n@app.get(\"/user\")\ndef user():\n    name = request.args.get(\"name\", \"\")\n    cur.execute(f\"select * from users where name = '{name}'\")",
     exampleQuestion: "это безопасно?",
+    sampleBtn: "вставить пример и запустить",
+    keySys: "У хаба нет ключа модели. Правила проверяют код бесплатно; чтобы код читала ещё и модель, добавь свой ключ Anthropic ниже (он остаётся в этом браузере).",
+    keyHint: "Не обязательно. Без ключа работают только правила; с твоим ключом код читает ещё и модель, и побеждает более строгий вердикт. Ключ хранится в этом браузере и уходит вместе с твоим запуском.",
+    verdictHint: "REQUIRES_REVIEW значит: человеку стоит прочитать находки. SAFE хаб пока не выдаёт: его правила не измерены достаточно хорошо ни для одного языка.",
     working: "работаю…", nothing: "нечего проверять", refused: "отказ",
     verdictLabel: "вердикт", notChecked: "не проверено", openReport: "открыть отчёт",
     reportAt: "прогон", copy: "копировать", copied: "скопировано", noAccess: "нет доступа",
@@ -113,6 +121,8 @@ $("tryExample").onclick = () => {
   $("question").value = t("exampleQuestion");
   pipeline();
 };
+
+$("sampleRun").onclick = $("tryExample").onclick;
 
 $("save").onclick = () => { localStorage.setItem("vishap_key", $("key").value.trim()); bubble("sys", t("savedKey")); };
 $("clear").onclick = () => { localStorage.removeItem("vishap_key"); $("key").value=""; bubble("sys", t("clearedKey")); };
