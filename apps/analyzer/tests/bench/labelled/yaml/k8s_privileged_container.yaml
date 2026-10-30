@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: worker
+spec:
+  containers:
+    - name: worker
+      image: registry.example.com/worker:1.4.2
+      securityContext:
+        privileged: true

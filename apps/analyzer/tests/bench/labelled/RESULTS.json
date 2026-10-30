@@ -1,0 +1,2067 @@
+{
+ "examples": 105,
+ "summary_counts": {
+  "named": {
+   "dangerous": [
+    {
+     "language": "c",
+     "criticality": "critical",
+     "examples": 2,
+     "found": 2,
+     "expected_findings": 2,
+     "hit_findings": 2,
+     "wrong_line_only": 0,
+     "safe_verdicts": 0
+    },
+    {
+     "language": "c",
+     "criticality": "high",
+     "examples": 5,
+     "found": 3,
+     "expected_findings": 5,
+     "hit_findings": 3,
+     "wrong_line_only": 0,
+     "safe_verdicts": 2
+    },
+    {
+     "language": "cpp",
+     "criticality": "critical",
+     "examples": 1,
+     "found": 1,
+     "expected_findings": 1,
+     "hit_findings": 1,
+     "wrong_line_only": 0,
+     "safe_verdicts": 0
+    },
+    {
+     "language": "cpp",
+     "criticality": "high",
+     "examples": 2,
+     "found": 1,
+     "expected_findings": 2,
+     "hit_findings": 1,
+     "wrong_line_only": 0,
+     "safe_verdicts": 1
+    },
+    {
+     "language": "dockerfile",
+     "criticality": "high",
+     "examples": 1,
+     "found": 0,
+     "expected_findings": 1,
+     "hit_findings": 0,
+     "wrong_line_only": 0,
+     "safe_verdicts": 1
+    },
+    {
+     "language": "dockerfile",
+     "criticality": "medium",
+     "examples": 1,
+     "found": 0,
+     "expected_findings": 1,
+     "hit_findings": 0,
+     "wrong_line_only": 0,
+     "safe_verdicts": 1
+    },
+    {
+     "language": "dockerfile",
+     "criticality": "low",
+     "examples": 1,
+     "found": 0,
+     "expected_findings": 1,
+     "hit_findings": 0,
+     "wrong_line_only": 0,
+     "safe_verdicts": 1
+    },
+    {
+     "language": "go",
+     "criticality": "critical",
+     "examples": 2,
+     "found": 1,
+     "expected_findings": 2,
+     "hit_findings": 1,
+     "wrong_line_only": 0,
+     "safe_verdicts": 1
+    },
+    {
+     "language": "go",
+     "criticality": "high",
+     "examples": 2,
+     "found": 1,
+     "expected_findings": 2,
+     "hit_findings": 1,
+     "wrong_line_only": 0,
+     "safe_verdicts": 1
+    },
+    {
+     "language": "go",
+     "criticality": "medium",
+     "examples": 2,
+     "found": 0,
+     "expected_findings": 2,
+     "hit_findings": 0,
+     "wrong_line_only": 0,
+     "safe_verdicts": 2
+    },
+    {
+     "language": "java",
+     "criticality": "critical",
+     "examples": 3,
+     "found": 3,
+     "expected_findings": 3,
+     "hit_findings": 3,
+     "wrong_line_only": 0,
+     "safe_verdicts": 0
+    },
+    {
+     "language": "java",
+     "criticality": "high",
+     "examples": 3,
+     "found": 1,
+     "expected_findings": 3,
+     "hit_findings": 1,
+     "wrong_line_only": 0,
+     "safe_verdicts": 2
+    },
+    {
+     "language": "java",
+     "criticality": "medium",
+     "examples": 1,
+     "found": 1,
+     "expected_findings": 1,
+     "hit_findings": 1,
+     "wrong_line_only": 0,
+     "safe_verdicts": 0
+    },
+    {
+     "language": "javascript",
+     "criticality": "critical",
+     "examples": 3,
+     "found": 3,
+     "expected_findings": 3,
+     "hit_findings": 3,
+     "wrong_line_only": 0,
+     "safe_verdicts": 0
+    },
+    {
+     "language": "javascript",
+     "criticality": "high",
+     "examples": 4,
+     "found": 3,
+     "expected_findings": 4,
+     "hit_findings": 3,
+     "wrong_line_only": 0,
+     "safe_verdicts": 1
+    },
+    {
+     "language": "javascript",
+     "criticality": "medium",
+     "examples": 2,
+     "found": 2,
+     "expected_findings": 2,
+     "hit_findings": 2,
+     "wrong_line_only": 0,
+     "safe_verdicts": 0
+    },
+    {
+     "language": "php",
+     "criticality": "critical",
+     "examples": 3,
+     "found": 0,
+     "expected_findings": 3,
+     "hit_findings": 0,
+     "wrong_line_only": 0,
+     "safe_verdicts": 2
+    },
+    {
+     "language": "php",
+     "criticality": "high",
+     "examples": 3,
+     "found": 1,
+     "expected_findings": 3,
+     "hit_findings": 1,
+     "wrong_line_only": 0,
+     "safe_verdicts": 2
+    },
+    {
+     "language": "python",
+     "criticality": "critical",
+     "examples": 7,
+     "found": 7,
+     "expected_findings": 7,
+     "hit_findings": 7,
+     "wrong_line_only": 0,
+     "safe_verdicts": 0
+    },
+    {
+     "language": "python",
+     "criticality": "high",
+     "examples": 8,
+     "found": 4,
+     "expected_findings": 8,
+     "hit_findings": 4,
+     "wrong_line_only": 0,
+     "safe_verdicts": 3
+    },
+    {
+     "language": "python",
+     "criticality": "medium",
+     "examples": 4,
+     "found": 4,
+     "expected_findings": 4,
+     "hit_findings": 4,
+     "wrong_line_only": 0,
+     "safe_verdicts": 0
+    },
+    {
+     "language": "terraform",
+     "criticality": "high",
+     "examples": 3,
+     "found": 3,
+     "expected_findings": 3,
+     "hit_findings": 3,
+     "wrong_line_only": 0,
+     "safe_verdicts": 0
+    },
+    {
+     "language": "terraform",
+     "criticality": "medium",
+     "examples": 1,
+     "found": 1,
+     "expected_findings": 1,
+     "hit_findings": 1,
+     "wrong_line_only": 0,
+     "safe_verdicts": 0
+    },
+    {
+     "language": "typescript",
+     "criticality": "critical",
+     "examples": 2,
+     "found": 2,
+     "expected_findings": 2,
+     "hit_findings": 2,
+     "wrong_line_only": 0,
+     "safe_verdicts": 0
+    },
+    {
+     "language": "typescript",
+     "criticality": "high",
+     "examples": 2,
+     "found": 1,
+     "expected_findings": 2,
+     "hit_findings": 1,
+     "wrong_line_only": 0,
+     "safe_verdicts": 1
+    },
+    {
+     "language": "yaml",
+     "criticality": "high",
+     "examples": 3,
+     "found": 2,
+     "expected_findings": 3,
+     "hit_findings": 2,
+     "wrong_line_only": 0,
+     "safe_verdicts": 1
+    }
+   ],
+   "safe": [
+    {
+     "language": "c",
+     "examples": 3,
+     "with_findings": 1,
+     "fp_findings": 1,
+     "fp_by_severity": {
+      "critical": 0,
+      "high": 1,
+      "medium": 0,
+      "low": 0
+     }
+    },
+    {
+     "language": "cpp",
+     "examples": 2,
+     "with_findings": 0,
+     "fp_findings": 0,
+     "fp_by_severity": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0
+     }
+    },
+    {
+     "language": "dockerfile",
+     "examples": 2,
+     "with_findings": 0,
+     "fp_findings": 0,
+     "fp_by_severity": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0
+     }
+    },
+    {
+     "language": "go",
+     "examples": 3,
+     "with_findings": 0,
+     "fp_findings": 0,
+     "fp_by_severity": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0
+     }
+    },
+    {
+     "language": "java",
+     "examples": 4,
+     "with_findings": 1,
+     "fp_findings": 1,
+     "fp_by_severity": {
+      "critical": 0,
+      "high": 1,
+      "medium": 0,
+      "low": 0
+     }
+    },
+    {
+     "language": "javascript",
+     "examples": 4,
+     "with_findings": 0,
+     "fp_findings": 0,
+     "fp_by_severity": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0
+     }
+    },
+    {
+     "language": "php",
+     "examples": 3,
+     "with_findings": 0,
+     "fp_findings": 0,
+     "fp_by_severity": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0
+     }
+    },
+    {
+     "language": "python",
+     "examples": 6,
+     "with_findings": 1,
+     "fp_findings": 1,
+     "fp_by_severity": {
+      "critical": 0,
+      "high": 1,
+      "medium": 0,
+      "low": 0
+     }
+    },
+    {
+     "language": "terraform",
+     "examples": 2,
+     "with_findings": 0,
+     "fp_findings": 0,
+     "fp_by_severity": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0
+     }
+    },
+    {
+     "language": "typescript",
+     "examples": 3,
+     "with_findings": 0,
+     "fp_findings": 0,
+     "fp_by_severity": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0
+     }
+    },
+    {
+     "language": "yaml",
+     "examples": 2,
+     "with_findings": 0,
+     "fp_findings": 0,
+     "fp_by_severity": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0
+     }
+    }
+   ]
+  },
+  "pasted": {
+   "dangerous": [
+    {
+     "language": "c",
+     "criticality": "critical",
+     "examples": 2,
+     "found": 2,
+     "expected_findings": 2,
+     "hit_findings": 2,
+     "wrong_line_only": 0,
+     "safe_verdicts": 0
+    },
+    {
+     "language": "c",
+     "criticality": "high",
+     "examples": 5,
+     "found": 3,
+     "expected_findings": 5,
+     "hit_findings": 3,
+     "wrong_line_only": 0,
+     "safe_verdicts": 2
+    },
+    {
+     "language": "cpp",
+     "criticality": "critical",
+     "examples": 1,
+     "found": 1,
+     "expected_findings": 1,
+     "hit_findings": 1,
+     "wrong_line_only": 0,
+     "safe_verdicts": 0
+    },
+    {
+     "language": "cpp",
+     "criticality": "high",
+     "examples": 2,
+     "found": 1,
+     "expected_findings": 2,
+     "hit_findings": 1,
+     "wrong_line_only": 0,
+     "safe_verdicts": 1
+    },
+    {
+     "language": "dockerfile",
+     "criticality": "high",
+     "examples": 1,
+     "found": 0,
+     "expected_findings": 1,
+     "hit_findings": 0,
+     "wrong_line_only": 0,
+     "safe_verdicts": 1
+    },
+    {
+     "language": "dockerfile",
+     "criticality": "medium",
+     "examples": 1,
+     "found": 0,
+     "expected_findings": 1,
+     "hit_findings": 0,
+     "wrong_line_only": 0,
+     "safe_verdicts": 1
+    },
+    {
+     "language": "dockerfile",
+     "criticality": "low",
+     "examples": 1,
+     "found": 0,
+     "expected_findings": 1,
+     "hit_findings": 0,
+     "wrong_line_only": 0,
+     "safe_verdicts": 1
+    },
+    {
+     "language": "go",
+     "criticality": "critical",
+     "examples": 2,
+     "found": 1,
+     "expected_findings": 2,
+     "hit_findings": 1,
+     "wrong_line_only": 0,
+     "safe_verdicts": 1
+    },
+    {
+     "language": "go",
+     "criticality": "high",
+     "examples": 2,
+     "found": 1,
+     "expected_findings": 2,
+     "hit_findings": 1,
+     "wrong_line_only": 0,
+     "safe_verdicts": 1
+    },
+    {
+     "language": "go",
+     "criticality": "medium",
+     "examples": 2,
+     "found": 0,
+     "expected_findings": 2,
+     "hit_findings": 0,
+     "wrong_line_only": 0,
+     "safe_verdicts": 2
+    },
+    {
+     "language": "java",
+     "criticality": "critical",
+     "examples": 3,
+     "found": 3,
+     "expected_findings": 3,
+     "hit_findings": 3,
+     "wrong_line_only": 0,
+     "safe_verdicts": 0
+    },
+    {
+     "language": "java",
+     "criticality": "high",
+     "examples": 3,
+     "found": 1,
+     "expected_findings": 3,
+     "hit_findings": 1,
+     "wrong_line_only": 0,
+     "safe_verdicts": 2
+    },
+    {
+     "language": "java",
+     "criticality": "medium",
+     "examples": 1,
+     "found": 1,
+     "expected_findings": 1,
+     "hit_findings": 1,
+     "wrong_line_only": 0,
+     "safe_verdicts": 0
+    },
+    {
+     "language": "javascript",
+     "criticality": "critical",
+     "examples": 3,
+     "found": 3,
+     "expected_findings": 3,
+     "hit_findings": 3,
+     "wrong_line_only": 0,
+     "safe_verdicts": 0
+    },
+    {
+     "language": "javascript",
+     "criticality": "high",
+     "examples": 4,
+     "found": 3,
+     "expected_findings": 4,
+     "hit_findings": 3,
+     "wrong_line_only": 0,
+     "safe_verdicts": 1
+    },
+    {
+     "language": "javascript",
+     "criticality": "medium",
+     "examples": 2,
+     "found": 2,
+     "expected_findings": 2,
+     "hit_findings": 2,
+     "wrong_line_only": 0,
+     "safe_verdicts": 0
+    },
+    {
+     "language": "php",
+     "criticality": "critical",
+     "examples": 3,
+     "found": 2,
+     "expected_findings": 3,
+     "hit_findings": 2,
+     "wrong_line_only": 0,
+     "safe_verdicts": 0
+    },
+    {
+     "language": "php",
+     "criticality": "high",
+     "examples": 3,
+     "found": 1,
+     "expected_findings": 3,
+     "hit_findings": 1,
+     "wrong_line_only": 0,
+     "safe_verdicts": 2
+    },
+    {
+     "language": "python",
+     "criticality": "critical",
+     "examples": 7,
+     "found": 7,
+     "expected_findings": 7,
+     "hit_findings": 7,
+     "wrong_line_only": 0,
+     "safe_verdicts": 0
+    },
+    {
+     "language": "python",
+     "criticality": "high",
+     "examples": 8,
+     "found": 4,
+     "expected_findings": 8,
+     "hit_findings": 4,
+     "wrong_line_only": 0,
+     "safe_verdicts": 3
+    },
+    {
+     "language": "python",
+     "criticality": "medium",
+     "examples": 4,
+     "found": 4,
+     "expected_findings": 4,
+     "hit_findings": 4,
+     "wrong_line_only": 0,
+     "safe_verdicts": 0
+    },
+    {
+     "language": "terraform",
+     "criticality": "high",
+     "examples": 3,
+     "found": 3,
+     "expected_findings": 3,
+     "hit_findings": 3,
+     "wrong_line_only": 0,
+     "safe_verdicts": 0
+    },
+    {
+     "language": "terraform",
+     "criticality": "medium",
+     "examples": 1,
+     "found": 1,
+     "expected_findings": 1,
+     "hit_findings": 1,
+     "wrong_line_only": 0,
+     "safe_verdicts": 0
+    },
+    {
+     "language": "typescript",
+     "criticality": "critical",
+     "examples": 2,
+     "found": 2,
+     "expected_findings": 2,
+     "hit_findings": 2,
+     "wrong_line_only": 0,
+     "safe_verdicts": 0
+    },
+    {
+     "language": "typescript",
+     "criticality": "high",
+     "examples": 2,
+     "found": 1,
+     "expected_findings": 2,
+     "hit_findings": 1,
+     "wrong_line_only": 0,
+     "safe_verdicts": 1
+    },
+    {
+     "language": "yaml",
+     "criticality": "high",
+     "examples": 3,
+     "found": 2,
+     "expected_findings": 3,
+     "hit_findings": 2,
+     "wrong_line_only": 0,
+     "safe_verdicts": 1
+    }
+   ],
+   "safe": [
+    {
+     "language": "c",
+     "examples": 3,
+     "with_findings": 1,
+     "fp_findings": 1,
+     "fp_by_severity": {
+      "critical": 0,
+      "high": 1,
+      "medium": 0,
+      "low": 0
+     }
+    },
+    {
+     "language": "cpp",
+     "examples": 2,
+     "with_findings": 0,
+     "fp_findings": 0,
+     "fp_by_severity": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0
+     }
+    },
+    {
+     "language": "dockerfile",
+     "examples": 2,
+     "with_findings": 0,
+     "fp_findings": 0,
+     "fp_by_severity": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0
+     }
+    },
+    {
+     "language": "go",
+     "examples": 3,
+     "with_findings": 0,
+     "fp_findings": 0,
+     "fp_by_severity": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0
+     }
+    },
+    {
+     "language": "java",
+     "examples": 4,
+     "with_findings": 1,
+     "fp_findings": 1,
+     "fp_by_severity": {
+      "critical": 0,
+      "high": 1,
+      "medium": 0,
+      "low": 0
+     }
+    },
+    {
+     "language": "javascript",
+     "examples": 4,
+     "with_findings": 0,
+     "fp_findings": 0,
+     "fp_by_severity": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0
+     }
+    },
+    {
+     "language": "php",
+     "examples": 3,
+     "with_findings": 0,
+     "fp_findings": 0,
+     "fp_by_severity": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0
+     }
+    },
+    {
+     "language": "python",
+     "examples": 6,
+     "with_findings": 1,
+     "fp_findings": 1,
+     "fp_by_severity": {
+      "critical": 0,
+      "high": 1,
+      "medium": 0,
+      "low": 0
+     }
+    },
+    {
+     "language": "terraform",
+     "examples": 2,
+     "with_findings": 0,
+     "fp_findings": 0,
+     "fp_by_severity": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0
+     }
+    },
+    {
+     "language": "typescript",
+     "examples": 3,
+     "with_findings": 0,
+     "fp_findings": 0,
+     "fp_by_severity": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0
+     }
+    },
+    {
+     "language": "yaml",
+     "examples": 2,
+     "with_findings": 0,
+     "fp_findings": 0,
+     "fp_by_severity": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0
+     }
+    }
+   ]
+  }
+ },
+ "per_example": {
+  "named": {
+   "py-sqli-fstring": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 2,
+    "safe_verdict": false
+   },
+   "py-sqli-percent": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 3,
+    "safe_verdict": false
+   },
+   "py-cmd-os-system": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "py-cmd-subprocess-shell": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 3,
+    "safe_verdict": false
+   },
+   "py-eval-input": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "py-pickle-cookie": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "py-aws-key": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 2,
+    "safe_verdict": false
+   },
+   "py-yaml-load": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 2,
+    "safe_verdict": false
+   },
+   "py-path-traversal": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "py-ssrf": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "py-tls-verify-off": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "py-hardcoded-password": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "py-xss-flask": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "py-ssti": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "py-idor": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "py-weak-hash-password": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "py-insecure-random-token": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "py-debug-on": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 2,
+    "safe_verdict": false
+   },
+   "py-open-redirect": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "py-safe-parametrized-sql": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "py-safe-subprocess-list": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "py-safe-yaml-json": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "py-safe-confined-path": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "py-safe-secrets-from-env": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "py-safe-outbound-allowlist": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "js-sqli-concat": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "js-cmd-exec": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "js-eval-body": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 2,
+    "safe_verdict": false
+   },
+   "js-xss-innerhtml": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "js-path-traversal": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "js-jwt-none": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "js-tls-reject-off": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "js-math-random-token": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "js-cors-any-credentials": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "js-safe-parametrized-sql": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "js-safe-execfile-allowlist": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "js-safe-textcontent": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "js-safe-crypto-session": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "ts-sqli-template": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 2,
+    "safe_verdict": false
+   },
+   "ts-cmd-exec-template": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "ts-reflected-xss": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "ts-hardcoded-jwt-secret": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "ts-safe-parametrized": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "ts-safe-escaped-html": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "ts-safe-env-secret": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "java-sqli-concat": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "java-cmd-runtime-exec": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "java-deserialize-request": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 2,
+    "safe_verdict": false
+   },
+   "java-xxe-default-parser": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "java-path-traversal": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "java-hardcoded-password": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "java-md5-password": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "java-safe-prepared-statement": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "java-safe-processbuilder-validated": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "java-safe-hardened-xml": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "java-safe-pbkdf2": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "c-gets-overflow": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "c-system-user-input": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "c-strcpy-overflow": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "c-format-string": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "c-scanf-unbounded": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "c-use-after-free": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "c-malloc-overflow": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "c-safe-fgets": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "c-safe-bounded-copy": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "c-safe-execvp": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "cpp-strcpy-member": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "cpp-system-string": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "cpp-format-string": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "cpp-safe-std-string": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "cpp-safe-literal-format": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "php-sqli-concat": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "php-cmd-system": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "php-eval-post": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "php-unserialize-cookie": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "php-reflected-xss": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "php-include-lfi": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "php-safe-pdo": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "php-safe-escaped-output": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "php-safe-json-escapeshellarg": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "go-sqli-concat": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "go-cmd-sh-c": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "go-tls-skip-verify": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "go-path-traversal": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "go-md5-password": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "go-math-rand-token": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "go-safe-parametrized": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "go-safe-exec-validated": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "go-safe-crypto": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "tf-ssh-open-world": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "tf-public-bucket": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "tf-db-unencrypted": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "tf-hardcoded-db-password": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "tf-safe-restricted-ssh": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "tf-safe-encrypted-db": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "k8s-privileged-container": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "k8s-host-network": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "k8s-plaintext-secret-env": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "k8s-safe-hardened-pod": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "k8s-safe-deployment": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "docker-runs-as-root": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "docker-secret-in-env": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "docker-curl-pipe-sh": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "docker-safe-nonroot": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "docker-safe-multistage": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   }
+  },
+  "pasted": {
+   "py-sqli-fstring": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 2,
+    "safe_verdict": false
+   },
+   "py-sqli-percent": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 3,
+    "safe_verdict": false
+   },
+   "py-cmd-os-system": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "py-cmd-subprocess-shell": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 3,
+    "safe_verdict": false
+   },
+   "py-eval-input": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "py-pickle-cookie": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "py-aws-key": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 2,
+    "safe_verdict": false
+   },
+   "py-yaml-load": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 2,
+    "safe_verdict": false
+   },
+   "py-path-traversal": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "py-ssrf": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "py-tls-verify-off": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "py-hardcoded-password": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "py-xss-flask": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "py-ssti": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "py-idor": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "py-weak-hash-password": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "py-insecure-random-token": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "py-debug-on": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 2,
+    "safe_verdict": false
+   },
+   "py-open-redirect": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "py-safe-parametrized-sql": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "py-safe-subprocess-list": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "py-safe-yaml-json": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "py-safe-confined-path": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "py-safe-secrets-from-env": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "py-safe-outbound-allowlist": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "js-sqli-concat": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "js-cmd-exec": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "js-eval-body": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 2,
+    "safe_verdict": false
+   },
+   "js-xss-innerhtml": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "js-path-traversal": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "js-jwt-none": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "js-tls-reject-off": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "js-math-random-token": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "js-cors-any-credentials": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "js-safe-parametrized-sql": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "js-safe-execfile-allowlist": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "js-safe-textcontent": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "js-safe-crypto-session": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "ts-sqli-template": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 2,
+    "safe_verdict": false
+   },
+   "ts-cmd-exec-template": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "ts-reflected-xss": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "ts-hardcoded-jwt-secret": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "ts-safe-parametrized": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "ts-safe-escaped-html": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "ts-safe-env-secret": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "java-sqli-concat": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "java-cmd-runtime-exec": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "java-deserialize-request": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 2,
+    "safe_verdict": false
+   },
+   "java-xxe-default-parser": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "java-path-traversal": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "java-hardcoded-password": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "java-md5-password": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "java-safe-prepared-statement": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "java-safe-processbuilder-validated": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "java-safe-hardened-xml": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "java-safe-pbkdf2": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "c-gets-overflow": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "c-system-user-input": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "c-strcpy-overflow": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "c-format-string": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "c-scanf-unbounded": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "c-use-after-free": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "c-malloc-overflow": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "c-safe-fgets": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "c-safe-bounded-copy": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "c-safe-execvp": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "cpp-strcpy-member": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "cpp-system-string": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "cpp-format-string": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "cpp-safe-std-string": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "cpp-safe-literal-format": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "php-sqli-concat": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "php-cmd-system": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "php-eval-post": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 2,
+    "safe_verdict": false
+   },
+   "php-unserialize-cookie": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "php-reflected-xss": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "php-include-lfi": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "php-safe-pdo": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "php-safe-escaped-output": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "php-safe-json-escapeshellarg": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "go-sqli-concat": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "go-cmd-sh-c": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "go-tls-skip-verify": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "go-path-traversal": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "go-md5-password": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "go-math-rand-token": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "go-safe-parametrized": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "go-safe-exec-validated": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "go-safe-crypto": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "tf-ssh-open-world": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "tf-public-bucket": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "tf-db-unencrypted": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "tf-hardcoded-db-password": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "tf-safe-restricted-ssh": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "tf-safe-encrypted-db": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "k8s-privileged-container": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "k8s-host-network": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
+   "k8s-plaintext-secret-env": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "k8s-safe-hardened-pod": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "k8s-safe-deployment": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "docker-runs-as-root": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "docker-secret-in-env": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "docker-curl-pipe-sh": {
+    "hits": 0,
+    "expected": 1,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "docker-safe-nonroot": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   },
+   "docker-safe-multistage": {
+    "hits": 0,
+    "expected": 0,
+    "findings": 0,
+    "safe_verdict": true
+   }
+  }
+ }
+}

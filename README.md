@@ -82,6 +82,16 @@ one is where a change to a shared rule is made once instead of twice.
 
 The report page says the same in one line, taken from the store: `Kept in memory until the service restarts: the last 200 runs, older ones are dropped.`
 
+## How good are the analyzer's rules
+
+`apps/analyzer/tests/bench/labelled/` holds 105 labelled examples in 11 languages (Python, JavaScript, TypeScript, Java, C, C++, PHP, Go, Terraform, Kubernetes YAML, Dockerfile): 71 dangerous and 34 safe. Each has the findings it should produce (CWE and line) and a written reason for its label in `manifest.json`; the expectations were written from the code, not copied from the engine's output. `python -m tests.bench.labelled_score` scores the rule engine on them, and `--write` refreshes `labelled/RESULTS.md`: recall, false positives, language detection and time, per language and per criticality, in two modes (file name given, as an upload; and pasted without one, as the hub does).
+
+**What this does not measure.** It runs the rules alone: no model, no network, no key, so it is free and repeatable. It says nothing about the quality of hub verdicts that used a model. There the model proposes and the rules decide, and none of that is exercised here. A good number in this set is not a good hub, and a bad one is not a bad hub.
+
+**Release blocker.** No example labelled critical may get SAFE (the rules found nothing at all), in either mode. `apps/analyzer/tests/test_bench_labelled.py` fails the analyzer CI job if one does, and it has no list of known failures to hide behind. The same file also fails when an example gets worse than the recorded results. Go has no language-specific rules, only the language-independent ones; the set includes it to show what that gives.
+
+Three rules flag every call site on purpose (`subprocess` in Python, `ProcessBuilder` in Java, `system`/`execvp` in C), so safe code that calls them is counted as a false positive. The set counts them, and says so.
+
 ## Known gaps
 
 - **The sandbox tests skip outside Linux.** Three tests in `apps/analyzer/tests/test_scan_toolkit.py` need `bubblewrap` and one needs symlinks, so on a Windows machine they skip. In CI they must run: the job installs bubblewrap, probes it, and `.github/scripts/assert_no_skips.py` fails the build if any test in `test_rls`, `test_scan_toolkit` or the Postgres job-store tests was skipped.

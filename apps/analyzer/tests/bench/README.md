@@ -34,3 +34,13 @@ Run each side more than once: one run of a model is a sample, not a score.
 
 What this does not measure: exploit proof (`vishap prove`), verified patches, baselines/diffs and repository
 scans. A plain model cannot do those at all, so they are not scored here.
+
+## Labelled set: the rules alone, many languages
+
+`labelled/` holds labelled examples in every language the rule engine has rules or detection for, each with the
+findings it should produce and the reason for its label (`labelled/manifest.json`). Run it with
+`python -m tests.bench.labelled_score` (add `--write` to refresh `labelled/RESULTS.md` and `RESULTS.json`).
+
+It scores `scan_material` and nothing else: no model, no network. It therefore does **not** measure the hub's
+verdicts with a model, in either direction. `tests/test_bench_labelled.py` makes it a release blocker that no
+example labelled critical gets SAFE, and stops any example getting worse than the recorded results.
