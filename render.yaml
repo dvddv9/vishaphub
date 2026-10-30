@@ -21,6 +21,10 @@ services:
     envVars:
       - key: VISHAP_HUB_LLM_KEY
         sync: false          # set in the panel; a client can also send api_key in the body
+      - key: VISHAP_HUB_TRUST_HEADER
+        value: x-forwarded-for
+      - key: VISHAP_HUB_TRUSTED_HOPS
+        value: "1"
       # Team mode is off until VISHAP_HUB_DATABASE_URL is set in the panel (the vishap_hub_app role's URL;
       # see the README, "Teams"). Add VISHAP_HUB_REQUIRE_KEY=1 to refuse callers without a key.
 
