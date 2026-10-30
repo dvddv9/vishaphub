@@ -8,8 +8,13 @@ from __future__ import annotations
 
 import asyncio
 import io
+import re
 
-VOICE = "en-US-ChristopherNeural"
+#: The voice follows the text: a British female for English, a native Russian one for Russian.
+#: One voice cannot do both — edge-tts returns an empty stream when the text is outside the
+#: voice's language, and a silent button reads as a broken one.
+VOICE_EN = "en-GB-SoniaNeural"
+VOICE_RU = "ru-RU-SvetlanaNeural"
 RATE = "-5%"
 MAX_CHARS = 1200
 
@@ -22,10 +27,15 @@ def available() -> bool:
     return True
 
 
+def voice_for(text: str) -> str:
+    """The voice that can actually read this text."""
+    return VOICE_RU if re.search(r"[\u0400-\u04FF]", text or "") else VOICE_EN
+
+
 async def _synthesize(text: str) -> bytes:
     import edge_tts
 
-    communicate = edge_tts.Communicate(text, VOICE, rate=RATE)
+    communicate = edge_tts.Communicate(text, voice_for(text), rate=RATE)
     buffer = io.BytesIO()
     async for chunk in communicate.stream():
         if chunk.get("type") == "audio":

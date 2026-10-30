@@ -34,9 +34,9 @@ from .pipeline import run_plan
 from .router import RouteError, plan_for
 from .store import RunStore, owner_key
 from .teamstore import DEFAULT_RETENTION_DAYS, Denied, TeamStore
-from .tts import VOICE
 from .tts import available as tts_available
 from .tts import speak as tts_speak
+from .tts import voice_for
 from .version import __version__
 
 MAX_BODY = 4_000_000
@@ -782,7 +782,7 @@ class Handler(BaseHTTPRequestHandler):
             if not tts_available():
                 self._send(503, {"ok": False, "error": "speech is not installed in this image"})
                 return
-            key = limits.TTSCache.key(text, VOICE)
+            key = limits.TTSCache.key(text, voice_for(text))
             cached = TTS_CACHE.get(key)
             if cached:
                 self._send(200, cached, "audio/mpeg", extra={"x-tts-cache": "hit"})
