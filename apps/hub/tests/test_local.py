@@ -134,3 +134,19 @@ def test_a_path_escape_leaves_nothing_to_check():
     result = local.validate_code({"../../etc/passwd": "x"}, {"files": []})
     assert result["ok"] is False
     assert "no usable files" in result["error"]
+
+
+def test_a_finding_from_the_rules_says_what_is_wrong_and_how_to_fix_it():
+    result = local.analyse_static('cur.execute(f"select * from t where a = {x}")\n')
+    found = result["findings"]
+    assert found and found[0]["message"] and found[0]["cwe"] == "CWE-89" and found[0]["fix"]
+    assert "CWE-89" in result["cwe_ids"]
+    assert result["meaning"].startswith("REQUIRES_REVIEW: the rules found something")
+
+
+def test_the_meaning_of_a_review_verdict_is_not_the_definition_of_safe():
+    unmeasured = local.analyse_static("x = 1\n")
+    assert unmeasured["meaning"].startswith("REQUIRES_REVIEW: the rules found nothing, but they cannot vouch")
+    assert not unmeasured["meaning"].startswith("SAFE")
+    with with_quality(ALLOWED):
+        assert local.analyse_static(PYTHON)["meaning"].startswith("SAFE: ")

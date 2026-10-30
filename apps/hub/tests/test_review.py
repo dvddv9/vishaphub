@@ -84,3 +84,22 @@ def test_generation_without_its_model_is_still_an_error(monkeypatch):
     monkeypatch.setattr(local, "analyse_static", lambda text, model_verdict="": RULES_FOUND)
     result = run_plan(plan_for("generate+analyse"), material=CODE, question="fix it", api_key="k")
     assert result.verdict == "ERROR" and not result.ok                  # review is the only mode with a soft model
+
+
+def test_a_finding_both_readers_saw_is_one_finding_and_the_run_says_how_much_they_overlapped(monkeypatch):
+    rules = {**RULES_FOUND, "findings": [{"severity": "critical", "rule": "sqli-fstring", "line": 1, "cwe": "CWE-89",
+                                          "message": "SQL built with an f-string", "fix": "bind parameters"}]}
+    model = fake(verdict="REQUIRES_REVIEW", findings=[{"severity": "critical", "rule": "CWE-89", "message": "injection", "line": 1}])
+    result = review(monkeypatch, model, rules)
+    assert len(result.findings) == 1 and result.findings[0]["seen_by"] == ["rules", "model"]
+    assert result.agreement == {"both": 1, "model_only": 0, "rules_only": 0, "in_patch": 0}
+    assert result.as_dict()["agreement"]["both"] == 1
+
+
+def test_one_reader_alone_has_nothing_to_agree_with(monkeypatch):
+    monkeypatch.setattr(local, "analyse_static", lambda text, model_verdict="": RULES_FOUND)
+    rules_only = run_plan(plan_for("analyse"), material=CODE)
+    assert rules_only.agreement == {} and rules_only.findings[0]["seen_by"] == ["rules"]
+    monkeypatch.setattr(proposal, "propose", lambda **k: fake(verdict="REQUIRES_REVIEW", findings=[MODEL_FINDING]))
+    model_only = run_plan(plan_for("ask"), question="what is wrong?", material=CODE, api_key="k")
+    assert model_only.agreement == {} and model_only.findings[0]["seen_by"] == ["model"]

@@ -182,10 +182,16 @@ let lastResult = null;
 function renderReport(data){
   lastResult = data;
   const box = $("report");
-  const panes = {
+  const ag = data.agreement || {};
+  const head = Object.keys(ag).length
+    ? `seen by both readers: ${ag.both} \u00b7 model only: ${ag.model_only} \u00b7 rules only: ${ag.rules_only}${ag.in_patch ? " \u00b7 in the model's patch: " + ag.in_patch : ""}\n\n`
+    : "";  const panes = {
     summary: (data.summary || "(model returned no summary)"),
     findings: (data.findings || []).length
-      ? data.findings.map(f => `${(f.severity||"").toUpperCase()}${f.rule ? " · " + f.rule : ""}${f.line ? " @ " + f.line : ""}${f.source ? " [" + f.source + "]" : ""}\n  ${f.message||""}`).join("\n\n")
+      ? head + data.findings.map(f => {
+        const by = (f.seen_by || []).length > 1 ? "rules + model" : (f.source || "");
+        return `${(f.severity||"").toUpperCase()}${f.rule ? " \u00b7 " + f.rule : ""}${f.line ? " @ " + f.line : ""}${by ? " [" + by + "]" : ""}\n  ${f.message||""}${f.fix ? "\n  fix: " + f.fix : ""}`;
+      }).join("\n\n")
       : "nothing matched",
     patch: Object.keys(data.patch || {}).length
       ? Object.entries(data.patch).map(([n, c]) => `── ${n} ──\n${c}`).join("\n\n")

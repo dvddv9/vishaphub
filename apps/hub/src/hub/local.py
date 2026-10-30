@@ -103,14 +103,17 @@ def analyse_static(material: str, model_verdict: str = "") -> dict:
     items = []
     for finding in raw:
         if isinstance(finding, dict):
+            # The scan names these `id`, `title`, `cwe`, `fix`; reading `message` and `detail` left every message empty.
             items.append({
                 "rule": finding.get("rule") or finding.get("id") or finding.get("cwe") or "",
                 "severity": finding.get("severity") or finding.get("priority") or "",
-                "message": finding.get("message") or finding.get("detail") or "",
+                "message": finding.get("message") or finding.get("title") or finding.get("detail") or "",
                 "line": finding.get("line") or finding.get("lineno") or 0,
+                "cwe": str(finding.get("cwe") or ""),
+                "fix": str(finding.get("fix") or ""),
             })
         else:
-            items.append({"rule": str(finding), "severity": "", "message": "", "line": 0})
+            items.append({"rule": str(finding), "severity": "", "message": "", "line": 0, "cwe": "", "fix": ""})
 
     # SAFE is not "no findings". safe_gate.decide says SAFE only for a language whose rules have passed the registered
     # gates on an independent blind set, for a text the scan could read in full, with nothing found; every other
@@ -124,7 +127,7 @@ def analyse_static(material: str, model_verdict: str = "") -> dict:
         "reason": decision["reason"],
         "meaning": decision["meaning"],
         "coverage": scan.get("coverage") if isinstance(scan, dict) else None,
-        "cwe_ids": sorted({i["rule"] for i in items if i["rule"]}),
+        "cwe_ids": sorted({i["cwe"] or i["rule"] for i in items if i["cwe"] or i["rule"]}),
         "findings": items,
         "mode": "rules_only",
         "markdown": "",

@@ -11,6 +11,16 @@ All notable changes to VishapHub. Format based on [Keep a Changelog](https://kee
   the model's findings are marked `source: model`, a rejected key leaves the rules' answer with the
   missing reading named instead of an error, and without any key the run says the question was not put
   to a model. `{"intent": "review"}` is the explicit form.
+- **Findings from two readers are joined.** A model finding and a rules finding for the same class of
+  defect near the same line are one finding with `seen_by`; `agreement` counts what each reader found
+  alone and what both did. The report page and the main page show it, with the rules' fix.
+
+### Fixed
+
+- The rules' findings had an empty `message` (the scan calls it `title`); they now carry `message`,
+  `cwe` and `fix`.
+- A `REQUIRES_REVIEW` verdict carried the definition of `SAFE` as its `meaning`; it now says what
+  REQUIRES_REVIEW means for that run (the rules found something / they cannot vouch for this text).
 
 ## [0.4.0] — 2026-10-30
 

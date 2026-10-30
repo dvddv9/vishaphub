@@ -29,6 +29,17 @@ MEANING = (
 )
 
 
+MEANING_FOUND = (
+    "REQUIRES_REVIEW: the rules found something, listed in the findings. A finding is a lead for a person to confirm, "
+    "not proof; and what the rules did not find is not proof of its absence."
+)
+MEANING_UNVOUCHED = (
+    "REQUIRES_REVIEW: the rules found nothing, but they cannot vouch for this text (the reason says why). "
+    "It is not a claim that the code has no vulnerabilities, and not a claim that it has any: a person looks before "
+    "it is trusted."
+)
+
+
 def wilson_upper(failures: int, n: int, z: float = 1.96) -> float:
     """Upper end of the 95% Wilson interval for failures out of n. 1.0 when there is nothing to measure."""
     if n <= 0:
@@ -91,7 +102,8 @@ def decide(scan: dict, quality: dict | None = None, model_verdict: str = "") -> 
     critical = any(str(f.get("severity", "")).lower() == "critical" for f in findings)
 
     def review(reason: str) -> dict:
-        return {"verdict": "REQUIRES_REVIEW", "reason": reason, "critical": critical, "meaning": MEANING}
+        meaning = MEANING_FOUND if findings else MEANING_UNVOUCHED
+        return {"verdict": "REQUIRES_REVIEW", "reason": reason, "critical": critical, "meaning": meaning}
 
     if findings:
         worst = min((str(f.get("severity", "low")).lower() for f in findings),

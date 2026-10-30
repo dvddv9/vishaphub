@@ -92,10 +92,18 @@ def report_page(record: dict, retention: str = "") -> str:
         sev_class = re.sub(r"[^a-z]", "", severity.lower())
         badge = f'<span class="sev {sev_class}">{e(severity)}</span>' if severity else ""
         line = f" @ {e(str(f.get('line')))}" if f.get("line") else ""
-        source = f" <i>({e(str(f.get('source')))})</i>" if f.get("source") else ""
-        return f"<li>{badge}{e(str(f.get('rule') or ''))}{line}: {e(str(f.get('message') or ''))}{source}</li>"
+        seen = f.get("seen_by") or []
+        by = "rules + model" if len(seen) > 1 else str(f.get("source") or "")
+        source = f" <i>({e(by)})</i>" if by else ""
+        fix = f"<br><small>fix: {e(str(f.get('fix')))}</small>" if f.get("fix") else ""
+        return f"<li>{badge}{e(str(f.get('rule') or ''))}{line}: {e(str(f.get('message') or ''))}{source}{fix}</li>"
 
     found = "".join(_finding(f) for f in findings) or "<li>nothing matched</li>"
+    overlap = result.get("agreement") or {}
+    if overlap:
+        patch_note = f" \u00b7 in the model's patch: {overlap['in_patch']}" if overlap.get("in_patch") else ""
+        found = (f"<li class=\"meta\">seen by both readers: {overlap.get('both', 0)} \u00b7 model only: "
+                 f"{overlap.get('model_only', 0)} \u00b7 rules only: {overlap.get('rules_only', 0)}{patch_note}</li>") + found
     missed = "".join(f"<li>{e(str(item))}</li>" for item in not_checked) or "<li>-</li>"
     rule_chips = "".join(
         f"<span>{e(str(name))} <code>{e(str(version))}</code></span>"

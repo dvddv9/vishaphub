@@ -33,6 +33,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 
+from . import findings as findings_mod
 from . import fingerprint, local, proposal
 from .envelope import Envelope, Kind
 from .router import Plan, Stage
@@ -81,6 +82,8 @@ class RunResult:
     mode: str = "plan"
     not_checked: list = field(default_factory=list)
     fingerprint: dict = field(default_factory=dict)
+    #: How the model's findings and the rules' findings overlapped; empty unless both read the material.
+    agreement: dict = field(default_factory=dict)
 
     def as_dict(self) -> dict:
         return {
@@ -102,6 +105,7 @@ class RunResult:
             "rules_verdict": self.rules_verdict,
             "trace": self.trace,
             "not_checked": self.not_checked,
+            "agreement": self.agreement,
             "fingerprint": self.fingerprint,
         }
 
@@ -372,6 +376,10 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
     if model_verdict and rules_verdict and rank(model_verdict) > rank(rules_verdict):
         reason = (reason + " · " if reason else "") + "the model saw danger the rules did not"
 
+    merged, overlap = findings_mod.merge(answer.get("findings") or [], (checks["analyser"] or {}).get("findings") or [])
+    if not (checks["generator"] and checks["analyser"]):
+        overlap = {}                  # one reader only: there is nothing to agree with
+
     result = RunResult(
         ok=ok,
         verdict=final,
@@ -382,8 +390,8 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
         plan=plan_dict,
         checks=checks,
         summary=answer.get("summary", ""),
-        findings=[*[({**f, "source": "model"} if isinstance(f, dict) else f) for f in (answer.get("findings") or [])],
-                  *((checks["analyser"] or {}).get("findings") or [])],
+        findings=merged,
+        agreement=overlap,
         patch=answer.get("patch") or {},
         questions=answer.get("questions") or [],
         proof=answer.get("proof") or [],

@@ -60,6 +60,13 @@ the missing model reading named in `not_checked`; generation, which cannot happe
 still an error. An explicit `intent` always wins: `{"intent": "review"}` with no question asks the
 model for a security review.
 
+The two readers find different things, and the same thing in different words (`CWE-89` and
+`sqli-fstring`), so the findings are joined, not stacked: a model finding and a rules finding that name
+the same class of defect within three lines are one finding with `seen_by: ["rules", "model"]` (the
+model's explanation, the rules' id and fix, the stricter severity); an unpaired one stays and says who
+saw it alone. `agreement` counts `both`, `model_only`, `rules_only` and `in_patch` (the rules' findings
+about the model's own patch, a different question). Nothing is ever dropped by this.
+
 Rules that matter:
 
 - **order is fixed**: generation, validation, security — dangerous code does not travel further;
