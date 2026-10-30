@@ -4,24 +4,26 @@
 FROM python:3.12-slim
 
 WORKDIR /app
-ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
-
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential \
-    && rm -rf /var/lib/apt/lists/*
+ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 
 COPY packages/core/ ./packages/core/
 COPY apps/validator/ ./apps/validator/
 COPY apps/analyzer/ ./apps/analyzer/
 COPY apps/hub/ ./apps/hub/
 
-# The analyser's requirements still name vishap-core as a git dependency; in this
-# image core is a local package, so that line is dropped before pip runs.
-RUN grep -v '^vishap-core' ./apps/analyzer/requirements.txt > /tmp/analyzer-reqs.txt \
-    && pip install --no-cache-dir -e ./packages/core -e ./apps/validator \
-    && pip install --no-cache-dir -r /tmp/analyzer-reqs.txt \
-    && pip install --no-cache-dir -e ./apps/analyzer --no-deps \
-    && pip install --no-cache-dir -e "./apps/hub[postgres]" \
-    && pip install --no-cache-dir edge-tts pytest
+# What the service imports is small. The hub calls the analyser's static rules, which need
+# nothing outside the standard library (checked by loading them over all 104 labelled
+# examples in 11 languages: no third-party module is imported), so the analyser's own
+# requirements.txt (fastapi, celery, stripe, opentelemetry, ...) is NOT installed here and
+# the analyser goes in with --no-deps. No compiler either: every package below ships a wheel.
+#   pytest      - the validator's `behavior` check runs the deliverable's tests with it
+#   edge-tts    - the product voice (/api/speak)
+#   psycopg     - team mode (Postgres)
+# Direct dependencies are pinned so a rebuild cannot change what runs.
+RUN pip install -e ./packages/core -e ./apps/validator \
+    && pip install -e ./apps/analyzer --no-deps \
+    && pip install -e ./apps/hub \
+    && pip install "psycopg[binary]==3.3.6" "pytest==9.1.1" "edge-tts==7.3.1"
 
 RUN useradd -m -u 1000 hub
 USER hub
