@@ -49,7 +49,8 @@ def load_criterion() -> dict:
 
 
 def file_sha(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    """SHA-256 of a text file's content, line endings normalised: a Windows checkout (CRLF) and a Linux one (LF) are the same file."""
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 
 
 def frozen_ids_hash(manifest: dict) -> str:

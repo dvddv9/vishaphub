@@ -4,7 +4,7 @@
 # Install once per clone:  pip install pre-commit && pre-commit install
 # Run by hand:             pre-commit run --all-files
 #
-# ruff covers the whole monorepo except the analyzer.
+# ruff covers the whole monorepo, the analyzer included (its benchmark inputs are excluded in its pyproject).
 # gitleaks is not a hook here: its first install downloads a Go toolchain (about 25 minutes
 # on a slow link) and `gitleaks protect --staged` looks at staged changes only. The CI job
 # `secrets` scans the whole tree instead.
@@ -13,5 +13,3 @@ repos:
     rev: v0.17.3
     hooks:
       - id: ruff-check
-        # analyzer ждёт отдельной задачи: часть замечаний в tests/bench/blind — это входные данные, а не код
-        exclude: ^apps/analyzer/

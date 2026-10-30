@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Route checklist, exploit probes, report trimming, fingerprints/diff, repo/diff scan, OSV audit, benchmark."""
 import json
-import shutil
 from pathlib import Path
 
 import pytest

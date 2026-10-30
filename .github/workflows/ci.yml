@@ -5,7 +5,9 @@
 # place that already knows how these packages fit together.
 #
 # What this does NOT cover, on purpose of honesty:
-#   * ruff does not run on the analyzer yet: part of its findings (tests/bench/blind) are inputs, not code
+#   * ruff runs on the analyzer with the benchmark inputs excluded (they are scored by line number, not styled)
+#   * runners are pinned to ubuntu-24.04 (ubuntu-latest moves to a new image without notice); the actions are the
+#     Node 24 majors (checkout v7, setup-python v7, cache v6)
 #
 # What the security jobs do, and how they fail:
 #   * analyzer: the row-level-security tests build a database of their own, run the migrations
@@ -34,11 +36,11 @@ env:
 
 jobs:
   core:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pip install pytest -e ./packages/core
@@ -50,11 +52,11 @@ jobs:
         working-directory: packages/core
 
   validator:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pip install pytest -e ./packages/core -e ./apps/validator
@@ -67,7 +69,7 @@ jobs:
         working-directory: apps/validator
 
   hub:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     # Team mode is tested against a real Postgres: isolation between teams is a property of the
     # database as much as of the code, and a mock proves neither.
@@ -88,8 +90,8 @@ jobs:
     env:
       TEST_POSTGRES_URL: postgresql+asyncpg://vishap:vishap_dev@localhost:5432/vishap
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
@@ -114,7 +116,7 @@ jobs:
         working-directory: apps/hub
 
   analyzer:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     services:
       postgres:
@@ -138,8 +140,8 @@ jobs:
       # fetch the blind set's files when the cache is empty, so its re-run test runs instead of skipping
       BLIND_FETCH: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
@@ -153,7 +155,7 @@ jobs:
         working-directory: apps/analyzer
       # The blind set's example files are not in the repository (their licences differ): they are downloaded from the
       # pinned URLs and checked against the manifest's SHA-256. The cache only saves the download.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: apps/analyzer/tests/bench/blind_public/.cache
           key: blind-public-${{ hashFiles('apps/analyzer/tests/bench/blind_public/manifest.json') }}
@@ -166,6 +168,10 @@ jobs:
           sudo apt-get install -y -qq bubblewrap
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
           bwrap --unshare-all --die-with-parent --ro-bind / / --dev /dev --proc /proc true
+      - run: pip install ruff==0.17.3
+      # lint first: it fails in a second
+      - run: ruff check
+        working-directory: apps/analyzer
       # python -m, not bare pytest: the tests import "src.*" from the app's own directory.
       - run: python -m pytest -q -rs --junitxml=junit.xml
         working-directory: apps/analyzer
@@ -175,11 +181,11 @@ jobs:
         working-directory: apps/analyzer
 
   generator:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pip install -r requirements.txt ruff==0.17.3
@@ -194,10 +200,10 @@ jobs:
         working-directory: apps/generator
 
   image:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # The context is the repository root: the Dockerfile copies packages/core and three apps.
       # A context of ./apps/hub is what broke the deploy on 2026-10-28.
       - name: Build
@@ -213,10 +219,10 @@ jobs:
           exit 1
 
   secrets:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # The release binary, not gitleaks-action: the action wants a license key.
       # The archive is checked against the sha256 from the release's checksums.txt before
       # anything is unpacked; `curl | tar` would run it unchecked.
@@ -234,10 +240,10 @@ jobs:
   # A finding here is a credential to revoke. Fixtures that are not one are named, one fingerprint
   # each, in .gitleaksignore - the path allowlist is not widened to hide history.
   secrets-history:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Install gitleaks 8.21.2

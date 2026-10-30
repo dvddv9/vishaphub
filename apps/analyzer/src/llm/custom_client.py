@@ -45,9 +45,10 @@ _RETRY_STATUS = {429, 500, 502, 503, 529}
 _MAX_RETRIES = int(os.getenv("CUSTOM_LLM_MAX_RETRIES", "2"))
 
 import requests
-from dotenv import load_dotenv
 
-load_dotenv()
+from src import env_file
+
+env_file.load()
 
 from src.storage.settings import get_settings
 

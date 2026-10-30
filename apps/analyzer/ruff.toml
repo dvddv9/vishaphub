@@ -1,6 +1,20 @@
 line-length = 100
 target-version = "py311"
+# Deliberately vulnerable files the benchmarks score by LINE NUMBER: tidying them would move the ground truth.
+extend-exclude = [
+    "tests/bench/blind",
+    "tests/bench/planted_app.py",
+    "tests/bench/fixed_app.py",
+    "tests/bench/labelled",
+    "tests/bench/blind_public/.cache",
+    "examples",
+]
 
 [lint]
 select = ["F", "E9"]
+# F821: undefined name, a false positive (dir() guard in the orchestrator).
+# F841: a local assigned and never used (debug: original_audit_compliance).
 ignore = ["F821", "F841"]
+
+[lint.per-file-ignores]
+"alembic/versions/*" = ["F541"]   # an applied migration is history; it is not edited for style

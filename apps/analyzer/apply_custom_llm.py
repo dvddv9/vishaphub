@@ -98,9 +98,9 @@ def main() -> None:
     write(ROOT / "src" / "llm" / "custom_client.py", CUSTOM_CLIENT)
     write(ROOT / "src" / "llm" / "__init__.py", INIT_FILE)
     append_env_block(ROOT / ".env.example")
-    append_env_block(ROOT / ".env")
     print("\n=== Done ===")
-    print("1. Edit .env: set LLM_PROVIDER=custom, fill CUSTOM_LLM_*")
+    print("1. Edit your secrets file (VISHAP_ENV_FILE, or ~/.vishap/analyzer.env - never one inside this folder):")
+    print("   set LLM_PROVIDER=custom, fill CUSTOM_LLM_* (the block is in .env.example)")
     print("2. Restart API: python -m src.main")
 
 

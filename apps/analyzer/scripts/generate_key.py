@@ -19,8 +19,9 @@ from pathlib import Path
 # Allow `python scripts/generate_key.py` from the repository root.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from dotenv import load_dotenv
-load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
+from src import env_file  # noqa: E402  (after the sys.path tweak)
+
+env_file.load()
 
 from src.api.tenants import (  # noqa: E402  (after sys.path tweak)
     create_tenant,

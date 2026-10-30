@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """The test/fixer sandbox must not hand the server's secrets to LLM-written code."""
-import os
 
 from src.pipeline import sandbox
 

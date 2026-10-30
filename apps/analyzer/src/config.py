@@ -5,9 +5,10 @@
 import os
 import warnings
 from pathlib import Path
-from dotenv import load_dotenv
 
-load_dotenv()
+from src import env_file
+
+env_file.load()   # the secrets file lives outside the project tree: see src/env_file.py
 
 # === РџСѓС‚Рё ===
 ROOT_DIR = Path(__file__).parent.parent

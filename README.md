@@ -137,8 +137,8 @@ Agents (Codex, Claude, any MCP client) open this folder as a project and can run
 `shell` inside it. A `.env` in the tree is therefore a readable file, not a secret:
 it is git-ignored, but ignored is not hidden.
 
-- Keys belong in user environment variables (`setx VISHAP_LLM_KEY "..."`) or in a file
-  outside the repository, loaded by the launcher — not in `apps/*/.env`.
+- Keys belong in user environment variables (`setx VISHAP_LLM_KEY "..."`) or in a file outside the repository. For the analyzer that file is `~/.vishap/analyzer.env`, or whatever `VISHAP_ENV_FILE` names (`apps/analyzer/src/env_file.py`). Nothing else is loaded.
+- **A secret file inside the project tree is refused.** If `apps/analyzer/.env`, `.env.local` or `.env.production` exists, the analyzer does not start and says where to move it; a test fails on a working tree that has one, and another fails if git tracks one. `docker compose` reads `.env` from the compose file's folder on its own, so run it with the file outside: `docker compose --env-file ~/.vishap/analyzer.env up`.
 - The repository keeps `.env.example` with placeholders and nothing else.
 - `API_KEY_PEPPER` is checked at startup (`src/config.validate_secrets`): if
   `VISHAP_TENANT_KEYS` is on and the pepper is empty or still a placeholder from

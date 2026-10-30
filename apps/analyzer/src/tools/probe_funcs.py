@@ -449,7 +449,7 @@ def generate(code: str) -> dict:
                 val = _seed_value(wcol, 1)
                 where = f'"{wcol}" = {_sql_literal(val)}'
                 hyps.append(_h(fi, "lost_update", "", f"'{col}' is read, changed in Python, written back, with another writer in between",
-                               f"a change made by another writer between the read and the write is not overwritten",
+                               "a change made by another writer between the read and the write is not overwritten",
                                _benign(fi, {key: val}), [{"type": "no_lost_update", "sql": f'SELECT "{col}" FROM "{table}" WHERE {where}',
                                                           "competitor_delta": 50, "label": f"{table}.{col} where {wcol}={val}"}],
                                interleave={"after": f"select {col}", "sql": f'UPDATE "{table}" SET "{col}" = "{col}" + 50 WHERE {where}'}))
