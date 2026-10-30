@@ -57,6 +57,21 @@ vishap-validator check ./out --spec spec.json --json --report-out report.json
 
 Exit code: `0` for `PASS` and `NEEDS_REVIEW`, `1` for `FAIL` and `ERROR`.
 
+## HTTP service
+
+`python -m validator.server` serves `GET /health`, `GET /` and `POST /check`. `/check` **runs the deliverable's
+own tests**, so it is closed by default:
+
+- it answers `503` until `VISHAP_VALIDATOR_TOKEN` (at least 24 characters) is set, and `401` without
+  `Authorization: Bearer <token>`; the token is checked before the body is read;
+- at most `VISHAP_VALIDATOR_MAX_CONCURRENT` (2) checks at once, the rest get `503`; at most 200 files and 8 MB
+  per request; a client that stops sending is dropped after 30 s;
+- a bare run listens on `127.0.0.1`; the image sets `VISHAP_VALIDATOR_HOST=0.0.0.0`.
+
+This is a gate, not a sandbox: the code under test can still use the network. Run it in an isolated container.
+`render.yaml` has `autoDeploy: false` for that reason; the hub does not need this service, it calls the
+validator as a library.
+
 ## Design rules
 
 - **No network, no LLM.** A validator that needs a model to say «pass» is not a validator.

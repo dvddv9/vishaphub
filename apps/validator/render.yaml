@@ -1,3 +1,8 @@
+# DO NOT deploy this on its own without reading the README.
+# /check runs the deliverable's own tests - someone else's code - and the hub already does that inside its own
+# image. A standalone validator is only meant to sit behind a token: the server answers 503 on /check until
+# VISHAP_VALIDATOR_TOKEN is set. autoDeploy is off on purpose: deploying this blueprint must be a decision,
+# not a side effect of a push.
 services:
   - type: web
     name: vishap-validator
@@ -5,4 +10,7 @@ services:
     plan: free
     region: frankfurt
     healthCheckPath: /health
-    autoDeploy: true
+    autoDeploy: false
+    envVars:
+      - key: VISHAP_VALIDATOR_TOKEN
+        sync: false   # set it in the panel: at least 24 random characters

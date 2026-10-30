@@ -94,6 +94,7 @@
   "exports": ["add"],
   "tests": ["test_calc.py"]
 }</textarea>
+      <input id="token" type="password" autocomplete="off" placeholder="access token (VISHAP_VALIDATOR_TOKEN)" style="width:100%;margin:8px 0">
       <div class="row">
         <button id="run">Check</button>
         <button id="example" class="ghost">load example</button>
@@ -165,7 +166,7 @@ $("run").onclick = async () => {
   $("out").innerHTML = `<div class="hint">checking…</div>`;
 
   try {
-    const res = await fetch("/check", {method:"POST", headers:{"content-type":"application/json"},
+    const res = await fetch("/check", {method:"POST", headers:{"content-type":"application/json", "authorization": "Bearer " + $("token").value.trim()},
       body: JSON.stringify({files, spec})});
     const data = await res.json();
     if (data.error){ $("out").innerHTML = `<div class="verdict ERROR"><div class="big">REFUSED</div><div class="why">${data.error}</div></div>`; return; }
