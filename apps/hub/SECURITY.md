@@ -35,6 +35,35 @@ redacted — the code says so rather than pretending.
 **Team mode.** Owners, roles, retention, delete and audit trail in Postgres; quotas per
 team, set with `python -m hub.admin set-quota`.
 
+## Observability gap: which address the app actually uses
+
+`VISHAP_HUB_TRUST_HEADER=x-forwarded-for` and `VISHAP_HUB_TRUSTED_HOPS=1` are set on the Render
+service, and the deployment carrying them is live. What we have **not seen** is the address the
+application actually selects from that header. This is a gap in observation, not a known
+misconfiguration — the variables are in place, the result of reading them is not recorded anywhere
+we can read.
+
+**Why it matters.** The same request path gives two different services:
+
+- header read and parsed → the limiter key is the visitor's address, each visitor has a bucket;
+- header absent, unparsable, or the variable not picked up by the process → the key is the socket
+  address, which behind Render is the proxy. Every visitor then shares one bucket, and "20 a
+  minute per address" means 20 a minute for the whole site: one visitor closes the door for
+  everyone.
+
+From outside both look the same — the door closes either way, but one variant closes it too wide.
+Behavioural probes cannot tell them apart: a forged left-most `X-Forwarded-For` entry changes
+nothing in either variant.
+
+**How to close it.** One of these, and then say which:
+
+- connect Postgres, issue an owner key, and read `GET /api/team/diagnostics` — it returns
+  `socket_address`, `address_used`, `trust_header`, `trusted_hops` and every forwarded header
+  received; `address_used` is the answer;
+- find a service log line that records the chosen address per request.
+
+Until one of those exists, do not claim per-visitor limits in public.
+
 ## Known gaps
 
 - **Card numbers are not redacted.** `PII_PATTERNS` in the analyser has email, phone, passport,
@@ -46,6 +75,7 @@ team, set with `python -m hub.admin set-quota`.
   configured. Retention is stated on the report page; there is no per-run delete on the
   in-memory store.
 - **The SARIF export depends on the analyser.** Without it the endpoint answers `501`.
+
 
 ## Responsible disclosure
 
