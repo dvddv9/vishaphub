@@ -35,7 +35,7 @@ from dataclasses import dataclass, field
 
 from . import evidence as evidence_mod
 from . import findings as findings_mod
-from . import fingerprint, local, proposal, statuses
+from . import fingerprint, local, patchcheck, proposal, statuses
 from .envelope import Envelope, Kind
 from .router import Plan, Stage
 from .verdicts import BLOCKING_VERDICTS, normalise, rank, strictest
@@ -178,12 +178,16 @@ def _not_checked(plan: Plan, checks: dict, has_proof: bool, model_trouble: str =
 def run_plan(plan: Plan, material: str = "", files: dict | None = None,
              spec: object = None, filename: str = "input.txt",
              question: str = "", api_key: str = "", model: str = "",
-             on_step=None) -> RunResult:
+             on_step=None, check_patch: bool = False) -> RunResult:
     """Execute the plan and return one honest verdict.
 
     ``on_step`` is called with ``(stage, payload)`` after every stage that produced a
     verdict, so a streaming client can show progress instead of waiting for the whole
     run in silence.
+
+    ``check_patch`` applies the model's patch to a copy of the files the client sent and re-checks it
+    (`patchcheck`), so the fix status can be more than FIX_UNVERIFIED. Off by default: it runs the
+    deliverable's tests, which only happens where the isolation is confirmed.
     """
 
     def emit(stage: str, payload: dict) -> None:
@@ -393,6 +397,11 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
     if not (checks["generator"] and checks["analyser"]):
         overlap = {}                  # one reader only: there is nothing to agree with
 
+    patch_check: dict = {}
+    if check_patch and answer.get("patch") and supplied_files:
+        patch_check = patchcheck.check(supplied_files, files=answer["patch"],
+                                       spec=_spec_for_validator(spec, supplied_files))
+
     result = RunResult(
         ok=ok,
         verdict=final,
@@ -412,6 +421,7 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
         model_verdict=model_verdict,
         rules_verdict=rules_verdict,
         not_checked=_not_checked(plan, checks, bool(answer.get("proof")), model_trouble),
+        patch_check=patch_check,
     )
     result.fingerprint = fingerprint.of(
         material=material,
@@ -424,6 +434,6 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
             supplied_files=supplied_files, checked_files=files, patch=result.patch, checks=checks, answer=answer,
             model_verdict=model_verdict, rules=fingerprint.rules_version(), attempts=passes_run,
             stop_reason=stop_reason or f"the plan ran to its end ({passes_run} pass(es))",
-            not_checked=result.not_checked),
+            not_checked=result.not_checked, patch_check=patch_check),
     )
     return result

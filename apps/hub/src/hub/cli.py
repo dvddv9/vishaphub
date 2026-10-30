@@ -10,6 +10,7 @@ import json
 import os
 import sys
 
+from . import patchcheck
 from .pipeline import run_plan
 from .router import RouteError, plan_for
 from .version import __version__
@@ -38,6 +39,37 @@ def _deliverable(root: str) -> dict:
     return files
 
 
+EXIT_FOR_FIX = {"FIX_VERIFIED": 0, "FIX_PARTIAL": 3, "FIX_REJECTED": 4, "FIX_UNVERIFIED": 5}
+
+
+def _patch_check(args) -> int:
+    """`vishap-hub patch-check --snapshot DIR --diff PATCH --spec spec.json`: no model, same result every time."""
+    if not os.path.isdir(args.snapshot):
+        print(f"no such directory: {args.snapshot}", file=sys.stderr)
+        return 2
+    if not os.path.isfile(args.diff) or not os.path.isfile(args.spec):
+        print("--diff and --spec must be files", file=sys.stderr)
+        return 2
+    try:
+        spec = json.loads(_read(args.spec))
+    except json.JSONDecodeError as exc:
+        print(f"the spec is not JSON: {exc}", file=sys.stderr)
+        return 2
+    out = patchcheck.check(_deliverable(args.snapshot), diff=_read(args.diff), spec=spec)
+    if args.json:
+        print(json.dumps(out, ensure_ascii=False, indent=2, sort_keys=True))
+    else:
+        print(f"{out['status']}: {out['reason']}")
+        if out.get("rules"):
+            r = out["rules"]
+            print(f"  rules: {r['before']} -> {r['after']} finding(s); fixed {len(r['fixed'])}, new {len(r['new'])}")
+        if out.get("validator"):
+            v = out["validator"]
+            print(f"  validator: {v.get('verdict') or '-'}; tests ran: {v.get('tests_ran', False)}")
+        if out.get("removed") and (out["removed"]["files"] or out["removed"]["symbols"]):
+            print("  removed: " + ", ".join(out["removed"]["files"] + out["removed"]["symbols"]))
+    return EXIT_FOR_FIX[out["status"]]
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="vishap-hub", description="Carry a request through one plan.")
     parser.add_argument("--version", action="version", version=f"vishap-hub {__version__}")
@@ -56,7 +88,15 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--model", default="", help="model name; defaults to the hub's own choice")
     run.add_argument("--json", action="store_true")
 
+    pc = sub.add_parser("patch-check", help="apply a patch to a copy of a snapshot and say what it is worth")
+    pc.add_argument("--snapshot", required=True, help="directory with the original code")
+    pc.add_argument("--diff", required=True, help="a unified diff against the snapshot")
+    pc.add_argument("--spec", required=True, help="the validator spec as JSON (entry, files, exports, tests)")
+    pc.add_argument("--json", action="store_true")
+
     args = parser.parse_args(argv)
+    if args.command == "patch-check":
+        return _patch_check(args)
     if args.command != "run":
         return 2
 
