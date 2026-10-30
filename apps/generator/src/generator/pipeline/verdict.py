@@ -80,11 +80,15 @@ class VerifyResult:
 
 
 def decide_requirement(evidence: list[Evidence]) -> tuple[str, str]:
-    own = [e for e in evidence if e.source in ("attack", "rule") and e.status in ("pass", "fail")]
+    all_own = [e for e in evidence if e.source in ("attack", "rule") and e.status != "skipped"]
+    own = [e for e in all_own if e.status in ("pass", "fail")]
+    own_inconclusive = [e for e in all_own if e.status == "inconclusive"]
     model = [e for e in evidence if e.source == "model-test" and e.status != "skipped"]
     if any(e.status == "fail" for e in own):
         return "failed", ""
     model_bad = [e for e in model if e.status != "pass"]
+    if own_inconclusive:
+        return "needs_verification", "a valid input was not proven in Verify's own checks"
     if model_bad and own:
         return "needs_verification", "a model test fails while Verify's own checks pass; the test may be wrong"
     if model_bad:
