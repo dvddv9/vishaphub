@@ -1,6 +1,6 @@
 [project]
 name = "vishap-hub"
-version = "0.3.2"
+version = "0.4.0"
 description = "Carries a request between the client, the generator, the validator and the analyser."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -9,6 +9,8 @@ dependencies = []
 
 [project.optional-dependencies]
 full = ["pytest>=8", "ruff==0.17.3"]
+# team mode (VISHAP_HUB_DATABASE_URL): the only dependency the hub has, and only loaded when that is set
+postgres = ["psycopg[binary]>=3.2"]
 
 [project.scripts]
 vishap-hub = "hub.cli:main"
@@ -21,7 +23,7 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [tool.setuptools.package-data]
-hub = ["web/*.html", "prompt/*.md", "web/*.mp3"]
+hub = ["web/*.html", "prompt/*.md", "web/*.mp3", "migrations/*.sql"]
 
 [tool.ruff]
 # src/ is the source root. Without this, import sorting depends on where ruff is started:

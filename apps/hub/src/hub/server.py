@@ -23,13 +23,17 @@ import json
 import os
 import re
 import secrets
+import sys
+import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qs
 
-from . import demo, fingerprint, limits, templates
+from . import access, demo, fingerprint, limits, templates
 from .chat import reply
 from .pipeline import run_plan
 from .router import RouteError, plan_for
 from .store import RunStore, owner_key
+from .teamstore import DEFAULT_RETENTION_DAYS, TeamStore
 from .tts import VOICE
 from .tts import available as tts_available
 from .tts import speak as tts_speak
@@ -58,6 +62,20 @@ BUDGET = limits.RunBudget(limits.global_runs_per_day(), limits.global_chars_per_
 TTS_CACHE = limits.TTSCache(limits.int_env("VISHAP_HUB_TTS_CACHE", limits.DEFAULT_TTS_ITEMS))
 RUNS = RunStore(keep=limits.int_env("VISHAP_HUB_RUNS_KEEP", 200),
                 path=os.getenv("VISHAP_HUB_RUNS_FILE", ""))
+
+
+def _init_teams() -> TeamStore | None:
+    """Team mode is on when VISHAP_HUB_DATABASE_URL is set; otherwise nothing of it is loaded."""
+    url = os.getenv("VISHAP_HUB_DATABASE_URL", "")
+    if not url:
+        return None
+    return TeamStore(url, limits.int_env("VISHAP_HUB_RETENTION_DAYS", DEFAULT_RETENTION_DAYS))
+
+
+TEAMS = _init_teams()
+#: with this on, /run, /chat and /speak refuse a caller who has no API key (the setting for a pilot)
+REQUIRE_KEY = os.getenv("VISHAP_HUB_REQUIRE_KEY", "").lower() in ("1", "true", "yes")
+KEY_COOKIE_MAX_AGE = 30 * 24 * 3600
 
 
 class _ClientGone(Exception):
@@ -103,8 +121,25 @@ class Handler(BaseHTTPRequestHandler):
 
     # ---- plumbing -------------------------------------------------------
 
+    def _drain(self) -> None:
+        """Read and drop a request body nobody asked for before replying, once.
+
+        A refusal that is sent while the client is still writing its body is not delivered on Windows
+        (WinError 10053) and can reset the connection elsewhere: the client sees a dead socket, not the 401.
+        """
+        if getattr(self, "_body_taken", False):
+            return
+        self._body_taken = True
+        try:
+            length = int(self.headers.get("content-length") or 0)
+        except ValueError:
+            return
+        if 0 < length <= MAX_BODY:
+            self.rfile.read(length)
+
     def _send(self, code: int, payload, content_type: str = "application/json",
               extra: dict | None = None) -> None:
+        self._drain()
         if isinstance(payload, bytes):
             body = payload
         elif isinstance(payload, str):
@@ -152,6 +187,65 @@ class Handler(BaseHTTPRequestHandler):
             cookie += "; Secure"
         return owner_key(token), {"set-cookie": cookie}
 
+    def _principal(self):
+        """(principal, refused). principal is None for an anonymous caller. refused is True when a reply
+        was already sent: the caller presented a key, and it is wrong, revoked, or team mode is off."""
+        creds = access.credentials(self.headers)
+        if creds is None:
+            return None, False
+        kind, token = creds
+        if kind != "key" or TEAMS is None:
+            self._refuse_key("an API key was sent but it is not valid here")
+            return None, True
+        try:
+            principal = TEAMS.authenticate(token)
+        except Exception as exc:  # noqa: BLE001 - the database is down: say so, do not guess
+            print(f"team storage error: {type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
+            self._send(503, {"error": "team storage is unavailable"})
+            return None, True
+        if principal is None:
+            self._refuse_key("invalid or revoked API key")
+            return None, True
+        return principal, False
+
+    def _refuse_key(self, message: str) -> None:
+        if self.path.startswith("/api/") or self.command != "GET":
+            self._send(401, {"error": message}, extra=PRIVATE)
+        else:
+            self._html(401, templates.message_page("Not signed in", f"{message}. Sign in at /login."), extra=PRIVATE)
+
+    def _spender(self):
+        """The caller of a door that spends (/run, /chat, /speak): (principal, refused)."""
+        principal, refused = self._principal()
+        if refused:
+            return None, True
+        if principal is None:
+            if REQUIRE_KEY:
+                self._send(401, {"error": "an API key is required"}, extra=PRIVATE)
+                return None, True
+            return None, False
+        if not principal.can("run.create"):
+            self._send(403, {"error": "your role may read, not run, chat or speak"}, extra=PRIVATE)
+            return None, True
+        return principal, False
+
+    def _team(self, fn, *args):
+        """Call the team store; a failure is a 503 that says so, never a silent empty answer."""
+        try:
+            return True, fn(*args)
+        except Exception as exc:  # noqa: BLE001
+            print(f"team storage error: {type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
+            self._send(503, {"error": "team storage is unavailable"})
+            return False, None
+
+    def _form(self) -> dict | None:
+        self._body_taken = True
+        length = int(self.headers.get("content-length") or 0)
+        if length <= 0 or length > 4096:
+            self._send(400, {"error": "form must be 1..4096 bytes"})
+            return None
+        return {k: v[0] for k, v in parse_qs(self.rfile.read(length).decode("utf-8", "replace")).items()}
+
     def _limited(self, kind: str) -> bool:
         allowed, wait = LIMITERS[kind].allow(self.client_address[0])
         if allowed:
@@ -161,6 +255,7 @@ class Handler(BaseHTTPRequestHandler):
         return True
 
     def _body(self) -> dict | None:
+        self._body_taken = True
         length = int(self.headers.get("content-length") or 0)
         if length <= 0 or length > MAX_BODY:
             self._send(400, {"error": f"body must be 1..{MAX_BODY} bytes"})
@@ -175,7 +270,7 @@ class Handler(BaseHTTPRequestHandler):
             return None
         return body
 
-    def _remember(self, payload: dict, args: dict | None = None, owner: str = "") -> None:
+    def _remember(self, payload: dict, args: dict | None = None, owner: str = "", principal=None) -> None:
         """Keep the run, and give even a refused run an id: a failure is a result too."""
         fp = payload.get("fingerprint") or {}
         if not fp.get("id") and args:
@@ -190,7 +285,7 @@ class Handler(BaseHTTPRequestHandler):
             payload["fingerprint"] = fp
         if not fp.get("id"):
             return
-        RUNS.save({
+        record = {
             "id": fp["id"],
             "at": fp.get("at", ""),
             "verdict": payload.get("verdict"),
@@ -205,7 +300,16 @@ class Handler(BaseHTTPRequestHandler):
             },
             "owners": [owner] if owner else [],
             "demo": bool(args) and demo.is_demo(args),
-        })
+        }
+        if principal is None:
+            RUNS.save(record)
+            return
+        try:
+            TEAMS.save(principal, record, self.client_address[0])
+            payload["stored"] = True
+        except Exception as exc:  # noqa: BLE001 - the run happened and was paid for: tell the caller it was not kept
+            print(f"team storage error: {type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
+            payload["stored"] = False
 
     # ---- GET ------------------------------------------------------------
 
@@ -231,6 +335,42 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/health":
             self._send(200, {"ok": True, "version": __version__})
             return
+        principal, ip = None, self.client_address[0]
+        if path.startswith(("/api/", "/runs", "/r/")):
+            principal, refused = self._principal()
+            if refused:
+                return
+        if path == "/api/me":
+            if principal is None:
+                self._send(401, {"error": "an API key is required"}, extra=PRIVATE)
+                return
+            self._send(200, {"team_id": principal.team_id, "user": principal.user_name, "role": principal.role,
+                             "retention_days": TEAMS.retention_days(principal),
+                             "permissions": sorted(access.PERMISSIONS[principal.role])}, extra=PRIVATE)
+            return
+        if path == "/api/team/audit":
+            if principal is None:
+                self._send(401, {"error": "an API key is required"}, extra=PRIVATE)
+                return
+            if not principal.can("audit.read"):
+                self._send(403, {"error": "only an owner reads the audit trail"}, extra=PRIVATE)
+                return
+            query = parse_qs(self.path.split("?", 1)[1]) if "?" in self.path else {}
+            try:
+                limit = int((query.get("limit") or ["100"])[0])
+                before = int(query["before"][0]) if query.get("before") else None
+            except ValueError:
+                self._send(400, {"error": "limit and before must be integers"})
+                return
+            ok, events = self._team(TEAMS.audit_events, principal, limit, before)
+            if ok:
+                self._send(200, {"events": events}, extra=PRIVATE)
+            return
+        if path == "/api/runs" and principal is not None:
+            ok, runs = self._team(TEAMS.list, principal, 20, ip)
+            if ok:
+                self._send(200, {"runs": runs}, extra=PRIVATE)
+            return
         if path == "/api/runs":
             token = self._token()
             if token is None:
@@ -238,6 +378,17 @@ class Handler(BaseHTTPRequestHandler):
                                           f"or send the {OWNER_HEADER} header you made it with"}, extra=PRIVATE)
                 return
             self._send(200, {"runs": RUNS.list_for(owner_key(token), 20)}, extra=PRIVATE)
+            return
+        if path.startswith("/api/runs/") and principal is not None:
+            run_id = path[len("/api/runs/"):].removesuffix(".json")
+            ok, record = self._team(TEAMS.get, principal, run_id, ip)
+            if not ok:
+                return
+            record = record or RUNS.get_for(run_id, None)             # the page's own example is public
+            if record is None:
+                self._send(404, {"error": "no such run in your team, or it has expired"}, extra=PRIVATE)
+                return
+            self._send(200, record, extra=PRIVATE)
             return
         if path.startswith("/api/runs/"):
             token = self._token()
@@ -257,16 +408,32 @@ class Handler(BaseHTTPRequestHandler):
         if path in STATIC:
             self._static(path)
             return
+        if path == "/login":
+            self._html(200, templates.login_page(), extra=PRIVATE)
+            return
+        if path == "/runs" and principal is not None:
+            ok, runs = self._team(TEAMS.list, principal, 20, ip)
+            if ok:
+                self._html(200, templates.runs_page(runs), extra=PRIVATE)
+            return
         if path == "/runs":
             token = self._token()
             if token is None:
                 self._html(403, templates.message_page(
                     "Runs are private",
-                    "A run is listed only for the browser that made it. Make a run here and it will appear."),
+                    "A run is listed only for the browser that made it, or for a signed-in team (/login). "
+                    "Make a run here and it will appear."),
                     extra=PRIVATE)
                 return
             self._html(200, templates.runs_page(RUNS.list_for(owner_key(token), 20)), extra=PRIVATE)
             return
+        if path.startswith("/r/") and len(path) > 3 and principal is not None:
+            ok, record = self._team(TEAMS.get, principal, path[3:], ip)
+            if not ok:
+                return
+            if record is not None:
+                self._html(200, templates.report_page(record, TEAMS.retention_note(principal)), extra=PRIVATE)
+                return
         if path.startswith("/r/") and len(path) > 3:
             token = self._token()
             record = RUNS.get_for(path[3:], owner_key(token) if token else None)
@@ -309,14 +476,15 @@ class Handler(BaseHTTPRequestHandler):
             "model": str(body.get("model") or ""),
         }
 
-    def _respond(self, result, args: dict | None = None, owner: str = "", extra: dict | None = None) -> None:
+    def _respond(self, result, args: dict | None = None, owner: str = "", extra: dict | None = None,
+                 principal=None) -> None:
         payload = result.as_dict()
         if not payload["ok"]:
             payload["error"] = payload.get("reason") or "the run did not pass its gates"
-        self._remember(payload, args, owner)
+        self._remember(payload, args, owner, principal)
         self._send(200 if payload["ok"] else 502, payload, extra=extra)
 
-    def _stream(self, args: dict, owner: str = "", extra: dict | None = None) -> None:
+    def _stream(self, args: dict, owner: str = "", extra: dict | None = None, principal=None) -> None:
         """The same run, announced stage by stage: a minute of silence reads as broken."""
         self.send_response(200)
         for name, value in SECURITY_HEADERS.items():
@@ -348,7 +516,7 @@ class Handler(BaseHTTPRequestHandler):
         payload = result.as_dict()
         if not payload["ok"]:
             payload["error"] = payload.get("reason") or "the run did not pass its gates"
-        self._remember(payload, args, owner)
+        self._remember(payload, args, owner, principal)
         try:
             event("done", payload)
         except _ClientGone:
@@ -357,7 +525,37 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # stdlib naming
         path = self.path.split("?", 1)[0]
 
+        if path == "/login":
+            form = self._form()
+            if form is None:
+                return
+            key = (form.get("key") or "").strip()
+            creds = access.credentials({"x-vishap-key": key})
+            principal = None
+            if TEAMS is not None and creds and creds[0] == "key":
+                try:
+                    principal = TEAMS.authenticate(creds[1])
+                except Exception as exc:  # noqa: BLE001
+                    print(f"team storage error: {type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
+                    self._send(503, {"error": "team storage is unavailable"})
+                    return
+            if principal is None:
+                self._html(401, templates.login_page("That key is not valid."), extra=PRIVATE)
+                return
+            cookie = (f"{access.KEY_COOKIE}={key}; Path=/; HttpOnly; SameSite=Lax; Max-Age={KEY_COOKIE_MAX_AGE}"
+                      + ("; Secure" if (self.headers.get("x-forwarded-proto") or "").lower() == "https" else ""))
+            self._send(303, b"", "text/plain", extra={"location": "/runs", "set-cookie": cookie, **PRIVATE})
+            return
+        if path == "/logout":
+            self._send(303, b"", "text/plain", extra={
+                "location": "/login", **PRIVATE,
+                "set-cookie": f"{access.KEY_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"})
+            return
+
         if path == "/chat":
+            principal, refused = self._spender()
+            if refused:
+                return
             body = self._body()
             if body is None:
                 return
@@ -373,6 +571,9 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if path == "/speak":
+            principal, refused = self._spender()
+            if refused:
+                return
             body = self._body()
             if body is None:
                 return
@@ -403,6 +604,9 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if path in ("/run", "/run/stream"):
+            principal, refused = self._spender()
+            if refused:
+                return
             body = self._body()
             if body is None:
                 return
@@ -416,18 +620,58 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(413 if spend.too_big else 429, {"ok": False, "error": spend.reason},
                            extra={} if spend.too_big else {"retry-after": str(int(spend.wait) + 1)})
                 return
-            owner, cookie = self._owner_for_run()
+            owner, cookie = ("", {}) if principal is not None else self._owner_for_run()
             if path == "/run/stream":
-                self._stream(args, owner, cookie)
+                self._stream(args, owner, cookie, principal)
                 return
-            self._respond(run_plan(**args), args, owner, cookie)
+            self._respond(run_plan(**args), args, owner, cookie, principal)
             return
 
         self._send(404, {"error": "not found"})
 
 
+    def do_DELETE(self) -> None:  # stdlib naming
+        path = self.path.split("?", 1)[0]
+        if not path.startswith("/api/runs/"):
+            self._send(404, {"error": "not found"})
+            return
+        principal, refused = self._principal()
+        if refused:
+            return
+        if principal is None:
+            self._send(401, {"error": "an API key is required to delete a run"}, extra=PRIVATE)
+            return
+        ok, outcome = self._team(TEAMS.delete, principal, path[len("/api/runs/"):].removesuffix(".json"),
+                                 self.client_address[0])
+        if not ok:
+            return
+        if outcome == "deleted":
+            self._send(200, {"deleted": True}, extra=PRIVATE)
+        elif outcome == "forbidden":
+            self._send(403, {"error": "only an owner, or the person who made the run, may delete it"}, extra=PRIVATE)
+        else:
+            self._send(404, {"error": "no such run in your team, or it has expired"}, extra=PRIVATE)
+
+
+def _purge_loop(minutes: int) -> None:
+    """Remove expired runs now and then. Reads already ignore them; this is what frees the rows."""
+    import time
+
+    while True:
+        try:
+            removed = TEAMS.purge_expired()
+            if removed:
+                print(f"retention: removed {removed} expired run(s)", flush=True)
+        except Exception as exc:  # noqa: BLE001
+            print(f"retention purge failed: {type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
+        time.sleep(max(1, minutes) * 60)
+
+
 def main() -> None:
     port = int(os.getenv("PORT", "8080"))
+    if TEAMS is not None:
+        threading.Thread(target=_purge_loop, args=(limits.int_env("VISHAP_HUB_PURGE_MINUTES", 60),),
+                         daemon=True).start()
     server = ThreadingHTTPServer(("0.0.0.0", port), Handler)
     print(f"vishap-hub {__version__} listening on {port}", flush=True)
     server.serve_forever()

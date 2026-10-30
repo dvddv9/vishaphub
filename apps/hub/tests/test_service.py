@@ -443,11 +443,21 @@ class ReadmeTests(unittest.TestCase):
         readme = (Path(__file__).resolve().parents[3] / "README.md").read_text(encoding="utf-8")
         assert RunStore(keep=200).retention() in readme
 
+    def test_the_readme_quotes_the_line_a_teams_report_page_shows(self):
+        from pathlib import Path
+
+        from hub.access import Principal
+        from hub.teamstore import TeamStore
+        readme = (Path(__file__).resolve().parents[3] / "README.md").read_text(encoding="utf-8")
+        person = Principal(team_id="t", user_id="u", key_id="k", role="member", user_name="n")
+        assert TeamStore("postgresql://unused", 30).retention_note(person) in readme
+
     def test_the_readme_names_every_env_var_the_budget_reads(self):
         from pathlib import Path
         readme = (Path(__file__).resolve().parents[3] / "README.md").read_text(encoding="utf-8")
         for name in ("VISHAP_HUB_RUNS_KEEP", "VISHAP_HUB_RUNS_FILE", "VISHAP_HUB_GLOBAL_RUNS_PER_DAY",
-                     "VISHAP_HUB_GLOBAL_CHARS_PER_DAY"):
+                     "VISHAP_HUB_GLOBAL_CHARS_PER_DAY", "VISHAP_HUB_DATABASE_URL", "VISHAP_HUB_ADMIN_DATABASE_URL",
+                     "VISHAP_HUB_REQUIRE_KEY", "VISHAP_HUB_RETENTION_DAYS", "VISHAP_HUB_PURGE_MINUTES"):
             assert name in readme, name
 
 

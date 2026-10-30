@@ -20,7 +20,7 @@ RUN grep -v '^vishap-core' ./apps/analyzer/requirements.txt > /tmp/analyzer-reqs
     && pip install --no-cache-dir -e ./packages/core -e ./apps/validator \
     && pip install --no-cache-dir -r /tmp/analyzer-reqs.txt \
     && pip install --no-cache-dir -e ./apps/analyzer --no-deps \
-    && pip install --no-cache-dir -e ./apps/hub \
+    && pip install --no-cache-dir -e "./apps/hub[postgres]" \
     && pip install --no-cache-dir edge-tts pytest
 
 RUN useradd -m -u 1000 hub

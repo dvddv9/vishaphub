@@ -147,6 +147,20 @@ def runs_page(runs: list[dict]) -> str:
                   description="The runs this VishapHub remembers, newest first.")
 
 
+def login_page(error: str = "") -> str:
+    """Team members sign in with the API key an operator gave them; the key goes into an HttpOnly cookie."""
+    problem = f'<p class="rep-reason" role="alert">{e(error)}</p>' if error else ""
+    body = (
+        '<div class="empty"><h1 class="page-title">Sign in</h1>'
+        '<p>Paste the API key your team\'s operator gave you. It is kept in a cookie this site can read and '
+        'scripts cannot, and it is never shown again.</p>' + problem +
+        '<form method="post" action="/login">'
+        '<p><label for="key">API key</label><br>'
+        '<input id="key" name="key" type="password" autocomplete="off" required style="width:100%;max-width:32rem"></p>'
+        '<p><button class="btn" type="submit">Sign in</button></p></form></div>')
+    return layout("Sign in " + DOT + " VishapHub", body, description="Sign in to a VishapHub team.")
+
+
 def message_page(title: str, message: str) -> str:
     return layout(title, f'<div class="empty"><h1 class="page-title">{e(title)}</h1><p>{e(message)}</p>'
                          f'<p><a class="btn ghost sm" href="/runs">recent runs</a></p></div>')

@@ -21,6 +21,8 @@ services:
     envVars:
       - key: VISHAP_HUB_LLM_KEY
         sync: false          # set in the panel; a client can also send api_key in the body
+      # Team mode is off until VISHAP_HUB_DATABASE_URL is set in the panel (the vishap_hub_app role's URL;
+      # see the README, "Teams"). Add VISHAP_HUB_REQUIRE_KEY=1 to refuse callers without a key.
 
 # The separate services (analyzer, generator, validator) are deliberately absent: the
 # hub does not call them over the network any more. Their repositories still build and

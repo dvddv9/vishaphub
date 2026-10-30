@@ -69,6 +69,24 @@ jobs:
   hub:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Team mode is tested against a real Postgres: isolation between teams is a property of the
+    # database as much as of the code, and a mock proves neither.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: vishap
+          POSTGRES_PASSWORD: vishap_dev
+          POSTGRES_DB: vishap
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vishap"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_POSTGRES_URL: postgresql+asyncpg://vishap:vishap_dev@localhost:5432/vishap
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -83,12 +101,16 @@ jobs:
           pip install -e ./packages/core -e ./apps/validator
           pip install -r "$RUNNER_TEMP/analyzer-reqs.txt"
           pip install -e ./apps/analyzer --no-deps
-          pip install -e ./apps/hub
+          pip install -e "./apps/hub[postgres]"
           pip install edge-tts pytest
       - run: pip install ruff==0.17.3
       - run: ruff check
         working-directory: apps/hub
-      - run: python -m pytest -q
+      - run: python -m pytest -q -rs --junitxml=junit.xml
+        working-directory: apps/hub
+      - name: The team-mode tests ran, none was skipped
+        if: always()
+        run: python ../../.github/scripts/assert_no_skips.py junit.xml test_teams
         working-directory: apps/hub
 
   analyzer:
