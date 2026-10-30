@@ -136,6 +136,10 @@ The whole process, per sliding day — one bill, whoever asks:
 The chat has its own ceiling on purpose: a conversation on the site must not close the door
 for runs. Exhausted means `429` with `retry-after`, never a thinner answer.
 
+Not money but threads: `VISHAP_HUB_MAX_CONCURRENT_RUNS` (4) is how many runs may be in flight at once; a run that
+finds no free slot is answered `503` with `retry-after: 5` before it spends any budget. `VISHAP_HUB_READ_TIMEOUT` (30)
+is how many seconds a connection may stay silent while the hub waits to read from it.
+
 Also: `VISHAP_HUB_TTS_MAX_CHARS`, `VISHAP_HUB_TTS_CACHE`, `VISHAP_HUB_RUNS_KEEP`,
 `VISHAP_HUB_RUNS_FILE` (a file to mirror the runs to, empty means memory only).
 

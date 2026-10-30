@@ -6,6 +6,9 @@ All notable changes to VishapHub. Format based on [Keep a Changelog](https://kee
 
 ### Security
 
+- **A silent or malformed connection can no longer hold the hub's threads.** A read timeout (30 s, `VISHAP_HUB_READ_TIMEOUT`), a ceiling on runs in flight (4, `VISHAP_HUB_MAX_CONCURRENT_RUNS`; the 5th is a `503` before it spends any budget), and a `Content-Length` that is not a number is a `400` instead of a dropped connection (`/run`, `/chat`, `/speak`, `/login`).
+- **A run that raises is a `500` that says so, not a dead socket, and neither `/run` nor `/run/stream` hands the exception text to the client** (it goes to the log).
+- **`render.yaml` sets `VISHAP_HUB_TRUST_HEADER=x-forwarded-for` and `VISHAP_HUB_TRUSTED_HOPS=1`**, so the per-address limits are per visitor behind Render's proxy and not one bucket for everyone. Check it with `GET /api/team/diagnostics`.
 - **Validator 0.3.0: the visitor's tests no longer see the hub's environment.** The hub runs a deliverable's own tests and imports its entry point inside the service process; those subprocesses used to inherit every variable of the host (model key, database URLs). They now get `PATH`, temp dirs and locale only. A spec path that is absolute, climbs with `..` or an entry that is not a dotted module name is refused (`FAIL`, nothing run) - a test file outside the deliverable used to be executed. Pytest exiting 0 with every test skipped is no longer a green run; `todos`/`stubborn` in code are no longer `stub` markers. Not a sandbox: the code under test can still reach the network.
 
 ### Changed
