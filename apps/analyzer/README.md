@@ -55,7 +55,7 @@ Previous: [v7.3.17](#previous-v7317)
 
 ## 🛠️ Features
 
-- **6-stage pipeline:** Ingestion → Taint Analysis → Dataflow → Risk Assessment → Verdict → Report.
+- **6-stage pipeline:** Orchestrator (0) → Scanner (1) → Analyst (2) → Researcher (3) → Synthesizer (4) → Transmitter (5), with four more passes in between: Translator (1.5), Red team (2.5), Tester (3.5), Fixer (4.5) - the translator and the fixer report `skipped` when they have nothing to work on. Redaction runs before stage 0 and the audit after stage 5. The risk verdict (`EMERGENCY` / `REQUIRES_REVIEW` / `SAFE`) is computed by rules in `src/pipeline/verdict.py`, not written by the model. Optional web search (Tavily or DeepSeek, off by default) runs before stage 2.
 - **Multi-language:** Python, Java, C, **JavaScript / TypeScript** (AST + taint patterns).
 - **LLM backend:** any OpenAI-compatible endpoint via `CUSTOM_LLM_URL` / `CUSTOM_LLM_KEY` / `CUSTOM_LLM_MODEL` (Claude by default; `.env.example` also has DeepSeek, OpenAI, Groq and Ollama examples).
 - **Async API:** FastAPI + Celery workers (optional in-process fallback).

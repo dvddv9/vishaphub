@@ -89,6 +89,8 @@ material ──┐
         final report
 ```
 
+На схеме — шесть основных стадий (0–5). В коде (`src/pipeline/stages.py`, `orchestrator.py`) между ними есть ещё четыре прохода: 1.5 Translator (межъязыковые связи), 2.5 Red team (оспаривает вывод Analyst), 3.5 Tester (проверочные тесты по risk nodes), 4.5 Fixer (проверка предложенных исправлений). Translator и Fixer возвращают `skipped`, если им нечего делать. Перед стадией 2 может идти веб-поиск (Tavily или DeepSeek; по умолчанию выключен, `ENABLE_WEB_SEARCH`). Вердикт риска считают правила в `src/pipeline/verdict.py`, а не модель.
+
 ---
 
 ## 3. Где LLM, где pipeline
