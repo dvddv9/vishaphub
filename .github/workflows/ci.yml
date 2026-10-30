@@ -129,8 +129,12 @@ jobs:
       - run: pip install ruff==0.17.3
       - run: ruff check
         working-directory: apps/hub
+      - name: Build the worker image (the hub hands submitted code to it)
+        run: docker build -t vishap-validator:worker apps/validator
       - run: python -m pytest -q -rs --junitxml=junit.xml
         working-directory: apps/hub
+        env:
+          VISHAP_TEST_WORKER_IMAGE: vishap-validator:worker
       - name: The team-mode tests ran, none was skipped
         if: always()
         run: python ../../.github/scripts/assert_no_skips.py junit.xml test_teams

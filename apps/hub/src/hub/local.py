@@ -19,9 +19,41 @@ from __future__ import annotations
 import os
 import shutil
 import tempfile
+import threading
 
 MAX_FILES = 200
 
+# Worker containers: how many run at once, and how long a caller waits for a free slot. A busy hub says so
+# ("all validation workers are busy") instead of queueing without bound or running code unprotected.
+_SLOTS = threading.BoundedSemaphore(max(1, int(os.getenv("VISHAP_HUB_WORKER_SLOTS", "2"))))
+SLOT_WAIT_SECONDS = 30
+
+
+def _spec_dict(spec: dict) -> dict:
+    return {"language": spec.get("language", "python"), "files": list(spec.get("files", [])),
+            "exports": list(spec.get("exports", [])), "tests": list(spec.get("tests", [])),
+            "entry": spec.get("entry", "")}
+
+
+def _validate_in_worker(root: str, spec: dict, image: str) -> dict:
+    """One throw-away container per run (VISHAP_HUB_WORKER_IMAGE). Never falls back to the host."""
+    try:
+        from validator.container import run_in_container
+    except ImportError:
+        return {"ok": False, "error": "validator is not installed in this image"}
+    if not _SLOTS.acquire(timeout=SLOT_WAIT_SECONDS):
+        return {"ok": False, "error": "all validation workers are busy"}
+    try:
+        result = run_in_container(root, _spec_dict(spec), image=image,
+                                  timeout=int(os.getenv("VISHAP_HUB_WORKER_TIMEOUT", "120")),
+                                  docker=os.getenv("VISHAP_HUB_DOCKER", "docker"))
+    finally:
+        _SLOTS.release()
+    if not result.get("ok"):
+        return {"ok": False, "error": result.get("error") or "the worker produced no report"}
+    return {"ok": True, "report": result["report"],
+            "isolation": {"kind": "container", "image": image, "container": result.get("name", ""),
+                          "cleanup_confirmed": bool(result.get("cleanup_confirmed"))}}
 
 def validate_code(files: dict, spec: dict, *, require_netns: bool = True) -> dict:
     """Run the six-stage validator over a deliverable given as {path: text}."""
@@ -55,6 +87,10 @@ def validate_code(files: dict, spec: dict, *, require_netns: bool = True) -> dic
         # the same fail-open the pipeline refuses one level up.
         if not written:
             return {"ok": False, "error": "no usable files after sanitisation"}
+
+        image = os.getenv("VISHAP_HUB_WORKER_IMAGE", "")
+        if image and require_netns:
+            return _validate_in_worker(root, spec, image)
 
         report = run_validate(root, Spec(
             language=spec.get("language", "python"),
