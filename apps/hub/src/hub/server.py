@@ -570,14 +570,21 @@ class Handler(BaseHTTPRequestHandler):
 
     def _run_args(self, body: dict) -> dict | None:
         material = str(body.get("material") or "")
-        spec_text = body.get("spec") if isinstance(body.get("spec"), str) else ""
+        spec_value = body.get("spec")
+        spec_text = spec_value if isinstance(spec_value, str) else ""
+        question = str(body.get("question") or "")
+        files = body.get("files") if isinstance(body.get("files"), dict) else {}
+        has_spec = bool(spec_text.strip()) or (isinstance(spec_value, dict) and bool(spec_value))
+        has_files = any(isinstance(value, str) and value.strip() for value in files.values())
+        if not (material.strip() or has_spec or has_files or question.strip()):
+            self._send(400, {"ok": False, "error": "generation needs a spec, material or a question; nothing was sent"})
+            return None
         intent = _intent_for(body, material, spec_text)
         try:
             plan = plan_for(intent, int(body.get("iterations") or 1))
         except (RouteError, ValueError) as exc:
             self._send(400, {"ok": False, "error": f"cannot route: {exc}"})
             return None
-        question = str(body.get("question") or "")
         if intent.strip().lower() == "review" and not question.strip():
             question = DEFAULT_REVIEW_QUESTION
         if (intent == "analyse" and material.strip() and question.strip()
@@ -588,8 +595,8 @@ class Handler(BaseHTTPRequestHandler):
         return {
             "plan": plan,
             "material": material,
-            "files": body.get("files") if isinstance(body.get("files"), dict) else {},
-            "spec": body.get("spec") if isinstance(body.get("spec"), dict) else spec_text,
+            "files": files,
+            "spec": spec_value if isinstance(spec_value, dict) else spec_text,
             "question": question,
             "api_key": str(body.get("api_key") or ""),
             "model": str(body.get("model") or ""),

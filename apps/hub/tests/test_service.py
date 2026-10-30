@@ -668,6 +668,12 @@ class BudgetServerTests(ServerCase):
         with mock.patch.object(server, "run_plan", lambda **kw: _Done()):
             return self.post(path, body)
 
+    def test_an_empty_run_is_a_400_and_never_reaches_the_pipeline(self):
+        with mock.patch.object(server, "run_plan", side_effect=AssertionError("pipeline must not run")):
+            status, _headers, body = self.post("/run", {})
+        self.assertEqual(status, 400)
+        self.assertIn(b"generation needs a spec, material or a question", body)
+
     def test_the_run_after_the_last_one_is_a_429_with_a_reason_and_health_still_answers(self):
         with mock.patch.object(server, "BUDGET", limits.RunBudget(2, 0)):
             assert self.run_once()[0] == 200
