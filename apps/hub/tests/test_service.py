@@ -457,7 +457,9 @@ class ReadmeTests(unittest.TestCase):
         readme = (Path(__file__).resolve().parents[3] / "README.md").read_text(encoding="utf-8")
         for name in ("VISHAP_HUB_RUNS_KEEP", "VISHAP_HUB_RUNS_FILE", "VISHAP_HUB_GLOBAL_RUNS_PER_DAY",
                      "VISHAP_HUB_GLOBAL_CHARS_PER_DAY", "VISHAP_HUB_DATABASE_URL", "VISHAP_HUB_ADMIN_DATABASE_URL",
-                     "VISHAP_HUB_REQUIRE_KEY", "VISHAP_HUB_RETENTION_DAYS", "VISHAP_HUB_PURGE_MINUTES"):
+                     "VISHAP_HUB_REQUIRE_KEY", "VISHAP_HUB_RETENTION_DAYS", "VISHAP_HUB_PURGE_MINUTES",
+                     "VISHAP_HUB_ALERT_WEBHOOK", "VISHAP_HUB_QUOTA_RUN_PER_USER", "VISHAP_HUB_QUOTA_RUN_PER_TEAM",
+                     "VISHAP_HUB_TEAMS_GLOBAL_RUN_PER_DAY", "VISHAP_HUB_TEAMS_GLOBAL_CHARS_PER_DAY"):
             assert name in readme, name
 
 

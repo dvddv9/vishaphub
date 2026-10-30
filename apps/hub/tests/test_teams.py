@@ -5,6 +5,7 @@ and connects as vishap_hub_app (NOSUPERUSER, NOBYPASSRLS), then drops it. Withou
 skip - the only way they skip; CI sets it and fails the build if any of them skipped.
 """
 import contextlib
+import http.client
 import json
 import os
 import threading
@@ -17,7 +18,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 from test_service import ServerCase  # tests/ is on sys.path (rootdir import mode)
 
-from hub import access, admin, db, limits, server
+from hub import access, admin, alerts, chat, db, limits, meter, proposal, server
 from hub.teamstore import TeamStore
 
 RAW = os.getenv("TEST_POSTGRES_URL", "").replace("postgresql+asyncpg://", "postgresql://")
@@ -445,8 +446,376 @@ class AdminTests(unittest.TestCase):
         assert db.migrate(ADMIN_URL) == []
 
 
+class _Metered(_Said):
+    """A run that reports provider tokens the way the real model call does: through the meter."""
+
+    def __init__(self, tokens_in=120, tokens_out=45, ok=True):
+        super().__init__("metered")
+        self.tokens = (tokens_in, tokens_out)
+        self.ok = ok
+        meter.record({"input_tokens": tokens_in, "output_tokens": tokens_out})
+
+    def as_dict(self):
+        out = super().as_dict()
+        out["ok"] = self.ok
+        out["verdict"] = "SAFE" if self.ok else "ERROR"
+        return out
+
+
+class _Capture(alerts.Alerter):
+    def __init__(self):
+        super().__init__("")
+        self.messages = []
+
+    def emit(self, message):
+        self.messages.append(message)
+
+
+@needs_pg
+class QuotaTests(TeamCase):
+    """A request that does not fit is refused out loud, with the scope that is spent and when it frees up."""
+
+    def quota(self, kind, user=None, team=None):
+        admin.set_quota(ADMIN_URL, "alpha", kind, user, team)
+
+    def usage_rows(self, kind="run"):
+        return self.admin_rows("SELECT user_id::text FROM usage WHERE kind = %s", kind)
+
+    def run_status(self, who, material):
+        with mock.patch.object(server, "run_plan", lambda **kw: _Said()):
+            return self.call("POST", "/run", self.keys[who], {"material": material, "api_key": "k"})
+
+    def test_a_person_over_their_quota_is_refused_with_scope_reason_and_retry_after(self):
+        self.quota("run", user=2, team=0)
+        assert [self.run_status("alice", f"q = {n}")[0] for n in range(2)] == [200, 200]
+        status, headers, raw = self.run_status("alice", "q = 3")
+        body = json.loads(raw)
+        assert status == 429 and body["scope"] == "user" and body["limit"] == 2
+        assert "your own daily limit of 2 run requests" in body["error"]
+        assert 1 <= int(headers["retry-after"]) <= 24 * 3600
+        assert self.run_status("amy", "q = 4")[0] == 200            # the limit is per person
+        assert self.call("GET", "/health")[0] == 200                # and the hub is still up
+
+    def test_the_team_quota_is_shared_by_its_people_and_is_not_another_teams(self):
+        self.quota("run", user=0, team=3)
+        assert [self.run_status(w, f"t = {n}")[0] for n, w in enumerate(("alice", "amy", "alice"))] == [200, 200, 200]
+        status, _h, raw = self.run_status("amy", "t = 9")
+        assert status == 429 and json.loads(raw)["scope"] == "team"
+        assert self.run_status("bob", "t = 10")[0] == 200            # beta has its own allowance
+
+    def test_every_door_has_its_own_quota(self):
+        self.quota("chat", user=1, team=0)
+        self.quota("speak", user=1, team=0)
+        with mock.patch.object(server, "reply", lambda *a, **k: {"ok": True, "text": "hi"}):
+            assert self.call("POST", "/chat", self.keys["alice"], {"message": "one"})[0] == 200
+            status, _h, raw = self.call("POST", "/chat", self.keys["alice"], {"message": "two"})
+        assert status == 429 and "chat requests" in json.loads(raw)["error"]
+        assert self.run_status("alice", "other door = 1")[0] == 200   # the run quota is untouched
+        with mock.patch.object(server, "tts_available", lambda: True), \
+                mock.patch.object(server, "tts_speak", lambda text: b"ID3-audio"):
+            assert self.call("POST", "/speak", self.keys["alice"], {"text": "first words"})[0] == 200
+            assert self.call("POST", "/speak", self.keys["alice"], {"text": "first words"})[0] == 200     # cached: spends nothing
+            status, _h, raw = self.call("POST", "/speak", self.keys["alice"], {"text": "new words"})
+        assert status == 429 and "speak requests" in json.loads(raw)["error"]
+
+    def test_a_refused_request_spends_nothing_and_is_audited(self):
+        self.quota("run", user=1, team=0)
+        assert self.run_status("alice", "once = 1")[0] == 200
+        assert self.run_status("alice", "twice = 1")[0] == 429
+        assert len(self.usage_rows()) == 1
+        denied = self.admin_rows("SELECT target, detail FROM audit_log WHERE action = 'quota.denied'")
+        assert denied == [("run", {"scope": "user", "used": 1, "limit": 1})]
+
+    def test_a_viewer_is_refused_before_any_quota_is_touched(self):
+        assert self.call("POST", "/run", self.keys["vic"], {"material": "v = 1"})[0] == 403
+        assert self.usage_rows() == []
+
+    def test_the_window_slides(self):
+        self.quota("run", user=1, team=0)
+        assert self.run_status("alice", "w = 1")[0] == 200
+        assert self.run_status("alice", "w = 2")[0] == 429
+        import psycopg
+        with psycopg.connect(ADMIN_URL, autocommit=True) as conn:
+            conn.execute("UPDATE usage SET at = now() - interval '25 hours'")
+        assert self.run_status("alice", "w = 3")[0] == 200
+
+    def test_zero_means_no_limit(self):
+        self.quota("run", user=0, team=0)
+        assert all(self.run_status("alice", f"z = {n}")[0] == 200 for n in range(5))
+
+    def test_the_environment_sets_the_default_and_a_team_overrides_it(self):
+        with mock.patch.dict(os.environ, {"VISHAP_HUB_QUOTA_RUN_PER_USER": "1", "VISHAP_HUB_QUOTA_RUN_PER_TEAM": "0"}):
+            assert self.run_status("bob", "e = 1")[0] == 200
+            assert self.run_status("bob", "e = 2")[0] == 429
+            self.quota("run", user=3, team=0)                              # alpha's own value wins
+            assert [self.run_status("alice", f"e = {n}")[0] for n in range(3)] == [200, 200, 200]
+            assert self.run_status("alice", "e = 9")[0] == 429
+
+    def test_eight_requests_at_once_cannot_squeeze_past_a_limit_of_three(self):
+        self.quota("run", user=0, team=3)
+        statuses = []
+        lock = threading.Lock()
+
+        def go(n):
+            status = self.run_status("alice", f"race = {n}")[0]
+            with lock:
+                statuses.append(status)
+        with mock.patch.object(server, "run_plan", lambda **kw: _Said()):
+            threads = [threading.Thread(target=go, args=(n,)) for n in range(8)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join(60)
+        assert sorted(statuses) == [200, 200, 200] + [429] * 5
+        assert len(self.usage_rows()) == 3
+
+
+@needs_pg
+class GlobalBudgetTests(TeamCase):
+    def run_status(self, who, material):
+        with mock.patch.object(server, "run_plan", lambda **kw: _Said()):
+            return self.call("POST", "/run", self.keys[who], {"material": material, "api_key": "k"})
+
+    def test_the_hubs_budget_is_summed_over_teams_and_survives_a_restart(self):
+        with mock.patch.dict(os.environ, {"VISHAP_HUB_TEAMS_GLOBAL_RUN_PER_DAY": "2"}):
+            assert self.run_status("alice", "g = 1")[0] == 200
+            assert self.run_status("bob", "g = 2")[0] == 200
+            status, headers, raw = self.run_status("alice", "g = 3")
+            body = json.loads(raw)
+            assert status == 429 and body["scope"] == "global" and "the hub's daily limit of 2" in body["error"]
+            assert int(headers["retry-after"]) >= 1
+            with mock.patch.object(server, "TEAMS", TeamStore(APP_URL, 30)):       # a new process, the same database
+                assert self.run_status("bob", "g = 4")[0] == 429
+            assert self.call("GET", "/health")[0] == 200
+
+    def test_the_character_budget_refuses_a_run_that_does_not_fit(self):
+        with mock.patch.dict(os.environ, {"VISHAP_HUB_TEAMS_GLOBAL_CHARS_PER_DAY": "40"}):
+            assert self.run_status("alice", "x" * 30)[0] == 200
+            status, _h, raw = self.run_status("bob", "y" * 15)
+            assert status == 429 and "40 characters" in json.loads(raw)["error"]
+            assert self.run_status("bob", "y" * 10)[0] == 200
+
+
+@needs_pg
+class UsageTests(TeamCase):
+    """Provider tokens and the characters/4 estimate are different things and are kept apart."""
+
+    def usage(self):
+        return self.admin_rows("SELECT kind, run_id, tokens_in, tokens_out, model_calls, measured_calls, "
+                               "est_tokens_in, est_tokens_out, outcome, input_chars FROM usage ORDER BY id")
+
+    def test_measured_tokens_and_the_estimate_are_kept_apart(self):
+        with mock.patch.object(server, "run_plan", lambda **kw: _Metered(120, 45)):
+            _status, _h, raw = self.call("POST", "/run", self.keys["alice"], {"material": "m" * 40, "api_key": "k"})
+        run_id = json.loads(raw)["fingerprint"]["id"]
+        (kind, rid, t_in, t_out, calls, measured, e_in, e_out, outcome, chars), = self.usage()
+        assert (kind, rid, t_in, t_out, calls, measured, outcome, chars) == ("run", run_id, 120, 45, 1, 1, "ok", 40)
+        assert e_in == 10 and e_out > 0                                   # 40 chars / 4; an estimate, not 120
+        cost = json.loads(self.call("GET", f"/api/runs/{run_id}", self.keys["alice"])[2])["cost"]
+        assert cost["tokens_measured"] == {"input": 120, "output": 45, "calls": 1, "calls_measured": 1}
+        assert cost["tokens_estimated"]["basis"] == "characters / 4" and cost["tokens_estimated"]["input"] == 10
+
+    def test_a_provider_that_reports_nothing_is_none_not_zero(self):
+        with mock.patch.object(server, "run_plan", lambda **kw: _Said()):
+            _s, _h, raw = self.call("POST", "/run", self.keys["alice"], {"material": "n" * 8, "api_key": "k"})
+        run_id = json.loads(raw)["fingerprint"]["id"]
+        (_k, _r, t_in, t_out, _c, measured, e_in, _e, _o, _ch), = self.usage()
+        assert t_in is None and t_out is None and measured == 0 and e_in == 2
+        cost = json.loads(self.call("GET", f"/api/runs/{run_id}", self.keys["alice"])[2])["cost"]
+        assert cost["tokens_measured"] is None and cost["tokens_estimated"]["input"] == 2
+
+    def test_a_failed_run_is_still_billed(self):
+        with mock.patch.object(server, "run_plan", lambda **kw: _Metered(300, 0, ok=False)):
+            status, _h, _b = self.call("POST", "/run", self.keys["alice"], {"material": "f = 1", "api_key": "k"})
+        assert status == 502
+        (_k, _r, t_in, t_out, _c, measured, _e, _x, outcome, _ch), = self.usage()
+        assert (t_in, t_out, measured, outcome) == (300, 0, 1, "failed")
+
+    def test_a_run_that_crashes_is_billed_too(self):
+        def boom(**kw):
+            meter.record({"input_tokens": 77, "output_tokens": 5})
+            raise RuntimeError("the pipeline fell over")
+        with mock.patch.object(server, "run_plan", boom), \
+                self.assertRaises((http.client.HTTPException, ConnectionError, urllib.error.URLError)):
+            self.call("POST", "/run", self.keys["alice"], {"material": "c = 1", "api_key": "k"})
+        (_k, rid, t_in, t_out, _c, measured, _e, _x, outcome, _ch), = self.usage()
+        assert (rid, t_in, t_out, measured, outcome) == (None, 77, 5, 1, "error")
+
+    def test_chat_records_what_the_provider_reported(self):
+        class Reply:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+            def read(self, *a):
+                return json.dumps({"content": [{"type": "text", "text": "hello"}],
+                                   "usage": {"input_tokens": 31, "output_tokens": 7}}).encode()
+        import types
+        fake = types.SimpleNamespace(error=urllib.error, request=types.SimpleNamespace(
+            Request=urllib.request.Request, urlopen=lambda *a, **k: Reply()))     # only chat.py sees the stub
+        with mock.patch.dict(os.environ, {"VISHAP_HUB_LLM_KEY": "k"}), mock.patch.object(chat, "urllib", fake):
+            assert self.call("POST", "/chat", self.keys["alice"], {"message": "hi"})[0] == 200
+        (kind, _r, t_in, t_out, _c, measured, *_rest), = self.usage()
+        assert (kind, t_in, t_out, measured) == ("chat", 31, 7, 1)
+
+    def test_the_report_adds_measured_tokens_and_estimates_separately(self):
+        def stand_in(make):
+            return lambda **kw: make()                      # built inside the request, where the meter is open
+        for n, make in enumerate((lambda: _Metered(100, 10), _Said, lambda: _Metered(50, 5))):
+            with mock.patch.object(server, "run_plan", stand_in(make)):
+                self.call("POST", "/run", self.keys["alice"], {"material": "r" * 16 + str(n), "api_key": "k"})
+        (row,) = admin.usage_report(ADMIN_URL, "alpha", 7)
+        assert row["requests"] == 3 and row["with_measured"] == 2
+        assert (row["tokens_in_measured"], row["tokens_out_measured"]) == (150, 15)
+        assert row["tokens_in_estimated"] > 0 and row["tokens_in_estimated"] != row["tokens_in_measured"]
+
+    def test_deleting_a_run_unlinks_its_usage_but_keeps_the_numbers(self):
+        with mock.patch.object(server, "run_plan", lambda **kw: _Metered()):
+            _s, _h, raw = self.call("POST", "/run", self.keys["alice"], {"material": "d = 1", "api_key": "k"})
+        run_id = json.loads(raw)["fingerprint"]["id"]
+        assert self.usage()[0][1] == run_id
+        assert self.call("DELETE", f"/api/runs/{run_id}", self.keys["alice"])[0] == 200
+        (kind, rid, t_in, *_rest), = self.usage()
+        assert (kind, rid, t_in) == ("run", None, 120)
+
+    def test_expiry_unlinks_usage_too(self):
+        with mock.patch.object(server, "run_plan", lambda **kw: _Said()):
+            self.call("POST", "/run", self.keys["alice"], {"material": "x = 1", "api_key": "k"})
+        import psycopg
+        with psycopg.connect(ADMIN_URL, autocommit=True) as conn:
+            conn.execute("UPDATE runs SET expires_at = now() - interval '1 minute'")
+        assert self.store.purge_expired() == 1
+        assert self.usage()[0][1] is None
+
+
+@needs_pg
+class AlertTests(TeamCase):
+    def test_an_alert_comes_at_eighty_percent_and_at_the_limit_and_not_twice(self):
+        admin.set_quota(ADMIN_URL, "alpha", "run", 5, 0)
+        capture = _Capture()
+        with mock.patch.object(server, "ALERTS", capture), mock.patch.object(server, "run_plan", lambda **kw: _Said()):
+            for n in range(4):
+                assert self.call("POST", "/run", self.keys["alice"], {"material": f"a = {n}", "api_key": "k"})[0] == 200
+            assert [m for m in capture.messages if "alice" in m] == ["alice's run requests: 4 of 5 used (80% of the daily limit)"]
+            assert self.call("POST", "/run", self.keys["alice"], {"material": "a = 4", "api_key": "k"})[0] == 200
+            assert self.call("POST", "/run", self.keys["alice"], {"material": "a = 5", "api_key": "k"})[0] == 429
+        mine = [m for m in capture.messages if "alice" in m or "user" in m]
+        assert len([m for m in mine if "100%" in m]) == 1 and len([m for m in mine if "80%" in m]) == 1
+
+    def test_a_dead_webhook_does_not_touch_the_request(self):
+        admin.set_quota(ADMIN_URL, "alpha", "run", 2, 0)
+        dead = alerts.Alerter("http://127.0.0.1:1/hook")
+        with mock.patch.object(server, "ALERTS", dead), mock.patch.object(server, "run_plan", lambda **kw: _Said()):
+            assert self.call("POST", "/run", self.keys["alice"], {"material": "h = 1", "api_key": "k"})[0] == 200
+            assert self.call("POST", "/run", self.keys["alice"], {"material": "h = 2", "api_key": "k"})[0] == 200
+
+
+class AnonymousAlertTests(ServerCase):
+    def test_the_anonymous_budget_warns_too(self):
+        capture = _Capture()
+        with mock.patch.object(server, "ALERTS", capture), mock.patch.object(server, "BUDGET", limits.RunBudget(5, 0)), \
+                mock.patch.object(server, "run_plan", lambda **kw: _Said()):
+            for n in range(4):
+                status, _h, _b = self.post("/run", {"material": f"anon = {n}", "api_key": "k"})
+                assert status == 200
+        assert capture.messages == ["anonymous runs: 4 of 5 used (80% of the daily limit)"]
+
+
+class _Answer:
+    """What urlopen returns for a model call: a context manager whose body is the provider's JSON."""
+
+    def __init__(self, body):
+        self.body = body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def read(self, *a):
+        return json.dumps(self.body).encode()
+
+
+def _fake_urllib(body):
+    import types
+    return types.SimpleNamespace(error=urllib.error, request=types.SimpleNamespace(
+        Request=urllib.request.Request, urlopen=lambda *a, **k: _Answer(body)))
+
+
 class OfflineTests(unittest.TestCase):
     """These need no database."""
+
+    def test_the_model_call_records_provider_tokens_even_when_the_answer_is_cut(self):
+        body = {"content": [{"type": "text", "text": "{"}], "stop_reason": "max_tokens",
+                "usage": {"input_tokens": 900, "output_tokens": 4000}}
+        with mock.patch.object(proposal, "urllib", _fake_urllib(body)), meter.metering() as m:
+            result = proposal._call("k", "", "code", "", "")
+        assert result["ok"] is False and "truncated" in result["error"]
+        assert m.measured() == {"input": 900, "output": 4000, "calls": 1, "calls_measured": 1}
+
+    def test_a_call_without_a_usage_block_is_a_call_with_nothing_measured(self):
+        body = {"content": [{"type": "text", "text": "{}"}], "stop_reason": "end_turn"}
+        with mock.patch.object(proposal, "urllib", _fake_urllib(body)), meter.metering() as m:
+            proposal._call("k", "", "code", "", "")
+        assert (m.calls, m.measured_calls) == (1, 0) and m.measured() is None
+
+    def test_openai_style_names_are_read_too_and_junk_is_ignored(self):
+        m = meter.Meter()
+        m.add({"prompt_tokens": 10, "completion_tokens": 3})
+        m.add({"input_tokens": "many", "output_tokens": None})
+        m.add("nothing")
+        assert (m.calls, m.measured_calls, m.tokens_in, m.tokens_out) == (3, 1, 10, 3)
+
+    def test_recording_outside_a_metered_request_does_nothing_and_meters_do_not_leak(self):
+        meter.record({"input_tokens": 5, "output_tokens": 5})        # no meter open: must not raise
+        with meter.metering() as outer:
+            with meter.metering() as inner:
+                meter.record({"input_tokens": 1, "output_tokens": 1})
+            meter.record({"input_tokens": 2, "output_tokens": 2})
+        assert (inner.tokens_in, outer.tokens_in) == (1, 2)
+
+    def test_the_estimate_is_labelled_and_is_not_the_measurement(self):
+        cost = meter.cost_of(None, 41, 8)
+        assert cost["tokens_measured"] is None
+        assert cost["tokens_estimated"] == {"input": 11, "output": 2, "basis": "characters / 4"}
+
+    def test_the_alerter_speaks_at_eighty_and_at_the_limit_once_each(self):
+        a = alerts.Alerter("")
+        assert a.check("s", 7, 10) == []
+        assert len(a.check("s", 8, 10)) == 1 and a.check("s", 9, 10) == []
+        assert len(a.check("s", 10, 10)) == 1 and a.check("s", 11, 10) == []
+        assert len(a.check("other", 8, 10)) == 1
+        assert a.check("none", 5, 0) == []
+
+    def test_a_webhook_gets_the_message(self):
+        got = []
+
+        from http.server import BaseHTTPRequestHandler
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_POST(self):
+                got.append(json.loads(self.rfile.read(int(self.headers["content-length"]))))
+                self.send_response(200)
+                self.send_header("content-length", "0")
+                self.end_headers()
+
+            def log_message(self, *a):
+                pass
+        httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        try:
+            alerts.Alerter(f"http://127.0.0.1:{httpd.server_address[1]}/hook").check("w", 9, 10, "team x runs")
+            for _ in range(50):
+                if got:
+                    break
+                threading.Event().wait(0.1)
+        finally:
+            httpd.shutdown()
+            httpd.server_close()
+        assert got and "team x runs: 9 of 10 used (80%" in got[0]["text"]
 
     def test_roles_and_permissions(self):
         assert access.allowed("owner", "audit.read") and not access.allowed("member", "audit.read")

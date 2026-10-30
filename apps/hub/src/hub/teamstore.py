@@ -11,11 +11,54 @@ not the submitted code as such. See the README ("What happens to the data").
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 
-from . import db
+from . import db, limits
+from . import meter as meter_mod
 from .access import Principal, key_hash
 
 DEFAULT_RETENTION_DAYS = 30
+WINDOW_HOURS = 24
+
+#: Placeholders, not derived from anyone's costs: (per person, per team) requests in a sliding 24 hours.
+#: They exist so that no door is unlimited by default; set the real numbers in the environment
+#: (VISHAP_HUB_QUOTA_RUN_PER_USER ...) or per team (hub.admin set-quota). 0 means no limit.
+DEFAULT_QUOTAS = {"run": (50, 200), "chat": (100, 500), "speak": (100, 500)}
+#: The same for the whole hub's team traffic, summed over every team (VISHAP_HUB_TEAMS_GLOBAL_RUN_PER_DAY ...).
+DEFAULT_GLOBAL_REQUESTS = {"run": 500, "chat": 1000, "speak": 1000}
+DEFAULT_GLOBAL_RUN_CHARS = 20_000_000
+
+
+@dataclass(frozen=True)
+class Reserved:
+    usage_id: int
+    #: (scope, used after this request, limit, label) for every limit that applies: the alerter reads these
+    counts: tuple
+
+
+@dataclass(frozen=True)
+class Denied:
+    scope: str                  # "user", "team" or "global"
+    used: int
+    limit: int
+    retry_after: int            # seconds until the oldest request in the window leaves it
+    message: str
+
+
+def quota_for(p: Principal, kind: str) -> tuple[int, int]:
+    """(per person, per team) for this kind: the team's own override, else the environment, else the placeholder."""
+    own = (p.quotas or {}).get(kind) or {}
+    env_user, env_team = DEFAULT_QUOTAS[kind]
+    user = own.get("user", limits.int_env(f"VISHAP_HUB_QUOTA_{kind.upper()}_PER_USER", env_user))
+    team = own.get("team", limits.int_env(f"VISHAP_HUB_QUOTA_{kind.upper()}_PER_TEAM", env_team))
+    return int(user), int(team)
+
+
+def global_limits(kind: str) -> tuple[int, int]:
+    """(requests, run characters) a day over every team; 0 means no limit."""
+    requests = limits.int_env(f"VISHAP_HUB_TEAMS_GLOBAL_{kind.upper()}_PER_DAY", DEFAULT_GLOBAL_REQUESTS[kind])
+    chars = limits.int_env("VISHAP_HUB_TEAMS_GLOBAL_CHARS_PER_DAY", DEFAULT_GLOBAL_RUN_CHARS) if kind == "run" else 0
+    return requests, chars
 
 
 def _jsonb(value):
@@ -53,12 +96,12 @@ class TeamStore:
     def authenticate(self, token: str) -> Principal | None:
         with db.connect(self.url) as conn:
             row = conn.execute(
-                "SELECT key_id, user_id, team_id, role, user_name, retention_days FROM hub_authenticate(%s)",
+                "SELECT key_id, user_id, team_id, role, user_name, retention_days, quotas FROM hub_authenticate(%s)",
                 (key_hash(token),)).fetchone()
         if row is None:
             return None
         return Principal(team_id=str(row[2]), user_id=str(row[1]), key_id=str(row[0]), role=row[3],
-                         user_name=row[4], retention_days=row[5])
+                         user_name=row[4], retention_days=row[5], quotas=row[6] or {})
 
     # ---- runs -----------------------------------------------------------------------------
 
@@ -122,8 +165,72 @@ class TeamStore:
                 self._audit(conn, p, "run.delete", run_id, ip, {"outcome": "forbidden"})
                 return "forbidden"
             conn.execute("DELETE FROM runs WHERE team_id = %s::uuid AND run_id = %s", (p.team_id, run_id))
+            # the usage rows keep their numbers and let go of the id: it pointed at content that is gone
+            conn.execute("UPDATE usage SET run_id = NULL WHERE team_id = %s::uuid AND run_id = %s", (p.team_id, run_id))
             self._audit(conn, p, "run.delete", run_id, ip, {"outcome": "deleted"})
         return "deleted"
+
+    # ---- quotas and usage ---------------------------------------------------------------------
+
+    def reserve(self, p: Principal, kind: str, chars: int, ip: str = "") -> Reserved | Denied:
+        """Take one request out of the person's, the team's and the hub's allowance, or say which one is spent.
+
+        One lock serialises every reservation, so eight requests arriving together against a limit of three
+        let exactly three through. A refused request is not counted (it spent nothing) but is audited.
+        """
+        user_limit, team_limit = quota_for(p, kind)
+        global_requests, global_chars = global_limits(kind)
+        window = "now() - make_interval(hours => %s)"
+        with self._tx(p.team_id) as conn:
+            conn.execute("SELECT pg_advisory_xact_lock(hashtextextended('hub:usage', 0))")
+            retry = "greatest(1, ceil(extract(epoch FROM (min(at) + make_interval(hours => %s) - now()))))::integer"
+            user_used, user_retry = conn.execute(
+                f"SELECT count(*), {retry} FROM usage WHERE team_id = %s::uuid AND user_id = %s::uuid AND kind = %s "
+                f"AND at > {window}", (WINDOW_HOURS, p.team_id, p.user_id, kind, WINDOW_HOURS)).fetchone()
+            team_used, team_retry = conn.execute(
+                f"SELECT count(*), {retry} FROM usage WHERE team_id = %s::uuid AND kind = %s AND at > {window}",
+                (WINDOW_HOURS, p.team_id, kind, WINDOW_HOURS)).fetchone()
+            g_used, g_chars_used, g_retry = conn.execute("SELECT requests, chars, retry_after FROM hub_global_usage(%s, %s)",
+                                                         (kind, WINDOW_HOURS)).fetchone()
+            denied = None
+            for scope, used, limit, retry_after, what in (
+                    ("user", user_used, user_limit, user_retry, "your own"),
+                    ("team", team_used, team_limit, team_retry, "your team's"),
+                    ("global", g_used, global_requests, g_retry, "the hub's")):
+                if limit > 0 and used >= limit:
+                    denied = Denied(scope, used, limit, int(retry_after or 3600),
+                                    f"{what} daily limit of {limit} {kind} requests is used up")
+                    break
+            if denied is None and global_chars > 0 and g_chars_used + chars > global_chars:
+                denied = Denied("global", g_chars_used, global_chars, int(g_retry or 3600),
+                                f"the hub's daily budget of {global_chars} characters for runs is used up")
+            if denied is not None:
+                self._audit(conn, p, "quota.denied", kind, ip, {"scope": denied.scope, "used": denied.used,
+                                                                "limit": denied.limit})
+                return denied
+            usage_id = conn.execute(
+                "INSERT INTO usage (team_id, user_id, kind, input_chars) VALUES (%s::uuid, %s::uuid, %s, %s) RETURNING id",
+                (p.team_id, p.user_id, kind, max(0, chars))).fetchone()[0]
+        counts = (
+            (f"quota:user:{p.user_id}:{kind}", user_used + 1, user_limit, f"{p.user_name}'s {kind} requests"),
+            (f"quota:team:{p.team_id}:{kind}", team_used + 1, team_limit, f"team {p.team_id} {kind} requests"),
+            (f"global:{kind}", g_used + 1, global_requests, f"all teams' {kind} requests"),
+        )
+        return Reserved(usage_id, counts)
+
+    def finish(self, p: Principal, usage_id: int, run_id: str | None, input_chars: int, result_chars: int,
+               meter: meter_mod.Meter | None, outcome: str) -> None:
+        """Fill in what the request turned out to cost. Provider tokens and the estimate go to separate columns."""
+        measured = meter.measured() if meter else None
+        est = meter_mod.estimate(input_chars, result_chars)
+        with self._tx(p.team_id) as conn:
+            conn.execute(
+                "UPDATE usage SET run_id = %s, result_chars = %s, tokens_in = %s, tokens_out = %s, model_calls = %s, "
+                "measured_calls = %s, est_tokens_in = %s, est_tokens_out = %s, outcome = %s "
+                "WHERE id = %s AND team_id = %s::uuid",
+                (run_id, result_chars, measured["input"] if measured else None, measured["output"] if measured else None,
+                 meter.calls if meter else 0, meter.measured_calls if meter else 0, est["input"], est["output"],
+                 outcome, usage_id, p.team_id))
 
     # ---- audit and retention ----------------------------------------------------------------
 

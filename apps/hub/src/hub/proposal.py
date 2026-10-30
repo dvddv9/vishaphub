@@ -17,6 +17,7 @@ import re
 import urllib.error
 import urllib.request
 
+from . import meter
 from .verdicts import SEVERITY_ORDER
 
 ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
@@ -104,6 +105,7 @@ def _call(key: str, model: str, material: str, spec: str, question: str) -> dict
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
         return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
 
+    meter.record(data.get("usage"))                 # paid for, whatever the answer turns out to be
     parts = [b.get("text", "") for b in (data.get("content") or [])
              if isinstance(b, dict) and b.get("type") == "text"]
     text = "\n".join(parts).strip()

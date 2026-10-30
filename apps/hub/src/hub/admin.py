@@ -8,6 +8,8 @@
     python -m hub.admin revoke-key <key-id>
     python -m hub.admin disable-user <user-id>
     python -m hub.admin list
+    python -m hub.admin set-quota acme run --user 20 --team 100   # a team's own limits per 24 hours
+    python -m hub.admin usage acme --days 7               # requests, provider tokens, estimated tokens
     python -m hub.admin purge-expired                     # the server also does this on a timer
     python -m hub.admin audit acme --limit 50
     python -m hub.admin purge-team acme --yes [--include-audit]
@@ -83,6 +85,45 @@ def list_all(url: str) -> list[dict]:
     return [dict(zip(keys, (str(v) if hasattr(v, "hex") else v for v in r))) for r in rows]
 
 
+KINDS = ("run", "chat", "speak")
+
+
+def set_quota(url: str, team: str, kind: str, user: int | None = None, team_limit: int | None = None) -> dict:
+    """A team's own limits for one kind of request in a sliding 24 hours. 0 means no limit; the rest keep their value."""
+    from psycopg.types.json import Jsonb
+
+    if kind not in KINDS:
+        raise SystemExit(f"kind must be one of {', '.join(KINDS)}")
+    if user is None and team_limit is None:
+        raise SystemExit("give --user and/or --team")
+    with db.connect(url) as conn:
+        team_id = _team_id(conn, team)
+        quotas = conn.execute("SELECT quotas FROM teams WHERE id = %s::uuid", (team_id,)).fetchone()[0] or {}
+        entry = quotas.setdefault(kind, {})
+        if user is not None:
+            entry["user"] = user
+        if team_limit is not None:
+            entry["team"] = team_limit
+        conn.execute("UPDATE teams SET quotas = %s WHERE id = %s::uuid", (Jsonb(quotas), team_id))
+    return quotas
+
+
+def usage_report(url: str, team: str, days: int = 7) -> list[dict]:
+    """Per day and kind. Tokens the provider reported and the estimate made from characters are separate
+    columns and are never added together; `with_measured` says for how many requests the provider reported any."""
+    with db.connect(url) as conn:
+        team_id = _team_id(conn, team)
+        rows = conn.execute(
+            "SELECT at::date, kind, count(*), count(*) FILTER (WHERE measured_calls > 0), "
+            "coalesce(sum(tokens_in), 0), coalesce(sum(tokens_out), 0), "
+            "coalesce(sum(est_tokens_in), 0), coalesce(sum(est_tokens_out), 0), coalesce(sum(input_chars), 0) "
+            "FROM usage WHERE team_id = %s::uuid AND at > now() - make_interval(days => %s) "
+            "GROUP BY 1, 2 ORDER BY 1 DESC, 2", (team_id, days)).fetchall()
+    keys = ("day", "kind", "requests", "with_measured", "tokens_in_measured", "tokens_out_measured",
+            "tokens_in_estimated", "tokens_out_estimated", "input_chars")
+    return [dict(zip(keys, (str(v) if k == "day" else v for k, v in zip(keys, r)))) for r in rows]
+
+
 def purge_expired(url: str) -> int:
     with db.connect(url) as conn:
         return conn.execute("SELECT hub_purge_expired()").fetchone()[0]
@@ -127,6 +168,9 @@ def main(argv: list[str] | None = None) -> int:
     r = sub.add_parser("revoke-key"); r.add_argument("key_id")
     d = sub.add_parser("disable-user"); d.add_argument("user_id")
     sub.add_parser("list")
+    q = sub.add_parser("set-quota"); q.add_argument("team"); q.add_argument("kind", choices=KINDS)
+    q.add_argument("--user", type=int); q.add_argument("--team", dest="team_limit", type=int)
+    g = sub.add_parser("usage"); g.add_argument("team"); g.add_argument("--days", type=int, default=7)
     sub.add_parser("purge-expired")
     a = sub.add_parser("audit"); a.add_argument("team"); a.add_argument("--limit", type=int, default=50)
     p = sub.add_parser("purge-team"); p.add_argument("team"); p.add_argument("--include-audit", action="store_true")
@@ -151,6 +195,11 @@ def main(argv: list[str] | None = None) -> int:
         print("disabled" if disable_user(args.url, args.user_id) else "no such active user")
     elif args.cmd == "list":
         for row in list_all(args.url):
+            print(row)
+    elif args.cmd == "set-quota":
+        print(set_quota(args.url, args.team, args.kind, args.user, args.team_limit))
+    elif args.cmd == "usage":
+        for row in usage_report(args.url, args.team, args.days):
             print(row)
     elif args.cmd == "purge-expired":
         print(f"removed {purge_expired(args.url)} expired run(s)")

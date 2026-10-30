@@ -15,7 +15,7 @@ from __future__ import annotations
 import hashlib
 import re
 import secrets
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 KEY_PREFIX = "vhk_"
 KEY_COOKIE = "vishap_key"
@@ -50,6 +50,7 @@ class Principal:
     role: str
     user_name: str
     retention_days: int | None = None
+    quotas: dict = field(default_factory=dict)
 
     def can(self, permission: str) -> bool:
         return allowed(self.role, permission)

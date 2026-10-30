@@ -19,6 +19,8 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 
+from . import meter
+
 ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
 DEFAULT_MODEL = "claude-sonnet-5-5"
 MAX_TURNS = 12
@@ -98,6 +100,7 @@ def reply(message: str, messages: list, api_key: str, model: str = "") -> dict:
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
         return {"ok": False, "text": "", "error": f"{type(exc).__name__}: {exc}"}
 
+    meter.record(data.get("usage"))                 # paid for, whatever the answer turns out to be
     blocks = data.get("content") or []
     parts = [b.get("text", "") for b in blocks if isinstance(b, dict) and b.get("type") == "text"]
     answer = "\n".join(part for part in parts if part).strip()

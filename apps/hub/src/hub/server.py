@@ -28,12 +28,12 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs
 
-from . import access, demo, fingerprint, limits, templates
+from . import access, alerts, demo, fingerprint, limits, meter, templates
 from .chat import reply
 from .pipeline import run_plan
 from .router import RouteError, plan_for
 from .store import RunStore, owner_key
-from .teamstore import DEFAULT_RETENTION_DAYS, TeamStore
+from .teamstore import DEFAULT_RETENTION_DAYS, Denied, TeamStore
 from .tts import VOICE
 from .tts import available as tts_available
 from .tts import speak as tts_speak
@@ -73,6 +73,7 @@ def _init_teams() -> TeamStore | None:
 
 
 TEAMS = _init_teams()
+ALERTS = alerts.from_env()
 #: with this on, /run, /chat and /speak refuse a caller who has no API key (the setting for a pilot)
 REQUIRE_KEY = os.getenv("VISHAP_HUB_REQUIRE_KEY", "").lower() in ("1", "true", "yes")
 KEY_COOKIE_MAX_AGE = 30 * 24 * 3600
@@ -238,6 +239,36 @@ class Handler(BaseHTTPRequestHandler):
             self._send(503, {"error": "team storage is unavailable"})
             return False, None
 
+    def _reserve(self, principal, kind: str, chars: int) -> bool:
+        """Take one request from the person's, the team's and the hub's allowance before any work is done.
+        False means a reply was sent: 429 with the scope that is spent and when the window frees up."""
+        ok, res = self._team(TEAMS.reserve, principal, kind, chars, self.client_address[0])
+        if not ok:
+            return False
+        if isinstance(res, Denied):
+            scope = {"user": f"quota:user:{principal.user_id}:{kind}", "team": f"quota:team:{principal.team_id}:{kind}",
+                     "global": f"global:{kind}"}[res.scope]
+            ALERTS.check(scope, res.used, res.limit, f"{res.scope} {kind} requests")
+            self._send(429, {"ok": False, "error": res.message, "scope": res.scope, "limit": res.limit},
+                       extra={"retry-after": str(res.retry_after), **PRIVATE})
+            return False
+        for scope, used, limit, label in res.counts:
+            ALERTS.check(scope, used, limit, label)
+        self._usage = {"id": res.usage_id, "chars": chars, "done": False, "principal": principal}
+        return True
+
+    def _finish_usage(self, run_id: str | None = None, result_chars: int = 0, outcome: str = "error") -> None:
+        """Write down what the request cost, once. The first caller wins: a normal end, else the safety net."""
+        usage = getattr(self, "_usage", None)
+        if not usage or usage["done"]:
+            return
+        usage["done"] = True
+        try:
+            TEAMS.finish(usage["principal"], usage["id"], run_id, usage["chars"], result_chars,
+                         getattr(self, "_meter", None), outcome)
+        except Exception as exc:  # noqa: BLE001 - the books are late, the answer is not
+            print(f"usage not recorded: {type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
+
     def _form(self) -> dict | None:
         self._body_taken = True
         length = int(self.headers.get("content-length") or 0)
@@ -285,6 +316,8 @@ class Handler(BaseHTTPRequestHandler):
             payload["fingerprint"] = fp
         if not fp.get("id"):
             return
+        input_chars = limits.input_chars(args or {})
+        result_chars = len(json.dumps(payload, ensure_ascii=False, default=str))
         record = {
             "id": fp["id"],
             "at": fp.get("at", ""),
@@ -293,17 +326,15 @@ class Handler(BaseHTTPRequestHandler):
             "plan": payload.get("plan"),
             "summary": payload.get("summary", ""),
             "result": payload,
-            "cost": {
-                "input_chars": limits.input_chars(args or {}),
-                #: size of what came back - a proxy for the model's output, which the hub does not meter
-                "result_chars": len(json.dumps(payload, ensure_ascii=False, default=str)),
-            },
+            #: sizes in characters; the tokens the provider reported (None if it reported none); and an estimate
+            "cost": meter.cost_of(getattr(self, "_meter", None), input_chars, result_chars),
             "owners": [owner] if owner else [],
             "demo": bool(args) and demo.is_demo(args),
         }
         if principal is None:
             RUNS.save(record)
             return
+        self._finish_usage(fp["id"], result_chars, "ok" if payload.get("ok") else "failed")
         try:
             TEAMS.save(principal, record, self.client_address[0])
             payload["stored"] = True
@@ -566,7 +597,14 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(400, {"ok": False, "error": "message is required"})
                 return
             messages = body.get("messages") if isinstance(body.get("messages"), list) else []
-            result = reply(message, messages, str(body.get("api_key") or ""), str(body.get("model") or ""))
+            if principal is not None and not self._reserve(principal, "chat", len(message)):
+                return
+            with meter.metering() as m:
+                self._meter = m
+                try:
+                    result = reply(message, messages, str(body.get("api_key") or ""), str(body.get("model") or ""))
+                finally:
+                    self._finish_usage(None, 0, "error")           # a no-op once the normal end below has run
             self._send(200 if result["ok"] else 502, result)
             return
 
@@ -595,7 +633,12 @@ class Handler(BaseHTTPRequestHandler):
             if cached:
                 self._send(200, cached, "audio/mpeg", extra={"x-tts-cache": "hit"})
                 return
-            audio = tts_speak(text)
+            if principal is not None and not self._reserve(principal, "speak", len(text)):
+                return
+            try:
+                audio = tts_speak(text)
+            finally:
+                self._finish_usage(None, 0, "error")
             if not audio:
                 self._send(502, {"ok": False, "error": "the voice produced no audio"})
                 return
@@ -615,16 +658,28 @@ class Handler(BaseHTTPRequestHandler):
             args = self._run_args(body)
             if args is None:
                 return
-            spend = BUDGET.take(limits.input_chars(args))
-            if not spend.allowed:
-                self._send(413 if spend.too_big else 429, {"ok": False, "error": spend.reason},
-                           extra={} if spend.too_big else {"retry-after": str(int(spend.wait) + 1)})
+            chars = limits.input_chars(args)
+            if principal is None:
+                spend = BUDGET.take(chars)
+                if not spend.allowed:
+                    self._send(413 if spend.too_big else 429, {"ok": False, "error": spend.reason},
+                               extra={} if spend.too_big else {"retry-after": str(int(spend.wait) + 1)})
+                    return
+                used = BUDGET.used()
+                ALERTS.check("anonymous:runs", used["runs"], BUDGET.runs, "anonymous runs")
+                ALERTS.check("anonymous:chars", used["chars"], BUDGET.chars, "anonymous run characters")
+            elif not self._reserve(principal, "run", chars):
                 return
             owner, cookie = ("", {}) if principal is not None else self._owner_for_run()
-            if path == "/run/stream":
-                self._stream(args, owner, cookie, principal)
-                return
-            self._respond(run_plan(**args), args, owner, cookie, principal)
+            with meter.metering() as m:
+                self._meter = m
+                try:
+                    if path == "/run/stream":
+                        self._stream(args, owner, cookie, principal)
+                        return
+                    self._respond(run_plan(**args), args, owner, cookie, principal)
+                finally:
+                    self._finish_usage(None, 0, "error")           # a no-op once _remember has run
             return
 
         self._send(404, {"error": "not found"})
