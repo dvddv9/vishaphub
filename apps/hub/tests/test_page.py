@@ -31,3 +31,10 @@ def test_every_new_string_exists_in_both_languages():
     for key in ("sampleBtn", "keySys", "keyHint", "verdictHint", "workLead", "questionPh", "materialPh"):
         assert len(re.findall(r"(?m)^\s*" + key + r": ", app)) == 2, key
     assert 'data-i18n="verdictHint"' in _page()
+
+
+def test_a_run_nobody_read_says_so_instead_of_blaming_the_model():
+    app = _app()
+    assert 't("noModelSummary")' in app and "(model returned no summary)" in app
+    assert 'const states = {"model": checks.generator ? "done" : ""};' in app
+    assert 'const states = {"model":"done"}' not in app
