@@ -203,7 +203,7 @@ that ends in ERROR is stored too: a failure is a result.
 | `local.py` | the validator's stages and the analyser's rules as functions, not URLs |
 | `envelope.py` | the message shape and the trace |
 | `chat.py` | the assistant that speaks to the client |
-| `tts.py` | the voice (`en-GB-SoniaNeural`; Russian text gets `ru-RU-SvetlanaNeural`), synthesised where the voice lives |
+| `tts.py` | the voice (`en-US-AvaMultilingualNeural`, one voice for both languages), synthesised where the voice lives |
 | `cli.py` | `vishap-hub run --intent …` — the same `run_plan` as the HTTP face |
 
 ## Status

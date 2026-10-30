@@ -10,11 +10,11 @@ import asyncio
 import io
 import re
 
-#: The voice follows the text: a British female for English, a native Russian one for Russian.
-#: One voice cannot do both — edge-tts returns an empty stream when the text is outside the
-#: voice's language, and a silent button reads as a broken one.
-VOICE_EN = "en-GB-SoniaNeural"
-VOICE_RU = "ru-RU-SvetlanaNeural"
+#: One multilingual female voice for both languages — the one Windows offers as «Ava Multilingual».
+#: Keeping one voice is what lets a Russian answer and an English answer sound like the same product;
+#: a voice outside the text's language returns an empty stream, and a silent button reads as broken.
+VOICE_EN = "en-US-AvaMultilingualNeural"
+VOICE_RU = "en-US-AvaMultilingualNeural"
 RATE = "-5%"
 MAX_CHARS = 1200
 
