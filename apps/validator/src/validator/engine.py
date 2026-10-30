@@ -17,14 +17,19 @@ from __future__ import annotations
 
 from .checks import behavior, conformance, contract, coverage, structure, syntax
 from .models import CheckResult, Finding, Report, Severity, Spec, Verdict
-from .safe import spec_problems
+from .safe import refusal, spec_problems
 
 ORDER = (structure, syntax, contract, coverage, behavior, conformance)
 STOP_ON_FAILURE = {"structure", "syntax"}
 
 
-def validate(root: str, spec: Spec) -> Report:
+def validate(root: str, spec: Spec, *, require_netns: bool = False) -> Report:
     checks: list[CheckResult] = []
+    why = refusal(require_netns=require_netns)
+    if why:
+        return Report(verdict=Verdict.FAIL, checks=[CheckResult(
+            name="isolation", ok=False,
+            findings=[Finding(check="isolation", severity=Severity.CRITICAL, message=why)])], reason=why)
     # A spec that names a path outside the deliverable is refused before anything is read or run: a test
     # file outside the folder would otherwise be executed as if it were part of the deliverable.
     problems = spec_problems(root, spec)

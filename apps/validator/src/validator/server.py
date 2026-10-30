@@ -127,7 +127,9 @@ class Handler(BaseHTTPRequestHandler):
             root = tempfile.mkdtemp(prefix="vishap-check-")
             try:
                 _write_files(root, body["files"])
-                report = validate(root, spec)
+                # HTTP requests come from outside this process. Unlike local development,
+                # they must not run unless the OS provides an actual network namespace.
+                report = validate(root, spec, require_netns=True)
                 payload = report.as_dict()
                 code = 200 if payload["verdict"] in ("PASS", "NEEDS_REVIEW") else 422
                 self._send(code, payload)

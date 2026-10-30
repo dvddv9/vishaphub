@@ -7,6 +7,7 @@ from http.server import ThreadingHTTPServer
 import pytest
 
 from validator import server
+from validator.models import Report, Verdict
 
 TOKEN = "t" * 32
 BODY = {"files": {"calc/__init__.py": "def add(a, b):\n    return a + b\n",
@@ -55,10 +56,18 @@ def test_without_the_token_or_with_a_wrong_one_nothing_runs(port, monkeypatch):
     assert call(port, BODY, token="x" * 32)[0] == 401
 
 
-def test_the_right_token_runs_the_check(port, monkeypatch):
+def test_the_right_token_runs_the_check_only_with_strict_network_isolation(port, monkeypatch):
     monkeypatch.setenv(server.TOKEN_ENV, TOKEN)
+    called = {}
+
+    def fake_validate(root, spec, *, require_netns=False):
+        called["require_netns"] = require_netns
+        return Report(verdict=Verdict.PASS)
+
+    monkeypatch.setattr(server, "validate", fake_validate)
     status, data = call(port, BODY, token=TOKEN)
     assert status == 200 and data["verdict"] == "PASS"
+    assert called["require_netns"] is True
 
 
 def test_the_body_is_not_read_for_an_anonymous_caller(port, monkeypatch):
