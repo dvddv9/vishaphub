@@ -148,3 +148,43 @@ def test_a_secret_handed_to_the_worker_stops_it_before_any_code_runs(hostile):
     assert report["verdict"] == "FAIL"
     assert "CANARY_API_KEY" in report["reason"] and CANARY not in json.dumps(report)
     assert result["cleanup_confirmed"] is True
+
+VULN_FILES = {
+    "app.py": "def find(cur, name):\n    cur.execute(\"select id from users where name = '\" + name + \"'\")\n    return cur.fetchall()\n",
+    "p.py": "import os\n\n\ndef read(base, name):\n    with open(os.path.join(base, name), encoding='utf-8') as fh:\n        return fh.read()\n",
+    "c.py": "import os\n\n\ndef echo(text):\n    os.system('echo ' + text)\n",
+}
+TARGETS = [
+    {"class": "sqli", "entry": "app:find", "args": ["$cursor", "$payload"]},
+    {"class": "path_traversal", "entry": "p:read", "args": ["$base", "$payload"]},
+    {"class": "command_injection", "entry": "c:echo", "args": ["$payload"]},
+]
+
+
+def test_the_trusted_exploit_probes_run_in_the_worker_and_reproduce_all_three_attacks(tmp_path):
+    for name, body in VULN_FILES.items():
+        (tmp_path / name).write_text(body, encoding="utf-8")
+    result = run_in_container(str(tmp_path), {"exploit_targets": TARGETS}, image=IMAGE, mode="exploits", timeout=120)
+    assert result["ok"], result["error"]
+    assert result["report"]["refused"] == ""
+    assert [r["result"] for r in result["report"]["exploits"]] == ["reproduced"] * 3
+    assert result["cleanup_confirmed"] is True
+
+
+def test_the_exploit_mode_refuses_when_the_worker_is_not_cut_off_from_the_network(tmp_path):
+    for name, body in VULN_FILES.items():
+        (tmp_path / name).write_text(body, encoding="utf-8")
+    tmp_path.chmod(0o755)
+    for item in tmp_path.iterdir():
+        item.chmod(0o644)
+    (tmp_path / "spec.json").write_text(json.dumps({"exploit_targets": TARGETS}), encoding="utf-8")
+    (tmp_path / "spec.json").chmod(0o644)
+    out = subprocess.run(
+        [DOCKER, "run", "--rm", "--read-only", "--tmpfs", "/tmp:size=16m",
+         "--mount", f"type=bind,source={tmp_path},target=/in,readonly",
+         "-e", "VISHAP_VALIDATOR_ISOLATION=container", "--entrypoint", "python", IMAGE,
+         "-m", "validator.worker", "/in", "/in/spec.json", "--exploits"],
+        capture_output=True, text=True, timeout=120, check=False)
+    line = next(ln for ln in out.stdout.splitlines() if ln.startswith("VISHAP_EXPLOITS:"))
+    answer = json.loads(line[len("VISHAP_EXPLOITS:"):])
+    assert answer["exploits"] == [] and "did not confirm" in answer["refused"]

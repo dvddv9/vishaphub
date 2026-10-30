@@ -55,6 +55,76 @@ def _validate_in_worker(root: str, spec: dict, image: str) -> dict:
             "isolation": {"kind": "container", "image": image, "container": result.get("name", ""),
                           "cleanup_confirmed": bool(result.get("cleanup_confirmed"))}}
 
+def _materialize(files: dict) -> tuple[str, int]:
+    """Write {path: text} into a fresh temp directory; paths that climb out are dropped. (root, written)."""
+    root = tempfile.mkdtemp(prefix="hub-exploit-")
+    written = 0
+    for rel, text in (files or {}).items():
+        if not isinstance(rel, str) or not isinstance(text, str):
+            continue
+        safe = os.path.normpath(rel).lstrip("\\/")
+        if safe.startswith("..") or os.path.isabs(safe):
+            continue
+        target = os.path.join(root, safe)
+        os.makedirs(os.path.dirname(target) or root, exist_ok=True)
+        with open(target, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        written += 1
+    return root, written
+
+
+def run_exploits(files: dict, targets: list, *, require_netns: bool = True) -> dict:
+    """The trusted exploit probes (validator.exploits) against `files`. Same isolation demand as the checks:
+    a worker container when VISHAP_HUB_WORKER_IMAGE is set, otherwise only a network namespace. Never on the
+    bare host. Returns {"ok", "exploits": [{"class", "entry", "result", "evidence"}]} or {"ok": False, "error"}.
+    """
+    if not isinstance(files, dict) or not files:
+        return {"ok": False, "error": "no files to attack"}
+    if len(files) > MAX_FILES:
+        return {"ok": False, "error": f"too many files (>{MAX_FILES})"}
+    root, written = _materialize(files)
+    try:
+        if not written:
+            return {"ok": False, "error": "no usable files after sanitisation"}
+        image = os.getenv("VISHAP_HUB_WORKER_IMAGE", "")
+        if image and require_netns:
+            return _exploits_in_worker(root, targets, image)
+        try:
+            from validator import exploits
+            from validator.safe import refusal
+        except ImportError:
+            return {"ok": False, "error": "validator is not installed in this image"}
+        why = refusal(require_netns=require_netns)
+        if why:
+            return {"ok": False, "error": why}
+        return {"ok": True, "exploits": exploits.run_targets(root, targets)}
+    except Exception as exc:  # noqa: BLE001 - reported, never silent
+        return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def _exploits_in_worker(root: str, targets: list, image: str) -> dict:
+    try:
+        from validator.container import run_in_container
+    except ImportError:
+        return {"ok": False, "error": "validator is not installed in this image"}
+    if not _SLOTS.acquire(timeout=SLOT_WAIT_SECONDS):
+        return {"ok": False, "error": "all validation workers are busy"}
+    try:
+        result = run_in_container(root, {"exploit_targets": list(targets)}, image=image, mode="exploits",
+                                  timeout=int(os.getenv("VISHAP_HUB_WORKER_TIMEOUT", "120")),
+                                  docker=os.getenv("VISHAP_HUB_DOCKER", "docker"))
+    finally:
+        _SLOTS.release()
+    if not result.get("ok"):
+        return {"ok": False, "error": result.get("error") or "the worker produced no result"}
+    answer = result["report"] or {}
+    if answer.get("refused"):
+        return {"ok": False, "error": answer["refused"]}
+    return {"ok": True, "exploits": answer.get("exploits") or [],
+            "isolation": {"kind": "container", "image": image, "cleanup_confirmed": bool(result.get("cleanup_confirmed"))}}
+
 def validate_code(files: dict, spec: dict, *, require_netns: bool = True) -> dict:
     """Run the six-stage validator over a deliverable given as {path: text}."""
     try:

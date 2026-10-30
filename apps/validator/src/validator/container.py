@@ -16,6 +16,7 @@ import tempfile
 import uuid
 
 REPORT_PREFIX = "VISHAP_REPORT:"
+EXPLOITS_PREFIX = "VISHAP_EXPLOITS:"
 
 DEFAULT_LIMITS = {"memory": "256m", "cpus": "1", "pids": "64", "tmpfs": "32m"}
 
@@ -65,9 +66,11 @@ def _readable_copy(src: str, dest: str) -> str:
     return target
 
 def run_in_container(root: str, spec: dict, *, image: str, timeout: int = 120, docker: str = "docker",
-                     limits: dict | None = None, extra_env: dict | None = None) -> dict:
+                     limits: dict | None = None, extra_env: dict | None = None, mode: str = "validate") -> dict:
     """Validate `root` inside a fresh worker container. Never runs the code on the host.
 
+    `mode="exploits"` runs the trusted exploit probes for `spec["exploit_targets"]` instead of the checks;
+    the answer is then {"refused": "", "exploits": [...]} in `report`.
     Returns {"ok", "report", "error", "cleanup_confirmed", "name"}. `ok` is true only when the worker
     produced a report; a refusal by the worker (isolation not confirmed) is a report with FAIL.
     """
@@ -93,13 +96,16 @@ def run_in_container(root: str, spec: dict, *, image: str, timeout: int = 120, d
         for key, value in (extra_env or {}).items():
             cmd += ["-e", f"{key}={value}"]
         cmd += ["--entrypoint", "python", image, "-m", "validator.worker", "/in", "/spec.json"]
+        if mode == "exploits":
+            cmd.append("--exploits")
+        prefix = EXPLOITS_PREFIX if mode == "exploits" else REPORT_PREFIX
         error = ""
         report = None
         try:
             done = _docker(docker, *cmd, timeout=timeout + 15)
             for line in reversed(done.stdout.splitlines()):
-                if line.startswith(REPORT_PREFIX):
-                    report = json.loads(line[len(REPORT_PREFIX):])
+                if line.startswith(prefix):
+                    report = json.loads(line[len(prefix):])
                     break
             if report is None:
                 error = f"worker produced no report (exit {done.returncode}): {done.stderr.strip()[-300:]}"

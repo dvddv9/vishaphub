@@ -85,7 +85,7 @@ jobs:
       - name: Build the worker image
         run: docker build -t vishap-validator:worker apps/validator
       - name: Hostile code stays inside the container
-        run: python -m pytest -q -v tests/test_container_worker.py tests/test_container_isolation.py
+        run: python -m pytest -q -v tests/test_container_worker.py tests/test_container_isolation.py tests/test_exploits.py
         working-directory: apps/validator
         env:
           VISHAP_TEST_WORKER_IMAGE: vishap-validator:worker

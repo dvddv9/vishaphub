@@ -13,12 +13,31 @@ import shutil
 import sys
 import tempfile
 
+from . import exploits
 from .engine import validate
 from .models import Spec
+from .safe import refusal
 
+
+def _run_exploits(src: str, data: dict) -> int:
+    """The trusted exploit probes against the deliverable, under the same demand for isolation."""
+    why = refusal(require_netns=True)
+    if why:
+        print("VISHAP_EXPLOITS:" + json.dumps({"refused": why, "exploits": []}))
+        return 1
+    work = tempfile.mkdtemp(prefix="vishap-work-")
+    try:
+        root = shutil.copytree(src, work + "/deliverable")
+        rows = exploits.run_targets(root, data.get("exploit_targets") or [])
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+    print("VISHAP_EXPLOITS:" + json.dumps({"refused": "", "exploits": rows}, ensure_ascii=False))
+    return 0
 
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
+    exploit_mode = "--exploits" in args
+    args = [a for a in args if a != "--exploits"]
     src = args[0] if args else "/in"
     spec_path = args[1] if len(args) > 1 else "/spec.json"
     with open(spec_path, encoding="utf-8-sig") as fh:
@@ -30,6 +49,8 @@ def main(argv: list[str] | None = None) -> int:
         tests=list(data.get("tests", [])),
         entry=data.get("entry", ""),
     )
+    if exploit_mode:
+        return _run_exploits(src, data)
     work = tempfile.mkdtemp(prefix="vishap-work-")
     try:
         root = shutil.copytree(src, work + "/deliverable")

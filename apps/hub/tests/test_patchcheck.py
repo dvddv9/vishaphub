@@ -4,6 +4,7 @@ import os
 import shutil
 
 import pytest
+from validator import exploits as vexploits
 
 from hub import local, patchcheck, statuses
 
@@ -28,6 +29,8 @@ TEST = (
 )
 SNAPSHOT = {"app.py": APP, "test_app.py": TEST}
 SPEC = {"entry": "app", "files": ["app.py", "test_app.py"], "exports": ["find"], "tests": ["test_app.py"]}
+SQLI_TARGET = {"class": "sqli", "entry": "app:find", "args": ["$cursor", "$payload"]}
+SPEC_X = {**SPEC, "exploit_targets": [SQLI_TARGET]}      # trusted exploit tests come from the spec, never the patch
 
 
 _ORIGINAL_VALIDATE = local.validate_code     # captured before any test patches the hub's own name
@@ -36,6 +39,15 @@ _ORIGINAL_VALIDATE = local.validate_code     # captured before any test patches 
 def real_validate(files, spec):
     """The real validator, in-process (guard mode): this fixture is synthetic code of our own."""
     return _ORIGINAL_VALIDATE(files, spec, require_netns=False)
+
+
+def real_exploits(files, targets, **kw):
+    """The trusted probes on synthetic code of our own, in-process (the hub itself runs them only in isolation)."""
+    root, _ = local._materialize(files)
+    try:
+        return {"ok": True, "exploits": vexploits.run_targets(root, targets)}
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
 
 
 def fake_validate(verdict="PASS", ran=True, ok=True):
@@ -55,18 +67,21 @@ def status(**kw):
 
 # a real fix, a real run --------------------------------------------------------------------------
 
-def test_a_real_fix_is_verified_by_the_real_tests_not_by_the_finding_disappearing():
-    out = status(files={"app.py": FIXED}, validate=real_validate)
+def test_a_real_fix_is_verified_by_the_real_tests_and_the_exploit_not_by_the_finding_disappearing(monkeypatch):
+    monkeypatch.setattr(local, "run_exploits", real_exploits)
+    out = status(files={"app.py": FIXED}, validate=real_validate, spec=SPEC_X)
     assert out["status"] == "FIX_VERIFIED", out
+    assert [(r["class"], r["before"], r["after"]) for r in out["exploit"]] == [("sqli", "reproduced", "not_reproduced")]
     assert out["rules"]["after"] < out["rules"]["before"] and out["rules"]["new"] == []
     assert out["validator"]["tests_ran"] is True
 
 
-def test_the_same_snapshot_and_patch_give_the_same_result_in_either_form():
-    a = status(files={"app.py": FIXED}, validate=real_validate)
-    b = status(files={"app.py": FIXED}, validate=real_validate)
+def test_the_same_snapshot_and_patch_give_the_same_result_in_either_form(monkeypatch):
+    monkeypatch.setattr(local, "run_exploits", real_exploits)
+    a = status(files={"app.py": FIXED}, validate=real_validate, spec=SPEC_X)
+    b = status(files={"app.py": FIXED}, validate=real_validate, spec=SPEC_X)
     diff = patchcheck.diff_from_files(SNAPSHOT, {"app.py": FIXED})
-    c = status(diff=diff, validate=real_validate)
+    c = status(diff=diff, validate=real_validate, spec=SPEC_X)
     assert a == b == c
 
 
@@ -185,7 +200,7 @@ def test_an_exploit_that_still_works_after_the_patch_rejects_it():
 def test_an_exploit_that_never_reproduced_on_the_original_cannot_verify():
     hook = lambda b, a: [{"class": "sqli", "before": "not_reproduced", "after": "not_reproduced"}]
     out = status(files={"app.py": FIXED}, exploit=hook)
-    assert out["status"] == "FIX_PARTIAL" and "no exploit test reproduced" in out["reason"]
+    assert out["status"] == "FIX_PARTIAL" and "did not reproduce the problem on the original" in out["reason"]
 
 
 def test_reproduced_before_and_blocked_after_verifies():
@@ -210,8 +225,9 @@ IMAGE = os.getenv("VISHAP_TEST_WORKER_IMAGE", "")
 @pytest.mark.skipif(not (IMAGE and shutil.which("docker")), reason="no Docker or VISHAP_TEST_WORKER_IMAGE")
 def test_a_fix_is_verified_inside_a_real_worker_container(monkeypatch):
     monkeypatch.setenv("VISHAP_HUB_WORKER_IMAGE", IMAGE)
-    out = patchcheck.check(SNAPSHOT, files={"app.py": FIXED}, spec=SPEC)
+    out = patchcheck.check(SNAPSHOT, files={"app.py": FIXED}, spec=SPEC_X)      # tests AND exploit probes in containers
     assert out["status"] == "FIX_VERIFIED", out
+    assert out["exploit"][0]["before"] == "reproduced" and out["exploit"][0]["after"] == "not_reproduced"
     assert out["validator"]["isolation"]["kind"] == "container"
     assert out["validator"]["isolation"]["cleanup_confirmed"] is True
 
@@ -236,7 +252,8 @@ def test_the_pipeline_checks_the_models_patch_only_when_asked(monkeypatch):
     monkeypatch.setattr(local, "validate_code", real_validate)
     off = run_plan(plan_for("review"), material=APP, files=SNAPSHOT, api_key="k")
     assert off.as_dict()["statuses"]["fix"]["status"] == "FIX_UNVERIFIED"
-    on = run_plan(plan_for("review"), material=APP, files=SNAPSHOT, spec=SPEC, api_key="k", check_patch=True)
+    monkeypatch.setattr(local, "run_exploits", real_exploits)
+    on = run_plan(plan_for("review"), material=APP, files=SNAPSHOT, spec=SPEC_X, api_key="k", check_patch=True)
     data = on.as_dict()
     assert data["statuses"]["fix"]["status"] == "FIX_VERIFIED", data["statuses"]["fix"]
     assert data["statuses"]["risk"]["verdict"] == data["verdict"] != "SAFE"   # the fix does not soften the risk
@@ -262,14 +279,97 @@ def test_the_command_line_gives_a_status_and_an_exit_code_without_a_model(tmp_pa
     diff = patchcheck.diff_from_files(SNAPSHOT, {"app.py": FIXED})
     (tmp_path / "fix.diff").write_text(diff, encoding="utf-8")
     import json
-    (tmp_path / "spec.json").write_text(json.dumps(SPEC), encoding="utf-8")
+    (tmp_path / "spec.json").write_text(json.dumps(SPEC_X), encoding="utf-8")
     argv = ["patch-check", "--snapshot", str(snap), "--diff", str(tmp_path / "fix.diff"),
             "--spec", str(tmp_path / "spec.json")]
     assert cli.main(argv) == 5                       # strict validator on this host: not verified, not rejected
     assert "FIX_UNVERIFIED" in capsys.readouterr().out
     monkeypatch.setattr(local, "validate_code", real_validate)
+    monkeypatch.setattr(local, "run_exploits", real_exploits)
     assert cli.main(argv) == 0
     assert "FIX_VERIFIED" in capsys.readouterr().out
     (tmp_path / "evil.diff").write_text("--- a/../x.py\n+++ b/../x.py\n@@ -0,0 +1 @@\n+x\n", encoding="utf-8")
     assert cli.main(["patch-check", "--snapshot", str(snap), "--diff", str(tmp_path / "evil.diff"),
                      "--spec", str(tmp_path / "spec.json")]) == 4
+
+# exploit tests: the trusted probes decide, the rules only point -------------------------------------------
+
+def test_a_fix_for_an_attack_class_with_no_exploit_test_is_not_verified_by_a_test():
+    out = status(files={"app.py": FIXED})
+    assert out["status"] == "FIX_PARTIAL" and "no exploit test for SQL injection" in out["reason"]
+    assert out["exploit_untested"] == ["sqli"]
+
+
+def test_a_rewrite_the_rules_cannot_see_through_is_caught_by_the_exploit_test(monkeypatch):
+    """`+=` builds the same injectable query, and the rules report nothing: the finding 'disappears'."""
+    sneaky = (
+        "def find(cur, name):\n"
+        "    sql = \"select id from users where name = '\"\n"
+        "    sql += name\n"
+        "    sql += \"'\"\n"
+        "    cur.execute(sql)\n"
+        "    return cur.fetchall()\n"
+    )
+    monkeypatch.setattr(local, "run_exploits", real_exploits)
+    rules_only = status(files={"app.py": sneaky}, validate=real_validate)
+    assert rules_only["rules"]["after"] < rules_only["rules"]["before"]          # the rules say: fixed
+    out = status(files={"app.py": sneaky}, validate=real_validate, spec=SPEC_X)
+    assert out["status"] == "FIX_REJECTED" and "exploit still works" in out["reason"] and "sqli" in out["reason"]
+
+
+def test_exploit_tests_that_cannot_run_leave_the_fix_unverified_not_verified(monkeypatch):
+    monkeypatch.setattr(local, "run_exploits", lambda files, targets, **kw: {"ok": False, "error": "no confirmed isolation"})
+    out = status(files={"app.py": FIXED}, spec=SPEC_X)
+    assert out["status"] == "FIX_UNVERIFIED" and "exploit tests could not run" in out["reason"]
+
+
+def test_a_patch_cannot_carry_its_own_exploit_targets():
+    """Targets come from the caller's spec. A patch file named like a target changes nothing."""
+    planted = {"app.py": FIXED, "exploit_targets.json": "[]"}
+    out = status(files=planted)
+    assert out["status"] == "FIX_PARTIAL" and "no exploit test for SQL injection" in out["reason"]
+
+
+PATH_VULN = "import os\n\n\ndef read(base, name):\n    with open(os.path.join(base, name), encoding='utf-8') as fh:\n        return fh.read()\n"
+PATH_FIXED = (
+    "import os\n\n\ndef read(base, name):\n"
+    "    root = os.path.realpath(base)\n    full = os.path.realpath(os.path.join(base, name))\n"
+    "    if os.path.commonpath([root, full]) != root:\n        raise ValueError('outside')\n"
+    "    with open(full, encoding='utf-8') as fh:\n        return fh.read()\n"
+)
+PATH_TARGET = {"class": "path_traversal", "entry": "app:read", "args": ["$base", "$payload"]}
+
+
+def test_path_traversal_is_verified_by_its_exploit_test_when_the_rules_still_flag_the_fixed_code(monkeypatch):
+    monkeypatch.setattr(local, "run_exploits", real_exploits)
+    spec = {"entry": "app", "files": ["app.py"], "tests": [], "exploit_targets": [PATH_TARGET]}
+    out = patchcheck.check({"app.py": PATH_VULN}, files={"app.py": PATH_FIXED}, spec=spec,
+                           validate=fake_validate())
+    assert out["rules"]["remaining_critical_or_high"] == []          # taint-flow is discharged by the proven test
+    assert out["status"] == "FIX_VERIFIED", out
+    assert patchcheck.check({"app.py": PATH_VULN}, files={"app.py": PATH_VULN + "\n"}, spec=spec,
+                            validate=fake_validate())["status"] == "FIX_REJECTED"       # still readable outside
+
+
+def test_an_exploit_test_discharges_only_its_own_class(monkeypatch):
+    """A proven SQL fix does not wave through an unrelated high finding that is still there."""
+    monkeypatch.setattr(local, "run_exploits", real_exploits)
+    both = FIXED + "import os\n\n\ndef run(x):\n    os.system('ls ' + x)\n"
+    snap = {"app.py": APP + "import os\n\n\ndef run(x):\n    os.system('ls ' + x)\n", "test_app.py": TEST}
+    out = patchcheck.check(snap, files={"app.py": both}, spec=SPEC_X, validate=fake_validate())
+    assert out["status"] == "FIX_PARTIAL" and "cmd-injection-py" in out["reason"]
+
+
+@pytest.mark.skipif(not (IMAGE and shutil.which("docker")), reason="no Docker or VISHAP_TEST_WORKER_IMAGE")
+def test_all_three_attack_classes_are_reproduced_and_gone_inside_the_worker_container(monkeypatch):
+    monkeypatch.setenv("VISHAP_HUB_WORKER_IMAGE", IMAGE)
+    cmd_vuln = "import os\n\n\ndef echo(text):\n    os.system('echo ' + text)\n"
+    cmd_fixed = "import subprocess\n\n\ndef echo(text):\n    subprocess.run(['echo', text], check=False)\n"
+    targets = [SQLI_TARGET, {"class": "path_traversal", "entry": "p:read", "args": ["$base", "$payload"]},
+               {"class": "command_injection", "entry": "c:echo", "args": ["$payload"]}]
+    vuln = local.run_exploits({"app.py": APP, "p.py": PATH_VULN, "c.py": cmd_vuln}, targets)
+    assert vuln["ok"], vuln
+    assert [r["result"] for r in vuln["exploits"]] == ["reproduced"] * 3
+    assert vuln["isolation"]["kind"] == "container" and vuln["isolation"]["cleanup_confirmed"] is True
+    fixed = local.run_exploits({"app.py": FIXED, "p.py": PATH_FIXED, "c.py": cmd_fixed}, targets)
+    assert [r["result"] for r in fixed["exploits"]] == ["not_reproduced"] * 3

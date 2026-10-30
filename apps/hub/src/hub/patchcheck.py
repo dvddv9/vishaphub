@@ -22,6 +22,7 @@ import hashlib
 import json
 import re
 
+from . import exploits as exploits_mod
 from . import statuses
 
 MAX_FILES = 20
@@ -218,10 +219,11 @@ def _removed(before: dict, after: dict) -> tuple[list[str], list[str]]:
     return files, symbols
 
 
-def _findings(files: dict, analyse) -> tuple[dict, dict]:
-    """({"path::rule": count}, {"path::rule": worst severity}) over every file the rules can read."""
+def _findings(files: dict, analyse) -> tuple[dict, dict, dict]:
+    """(counts, worst severity, CWE) per "path::rule", over every file the rules can read."""
     counts: dict = {}
     worst: dict = {}
+    cwes: dict = {}
     for path in sorted(files):
         if not files[path].strip():
             continue
@@ -232,7 +234,8 @@ def _findings(files: dict, analyse) -> tuple[dict, dict]:
             key = f"{path}::{f.get('rule')}"
             counts[key] = counts.get(key, 0) + 1
             worst[key] = f.get("severity") or "low"
-    return counts, worst
+            cwes[key] = f.get("cwe") or ""
+    return counts, worst, cwes
 
 
 def _result(status: str, reason: str, **extra) -> dict:
@@ -273,14 +276,12 @@ def check(snapshot: dict, *, diff: str | None = None, files: dict | None = None,
     out["removed"] = {"files": removed_files, "symbols": removed_symbols}
 
     try:
-        (before, _), (after, after_sev) = _findings(snapshot, analyse), _findings(patched, analyse)
+        (before, _, before_cwe), (after, after_sev, after_cwe) = _findings(snapshot, analyse), _findings(patched, analyse)
     except PatchError as exc:
         return _result(statuses.FIX_UNVERIFIED, str(exc), **out)
     fixed = sorted(k for k in before if after.get(k, 0) < before[k])
     new = sorted(k for k in after if after[k] > before.get(k, 0))
-    blocking = sorted(k for k in after if after_sev.get(k) in ("critical", "high"))
-    out["rules"] = {"before": sum(before.values()), "after": sum(after.values()), "fixed": fixed, "new": new,
-                    "remaining_critical_or_high": blocking}
+    out["rules"] = {"before": sum(before.values()), "after": sum(after.values()), "fixed": fixed, "new": new}
 
     run = validate(patched, spec)
     report = run.get("report") or {}
@@ -319,13 +320,55 @@ def check(snapshot: dict, *, diff: str | None = None, files: dict | None = None,
         already = failed
     out["validator"]["failed_before_and_after"] = already
 
-    exploits = []
+    # Trusted exploit tests, from the caller's spec and never from the patch. A hook can also be given.
+    targets = spec.get("exploit_targets") or []
+    if exploit is None and targets:
+        exploit = exploits_mod.make_hook(targets)
+    rows: list[dict] = []
     if exploit is not None:
-        exploits = exploit(snapshot, patched)
-        out["exploit"] = exploits
-        still = [e["class"] for e in exploits if e.get("after") == "reproduced"]
+        try:
+            rows = exploit(snapshot, patched)
+        except exploits_mod.ExploitRunError as exc:
+            return _result(statuses.FIX_UNVERIFIED, str(exc), **out)
+        out["exploit"] = rows
+        still = [e["class"] for e in rows if e.get("after") == "reproduced"]
         if still:
             return _result(statuses.FIX_REJECTED, "the exploit still works after the patch: " + ", ".join(still), **out)
+
+    # A fix for an attack class is only as good as the test that first shows the attack working and then
+    # not working. The rules cannot tell: `subprocess.run([...])` and `open(realpath(...))` are flagged just
+    # like the vulnerable code, and a vulnerable query built with `+=` or `join` is not flagged at all.
+    by_class = {r.get("class"): r for r in rows}
+    proven = {k: r for k, r in by_class.items() if r.get("before") == "reproduced" and r.get("after") == "not_reproduced"}
+    fixed_classes = {c for c in (exploits_mod.class_of(k.split("::", 1)[1], before_cwe.get(k)) for k in fixed) if c}
+    untested = []
+    exploit_gaps = []
+    for kind in sorted(fixed_classes | set(by_class)):
+        name = exploits_mod.CLASS_NAMES.get(kind, kind)
+        row = by_class.get(kind)
+        if row is None:
+            untested.append(kind)
+            exploit_gaps.append(f"no exploit test for {name}: not verified by a test")
+        elif row.get("before") != "reproduced":
+            untested.append(kind)
+            exploit_gaps.append(f"the exploit test for {name} did not reproduce the problem on the original"
+                                f" ({row.get('before')})")
+        elif row.get("after") != "not_reproduced":
+            untested.append(kind)
+            exploit_gaps.append(f"the exploit test for {name} could not confirm the fix ({row.get('after')})")
+    out["exploit_untested"] = untested
+    # A finding the rules keep raising on fixed code is discharged only by an exploit test that proves its
+    # class fixed. The generic `taint-flow` rule has no class: it is discharged only in the file of a target
+    # whose exploit test passed.
+    proven_files = {r["entry"].split(":")[0].replace(".", "/") + ".py" for r in proven.values() if r.get("entry")}
+
+    def discharged(key: str) -> bool:
+        path, rule = key.split("::", 1)
+        return (exploits_mod.class_of(rule, after_cwe.get(key)) in proven
+                or (rule == "taint-flow" and path in proven_files))
+
+    blocking = sorted(k for k in after if after_sev.get(k) in ("critical", "high") and not discharged(k))
+    out["rules"]["remaining_critical_or_high"] = blocking
 
     gaps = []
     if removed_files or removed_symbols:
@@ -334,12 +377,11 @@ def check(snapshot: dict, *, diff: str | None = None, files: dict | None = None,
         gaps.append("checks already failing before the patch prove nothing about it: " + ", ".join(already))
     if not tests_ran:
         gaps.append("no test of the deliverable ran")
-    if not fixed:
+    if not fixed and not proven:
         gaps.append("the rules had no finding that the patch removed")
+    gaps.extend(exploit_gaps)
     if blocking:
         gaps.append("a critical or high finding remains: " + ", ".join(blocking))
-    if exploit is not None and not any(e.get("before") == "reproduced" for e in exploits):
-        gaps.append("no exploit test reproduced the problem on the original")
     if gaps:
         return _result(statuses.FIX_PARTIAL, "; ".join(gaps), **out)
     return _result(statuses.FIX_VERIFIED, "applied to a copy; the rules found fewer findings, none new; "
