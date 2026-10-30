@@ -21,6 +21,8 @@ services:
     envVars:
       - key: VISHAP_HUB_LLM_KEY
         sync: false          # set in the panel; a client can also send api_key in the body
+      # Behind Render's proxy every visitor reaches the app from the proxy's address. Without these two the per-address
+      # limits are one shared bucket for everybody. Check what the app is sent with GET /api/team/diagnostics (an owner).
       - key: VISHAP_HUB_TRUST_HEADER
         value: x-forwarded-for
       - key: VISHAP_HUB_TRUSTED_HOPS

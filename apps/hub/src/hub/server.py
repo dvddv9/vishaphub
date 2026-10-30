@@ -87,6 +87,14 @@ KEY_COOKIE_MAX_AGE = 30 * 24 * 3600
 TRUST_HEADER = os.getenv("VISHAP_HUB_TRUST_HEADER", "").strip().lower()
 TRUSTED_HOPS = max(1, limits.int_env("VISHAP_HUB_TRUSTED_HOPS", 1))
 FORWARDING_HEADERS = ("x-forwarded-for", "forwarded", "true-client-ip", "cf-connecting-ip", "x-real-ip")
+#: How many runs may be in flight at once. A run is work done in the request's own thread; the per-address and the daily
+#: budgets bound how often and how much, not how many at the same moment. A run that finds no free slot is answered
+#: 503 at once, before it spends anything. 0 turns the ceiling off.
+RUN_SLOTS_N = limits.int_env("VISHAP_HUB_MAX_CONCURRENT_RUNS", 4)
+RUN_SLOTS = threading.BoundedSemaphore(RUN_SLOTS_N) if RUN_SLOTS_N > 0 else None
+#: Seconds a connection may stay silent while the hub waits to read from it. Without it a client that opens a
+#: connection and sends nothing holds a thread for ever. 0 turns it off.
+READ_TIMEOUT = limits.int_env("VISHAP_HUB_READ_TIMEOUT", 30)
 
 
 class _ClientGone(Exception):
@@ -142,8 +150,16 @@ def _intent_for(body: dict, material: str, spec: str) -> str:
 
 class Handler(BaseHTTPRequestHandler):
     server_version = f"vishap-hub/{__version__}"
+    timeout = READ_TIMEOUT or None
 
     # ---- plumbing -------------------------------------------------------
+
+    def _content_length(self) -> int:
+        """The declared body length; -1 when the header is not a number (the caller refuses that with a 400)."""
+        try:
+            return int(self.headers.get("content-length") or 0)
+        except ValueError:
+            return -1
 
     def _drain(self) -> None:
         """Read and drop a request body nobody asked for before replying, once.
@@ -294,7 +310,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def _form(self) -> dict | None:
         self._body_taken = True
-        length = int(self.headers.get("content-length") or 0)
+        length = self._content_length()
         if length <= 0 or length > 4096:
             self._send(400, {"error": "form must be 1..4096 bytes"})
             return None
@@ -336,7 +352,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def _body(self) -> dict | None:
         self._body_taken = True
-        length = int(self.headers.get("content-length") or 0)
+        length = self._content_length()
         if length <= 0 or length > MAX_BODY:
             self._send(400, {"error": f"body must be 1..{MAX_BODY} bytes"})
             return None
@@ -634,8 +650,9 @@ class Handler(BaseHTTPRequestHandler):
         except _ClientGone:
             return
         except Exception as exc:  # noqa: BLE001 - reported to the client, never silent
+            print(f"run failed: {type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
             try:
-                event("error", {"error": f"{type(exc).__name__}: {exc}"})
+                event("error", {"error": "the run failed inside the hub; nothing was kept"})
             except _ClientGone:
                 return
             return
@@ -647,6 +664,38 @@ class Handler(BaseHTTPRequestHandler):
             event("done", payload)
         except _ClientGone:
             return
+
+    def _run_door(self, path: str, principal, args: dict) -> None:
+        """Budget, run and answer, for /run and /run/stream. The caller holds a run slot."""
+        chars = limits.input_chars(args)
+        if principal is None:
+            spend = BUDGET.take(chars)
+            if not spend.allowed:
+                self._send(413 if spend.too_big else 429, {"ok": False, "error": spend.reason},
+                           extra={} if spend.too_big else {"retry-after": str(int(spend.wait) + 1)})
+                return
+            used = BUDGET.used()
+            ALERTS.check("anonymous:runs", used["runs"], BUDGET.runs, "anonymous runs")
+            ALERTS.check("anonymous:chars", used["chars"], BUDGET.chars, "anonymous run characters")
+        elif not self._reserve(principal, "run", chars):
+            return
+        owner, cookie = ("", {}) if principal is not None else self._owner_for_run()
+        with meter.metering() as m:
+            self._meter = m
+            try:
+                if path == "/run/stream":
+                    self._stream(args, owner, cookie, principal)
+                    return
+                try:
+                    result = run_plan(**args)
+                except Exception as exc:  # noqa: BLE001 - say so; a dropped connection tells the caller nothing
+                    print(f"run failed: {type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
+                    self._finish_usage(None, 0, "error")      # the books first, then the reply, as _remember does
+                    self._send(500, {"ok": False, "error": "the run failed inside the hub; nothing was kept"})
+                    return
+                self._respond(result, args, owner, cookie, principal)
+            finally:
+                self._finish_usage(None, 0, "error")           # a no-op once _remember has run
 
     def do_POST(self) -> None:  # stdlib naming
         path = self.path.split("?", 1)[0]
@@ -763,28 +812,16 @@ class Handler(BaseHTTPRequestHandler):
             args = self._run_args(body)
             if args is None:
                 return
-            chars = limits.input_chars(args)
-            if principal is None:
-                spend = BUDGET.take(chars)
-                if not spend.allowed:
-                    self._send(413 if spend.too_big else 429, {"ok": False, "error": spend.reason},
-                               extra={} if spend.too_big else {"retry-after": str(int(spend.wait) + 1)})
-                    return
-                used = BUDGET.used()
-                ALERTS.check("anonymous:runs", used["runs"], BUDGET.runs, "anonymous runs")
-                ALERTS.check("anonymous:chars", used["chars"], BUDGET.chars, "anonymous run characters")
-            elif not self._reserve(principal, "run", chars):
+            slots = RUN_SLOTS      # the one that was taken is the one that is given back
+            if slots is not None and not slots.acquire(blocking=False):
+                self._send(503, {"ok": False, "error": "the hub is running as many runs as it allows; try again in a moment"},
+                           extra={"retry-after": "5"})
                 return
-            owner, cookie = ("", {}) if principal is not None else self._owner_for_run()
-            with meter.metering() as m:
-                self._meter = m
-                try:
-                    if path == "/run/stream":
-                        self._stream(args, owner, cookie, principal)
-                        return
-                    self._respond(run_plan(**args), args, owner, cookie, principal)
-                finally:
-                    self._finish_usage(None, 0, "error")           # a no-op once _remember has run
+            try:
+                self._run_door(path, principal, args)
+            finally:
+                if slots is not None:
+                    slots.release()
             return
 
         self._send(404, {"error": "not found"})
