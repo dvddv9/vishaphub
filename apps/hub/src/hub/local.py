@@ -23,7 +23,7 @@ import tempfile
 MAX_FILES = 200
 
 
-def validate_code(files: dict, spec: dict) -> dict:
+def validate_code(files: dict, spec: dict, *, require_netns: bool = True) -> dict:
     """Run the six-stage validator over a deliverable given as {path: text}."""
     try:
         from validator.engine import validate as run_validate
@@ -62,7 +62,7 @@ def validate_code(files: dict, spec: dict) -> dict:
             exports=list(spec.get("exports", [])),
             tests=list(spec.get("tests", [])),
             entry=spec.get("entry", ""),
-        ))
+        ), require_netns=require_netns)
         return {"ok": True, "report": report.as_dict()}
     except Exception as exc:  # noqa: BLE001 - reported, never silent
         return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
