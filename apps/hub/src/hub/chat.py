@@ -19,7 +19,7 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 
-from . import meter
+from . import meter, privacy
 
 ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
 DEFAULT_MODEL = "claude-sonnet-5-5"
@@ -58,7 +58,7 @@ def _history(messages: list) -> list[dict]:
         role = item.get("role")
         text = item.get("content")
         if role in ("user", "assistant") and isinstance(text, str) and text.strip():
-            turns.append({"role": role, "content": text[:4000]})
+            turns.append({"role": role, "content": text})
     return turns
 
 
@@ -72,13 +72,24 @@ def reply(message: str, messages: list, api_key: str, model: str = "") -> dict:
     if not key:
         return {"ok": True, "model": "local", "text": FALLBACK, "key_required": True}
 
+    # The message and the history are the client's words: redacted like every other text that goes to
+    # a model, and refused (nothing sent) when the redaction cannot run.
+    try:
+        text, redactions = privacy.redact_text(text)
+        turns = []
+        for turn in _history(messages):
+            clean, found = privacy.redact_text(turn["content"])
+            turns.append({"role": turn["role"], "content": clean[:4000]})
+            redactions = privacy.merge_counts(redactions, found)
+    except privacy.RedactionUnavailable:
+        return {"ok": False, "text": "", "error": privacy.REFUSAL}
     payload = {
         "model": (model or os.getenv("VISHAP_HUB_LLM_MODEL") or DEFAULT_MODEL).strip(),
         # Measured 2026-10-29: the worst full answer took 1298 output tokens, and thinking
         # is about 60% of what is spent. 1200 cut one long answer in three; 2400 leaves room.
         "max_tokens": 2400,
         "system": _prompt(),
-        "messages": [*_history(messages), {"role": "user", "content": text[:4000]}],
+        "messages": [*turns, {"role": "user", "content": text[:4000]}],
     }
     body = json.dumps(payload).encode("utf-8")
     request = urllib.request.Request(
@@ -95,10 +106,10 @@ def reply(message: str, messages: list, api_key: str, model: str = "") -> dict:
         with urllib.request.urlopen(request, timeout=120) as response:
             data = json.load(response)
     except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", "replace")[:300]
+        detail = privacy.scrub_error(exc.read().decode("utf-8", "replace"), 300)
         return {"ok": False, "text": "", "error": f"model refused: HTTP {exc.code} {detail}"}
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-        return {"ok": False, "text": "", "error": f"{type(exc).__name__}: {exc}"}
+        return {"ok": False, "text": "", "error": f"{type(exc).__name__}: {privacy.scrub_error(str(exc))}"}
 
     meter.record(data.get("usage"))                 # paid for, whatever the answer turns out to be
     blocks = data.get("content") or []

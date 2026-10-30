@@ -17,7 +17,7 @@ import re
 import urllib.error
 import urllib.request
 
-from . import meter
+from . import meter, privacy
 from .verdicts import SEVERITY_ORDER
 
 ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
@@ -78,28 +78,22 @@ def _recommendation(raw: object) -> str:
     return text if text in SEVERITY_ORDER else "REQUIRES_REVIEW"
 
 
-def _redact(material: str) -> tuple[str, dict]:
-    """PII and secrets out of the material before it leaves for a model.
-
-    Borrowed from the analyser (`src.tools.redact`), one implementation, no copy. The
-    analyser learned this the hard way: detection used to run after the stages, so PII
-    reached the cloud first. Without the analyser in the image nothing is redacted and
-    the run says so, rather than pretending.
-    """
-    try:
-        from src.tools.redact import redact_pii
-    except ImportError:
-        return material, {}
-    return redact_pii(material)
-
-
 def _call(key: str, model: str, material: str, spec: str, question: str) -> dict:
+    # Everything the client typed is redacted before it is put in the request, not only the material:
+    # a card number in the question or the spec reaches the provider just as well. Redact first, cut
+    # after, so a number split by the length limit is not left half-visible.
+    try:
+        question, r_question = privacy.redact_text(question)
+        spec, r_spec = privacy.redact_text(spec)
+        material, r_material = privacy.redact_text(material)
+    except privacy.RedactionUnavailable:
+        return {"ok": False, "error": privacy.REFUSAL}
+    redactions = privacy.merge_counts(r_question, r_spec, r_material)
     user = []
     if question.strip():
         user.append(f"Client question:\n{question.strip()[:MAX_QUESTION]}")
     if spec.strip():
         user.append(f"Spec:\n{spec.strip()[:MAX_SPEC]}")
-    material, redactions = _redact(material)
     user.append(f"Material:\n{material.strip()[:MAX_MATERIAL]}")
     payload = {
         "model": model or DEFAULT_MODEL,
@@ -117,9 +111,9 @@ def _call(key: str, model: str, material: str, spec: str, question: str) -> dict
         with urllib.request.urlopen(request, timeout=180) as response:
             data = json.load(response)
     except urllib.error.HTTPError as exc:
-        return {"ok": False, "error": f"model refused: HTTP {exc.code} {exc.read().decode('utf-8', 'replace')[:200]}"}
+        return {"ok": False, "error": f"model refused: HTTP {exc.code} {privacy.scrub_error(exc.read().decode('utf-8', 'replace'))}"}
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-        return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+        return {"ok": False, "error": f"{type(exc).__name__}: {privacy.scrub_error(str(exc))}"}
 
     meter.record(data.get("usage"))                 # paid for, whatever the answer turns out to be
     parts = [b.get("text", "") for b in (data.get("content") or [])
