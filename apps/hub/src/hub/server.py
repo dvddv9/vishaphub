@@ -690,6 +690,7 @@ class Handler(BaseHTTPRequestHandler):
                     result = run_plan(**args)
                 except Exception as exc:  # noqa: BLE001 - say so; a dropped connection tells the caller nothing
                     print(f"run failed: {type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
+                    self._finish_usage(None, 0, "error")      # the books first, then the reply, as _remember does
                     self._send(500, {"ok": False, "error": "the run failed inside the hub; nothing was kept"})
                     return
                 self._respond(result, args, owner, cookie, principal)
