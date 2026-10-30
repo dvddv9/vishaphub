@@ -8,6 +8,8 @@ stages. This module redacts PII/secrets BEFORE any LLM call.
 Uses the same regex patterns as orchestrator.PII_PATTERNS to keep
 detection and redaction in sync.
 """
+import re
+
 from src.tools.patterns import PII_PATTERNS
 
 
@@ -32,6 +34,38 @@ PLACEHOLDERS = {
 
 
 _VALUE_ONLY = ("hardcoded_password", "hardcoded_secret")
+
+
+#: Card numbers are deliberately not in PII_PATTERNS: a regex alone cannot tell a PAN from an
+#: order number, and a wide pattern would redact every long figure in the material. Luhn can:
+#: the candidate has 13-19 digits and its checksum holds, which order numbers rarely satisfy.
+_CARD = re.compile(r"(?<!\d)(?:\d[ -]?){12,18}\d(?!\d)")
+
+
+def _luhn_ok(digits: str) -> bool:
+    total = 0
+    for position, char in enumerate(reversed(digits)):
+        value = ord(char) - 48
+        if position % 2:
+            value *= 2
+            if value > 9:
+                value -= 9
+        total += value
+    return total % 10 == 0
+
+
+def _redact_cards(text: str) -> tuple[str, int]:
+    """Replace card numbers with a placeholder; a candidate that fails Luhn is left alone."""
+    found = {"n": 0}
+
+    def swap(match: "re.Match[str]") -> str:
+        digits = re.sub(r"\D", "", match.group(0))
+        if not 13 <= len(digits) <= 19 or not _luhn_ok(digits):
+            return match.group(0)
+        found["n"] += 1
+        return "<CARD_REDACTED>"
+
+    return _CARD.sub(swap, text), found["n"]
 
 
 def _hide_value(match_text: str, placeholder: str) -> str:
@@ -71,6 +105,10 @@ def redact_pii(text: str) -> tuple[str, dict]:
                 redacted = pattern.sub(lambda m, ph=placeholder: _hide_value(m.group(0), ph), redacted)
             else:
                 redacted = pattern.sub(placeholder, redacted)
+
+    redacted, cards = _redact_cards(redacted)
+    if cards:
+        mapping["card_pan"] = cards
 
     return redacted, mapping
 
