@@ -13,7 +13,7 @@ import sys
 import tempfile
 
 from ..models import CheckResult, Finding, Severity, Spec
-from ..safe import clean_env
+from ..safe import clean_env, network_off, rlimits
 
 TIMEOUT_SECONDS = 120
 TAIL_CHARS = 1500
@@ -51,14 +51,16 @@ def run(root: str, spec: Spec) -> CheckResult:
         fh.write("[pytest]\n")
     env = clean_env()
     try:
+        cmd = [sys.executable, "-m", "pytest", *spec.tests, "-q", "--no-header", "--tb=short",
+               "-p", "no:cacheprovider", "-c", ini_path]
         proc = subprocess.run(
-            [sys.executable, "-m", "pytest", *spec.tests, "-q", "--no-header", "--tb=short",
-             "-p", "no:cacheprovider", "-c", ini_path],
+            [*network_off(), *cmd],
             cwd=root,
             env=env,
             capture_output=True,
             text=True,
             timeout=TIMEOUT_SECONDS,
+            preexec_fn=rlimits(),
             check=False,
         )
     except subprocess.TimeoutExpired:
