@@ -12,7 +12,7 @@ import sys
 import tempfile
 
 from ..models import CheckResult, Finding, Severity, Spec
-from ..safe import clean_env
+from ..safe import clean_env, network_off, rlimits
 
 PROBE = r"""
 import importlib, json, sys
@@ -42,13 +42,15 @@ def run(root: str, spec: Spec) -> CheckResult:
         fh.write(PROBE)
         probe_path = fh.name
     try:
+        cmd = [sys.executable, probe_path, root, spec.entry, json.dumps(spec.exports)]
         proc = subprocess.run(
-            [sys.executable, probe_path, root, spec.entry, json.dumps(spec.exports)],
+            [*network_off(), *cmd],
             capture_output=True,
             text=True,
             timeout=60,
             cwd=root,
             env=clean_env(),
+            preexec_fn=rlimits(),
             check=False,
         )
     except subprocess.TimeoutExpired:
