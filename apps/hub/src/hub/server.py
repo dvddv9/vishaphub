@@ -79,6 +79,14 @@ ALERTS = alerts.from_env()
 #: with this on, /run, /chat and /speak refuse a caller who has no API key (the setting for a pilot)
 REQUIRE_KEY = os.getenv("VISHAP_HUB_REQUIRE_KEY", "").lower() in ("1", "true", "yes")
 KEY_COOKIE_MAX_AGE = 30 * 24 * 3600
+#: Behind a proxy (Render's) every visitor reaches the app from the proxy's address, so the address limits, the
+#: owner's audit trail and the quotas' logs would all see one visitor. Name the header the proxy fills in and the
+#: number of proxies in front of the app, and the address used is the entry that many places from the RIGHT of that
+#: header: the left side is whatever the client wrote and is never trusted. Unset, the socket address is used, which
+#: is right when nothing sits in front. `GET /api/team/diagnostics` (an owner) shows what the app is being sent.
+TRUST_HEADER = os.getenv("VISHAP_HUB_TRUST_HEADER", "").strip().lower()
+TRUSTED_HOPS = max(1, limits.int_env("VISHAP_HUB_TRUSTED_HOPS", 1))
+FORWARDING_HEADERS = ("x-forwarded-for", "forwarded", "true-client-ip", "cf-connecting-ip", "x-real-ip")
 
 
 class _ClientGone(Exception):
@@ -244,7 +252,7 @@ class Handler(BaseHTTPRequestHandler):
     def _reserve(self, principal, kind: str, chars: int) -> bool:
         """Take one request from the person's, the team's and the hub's allowance before any work is done.
         False means a reply was sent: 429 with the scope that is spent and when the window frees up."""
-        ok, res = self._team(TEAMS.reserve, principal, kind, chars, self.client_address[0])
+        ok, res = self._team(TEAMS.reserve, principal, kind, chars, self._client_ip())
         if not ok:
             return False
         if isinstance(res, Denied):
@@ -285,11 +293,31 @@ class Handler(BaseHTTPRequestHandler):
         ALERTS.check("anonymous:chats", used["runs"], CHAT_BUDGET.runs, "anonymous chat messages")
         ALERTS.check("anonymous:chat-chars", used["chars"], CHAT_BUDGET.chars, "anonymous chat characters")
 
-    def _limited(self, kind: str) -> bool:
-        allowed, wait = LIMITERS[kind].allow(self.client_address[0])
+    def _client_ip(self) -> str:
+        """The client's address as far as it can be known (see TRUST_HEADER); the socket's address otherwise."""
+        import ipaddress
+
+        sock = self.client_address[0]
+        if not TRUST_HEADER:
+            return sock
+        parts = [p.strip() for p in (self.headers.get(TRUST_HEADER) or "").split(",") if p.strip()]
+        if not parts:
+            return sock
+        candidate = parts[-TRUSTED_HOPS] if TRUST_HEADER == "x-forwarded-for" and len(parts) >= TRUSTED_HOPS else parts[0]
+        try:
+            return str(ipaddress.ip_address(candidate))
+        except ValueError:
+            return sock                      # not an address: do not let it become a key
+
+    def _limited(self, kind: str, principal=None) -> bool:
+        """The per-minute limit. A signed-in person has their own, so one person's burst never costs the rest of the
+        team; an anonymous caller is limited by address."""
+        key = f"user:{principal.user_id}" if principal is not None else self._client_ip()
+        allowed, wait = LIMITERS[kind].allow(key)
         if allowed:
             return False
-        self._send(429, {"ok": False, "error": f"too many {kind} requests from this address"},
+        who = "from you" if principal is not None else "from this address"
+        self._send(429, {"ok": False, "error": f"too many {kind} requests {who}"},
                    extra={"retry-after": str(int(wait) + 1)})
         return True
 
@@ -344,7 +372,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         self._finish_usage(fp["id"], result_chars, "ok" if payload.get("ok") else "failed")
         try:
-            TEAMS.save(principal, record, self.client_address[0])
+            TEAMS.save(principal, record, self._client_ip())
             payload["stored"] = True
         except Exception as exc:  # noqa: BLE001 - the run happened and was paid for: tell the caller it was not kept
             print(f"team storage error: {type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
@@ -374,7 +402,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/health":
             self._send(200, {"ok": True, "version": __version__})
             return
-        principal, ip = None, self.client_address[0]
+        principal, ip = None, self._client_ip()
         if path.startswith(("/api/", "/runs", "/r/")):
             principal, refused = self._principal()
             if refused:
@@ -386,6 +414,18 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, {"team_id": principal.team_id, "user": principal.user_name, "role": principal.role,
                              "retention_days": TEAMS.retention_days(principal),
                              "permissions": sorted(access.PERMISSIONS[principal.role])}, extra=PRIVATE)
+            return
+        if path == "/api/team/diagnostics":
+            if principal is None:
+                self._send(401, {"error": "an API key is required"}, extra=PRIVATE)
+                return
+            if not principal.can("audit.read"):
+                self._send(403, {"error": "only an owner reads the diagnostics"}, extra=PRIVATE)
+                return
+            self._send(200, {"socket_address": self.client_address[0], "address_used": self._client_ip(),
+                             "trust_header": TRUST_HEADER or None, "trusted_hops": TRUSTED_HOPS,
+                             "forwarding_headers_received": {h: self.headers.get(h) for h in FORWARDING_HEADERS
+                                                             if self.headers.get(h)}}, extra=PRIVATE)
             return
         if path == "/api/team/audit":
             if principal is None:
@@ -616,7 +656,7 @@ class Handler(BaseHTTPRequestHandler):
             body = self._body()
             if body is None:
                 return
-            if self._limited("chat"):
+            if self._limited("chat", principal):
                 return
             message = body.get("message")
             if not isinstance(message, str) or not message.strip():
@@ -651,7 +691,7 @@ class Handler(BaseHTTPRequestHandler):
             body = self._body()
             if body is None:
                 return
-            if self._limited("speak"):
+            if self._limited("speak", principal):
                 return
             text = body.get("text")
             if not isinstance(text, str) or not text.strip():
@@ -689,7 +729,7 @@ class Handler(BaseHTTPRequestHandler):
             body = self._body()
             if body is None:
                 return
-            if self._limited("run"):
+            if self._limited("run", principal):
                 return
             args = self._run_args(body)
             if args is None:
@@ -733,7 +773,7 @@ class Handler(BaseHTTPRequestHandler):
             self._send(401, {"error": "an API key is required to delete a run"}, extra=PRIVATE)
             return
         ok, outcome = self._team(TEAMS.delete, principal, path[len("/api/runs/"):].removesuffix(".json"),
-                                 self.client_address[0])
+                                 self._client_ip())
         if not ok:
             return
         if outcome == "deleted":

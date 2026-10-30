@@ -474,7 +474,8 @@ class ReadmeTests(unittest.TestCase):
                      "VISHAP_HUB_GLOBAL_CHARS_PER_DAY", "VISHAP_HUB_DATABASE_URL", "VISHAP_HUB_ADMIN_DATABASE_URL",
                      "VISHAP_HUB_REQUIRE_KEY", "VISHAP_HUB_RETENTION_DAYS", "VISHAP_HUB_PURGE_MINUTES",
                      "VISHAP_HUB_ALERT_WEBHOOK", "VISHAP_HUB_QUOTA_RUN_PER_USER", "VISHAP_HUB_QUOTA_RUN_PER_TEAM",
-                     "VISHAP_HUB_TEAMS_GLOBAL_RUN_PER_DAY", "VISHAP_HUB_TEAMS_GLOBAL_CHARS_PER_DAY"):
+                     "VISHAP_HUB_TEAMS_GLOBAL_RUN_PER_DAY", "VISHAP_HUB_TEAMS_GLOBAL_CHARS_PER_DAY",
+                     "VISHAP_HUB_TRUST_HEADER", "VISHAP_HUB_TRUSTED_HOPS"):
             assert name in readme, name
 
 
@@ -486,6 +487,58 @@ class VersionTests(unittest.TestCase):
         from hub.version import __version__
         pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
         assert tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["version"] == __version__
+
+
+class ClientAddressTests(ServerCase):
+    """Behind a proxy every visitor arrives from the proxy. The address the limits use must be the visitor's, and
+    must not be something the visitor can choose."""
+
+    def run_from(self, forwarded=None, header="x-forwarded-for"):
+        headers = {header: forwarded} if forwarded else None
+        with mock.patch.object(server, "run_plan", lambda **kw: _Done()):
+            return self.post("/run", {"material": "a = 1", "api_key": "k"}, headers=headers)[0]
+
+    def limit_to_one(self):
+        patcher = mock.patch.dict(server.LIMITERS, {"run": limits.RateLimiter(1)})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_without_a_trusted_header_a_spoofed_one_changes_nothing(self):
+        self.limit_to_one()
+        assert self.run_from("1.1.1.1") == 200
+        assert self.run_from("2.2.2.2") == 429            # the same socket: the header was ignored
+
+    def test_with_a_trusted_header_each_visitor_has_their_own_limit(self):
+        self.limit_to_one()
+        with mock.patch.object(server, "TRUST_HEADER", "x-forwarded-for"), mock.patch.object(server, "TRUSTED_HOPS", 1):
+            assert self.run_from("9.9.9.9") == 200
+            assert self.run_from("9.9.9.9") == 429
+            assert self.run_from("8.8.8.8") == 200         # another visitor behind the same proxy
+
+    def test_what_the_client_wrote_on_the_left_is_never_trusted(self):
+        self.limit_to_one()
+        with mock.patch.object(server, "TRUST_HEADER", "x-forwarded-for"), mock.patch.object(server, "TRUSTED_HOPS", 1):
+            assert self.run_from("6.6.6.6, 9.9.9.9") == 200       # the proxy appended 9.9.9.9
+            assert self.run_from("7.7.7.7, 9.9.9.9") == 429       # a new left side does not make a new visitor
+
+    def test_two_proxies_in_front_means_the_second_from_the_right(self):
+        self.limit_to_one()
+        with mock.patch.object(server, "TRUST_HEADER", "x-forwarded-for"), mock.patch.object(server, "TRUSTED_HOPS", 2):
+            assert self.run_from("5.5.5.5, 9.9.9.9, 10.0.0.1") == 200
+            assert self.run_from("4.4.4.4, 9.9.9.9, 10.0.0.2") == 429
+
+    def test_a_single_value_header_is_taken_as_it_is(self):
+        self.limit_to_one()
+        with mock.patch.object(server, "TRUST_HEADER", "true-client-ip"):
+            assert self.run_from("3.3.3.3", "true-client-ip") == 200
+            assert self.run_from("3.3.3.3", "true-client-ip") == 429
+            assert self.run_from("3.3.3.4", "true-client-ip") == 200
+
+    def test_a_value_that_is_not_an_address_is_not_a_key(self):
+        self.limit_to_one()
+        with mock.patch.object(server, "TRUST_HEADER", "x-forwarded-for"):
+            assert self.run_from("not-an-address") == 200
+            assert self.run_from("<script>") == 429            # both fall back to the socket address, which is one visitor
 
 
 class StoreOwnershipTests(unittest.TestCase):

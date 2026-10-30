@@ -236,6 +236,37 @@ class IsolationTests(TeamCase):
 
 
 @needs_pg
+class RateLimitTests(TeamCase):
+    def test_the_per_minute_limit_is_per_person_so_one_burst_does_not_cost_the_team(self):
+        with mock.patch.dict(server.LIMITERS, {"run": limits.RateLimiter(2)}), \
+                mock.patch.object(server, "run_plan", lambda **kw: _Said()):
+            statuses = [self.call("POST", "/run", self.keys["alice"], {"material": f"b = {n}", "api_key": "k"})[0] for n in range(4)]
+            assert statuses == [200, 200, 429, 429]
+            _status, _h, raw = self.call("POST", "/run", self.keys["alice"], {"material": "b = 9", "api_key": "k"})
+            assert "from you" in json.loads(raw)["error"]
+            # the same socket address, other people: their own allowance
+            assert self.call("POST", "/run", self.keys["amy"], {"material": "c = 1", "api_key": "k"})[0] == 200
+            assert self.call("POST", "/run", self.keys["bob"], {"material": "d = 1", "api_key": "k"})[0] == 200
+
+    def test_the_audit_trail_records_the_visitors_address_when_the_proxy_is_trusted(self):
+        with mock.patch.object(server, "TRUST_HEADER", "x-forwarded-for"), mock.patch.object(server, "TRUSTED_HOPS", 1):
+            self.call("GET", "/api/runs", self.keys["alice"], headers={"X-Forwarded-For": "1.2.3.4, 203.0.113.7"})
+        assert self.admin_rows("SELECT DISTINCT ip FROM audit_log WHERE action = 'run.list'") == [("203.0.113.7",)]
+        self.call("GET", "/api/runs", self.keys["alice"], headers={"X-Forwarded-For": "1.2.3.4, 203.0.113.9"})
+        assert ("127.0.0.1",) in self.admin_rows("SELECT DISTINCT ip FROM audit_log WHERE action = 'run.list'")
+
+    def test_the_diagnostics_show_an_owner_what_the_proxy_sends_and_nobody_else(self):
+        status, _h, raw = self.call("GET", "/api/team/diagnostics", self.keys["alice"],
+                                    headers={"X-Forwarded-For": "1.2.3.4, 203.0.113.7", "True-Client-IP": "203.0.113.7"})
+        info = json.loads(raw)
+        assert status == 200 and info["socket_address"] == "127.0.0.1" and info["trust_header"] is None
+        assert info["address_used"] == "127.0.0.1"
+        assert info["forwarding_headers_received"] == {"x-forwarded-for": "1.2.3.4, 203.0.113.7", "true-client-ip": "203.0.113.7"}
+        assert self.call("GET", "/api/team/diagnostics", self.keys["amy"])[0] == 403
+        assert self.call("GET", "/api/team/diagnostics")[0] == 401
+
+
+@needs_pg
 class RoleTests(TeamCase):
     def test_a_viewer_reads_and_nothing_else(self):
         run_id = self.run_as("alice", "viewer = 1")
