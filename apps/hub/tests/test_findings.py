@@ -99,3 +99,36 @@ def test_the_report_page_shows_who_saw_what_and_how_to_fix_it():
     assert "rules + model" in page and "fix: Pass user data as bound parameters." in page
     assert "seen by both readers: 2" in page and "model only: 2" in page and "rules only: 1" in page
     assert "(model)" in page                                          # the traversal, seen by the model alone
+
+
+def test_the_rules_findings_about_the_models_patch_are_flagged_so_a_page_can_set_them_apart():
+    merged, _ = findings.merge(MODEL, RULES)
+    flagged = [f for f in merged if f.get("in_patch")]
+    assert len(flagged) == 2 and all(f["source"].startswith("patch:") for f in flagged)
+    assert not any(f.get("in_patch") for f in merged if f["source"] == "material")
+
+
+def test_a_second_route_without_auth_says_what_may_already_cover_it():
+    merged, _ = findings.merge(MODEL, RULES)
+    second = [f for f in merged if f["source"] == "material" and f.get("line") == 14]
+    assert second and second[0]["seen_by"] == ["rules"]
+    assert second[0]["possibly_covered_by"] == "CWE-306 @ 6"
+    first = [f for f in merged if f.get("line") == 7]
+    assert "possibly_covered_by" not in first[0]
+
+
+def test_nothing_is_marked_covered_when_the_model_found_no_auth_gap():
+    merged, _ = findings.merge([], RULES)
+    assert not any("possibly_covered_by" in f for f in merged)
+
+
+def test_the_report_page_puts_the_patch_findings_in_their_own_block_and_labels_the_summary():
+    merged, overlap = findings.merge(MODEL, RULES)
+    page = templates.report_page({"id": "r2", "result": {
+        "verdict": "REQUIRES_REVIEW", "ok": True, "findings": merged, "agreement": overlap, "summary": "merge it",
+        "patch": {"app.py": "x"}, "plan": {"stages": ["generator", "analyser"]}}})
+    head, _, tail = page.partition("In the model&#x27;s patch")
+    assert tail and "patch:app.py" not in head
+    assert "Line numbers refer to the patch" in page
+    assert "model summary" in page and "the hub did not run the patch" in page
+    assert "possibly covered by CWE-306 @ 6" in page

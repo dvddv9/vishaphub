@@ -96,14 +96,21 @@ def report_page(record: dict, retention: str = "") -> str:
         by = "rules + model" if len(seen) > 1 else str(f.get("source") or "")
         source = f" <i>({e(by)})</i>" if by else ""
         fix = f"<br><small>fix: {e(str(f.get('fix')))}</small>" if f.get("fix") else ""
-        return f"<li>{badge}{e(str(f.get('rule') or ''))}{line}: {e(str(f.get('message') or ''))}{source}{fix}</li>"
+        covered = (f"<br><small>possibly covered by {e(str(f.get('possibly_covered_by')))}</small>"
+                   if f.get("possibly_covered_by") else "")
+        return f"<li>{badge}{e(str(f.get('rule') or ''))}{line}: {e(str(f.get('message') or ''))}{source}{fix}{covered}</li>"
 
-    found = "".join(_finding(f) for f in findings) or "<li>nothing matched</li>"
+    own = [f for f in findings if not f.get("in_patch")]
+    in_patch = [f for f in findings if f.get("in_patch")]
+    found = "".join(_finding(f) for f in own) or "<li>nothing matched</li>"
     overlap = result.get("agreement") or {}
     if overlap:
         patch_note = f" \u00b7 in the model's patch: {overlap['in_patch']}" if overlap.get("in_patch") else ""
         found = (f"<li class=\"meta\">seen by both readers: {overlap.get('both', 0)} \u00b7 model only: "
                  f"{overlap.get('model_only', 0)} \u00b7 rules only: {overlap.get('rules_only', 0)}{patch_note}</li>") + found
+    patch_block = (_block("In the model's patch", "<p class=\"meta\">The rules read the patch the model proposed. "
+                          "Line numbers refer to the patch, not to your material.</p><ul>"
+                          + "".join(_finding(f) for f in in_patch) + "</ul>") if in_patch else "")
     missed = "".join(f"<li>{e(str(item))}</li>" for item in not_checked) or "<li>-</li>"
     rule_chips = "".join(
         f"<span>{e(str(name))} <code>{e(str(version))}</code></span>"
@@ -119,13 +126,14 @@ def report_page(record: dict, retention: str = "") -> str:
 <div class="rep-head">
 <h1>Run <code>{e(str(record.get('id') or ''))}</code></h1>
 <div class="meta-row"><span>at {e(str(record.get('at') or ''))}</span><span>plan {e(plan)}</span><span>fingerprint <code>{e(str(fp.get('digest') or ''))[:32]}</code></span></div>
-{f'<p class="rep-sum">{e(summary)}</p>' if summary else ''}
+{f'<p class="rep-sum"><b>model summary</b>{" (the hub did not run the patch)" if result.get("patch") else ""}: {e(summary)}</p>' if summary else ''}
 {f'<p class="rep-reason">{e(reason)}</p>' if reason else ''}
 {f'<p class="meta">{e(retention)}</p>' if retention else ''}
 </div>
 </section>
 {_block("Steps", f'<div class="table-wrap"><table><tr><th>stage</th><th>verdict</th><th>state</th><th>detail</th></tr>{rows}</table></div>')}
 {_block("Findings", f"<ul>{found}</ul>")}
+{patch_block}
 {_block("Not checked", f"<ul>{missed}</ul>")}
 {_block("Rules that judged", f'<div class="meta-row">{rule_chips}</div>')}
 """

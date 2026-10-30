@@ -179,6 +179,11 @@ let lastSpoken = "";
 
 let lastResult = null;
 
+function groupFindings(list, fn){
+  const own = list.filter(f => !f.in_patch), pat = list.filter(f => f.in_patch);
+  return [...own.map(fn), ...(pat.length ? ["IN THE MODEL'S PATCH (line numbers refer to the patch)"] : []), ...pat.map(fn)];
+}
+
 function renderReport(data){
   lastResult = data;
   const box = $("report");
@@ -186,11 +191,13 @@ function renderReport(data){
   const head = Object.keys(ag).length
     ? `seen by both readers: ${ag.both} \u00b7 model only: ${ag.model_only} \u00b7 rules only: ${ag.rules_only}${ag.in_patch ? " \u00b7 in the model's patch: " + ag.in_patch : ""}\n\n`
     : "";  const panes = {
-    summary: (data.summary || "(model returned no summary)"),
+    summary: data.summary
+      ? (data.model ? "MODEL SUMMARY" + (Object.keys(data.patch || {}).length ? " (the hub did not run the patch)" : "") + "\n\n" : "") + data.summary
+      : "(model returned no summary)",
     findings: (data.findings || []).length
-      ? head + data.findings.map(f => {
+      ? head + groupFindings(data.findings, f => {
         const by = (f.seen_by || []).length > 1 ? "rules + model" : (f.source || "");
-        return `${(f.severity||"").toUpperCase()}${f.rule ? " \u00b7 " + f.rule : ""}${f.line ? " @ " + f.line : ""}${by ? " [" + by + "]" : ""}\n  ${f.message||""}${f.fix ? "\n  fix: " + f.fix : ""}`;
+        return `${(f.severity||"").toUpperCase()}${f.rule ? " \u00b7 " + f.rule : ""}${f.line ? " @ " + f.line : ""}${by ? " [" + by + "]" : ""}\n  ${f.message||""}${f.fix ? "\n  fix: " + f.fix : ""}${f.possibly_covered_by ? "\n  possibly covered by " + f.possibly_covered_by : ""}`;
       }).join("\n\n")
       : "nothing matched",
     patch: Object.keys(data.patch || {}).length

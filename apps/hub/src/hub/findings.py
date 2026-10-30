@@ -51,10 +51,11 @@ def merge(model: list, rules: list) -> tuple[list[dict], dict]:
     taken: set[int] = set()
     out: list[dict] = []
     both = rules_only = in_patch = 0
+    paired: dict[str, str] = {}
 
     for rule_finding in rules:
         if str(rule_finding.get("source") or "") != "material":
-            out.append({**rule_finding, "seen_by": ["rules"]})
+            out.append({**rule_finding, "seen_by": ["rules"], "in_patch": True})
             in_patch += 1
             continue
         family = _family(rule_finding)
@@ -76,6 +77,7 @@ def merge(model: list, rules: list) -> tuple[list[dict], dict]:
         taken.add(best[1])
         seen = model[best[1]]
         both += 1
+        paired.setdefault(family, f"{seen.get('rule') or 'model'} @ {seen.get('line') or '?'}")
         out.append({
             **rule_finding,
             "severity": _stricter(rule_finding.get("severity"), seen.get("severity")),
@@ -91,6 +93,12 @@ def merge(model: list, rules: list) -> tuple[list[dict], dict]:
         if i not in taken:
             out.append({**finding, "source": "model", "seen_by": ["model"]})
             model_only += 1
+
+    # The model often writes one finding for the whole application ("neither endpoint has authentication"). The rules
+    # then report the other route separately. It stays - it is a real second place - but says what may already cover it.
+    for f in out:
+        if f["seen_by"] == ["rules"] and not f.get("in_patch") and _family(f) == "auth" and "auth" in paired:
+            f["possibly_covered_by"] = paired["auth"]
 
     out.sort(key=lambda f: (-SEVERITY.get(str(f.get("severity") or "").lower(), 0), -len(f["seen_by"]), _line(f)))
     return out, {"both": both, "model_only": model_only, "rules_only": rules_only, "in_patch": in_patch}
