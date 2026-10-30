@@ -4,6 +4,14 @@ All notable changes to VishapHub. Format based on [Keep a Changelog](https://kee
 
 ## [Unreleased]
 
+### Added
+
+- **`review`.** Material with a question now means the model reads it and the rules check it
+  (before, the question was ignored whenever there was material). The stricter verdict wins,
+  the model's findings are marked `source: model`, a rejected key leaves the rules' answer with the
+  missing reading named instead of an error, and without any key the run says the question was not put
+  to a model. `{"intent": "review"}` is the explicit form.
+
 ## [0.4.0] — 2026-10-30
 
 ### Added

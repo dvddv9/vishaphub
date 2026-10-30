@@ -489,6 +489,60 @@ class VersionTests(unittest.TestCase):
         assert tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["version"] == __version__
 
 
+class ReviewRoutingTests(ServerCase):
+    """Material with a question is a review when there is a model key to ask with; without one the rules still
+    answer and the run says the question was not put to a model."""
+
+    def sent_to_run_plan(self, body, key_in_env=False):
+        seen = {}
+
+        def capture(**kw):
+            seen.update(kw)
+            return _Done()
+
+        env = {"VISHAP_HUB_LLM_KEY": "k"} if key_in_env else {}
+        with mock.patch.dict(os.environ, env), mock.patch.object(server, "run_plan", capture):
+            if not key_in_env:
+                os.environ.pop("VISHAP_HUB_LLM_KEY", None)
+            status = self.post("/run", body)[0]
+        assert status == 200
+        return seen
+
+    def stages(self, seen):
+        return [s.value for s in seen["plan"].stages]
+
+    def test_material_and_a_question_with_the_callers_key_is_a_review(self):
+        seen = self.sent_to_run_plan({"material": "a = 1", "question": "is this safe?", "api_key": "sk-ant-x"})
+        assert self.stages(seen) == ["generator", "analyser"]
+        assert seen["question"] == "is this safe?" and seen["plan"].model_optional
+
+    def test_a_key_the_operator_set_counts_the_same(self):
+        seen = self.sent_to_run_plan({"material": "a = 1", "question": "is this safe?"}, key_in_env=True)
+        assert self.stages(seen) == ["generator", "analyser"]
+
+    def test_without_any_key_the_rules_answer_and_the_note_says_the_question_went_unasked(self):
+        seen = self.sent_to_run_plan({"material": "a = 1", "question": "is this safe?"})
+        assert self.stages(seen) == ["analyser"]
+        assert "question was not put to a model" in seen["plan"].note
+
+    def test_a_saved_key_alone_does_not_turn_the_model_on(self):
+        seen = self.sent_to_run_plan({"material": "a = 1", "api_key": "sk-ant-x"})    # no question: nothing to ask
+        assert self.stages(seen) == ["analyser"] and "not put to a model" not in seen["plan"].note
+
+    def test_an_explicit_intent_wins_and_is_not_second_guessed(self):
+        seen = self.sent_to_run_plan({"material": "a = 1", "question": "is this safe?", "api_key": "k", "intent": "analyse"})
+        assert self.stages(seen) == ["analyser"] and "not put to a model" not in seen["plan"].note
+
+    def test_an_explicit_review_without_a_question_gets_a_default_one(self):
+        seen = self.sent_to_run_plan({"material": "a = 1", "intent": "review", "api_key": "k"})
+        assert self.stages(seen) == ["generator", "analyser"]
+        assert "security" in seen["question"].lower()
+
+    def test_a_spec_still_means_generation_and_a_bare_question_still_means_ask(self):
+        assert self.stages(self.sent_to_run_plan({"spec": "x", "material": "a = 1", "api_key": "k"})) == ["generator", "validator", "analyser"]
+        assert self.stages(self.sent_to_run_plan({"question": "what is this?", "api_key": "k"})) == ["generator"]
+
+
 class ClientAddressTests(ServerCase):
     """Behind a proxy every visitor arrives from the proxy. The address the limits use must be the visitor's, and
     must not be something the visitor can choose."""

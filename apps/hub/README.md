@@ -45,10 +45,20 @@ Three rules hold the whole thing together:
 | `generate+validate` | generator → validator |
 | `validate+analyse` | validator → analyser |
 | `generate+validate+analyse` | generator → validator → analyser |
+| `review` | generator (the model reads the material) + analyser (the rules check it) |
 
 `POST /run` infers the intent when the client does not name one: spec + material means
-the full route, spec alone means generate and validate, material alone means analyse, a
-question alone means ask.
+the full route, spec alone means generate and validate, a question alone means ask, material
+alone means analyse (the rules, free, no key needed), and **material with a question means
+review** - the model reads the material and answers the question, the rules check the same
+material, and the stricter verdict wins. The model can raise a verdict and add findings (marked
+`source: model`, apart from the rules' own); it can never remove what the rules found, and a
+model's "safe" does not make unmeasured rules safe. Review needs a model key (the caller's
+`api_key`, or one the operator set); without one the rules still answer and the run says that the
+question was not put to a model. If the key is rejected, a review is still the rules' answer, with
+the missing model reading named in `not_checked`; generation, which cannot happen without a model, is
+still an error. An explicit `intent` always wins: `{"intent": "review"}` with no question asks the
+model for a security review.
 
 Rules that matter:
 

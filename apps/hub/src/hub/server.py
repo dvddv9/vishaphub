@@ -108,12 +108,23 @@ SECURITY_HEADERS = {
 }
 
 
+DEFAULT_REVIEW_QUESTION = "Review this code for security vulnerabilities and mistakes, and say which ones matter most."
+
+
+def _model_key_available(body: dict) -> bool:
+    """A key the model could be called with: the caller's own, or one the operator set on the hub."""
+    return bool((str(body.get("api_key") or "") or os.getenv("VISHAP_HUB_LLM_KEY") or "").strip())
+
+
 def _intent_for(body: dict, material: str, spec: str) -> str:
     """What the client asked for, inferred from what it sent when it did not say.
 
     An explicit `intent` always wins. Otherwise the request is read literally: a spec
     and material means build it and check it, a spec alone means build and validate, a
-    material alone means look at it, and a bare question is for the model to answer.
+    bare question is for the model to answer, and material alone means look at it with
+    the rules. Material with a question means review: the model reads it and the rules
+    check it - but only when there is a model key to ask with; without one the rules
+    still answer, and the run says that the question was not put to a model.
     """
     explicit = str(body.get("intent") or "").strip()
     if explicit:
@@ -123,6 +134,8 @@ def _intent_for(body: dict, material: str, spec: str) -> str:
     if spec.strip():
         return "generate+validate"
     if material.strip():
+        if str(body.get("question") or "").strip() and _model_key_available(body):
+            return "review"
         return "analyse"
     return "ask"
 
@@ -558,17 +571,26 @@ class Handler(BaseHTTPRequestHandler):
     def _run_args(self, body: dict) -> dict | None:
         material = str(body.get("material") or "")
         spec_text = body.get("spec") if isinstance(body.get("spec"), str) else ""
+        intent = _intent_for(body, material, spec_text)
         try:
-            plan = plan_for(_intent_for(body, material, spec_text), int(body.get("iterations") or 1))
+            plan = plan_for(intent, int(body.get("iterations") or 1))
         except (RouteError, ValueError) as exc:
             self._send(400, {"ok": False, "error": f"cannot route: {exc}"})
             return None
+        question = str(body.get("question") or "")
+        if intent.strip().lower() == "review" and not question.strip():
+            question = DEFAULT_REVIEW_QUESTION
+        if (intent == "analyse" and material.strip() and question.strip()
+                and not str(body.get("intent") or "").strip()):
+            # inferred, not asked for: the page promised an answer to the question, so say it was not put to a model
+            plan.note = ((plan.note + " \u00b7 " if plan.note else "")
+                         + "your question was not put to a model: no model key was sent")
         return {
             "plan": plan,
             "material": material,
             "files": body.get("files") if isinstance(body.get("files"), dict) else {},
             "spec": body.get("spec") if isinstance(body.get("spec"), dict) else spec_text,
-            "question": str(body.get("question") or ""),
+            "question": question,
             "api_key": str(body.get("api_key") or ""),
             "model": str(body.get("model") or ""),
         }

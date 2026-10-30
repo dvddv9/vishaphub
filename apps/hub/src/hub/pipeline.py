@@ -134,7 +134,19 @@ def _analysis_pieces(material: str, patch: dict) -> list[tuple[str, str]]:
     return pieces
 
 
-def _not_checked(plan: Plan, checks: dict, has_proof: bool) -> list[str]:
+def _model_trouble(reason: str) -> str:
+    """The model's failure in words a person can act on; the raw text goes to the log, not to a page."""
+    text = str(reason or "")
+    if "HTTP 401" in text or "HTTP 403" in text:
+        return "your model key was rejected by Anthropic"
+    if "no model key" in text:
+        return "no model key was sent"
+    if "HTTP 429" in text:
+        return "the model's rate limit was reached"
+    return "the model did not answer"
+
+
+def _not_checked(plan: Plan, checks: dict, has_proof: bool, model_trouble: str = "") -> list[str]:
     """Everything this run did not answer — said before the client asks."""
     missing: list[str] = []
     stages = tuple(getattr(plan, "stages", ()) or ())
@@ -148,6 +160,8 @@ def _not_checked(plan: Plan, checks: dict, has_proof: bool) -> list[str]:
         missing.append("the validator's stage-by-stage detail is not in this answer")
     if has_proof:
         missing.append("the proof lines are the model's promise, not the output of a run")
+    if model_trouble:
+        missing.append(f"the model's reading is missing: {model_trouble}")
     return missing
 
 
@@ -195,6 +209,7 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
     rules_verdict = ""
     checks: dict = {"generator": None, "validator": None, "analyser": None}
     answer: dict = {}
+    model_trouble = ""
     previous: dict[str, str] = {}
 
     def merge(verdict: str) -> None:
@@ -222,6 +237,11 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
                     reason = result.get("error") or "the model did not answer"
                     log.warning("generator failed: %s", reason)
                     steps.append(Step("generator", False, detail=reason))
+                    if getattr(plan, "model_optional", False) and material.strip():
+                        # a review without its model is still the rules' review: say so, do not hide it
+                        model_trouble = _model_trouble(reason)
+                        trace.append(f"pass {pass_no} generator -> no answer ({model_trouble}); the rules go on")
+                        continue
                     return _error(steps, envelope.session_id, trace,
                                   f"no proposal: {reason}", plan_dict)
 
@@ -345,6 +365,8 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
     # REQUIRES_REVIEW is a successful run that found something.
     ok = final not in BLOCKING_VERDICTS
     reason = plan.note or ""
+    if model_trouble:
+        reason = (reason + " · " if reason else "") + f"the model did not answer: {model_trouble}"
     if final == "EMERGENCY":
         reason = (reason + " · " if reason else "") + "an emergency-level security signal is present"
     if model_verdict and rules_verdict and rank(model_verdict) > rank(rules_verdict):
@@ -360,14 +382,15 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
         plan=plan_dict,
         checks=checks,
         summary=answer.get("summary", ""),
-        findings=[*(answer.get("findings") or []), *((checks["analyser"] or {}).get("findings") or [])],
+        findings=[*[({**f, "source": "model"} if isinstance(f, dict) else f) for f in (answer.get("findings") or [])],
+                  *((checks["analyser"] or {}).get("findings") or [])],
         patch=answer.get("patch") or {},
         questions=answer.get("questions") or [],
         proof=answer.get("proof") or [],
         model=answer.get("model", ""),
         model_verdict=model_verdict,
         rules_verdict=rules_verdict,
-        not_checked=_not_checked(plan, checks, bool(answer.get("proof"))),
+        not_checked=_not_checked(plan, checks, bool(answer.get("proof")), model_trouble),
     )
     result.fingerprint = fingerprint.of(
         material=material,
