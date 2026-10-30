@@ -62,7 +62,7 @@ class VerifyUsesItTests(unittest.TestCase):
         only = [Evidence("attack", "length 1", "inconclusive", "raised OperationalError")]
         self.assertEqual(decide_requirement(only)[0], "needs_verification")
         with_test = only + [Evidence("model-test", "test_r1", "pass", "")]
-        self.assertEqual(decide_requirement(with_test)[0], "passed")
+        self.assertEqual(decide_requirement(with_test)[0], "needs_verification")
 
 
 class AssumptionTests(unittest.TestCase):
