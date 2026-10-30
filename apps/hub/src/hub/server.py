@@ -13,7 +13,9 @@ so the id proves nothing. The page's own example (`demo.py`) is the one public r
 
 Every door that spends something has a ceiling: a request budget per address for the
 run, the chat and the voice, a length limit on the text, and a cache for the voice.
-The same words are synthesised once, not once per visitor.
+The same words are synthesised once, not once per visitor. A run also draws on a budget
+for the whole process (runs and characters a day): when it is spent, `/run` says 429 and
+why, and `/health` still answers. Each kept run records what it was sent and what came back.
 """
 from __future__ import annotations
 
@@ -52,6 +54,7 @@ _TOKEN = re.compile(r"[A-Za-z0-9_-]{24,128}")
 PRIVATE = {"cache-control": "private, no-store"}
 
 LIMITERS = {kind: limits.RateLimiter(limits.per_minute(kind)) for kind in ("run", "chat", "speak")}
+BUDGET = limits.RunBudget(limits.global_runs_per_day(), limits.global_chars_per_day())
 TTS_CACHE = limits.TTSCache(limits.int_env("VISHAP_HUB_TTS_CACHE", limits.DEFAULT_TTS_ITEMS))
 RUNS = RunStore(keep=limits.int_env("VISHAP_HUB_RUNS_KEEP", 200),
                 path=os.getenv("VISHAP_HUB_RUNS_FILE", ""))
@@ -195,6 +198,11 @@ class Handler(BaseHTTPRequestHandler):
             "plan": payload.get("plan"),
             "summary": payload.get("summary", ""),
             "result": payload,
+            "cost": {
+                "input_chars": limits.input_chars(args or {}),
+                #: size of what came back - a proxy for the model's output, which the hub does not meter
+                "result_chars": len(json.dumps(payload, ensure_ascii=False, default=str)),
+            },
             "owners": [owner] if owner else [],
             "demo": bool(args) and demo.is_demo(args),
         })
@@ -402,6 +410,11 @@ class Handler(BaseHTTPRequestHandler):
                 return
             args = self._run_args(body)
             if args is None:
+                return
+            spend = BUDGET.take(limits.input_chars(args))
+            if not spend.allowed:
+                self._send(413 if spend.too_big else 429, {"ok": False, "error": spend.reason},
+                           extra={} if spend.too_big else {"retry-after": str(int(spend.wait) + 1)})
                 return
             owner, cookie = self._owner_for_run()
             if path == "/run/stream":

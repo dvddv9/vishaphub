@@ -41,6 +41,10 @@ class ServerCase(unittest.TestCase):
         for kind in server.LIMITERS:
             server.LIMITERS[kind] = limits.RateLimiter(0)
         self.addCleanup(lambda: server.LIMITERS.update(self._saved_limits))
+        # the process-wide budget is a subject of its own as well; a suite must not spend it
+        budget = mock.patch.object(server, "BUDGET", limits.RunBudget(0, 0))
+        budget.start()
+        self.addCleanup(budget.stop)
         self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
         self.port = self.httpd.server_address[1]
         threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
@@ -431,6 +435,88 @@ class StoreOwnershipTests(unittest.TestCase):
         store.save({"id": "x", "owners": ["b"], "demo": False})
         assert store.get("x")["owners"] == ["a", "b"]
         assert store.get_for("x", None) is None
+
+
+# the ceiling for the whole process --------------------------------------------
+
+class BudgetUnitTests(unittest.TestCase):
+    def test_runs_in_a_window_are_counted_and_then_forgotten(self):
+        now = [0.0]
+        budget = limits.RunBudget(2, 0, window=100.0, clock=lambda: now[0])
+        assert budget.take(10).allowed and budget.take(10).allowed
+        third = budget.take(10)
+        assert not third.allowed and third.wait > 0 and "2 runs" in third.reason
+        now[0] = 101.0
+        assert budget.take(10).allowed
+
+    def test_characters_are_a_ceiling_of_their_own(self):
+        budget = limits.RunBudget(0, 100, clock=lambda: 0.0)
+        assert budget.take(60).allowed
+        second = budget.take(60)
+        assert not second.allowed and not second.too_big and "100 characters" in second.reason
+        assert budget.used() == {"runs": 1, "chars": 60}
+
+    def test_a_request_larger_than_the_whole_budget_is_called_what_it_is(self):
+        verdict = limits.RunBudget(0, 100).take(101)
+        assert not verdict.allowed and verdict.too_big
+
+    def test_zero_turns_both_ceilings_off(self):
+        budget = limits.RunBudget(0, 0)
+        assert all(budget.take(10**9).allowed for _ in range(500))
+
+    def test_the_default_is_conservative_and_the_environment_overrides_it(self):
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("VISHAP_HUB_GLOBAL_RUNS_PER_DAY", None)
+            assert limits.global_runs_per_day() == 200
+        with mock.patch.dict(os.environ, {"VISHAP_HUB_GLOBAL_RUNS_PER_DAY": "7"}):
+            assert limits.global_runs_per_day() == 7
+
+    def test_what_a_run_sends_in_is_counted(self):
+        args = {"material": "abc", "question": "de", "spec": "f", "files": {"a.py": "gh", "b.py": "i"}}
+        assert limits.input_chars(args) == 3 + 2 + 1 + 2 + 1
+        assert limits.input_chars({"spec": {"entry": "x"}, "files": {}}) > 0
+
+
+class BudgetServerTests(ServerCase):
+    def setUp(self):
+        super().setUp()
+        patcher = mock.patch.object(server, "RUNS", RunStore(keep=50))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def run_once(self, path="/run", **body):
+        body = {"material": "a = 1", "api_key": "k", **body}
+        with mock.patch.object(server, "run_plan", lambda **kw: _Done()):
+            return self.post(path, body)
+
+    def test_the_run_after_the_last_one_is_a_429_with_a_reason_and_health_still_answers(self):
+        with mock.patch.object(server, "BUDGET", limits.RunBudget(2, 0)):
+            assert self.run_once()[0] == 200
+            assert self.run_once()[0] == 200
+            status, headers, raw = self.run_once()
+            assert status == 429
+            assert "budget of 2 runs" in json.loads(raw)["error"]
+            assert int({k.lower(): v for k, v in headers.items()}["retry-after"]) >= 1
+            assert self.run_once("/run/stream")[0] == 429
+            assert self.get("/health")[0] == 200
+
+    def test_a_request_too_large_for_the_budget_is_a_413(self):
+        with mock.patch.object(server, "BUDGET", limits.RunBudget(0, 10)):
+            assert self.run_once(material="x" * 11)[0] == 413
+
+    def test_a_request_that_is_refused_for_its_form_spends_nothing(self):
+        with mock.patch.object(server, "BUDGET", limits.RunBudget(1, 0)):
+            assert self.run_once(intent="no-such-intent")[0] == 400
+            assert self.run_once()[0] == 200
+
+    def test_a_kept_run_shows_what_it_cost(self):
+        status, headers, raw = self.run_once(material="a" * 40, question="is this safe?")
+        assert status == 200
+        run_id = json.loads(raw)["fingerprint"]["id"]
+        _status, kept = self.get(f"/api/runs/{run_id}.json", self.cookie_of(headers))
+        cost = json.loads(kept)["cost"]
+        assert cost["input_chars"] == 40 + len("is this safe?")
+        assert cost["result_chars"] > 0
 
 
 # the fingerprint --------------------------------------------------------------
