@@ -146,6 +146,40 @@ def regressions(current: dict, recorded: dict) -> list[str]:
     return bad
 
 
+def before_after(results: dict, manifest: dict) -> list[str]:
+    """Compare with labelled/RESULTS.before-rules.json: the first run, before the PHP and Go rules were written."""
+    path = CORPUS / "RESULTS.before-rules.json"
+    if not path.exists():
+        return []
+    before = json.loads(path.read_text(encoding="utf-8"))["per_example"]
+    meta = {e["id"]: e for e in manifest["examples"]}
+
+    def numbers(per: dict) -> dict:
+        dangerous = [(i, r) for i, r in per.items() if i in meta and meta[i]["label"] == "dangerous"]
+        safe = [(i, r) for i, r in per.items() if i in meta and meta[i]["label"] == "safe"]
+        crit = [r for i, r in dangerous if meta[i]["criticality"] == "critical"]
+        return {"hit": sum(r["hits"] for _, r in dangerous), "exp": sum(r["expected"] for _, r in dangerous),
+                "crit_safe": sum(1 for r in crit if r["safe_verdict"]), "crit": len(crit),
+                "fp_examples": sum(1 for _, r in safe if r["findings"]), "safe": len(safe),
+                "fp_findings": sum(r["findings"] for _, r in safe)}
+
+    lines = ["## Before and after the PHP and Go rules", "",
+             "`RESULTS.before-rules.md` / `.json` are the first run, kept as they were. Three critical examples got SAFE "
+             "then; rules for PHP shell calls, PHP `eval` and Go `sh -c` were written for them, and a fourth safe example "
+             "was added to show the same-line escape the PHP rule can see. The examples marked `rules_written_after` "
+             "therefore guard against regression and are not independent evidence of recall.", "",
+             "| mode | measure | before | after |", "|---|---|---:|---:|"]
+    for mode in MODES:
+        a, b = numbers(before.get(mode, {})), numbers(ratchet_view(results)[mode])
+        lines += [f"| {mode} | recall (expected findings hit) | {_pct(a['hit'], a['exp'])} ({a['hit']}/{a['exp']}) | "
+                  f"{_pct(b['hit'], b['exp'])} ({b['hit']}/{b['exp']}) |",
+                  f"| {mode} | critical examples that got SAFE | {a['crit_safe']} of {a['crit']} | {b['crit_safe']} of {b['crit']} |",
+                  f"| {mode} | safe examples flagged (false positives) | {a['fp_examples']} of {a['safe']} | {b['fp_examples']} of {b['safe']} |"]
+    lines += ["", "The one new false positive is `php-safe-json-escapeshellarg`: the host is escaped on a line before the "
+              "call, and a rule that reads one line at a time cannot see that. It is left in the set on purpose.", ""]
+    return lines
+
+
 def _pct(a: int, b: int) -> str:
     return "-" if not b else f"{100 * a / b:.0f}%"
 
@@ -183,6 +217,7 @@ def render(results: dict, manifest: dict) -> str:
                else "Clear: no critical example got SAFE in either mode.")]
     lines += [f"- {b}" for b in block] + [""]
 
+    lines += before_after(results, manifest)
     for mode in MODES:
         s = summary[mode]
         lines += [f"## Mode `{mode}`" + (" (file name given, as an upload)" if mode == "named"

@@ -84,13 +84,15 @@ The report page says the same in one line, taken from the store: `Kept in memory
 
 ## How good are the analyzer's rules
 
-`apps/analyzer/tests/bench/labelled/` holds 105 labelled examples in 11 languages (Python, JavaScript, TypeScript, Java, C, C++, PHP, Go, Terraform, Kubernetes YAML, Dockerfile): 71 dangerous and 34 safe. Each has the findings it should produce (CWE and line) and a written reason for its label in `manifest.json`; the expectations were written from the code, not copied from the engine's output. `python -m tests.bench.labelled_score` scores the rule engine on them, and `--write` refreshes `labelled/RESULTS.md`: recall, false positives, language detection and time, per language and per criticality, in two modes (file name given, as an upload; and pasted without one, as the hub does).
+`apps/analyzer/tests/bench/labelled/` holds 106 labelled examples in 11 languages (Python, JavaScript, TypeScript, Java, C, C++, PHP, Go, Terraform, Kubernetes YAML, Dockerfile): 71 dangerous and 35 safe. Each has the findings it should produce (CWE and line) and a written reason for its label in `manifest.json`; the expectations were written from the code, not copied from the engine's output. `python -m tests.bench.labelled_score` scores the rule engine on them, and `--write` refreshes `labelled/RESULTS.md`: recall, false positives, language detection and time, per language and per criticality, in two modes (file name given, as an upload; and pasted without one, as the hub does).
 
 **What this does not measure.** It runs the rules alone: no model, no network, no key, so it is free and repeatable. It says nothing about the quality of hub verdicts that used a model. There the model proposes and the rules decide, and none of that is exercised here. A good number in this set is not a good hub, and a bad one is not a bad hub.
 
 **Release blocker.** No example labelled critical may get SAFE (the rules found nothing at all), in either mode. `apps/analyzer/tests/test_bench_labelled.py` fails the analyzer CI job if one does, and it has no list of known failures to hide behind. The same file also fails when an example gets worse than the recorded results. Go has no language-specific rules, only the language-independent ones; the set includes it to show what that gives.
 
-Three rules flag every call site on purpose (`subprocess` in Python, `ProcessBuilder` in Java, `system`/`execvp` in C), so safe code that calls them is counted as a false positive. The set counts them, and says so.
+Four rules flag every call site on purpose (`subprocess` in Python, `ProcessBuilder` in Java, `system`/`execvp` in C, the shell functions in PHP), so safe code that calls them is counted as a false positive; the PHP rule skips a line that escapes its argument on that same line. The set counts them, and says so.
+
+The first run found three critical examples (PHP shell calls, PHP `eval`, Go `sh -c`) that the rules called SAFE. Rules were written for them; `labelled/RESULTS.before-rules.md` keeps the first run, `RESULTS.md` compares, and the four examples the rules were written for or beside are marked `rules_written_after`, because they guard against regression but are not independent evidence of recall.
 
 ## Known gaps
 

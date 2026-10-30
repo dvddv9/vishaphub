@@ -1,6 +1,6 @@
 # Labelled benchmark: the analyzer's rules alone
 
-105 examples (71 dangerous, 34 safe), 11 languages. Produced by `python -m tests.bench.labelled_score --write`; the examples, their expected findings and the reason for each label are in `manifest.json`.
+106 examples (71 dangerous, 35 safe), 11 languages. Produced by `python -m tests.bench.labelled_score --write`; the examples, their expected findings and the reason for each label are in `manifest.json`.
 
 ## What this does and does not measure
 
@@ -14,11 +14,22 @@ SAFE means what it means in the hub: the rules found nothing at all. A finding o
 
 ### Blocker status
 
-**BLOCKED** - 4 critical example(s) got SAFE:
-- named: php-cmd-system (php)
-- named: php-eval-post (php)
-- named: go-cmd-sh-c (go)
-- pasted: go-cmd-sh-c (go)
+Clear: no critical example got SAFE in either mode.
+
+## Before and after the PHP and Go rules
+
+`RESULTS.before-rules.md` / `.json` are the first run, kept as they were. Three critical examples got SAFE then; rules for PHP shell calls, PHP `eval` and Go `sh -c` were written for them, and a fourth safe example was added to show the same-line escape the PHP rule can see. The examples marked `rules_written_after` therefore guard against regression and are not independent evidence of recall.
+
+| mode | measure | before | after |
+|---|---|---:|---:|
+| named | recall (expected findings hit) | 66% (47/71) | 70% (50/71) |
+| named | critical examples that got SAFE | 3 of 23 | 0 of 23 |
+| named | safe examples flagged (false positives) | 3 of 34 | 4 of 35 |
+| pasted | recall (expected findings hit) | 69% (49/71) | 70% (50/71) |
+| pasted | critical examples that got SAFE | 1 of 23 | 0 of 23 |
+| pasted | safe examples flagged (false positives) | 3 of 34 | 4 of 35 |
+
+The one new false positive is `php-safe-json-escapeshellarg`: the host is escaped on a line before the call, and a rule that reads one line at a time cannot see that. It is left in the set on purpose.
 
 ## Mode `named` (file name given, as an upload)
 
@@ -33,107 +44,7 @@ SAFE means what it means in the hub: the rules found nothing at all. A finding o
 | dockerfile | high | 1 | 0 | 0% (0/1) | 0 | 1 |
 | dockerfile | medium | 1 | 0 | 0% (0/1) | 0 | 1 |
 | dockerfile | low | 1 | 0 | 0% (0/1) | 0 | 1 |
-| go | critical | 2 | 1 | 50% (1/2) | 0 | 1 |
-| go | high | 2 | 1 | 50% (1/2) | 0 | 1 |
-| go | medium | 2 | 0 | 0% (0/2) | 0 | 2 |
-| java | critical | 3 | 3 | 100% (3/3) | 0 | 0 |
-| java | high | 3 | 1 | 33% (1/3) | 0 | 2 |
-| java | medium | 1 | 1 | 100% (1/1) | 0 | 0 |
-| javascript | critical | 3 | 3 | 100% (3/3) | 0 | 0 |
-| javascript | high | 4 | 3 | 75% (3/4) | 0 | 1 |
-| javascript | medium | 2 | 2 | 100% (2/2) | 0 | 0 |
-| php | critical | 3 | 0 | 0% (0/3) | 0 | 2 |
-| php | high | 3 | 1 | 33% (1/3) | 0 | 2 |
-| python | critical | 7 | 7 | 100% (7/7) | 0 | 0 |
-| python | high | 8 | 4 | 50% (4/8) | 0 | 3 |
-| python | medium | 4 | 4 | 100% (4/4) | 0 | 0 |
-| terraform | high | 3 | 3 | 100% (3/3) | 0 | 0 |
-| terraform | medium | 1 | 1 | 100% (1/1) | 0 | 0 |
-| typescript | critical | 2 | 2 | 100% (2/2) | 0 | 0 |
-| typescript | high | 2 | 1 | 50% (1/2) | 0 | 1 |
-| yaml | high | 3 | 2 | 67% (2/3) | 0 | 1 |
-
-Overall recall: 66% (47/71 expected findings). Without the examples the rules were written for after the first run (`rules_written_after` in the manifest): 66% (47/71).
-
-### Safe examples: false positives
-
-| language | examples | with findings | findings | critical | high | medium | low |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| c | 3 | 1 | 1 | 0 | 1 | 0 | 0 |
-| cpp | 2 | 0 | 0 | 0 | 0 | 0 | 0 |
-| dockerfile | 2 | 0 | 0 | 0 | 0 | 0 | 0 |
-| go | 3 | 0 | 0 | 0 | 0 | 0 | 0 |
-| java | 4 | 1 | 1 | 0 | 1 | 0 | 0 |
-| javascript | 4 | 0 | 0 | 0 | 0 | 0 | 0 |
-| php | 3 | 0 | 0 | 0 | 0 | 0 | 0 |
-| python | 6 | 1 | 1 | 0 | 1 | 0 | 0 |
-| terraform | 2 | 0 | 0 | 0 | 0 | 0 | 0 |
-| typescript | 3 | 0 | 0 | 0 | 0 | 0 | 0 |
-| yaml | 2 | 0 | 0 | 0 | 0 | 0 | 0 |
-
-### Language detection and time
-
-| language | examples | language detected | median ms | max ms |
-|---|---:|---:|---:|---:|
-| c | 10 | 10/10 | 0.41 | 0.52 |
-| cpp | 5 | 5/5 | 0.21 | 0.24 |
-| dockerfile | 5 | 5/5 | 0.23 | 0.32 |
-| go | 9 | 9/9 | 0.3 | 0.6 |
-| java | 11 | 11/11 | 0.45 | 0.92 |
-| javascript | 13 | 13/13 | 0.68 | 0.93 |
-| php | 9 | 9/9 | 0.14 | 0.35 |
-| python | 25 | 25/25 | 1.8 | 3.22 |
-| terraform | 6 | 6/6 | 0.27 | 0.52 |
-| typescript | 7 | 7/7 | 0.52 | 0.7 |
-| yaml | 5 | 5/5 | 0.56 | 0.64 |
-
-### Misses in mode `named` (24 examples with an expected finding not hit)
-
-- `go-cmd-sh-c` (go, critical): 0/1 hit, SAFE
-- `php-cmd-system` (php, critical): 0/1 hit, SAFE
-- `php-eval-post` (php, critical): 0/1 hit, SAFE
-- `php-sqli-concat` (php, critical): 0/1 hit, 1 other finding(s)
-- `c-malloc-overflow` (c, high): 0/1 hit, SAFE
-- `c-use-after-free` (c, high): 0/1 hit, SAFE
-- `cpp-format-string` (cpp, high): 0/1 hit, SAFE
-- `docker-secret-in-env` (dockerfile, high): 0/1 hit, SAFE
-- `go-path-traversal` (go, high): 0/1 hit, SAFE
-- `java-path-traversal` (java, high): 0/1 hit, SAFE
-- `java-xxe-default-parser` (java, high): 0/1 hit, SAFE
-- `js-jwt-none` (javascript, high): 0/1 hit, SAFE
-- `k8s-plaintext-secret-env` (yaml, high): 0/1 hit, SAFE
-- `php-include-lfi` (php, high): 0/1 hit, SAFE
-- `php-reflected-xss` (php, high): 0/1 hit, SAFE
-- `py-idor` (python, high): 0/1 hit, SAFE
-- `py-path-traversal` (python, high): 0/1 hit, 1 other finding(s)
-- `py-ssrf` (python, high): 0/1 hit, SAFE
-- `py-xss-flask` (python, high): 0/1 hit, SAFE
-- `ts-reflected-xss` (typescript, high): 0/1 hit, SAFE
-- `docker-curl-pipe-sh` (dockerfile, medium): 0/1 hit, SAFE
-- `go-math-rand-token` (go, medium): 0/1 hit, SAFE
-- `go-md5-password` (go, medium): 0/1 hit, SAFE
-- `docker-runs-as-root` (dockerfile, low): 0/1 hit, SAFE
-
-### False positives in mode `named` (3 safe examples flagged)
-
-- `py-safe-subprocess-list`: cmd-injection-py line 14 (high)
-- `java-safe-processbuilder-validated`: cmd-injection-java line 10 (high)
-- `c-safe-execvp`: cmd-injection-c line 11 (high)
-
-## Mode `pasted` (no file name, language sniffed - what the hub does with pasted code)
-
-### Dangerous examples, by language and criticality
-
-| language | criticality | examples | found | recall (findings) | right class, wrong line | SAFE |
-|---|---|---:|---:|---:|---:|---:|
-| c | critical | 2 | 2 | 100% (2/2) | 0 | 0 |
-| c | high | 5 | 3 | 60% (3/5) | 0 | 2 |
-| cpp | critical | 1 | 1 | 100% (1/1) | 0 | 0 |
-| cpp | high | 2 | 1 | 50% (1/2) | 0 | 1 |
-| dockerfile | high | 1 | 0 | 0% (0/1) | 0 | 1 |
-| dockerfile | medium | 1 | 0 | 0% (0/1) | 0 | 1 |
-| dockerfile | low | 1 | 0 | 0% (0/1) | 0 | 1 |
-| go | critical | 2 | 1 | 50% (1/2) | 0 | 1 |
+| go | critical | 2 | 2 | 100% (2/2) | 0 | 0 |
 | go | high | 2 | 1 | 50% (1/2) | 0 | 1 |
 | go | medium | 2 | 0 | 0% (0/2) | 0 | 2 |
 | java | critical | 3 | 3 | 100% (3/3) | 0 | 0 |
@@ -153,7 +64,7 @@ Overall recall: 66% (47/71 expected findings). Without the examples the rules we
 | typescript | high | 2 | 1 | 50% (1/2) | 0 | 1 |
 | yaml | high | 3 | 2 | 67% (2/3) | 0 | 1 |
 
-Overall recall: 69% (49/71 expected findings). Without the examples the rules were written for after the first run (`rules_written_after` in the manifest): 69% (49/71).
+Overall recall: 70% (50/71 expected findings). Without the examples the rules were written for after the first run (`rules_written_after` in the manifest): 69% (47/68).
 
 ### Safe examples: false positives
 
@@ -165,7 +76,7 @@ Overall recall: 69% (49/71 expected findings). Without the examples the rules we
 | go | 3 | 0 | 0 | 0 | 0 | 0 | 0 |
 | java | 4 | 1 | 1 | 0 | 1 | 0 | 0 |
 | javascript | 4 | 0 | 0 | 0 | 0 | 0 | 0 |
-| php | 3 | 0 | 0 | 0 | 0 | 0 | 0 |
+| php | 4 | 1 | 1 | 0 | 1 | 0 | 0 |
 | python | 6 | 1 | 1 | 0 | 1 | 0 | 0 |
 | terraform | 2 | 0 | 0 | 0 | 0 | 0 | 0 |
 | typescript | 3 | 0 | 0 | 0 | 0 | 0 | 0 |
@@ -175,21 +86,20 @@ Overall recall: 69% (49/71 expected findings). Without the examples the rules we
 
 | language | examples | language detected | median ms | max ms |
 |---|---:|---:|---:|---:|
-| c | 10 | 10/10 | 0.48 | 0.59 |
-| cpp | 5 | 0/5 | 0.25 | 0.3 |
-| dockerfile | 5 | 0/5 | 0.64 | 0.8 |
-| go | 9 | 0/9 | 0.79 | 1.29 |
-| java | 11 | 11/11 | 0.58 | 1.16 |
-| javascript | 13 | 13/13 | 0.76 | 1.02 |
-| php | 9 | 0/9 | 0.35 | 0.67 |
-| python | 25 | 25/25 | 1.8 | 3.58 |
-| terraform | 6 | 6/6 | 0.34 | 0.72 |
-| typescript | 7 | 0/7 | 0.61 | 0.76 |
-| yaml | 5 | 5/5 | 0.69 | 0.88 |
+| c | 10 | 10/10 | 0.45 | 0.65 |
+| cpp | 5 | 5/5 | 0.32 | 0.39 |
+| dockerfile | 5 | 5/5 | 0.25 | 0.43 |
+| go | 9 | 9/9 | 0.45 | 0.65 |
+| java | 11 | 11/11 | 0.62 | 0.96 |
+| javascript | 13 | 13/13 | 0.53 | 0.82 |
+| php | 10 | 10/10 | 0.26 | 0.44 |
+| python | 25 | 25/25 | 2.0 | 3.88 |
+| terraform | 6 | 6/6 | 0.43 | 0.69 |
+| typescript | 7 | 7/7 | 0.68 | 0.84 |
+| yaml | 5 | 5/5 | 0.6 | 0.68 |
 
-### Misses in mode `pasted` (22 examples with an expected finding not hit)
+### Misses in mode `named` (21 examples with an expected finding not hit)
 
-- `go-cmd-sh-c` (go, critical): 0/1 hit, SAFE
 - `php-sqli-concat` (php, critical): 0/1 hit, 1 other finding(s)
 - `c-malloc-overflow` (c, high): 0/1 hit, SAFE
 - `c-use-after-free` (c, high): 0/1 hit, SAFE
@@ -212,10 +122,109 @@ Overall recall: 69% (49/71 expected findings). Without the examples the rules we
 - `go-md5-password` (go, medium): 0/1 hit, SAFE
 - `docker-runs-as-root` (dockerfile, low): 0/1 hit, SAFE
 
-### False positives in mode `pasted` (3 safe examples flagged)
+### False positives in mode `named` (4 safe examples flagged)
 
 - `py-safe-subprocess-list`: cmd-injection-py line 14 (high)
 - `java-safe-processbuilder-validated`: cmd-injection-java line 10 (high)
 - `c-safe-execvp`: cmd-injection-c line 11 (high)
+- `php-safe-json-escapeshellarg`: cmd-injection-php line 5 (high)
+
+## Mode `pasted` (no file name, language sniffed - what the hub does with pasted code)
+
+### Dangerous examples, by language and criticality
+
+| language | criticality | examples | found | recall (findings) | right class, wrong line | SAFE |
+|---|---|---:|---:|---:|---:|---:|
+| c | critical | 2 | 2 | 100% (2/2) | 0 | 0 |
+| c | high | 5 | 3 | 60% (3/5) | 0 | 2 |
+| cpp | critical | 1 | 1 | 100% (1/1) | 0 | 0 |
+| cpp | high | 2 | 1 | 50% (1/2) | 0 | 1 |
+| dockerfile | high | 1 | 0 | 0% (0/1) | 0 | 1 |
+| dockerfile | medium | 1 | 0 | 0% (0/1) | 0 | 1 |
+| dockerfile | low | 1 | 0 | 0% (0/1) | 0 | 1 |
+| go | critical | 2 | 2 | 100% (2/2) | 0 | 0 |
+| go | high | 2 | 1 | 50% (1/2) | 0 | 1 |
+| go | medium | 2 | 0 | 0% (0/2) | 0 | 2 |
+| java | critical | 3 | 3 | 100% (3/3) | 0 | 0 |
+| java | high | 3 | 1 | 33% (1/3) | 0 | 2 |
+| java | medium | 1 | 1 | 100% (1/1) | 0 | 0 |
+| javascript | critical | 3 | 3 | 100% (3/3) | 0 | 0 |
+| javascript | high | 4 | 3 | 75% (3/4) | 0 | 1 |
+| javascript | medium | 2 | 2 | 100% (2/2) | 0 | 0 |
+| php | critical | 3 | 2 | 67% (2/3) | 0 | 0 |
+| php | high | 3 | 1 | 33% (1/3) | 0 | 2 |
+| python | critical | 7 | 7 | 100% (7/7) | 0 | 0 |
+| python | high | 8 | 4 | 50% (4/8) | 0 | 3 |
+| python | medium | 4 | 4 | 100% (4/4) | 0 | 0 |
+| terraform | high | 3 | 3 | 100% (3/3) | 0 | 0 |
+| terraform | medium | 1 | 1 | 100% (1/1) | 0 | 0 |
+| typescript | critical | 2 | 2 | 100% (2/2) | 0 | 0 |
+| typescript | high | 2 | 1 | 50% (1/2) | 0 | 1 |
+| yaml | high | 3 | 2 | 67% (2/3) | 0 | 1 |
+
+Overall recall: 70% (50/71 expected findings). Without the examples the rules were written for after the first run (`rules_written_after` in the manifest): 69% (47/68).
+
+### Safe examples: false positives
+
+| language | examples | with findings | findings | critical | high | medium | low |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| c | 3 | 1 | 1 | 0 | 1 | 0 | 0 |
+| cpp | 2 | 0 | 0 | 0 | 0 | 0 | 0 |
+| dockerfile | 2 | 0 | 0 | 0 | 0 | 0 | 0 |
+| go | 3 | 0 | 0 | 0 | 0 | 0 | 0 |
+| java | 4 | 1 | 1 | 0 | 1 | 0 | 0 |
+| javascript | 4 | 0 | 0 | 0 | 0 | 0 | 0 |
+| php | 4 | 1 | 1 | 0 | 1 | 0 | 0 |
+| python | 6 | 1 | 1 | 0 | 1 | 0 | 0 |
+| terraform | 2 | 0 | 0 | 0 | 0 | 0 | 0 |
+| typescript | 3 | 0 | 0 | 0 | 0 | 0 | 0 |
+| yaml | 2 | 0 | 0 | 0 | 0 | 0 | 0 |
+
+### Language detection and time
+
+| language | examples | language detected | median ms | max ms |
+|---|---:|---:|---:|---:|
+| c | 10 | 10/10 | 0.56 | 0.78 |
+| cpp | 5 | 0/5 | 0.43 | 0.46 |
+| dockerfile | 5 | 0/5 | 0.69 | 0.94 |
+| go | 9 | 0/9 | 1.13 | 1.61 |
+| java | 11 | 11/11 | 0.79 | 1.22 |
+| javascript | 13 | 13/13 | 0.63 | 0.89 |
+| php | 10 | 0/10 | 0.51 | 1.03 |
+| python | 25 | 25/25 | 1.93 | 3.74 |
+| terraform | 6 | 6/6 | 0.55 | 0.88 |
+| typescript | 7 | 0/7 | 0.85 | 1.04 |
+| yaml | 5 | 5/5 | 0.79 | 0.87 |
+
+### Misses in mode `pasted` (21 examples with an expected finding not hit)
+
+- `php-sqli-concat` (php, critical): 0/1 hit, 1 other finding(s)
+- `c-malloc-overflow` (c, high): 0/1 hit, SAFE
+- `c-use-after-free` (c, high): 0/1 hit, SAFE
+- `cpp-format-string` (cpp, high): 0/1 hit, SAFE
+- `docker-secret-in-env` (dockerfile, high): 0/1 hit, SAFE
+- `go-path-traversal` (go, high): 0/1 hit, SAFE
+- `java-path-traversal` (java, high): 0/1 hit, SAFE
+- `java-xxe-default-parser` (java, high): 0/1 hit, SAFE
+- `js-jwt-none` (javascript, high): 0/1 hit, SAFE
+- `k8s-plaintext-secret-env` (yaml, high): 0/1 hit, SAFE
+- `php-include-lfi` (php, high): 0/1 hit, SAFE
+- `php-reflected-xss` (php, high): 0/1 hit, SAFE
+- `py-idor` (python, high): 0/1 hit, SAFE
+- `py-path-traversal` (python, high): 0/1 hit, 1 other finding(s)
+- `py-ssrf` (python, high): 0/1 hit, SAFE
+- `py-xss-flask` (python, high): 0/1 hit, SAFE
+- `ts-reflected-xss` (typescript, high): 0/1 hit, SAFE
+- `docker-curl-pipe-sh` (dockerfile, medium): 0/1 hit, SAFE
+- `go-math-rand-token` (go, medium): 0/1 hit, SAFE
+- `go-md5-password` (go, medium): 0/1 hit, SAFE
+- `docker-runs-as-root` (dockerfile, low): 0/1 hit, SAFE
+
+### False positives in mode `pasted` (4 safe examples flagged)
+
+- `py-safe-subprocess-list`: cmd-injection-py line 14 (high)
+- `java-safe-processbuilder-validated`: cmd-injection-java line 10 (high)
+- `c-safe-execvp`: cmd-injection-c line 11 (high)
+- `php-safe-json-escapeshellarg`: cmd-injection-php line 5 (high)
 
 Timings are the fastest of three runs on whatever machine produced this file; they are not compared between runs. Everything else in this file is deterministic.

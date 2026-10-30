@@ -976,7 +976,8 @@
      "why": "request value appended to a shell command"
     }
    ],
-   "rationale": "system() with a request value appended: host=8.8.8.8;id runs a second command."
+   "rationale": "system() with a request value appended: host=8.8.8.8;id runs a second command.",
+   "rules_written_after": true
   },
   {
    "id": "php-eval-post",
@@ -991,7 +992,8 @@
      "why": "request field evaluated as PHP"
     }
    ],
-   "rationale": "eval() on a POST field runs arbitrary PHP."
+   "rationale": "eval() on a POST field runs arbitrary PHP.",
+   "rules_written_after": true
   },
   {
    "id": "php-unserialize-cookie",
@@ -1093,7 +1095,8 @@
      "why": "request value interpolated into sh -c"
     }
    ],
-   "rationale": "The host goes into a string run by sh -c, so shell metacharacters in it are interpreted."
+   "rationale": "The host goes into a string run by sh -c, so shell metacharacters in it are interpreted.",
+   "rules_written_after": true
   },
   {
    "id": "go-tls-skip-verify",
@@ -1385,6 +1388,17 @@
    "criticality": "none",
    "expected": [],
    "rationale": "Multi-stage build; the runtime stage is minimal and runs as a numeric non-root user."
+  },
+  {
+   "id": "php-safe-escapeshellarg-inline",
+   "file": "php/php_safe_escapeshellarg_inline.php",
+   "language": "php",
+   "label": "safe",
+   "criticality": "none",
+   "expected": [],
+   "rationale": "The host must parse as an IP address before it is used, and it is escaped with escapeshellarg on the same line as the call. Added with the PHP rule, which can see an escape on the same line only: the two-line form in php-safe-json-escapeshellarg is the same safe code and is reported, which is a known limit of a line-based rule.",
+   "rules_written_after": true
   }
- ]
+ ],
+ "rules_written_after_meaning": "an example with rules_written_after: true is one the rules were extended for after the first run (labelled/RESULTS.before-rules.md): it guards against regression but is not independent evidence of recall"
 }

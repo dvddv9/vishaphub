@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Built-in rule engine (src/tools/static_scan.py): no LLM, no files on disk."""
 import asyncio
+from pathlib import Path
 
 import pytest
 
@@ -53,6 +54,74 @@ def test_secrets_are_found_and_never_echoed():
 ])
 def test_rules_per_language(name, code, expected):
     assert expected <= _ids(scan_material(code, name))
+
+
+# the PHP and Go rules written after the labelled benchmark -------------------------------
+
+_LABELLED = Path(__file__).parent / "bench" / "labelled"
+_PHP_SHELL = ("system", "exec", "shell_exec", "passthru", "popen", "proc_open", "pcntl_exec")
+_GO_SHELLS = ("sh", "bash", "zsh", "/bin/sh", "/usr/bin/bash")
+
+
+@pytest.mark.parametrize("path,rule", [
+    ("php/php_cmd_system.php", "cmd-injection-php"),
+    ("php/php_eval_post.php", "eval-php"),
+    ("go/go_cmd_sh_c.go", "cmd-injection-go"),
+])
+def test_the_labelled_critical_examples_are_no_longer_safe(path, rule):
+    code = (_LABELLED / path).read_text(encoding="utf-8")
+    result = scan_material(code, Path(path).name)
+    assert rule in _ids(result)
+    assert verdict_of(result) != "NO ISSUES FOUND"
+
+
+@pytest.mark.parametrize("fn", _PHP_SHELL)
+def test_every_php_shell_function_is_flagged(fn):
+    found = scan_material(f"<?php\n{fn}($cmd);\n", "a.php")
+    assert "cmd-injection-php" in _ids(found)
+
+
+@pytest.mark.parametrize("code", ["eval($code);", "  eval ( $code );", "$r = eval($code);", "if (eval($code)) { run(); }"])
+def test_php_eval_is_flagged_and_critical(code):
+    found = scan_material(f"<?php\n{code}\n", "a.php")
+    assert "eval-php" in _ids(found)
+    assert found["by_severity"]["critical"] >= 1
+
+
+@pytest.mark.parametrize("code", [
+    '$pdo->exec("CREATE TABLE t (x int)");',          # a database method, not the shell
+    "$this->system($a);",
+    "Runner::exec($a);",
+    "my_system($a);",                                  # a longer name that ends in the word
+    "$value = retrieval($a);",
+    "$obj->eval($a);",
+    'shell_exec("ping " . escapeshellarg($h));',      # the standard mitigation, on the same line
+    'passthru("ls " . escapeshellcmd($dir));',
+    "// system($a);",                                  # a comment
+])
+def test_php_rules_stay_quiet_on_safe_calls(code):
+    found = _ids(scan_material(f"<?php\n{code}\n", "a.php"))
+    assert not ({"cmd-injection-php", "eval-php"} & found), code
+
+
+@pytest.mark.parametrize("shell", _GO_SHELLS)
+@pytest.mark.parametrize("call", ['exec.Command("{s}", "-c", cmd)', 'exec.Command("{s}", "-c", "ping "+host)',
+                                  'exec.CommandContext(ctx, "{s}", "-c", cmd)'])
+def test_go_shell_invocations_are_flagged(shell, call):
+    code = "package main\n\nfunc run() {\n\t" + call.format(s=shell) + ".Run()\n}\n"
+    assert "cmd-injection-go" in _ids(scan_material(code, "a.go"))
+
+
+@pytest.mark.parametrize("call", [
+    'exec.Command("ping", "-c", "1", host)',          # the program is not a shell
+    'exec.Command("sh", "script.sh")',                # a shell running a file: no -c string
+    'exec.Command("sha256sum", "-c", file)',          # a checksum tool whose name starts with sh
+    'exec.Command("shutdown", "-c")',
+    '// exec.Command("sh", "-c", cmd)',               # a comment
+])
+def test_go_rule_stays_quiet_on_safe_calls(call):
+    code = "package main\n\nfunc run() {\n\t" + call + "\n}\n"
+    assert "cmd-injection-go" not in _ids(scan_material(code, "a.go"))
 
 
 def test_comments_and_language_specific_rules_do_not_leak():

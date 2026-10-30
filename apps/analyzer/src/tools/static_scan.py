@@ -77,6 +77,17 @@ RULES: tuple[Rule, ...] = (
     _r("cmd-injection-c", "system()/popen() call", "high", "CWE-78",
        r"""\b(system|popen|execl|execlp|execvp)\s*\(""",
        "Do not build shell commands from input; use execve with a fixed argv and validate input.", _C),
+    # The three rules below were written after the labelled benchmark (tests/bench/labelled) showed critical
+    # PHP and Go examples getting SAFE. The examples are marked rules_written_after in the manifest.
+    _r("cmd-injection-php", "Shell command executed from PHP", "high", "CWE-78",
+       r"""(?<![\w$>:])(system|exec|shell_exec|passthru|popen|proc_open|pcntl_exec)\s*\((?![^\n]*escapeshell(?:arg|cmd)\s*\()""",
+       "Avoid the shell; if a command is unavoidable, pass only escapeshellarg()-escaped values from an allow-list.", _PHP),
+    _r("eval-php", "eval() of dynamic code", "critical", "CWE-95",
+       r"""(?<![\w$>:])eval\s*\(""",
+       "Never evaluate strings as code; parse data with json_decode.", _PHP),
+    _r("cmd-injection-go", "Shell invoked from Go (sh -c)", "high", "CWE-78",
+       r"""\bexec\.Command(?:Context)?\s*\([^)\n]*["'`](?:/bin/|/usr/bin/)?(?:ba|z)?sh["'`]\s*,\s*["'`]-c["'`]""",
+       "Do not run a shell: pass the program and each argument to exec.Command separately, and validate input.", _GO),
     _r("eval-py", "eval()/exec() of dynamic code", "critical", "CWE-95",
        r"""(?<![\w.])(eval|exec)\s*\(""",
        "Remove eval/exec; use ast.literal_eval for literals or a dispatch table.", _PY),
