@@ -131,7 +131,7 @@
         <section class="panel" aria-labelledby="chat-title">
           <h3 class="k" id="chat-title">talk to Vishap</h3>
           <div class="chat" id="chat" role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversation">
-            <div class="msg sys">I answer with the hub’s own key. Bring yours only if you want the run to be yours.</div>
+            <div class="msg sys" data-i18n="keySys">The hub holds no model key. The rules check your code for free; to have the model read it too, add your own Anthropic key below (it stays in this browser).</div>
           </div>
           <div class="composer">
             <label class="sr-only" for="text">Message to Vishap</label>
@@ -154,17 +154,19 @@
             <span class="fine">it is read in the browser and sent as text</span>
           </div>
           <input id="picker" type="file" hidden>
-          <label class="sr-only" for="question">What you want</label>
-          <textarea id="question" rows="2" class="mt-sm" placeholder="what do you want: «is this safe», «fix it», «write it from this spec»…" data-i18n-ph="questionPh"></textarea>
           <label class="sr-only" for="material">Material: code, a spec or logs</label>
           <textarea id="material" rows="6" class="mt-sm" placeholder="…or paste code, a spec or logs" data-i18n-ph="materialPh"></textarea>
+          <label class="sr-only" for="question">What you want</label>
+          <textarea id="question" rows="2" class="mt-sm" placeholder="what do you want: «is this safe», «fix it», «write it from this spec»…" data-i18n-ph="questionPh"></textarea>
           <div class="row mt">
             <button type="button" class="btn run" id="run" data-i18n="run">run</button>
+            <button type="button" class="btn ghost run" id="sampleRun" data-i18n="sampleBtn">paste a sample and run</button>
             <button type="button" class="btn ghost run" id="hear" disabled data-i18n="hear">🔊 read it</button>
             <button type="button" class="btn ghost run" id="download" disabled data-i18n="json">↓ json</button>
           </div>
           <div class="progress" id="progress" aria-live="polite"></div>
           <div class="verdict" id="verdict" role="status" aria-live="polite"></div>
+          <p class="hint" data-i18n="verdictHint">REQUIRES_REVIEW means a person should read the findings. The hub does not issue SAFE yet: its rules are not measured well enough for any language.</p>
           <div class="hint waking" id="waking">the free tier sleeps — the first run wakes it, ~20 s</div>
           <div id="report" class="report"></div>
 
@@ -175,7 +177,7 @@
             <button type="button" class="btn ghost sm" id="save">save</button>
             <button type="button" class="btn ghost sm" id="clear">clear</button>
           </div>
-          <p class="hint">Optional. Without a key the hub answers with its own — your run stays on the server, not in your name.</p>
+          <p class="hint" data-i18n="keyHint">Optional. Without a key only the rules run; with your key the model reads the code as well, and the stricter verdict wins. The key is kept in this browser and sent with your run.</p>
         </section>
       </div>
     </section>
