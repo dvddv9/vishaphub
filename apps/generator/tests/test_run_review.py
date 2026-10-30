@@ -60,9 +60,9 @@ class VerifyUsesItTests(unittest.TestCase):
     def test_inconclusive_is_not_counted_as_proof(self):
         from generator.pipeline.verdict import Evidence, decide_requirement
         only = [Evidence("attack", "length 1", "inconclusive", "raised OperationalError")]
-        self.assertEqual(decide_requirement(only)[0], "not_verified")
+        self.assertEqual(decide_requirement(only)[0], "needs_verification")
         with_test = only + [Evidence("model-test", "test_r1", "pass", "")]
-        self.assertEqual(decide_requirement(with_test)[0], "passed")
+        self.assertEqual(decide_requirement(with_test)[0], "needs_verification")
 
 
 class AssumptionTests(unittest.TestCase):

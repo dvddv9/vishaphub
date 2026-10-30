@@ -12,6 +12,7 @@ from generator.pipeline.design import design
 from generator.pipeline.intake import requirements_from
 from generator.tools.spec import load_spec
 from generator.pipeline.verify import input_cases, parse_rule, verify
+from generator.pipeline.verdict import Evidence, decide_requirement
 from generator.tools.static_scan import log_findings, sql_findings
 
 # A plain WSGI app, so these tests run without Flask installed.
@@ -237,6 +238,16 @@ class NotesTests(unittest.TestCase):
         self.assertTrue(any("not proven" in n for n in res.notes), res.notes)
         marks = [e.status for r in res.requirements if r.id == "R1" for e in r.evidence if e.name in ("length 1", "length 64")]
         self.assertEqual(marks, ["inconclusive", "inconclusive"])
+
+
+class VerdictTests(unittest.TestCase):
+    def test_inconclusive_attack_with_other_passing_evidence_needs_verification(self):
+        status, note = decide_requirement([
+            Evidence("attack", "database-backed input", "inconclusive"),
+            Evidence("model-test", "model check", "pass"),
+        ])
+        self.assertEqual(status, "needs_verification")
+        self.assertIn("not proven", note)
 
 
 class RuleTests(unittest.TestCase):
