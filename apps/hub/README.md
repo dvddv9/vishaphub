@@ -87,9 +87,10 @@ nothing is worse than a page that says «bring a key».
 | `POST /run` | one run, one verdict | a model call on the caller's key | 6 a minute per address |
 | `POST /run/stream` | the same run as server-sent events | same | same |
 | `POST /speak` | the voice | an outside synthesis service | 20 a minute, 600 characters, cached by the words |
-| `GET /r/<id>` | a finished run as a page | nothing | — |
-| `GET /api/runs` | the recent runs, JSON | nothing | last 200 kept |
-| `GET /api/runs/<id>.json` | one run, JSON | nothing | — |
+| `GET /r/<id>` | a finished run as a page, owner only | nothing | — |
+| `GET /api/runs` | your own recent runs, JSON | nothing | last 200 kept |
+| `GET /api/runs/<id>.json` | one run, JSON, owner only | nothing | — |
+| `GET /api/runs/<id>.sarif` | one run as SARIF 2.1.0, owner only | nothing | needs the analyser in the image, else `501` |
 | `GET /styles.css`, `/app.js`, `/favicon.svg` | the page's own assets | nothing | `max-age=300`, must-revalidate |
 
 One rule separates the two halves of the surface: **`/api/*` is JSON, everything else
@@ -97,9 +98,28 @@ is a page**. A wrong address under `/api` answers a JSON error; a wrong address
 anywhere else answers an HTML page with a way back. That is why `/runs` is a list you
 can read and `/api/runs` is the same list a program can parse.
 
-Every ceiling is an environment variable and `0` turns it off:
-`VISHAP_HUB_RATE_RUN`, `VISHAP_HUB_RATE_CHAT`, `VISHAP_HUB_RATE_SPEAK`,
-`VISHAP_HUB_TTS_MAX_CHARS`, `VISHAP_HUB_TTS_CACHE`, `VISHAP_HUB_RUNS_KEEP`,
+A run belongs to whoever started it: a token in a cookie or in the owner header. Without
+one the answer is `403`; for somebody else's run it is `404`, so the existence of that run
+is not confirmed. The report page, the JSON and the SARIF export all share that check.
+
+Every ceiling is an environment variable and `0` turns it off.
+
+Per address, per minute: `VISHAP_HUB_RATE_RUN` (6), `VISHAP_HUB_RATE_CHAT` (20),
+`VISHAP_HUB_RATE_SPEAK` (20).
+
+The whole process, per sliding day — one bill, whoever asks:
+
+| Variable | Default | What it bounds |
+|---|---|---|
+| `VISHAP_HUB_GLOBAL_RUNS_PER_DAY` | 200 | runs with a model call |
+| `VISHAP_HUB_GLOBAL_CHARS_PER_DAY` | 5 000 000 | characters sent with runs |
+| `VISHAP_HUB_GLOBAL_CHATS_PER_DAY` | 200 | chat messages that reach a model |
+| `VISHAP_HUB_GLOBAL_CHAT_CHARS_PER_DAY` | 2 000 000 | characters sent by the chat |
+
+The chat has its own ceiling on purpose: a conversation on the site must not close the door
+for runs. Exhausted means `429` with `retry-after`, never a thinner answer.
+
+Also: `VISHAP_HUB_TTS_MAX_CHARS`, `VISHAP_HUB_TTS_CACHE`, `VISHAP_HUB_RUNS_KEEP`,
 `VISHAP_HUB_RUNS_FILE` (a file to mirror the runs to, empty means memory only).
 
 ## Runs are stored, not believed
@@ -167,8 +187,10 @@ that ends in ERROR is stored too: a failure is a result.
 
 ## Status
 
-`0.3.0` — one path, 83 tests (`PYTHONPATH=src python -m pytest -q`).
+`0.4.0` — teams, quotas, spend ceilings, SARIF, redaction before the model.
+149 tests (`PYTHONPATH=src python -m pytest -q`), 54 of them need Postgres and skip without it.
 
-Known gaps: the store lives in memory unless `VISHAP_HUB_RUNS_FILE` is set (a free
-instance loses its runs on restart), and there is no queue: two runs at once both wait
-for the model.
+Known gaps: the store lives in memory unless `VISHAP_HUB_RUNS_FILE` or the team store in
+Postgres is configured (a free instance loses its runs on restart); there is no queue, so
+two runs at once both wait for the model; card numbers are not redacted (no PAN pattern
+in the analyser's list); and the SARIF export needs the analyser in the image.
