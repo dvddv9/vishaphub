@@ -123,6 +123,9 @@ def test_a_worker_without_the_network_cut_off_refuses_to_run_anything(tmp_path):
     marker = tmp_path / "ran.txt"
     (tmp_path / "test_x.py").write_text(
         "import os\nopen('/tmp/ran', 'w').write('x')\n\ndef test_x():\n    pass\n", encoding="utf-8")
+    tmp_path.chmod(0o755)
+    for item in tmp_path.iterdir():
+        item.chmod(0o644)
     # Same image, same worker, but started with a network: it must see that and run nothing.
     out = subprocess.run(
         [DOCKER, "run", "--rm", "--read-only", "--tmpfs", "/tmp:size=16m",

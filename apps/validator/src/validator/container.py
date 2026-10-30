@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 import uuid
@@ -32,6 +33,23 @@ def _gone(docker: str, name: str) -> bool:
     return out.returncode == 0 and not out.stdout.strip()
 
 
+def _readable_copy(src: str, dest: str) -> str:
+    """Snapshot of the deliverable that the container's user (uid 1000, not the host's) can read.
+
+    A host directory made by mkdtemp is 0700 and owned by the caller; bind-mounted, it is unreadable
+    inside the container on Linux. Copying also fixes what was run: later edits to `src` do not change it.
+    """
+    target = os.path.join(dest, "in")
+    shutil.copytree(src, target, symlinks=False)
+    for base, dirs, files in os.walk(target):
+        for name in dirs:
+            os.chmod(os.path.join(base, name), 0o755)
+        for name in files:
+            os.chmod(os.path.join(base, name), 0o644)
+    os.chmod(target, 0o755)
+    os.chmod(dest, 0o755)
+    return target
+
 def run_in_container(root: str, spec: dict, *, image: str, timeout: int = 120, docker: str = "docker",
                      limits: dict | None = None, extra_env: dict | None = None) -> dict:
     """Validate `root` inside a fresh worker container. Never runs the code on the host.
@@ -45,6 +63,8 @@ def run_in_container(root: str, spec: dict, *, image: str, timeout: int = 120, d
         spec_path = os.path.join(tmp, "spec.json")
         with open(spec_path, "w", encoding="utf-8") as fh:
             json.dump(spec, fh)
+        os.chmod(spec_path, 0o644)
+        staged = _readable_copy(root, tmp)
         cmd = [
             "run", "--rm", "--name", name,
             "--network", "none", "--read-only",
@@ -52,7 +72,7 @@ def run_in_container(root: str, spec: dict, *, image: str, timeout: int = 120, d
             "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
             "--pids-limit", lim["pids"], "--memory", lim["memory"], "--memory-swap", lim["memory"],
             "--cpus", lim["cpus"],
-            "--mount", f"type=bind,source={os.path.abspath(root)},target=/in,readonly",
+            "--mount", f"type=bind,source={staged},target=/in,readonly",
             "--mount", f"type=bind,source={spec_path},target=/spec.json,readonly",
             "-e", "VISHAP_VALIDATOR_ISOLATION=container", "-e", "VISHAP_VALIDATOR_REQUIRE_NETNS=1",
         ]
