@@ -4,6 +4,10 @@ All notable changes to VishapHub. Format based on [Keep a Changelog](https://kee
 
 ## [Unreleased]
 
+### Fixed
+
+- **The page lost its style and script when the hub was installed with pip, pipx or the Windows installer.** `package-data` listed the page and the greeting but not `styles.css`, `app.js` or `favicon.svg`, so those were 404 outside the source tree (the Docker image runs from the tree and was not affected). They are listed now, and a test fails if the server serves a file the package leaves out.
+
 ### Added
 
 - **An external scanner's SARIF as a third reader.** `/run` takes an optional `sarif`. Its findings join the hub's
