@@ -616,6 +616,8 @@ class Handler(BaseHTTPRequestHandler):
             "question": question,
             "api_key": str(body.get("api_key") or ""),
             "model": str(body.get("model") or ""),
+            # opt-in: check the model's patch and send a rejected one back, up to three attempts
+            "fix_loop": bool(body.get("verify_fix")),
         }
 
     def _respond(self, result, args: dict | None = None, owner: str = "", extra: dict | None = None,
