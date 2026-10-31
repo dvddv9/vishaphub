@@ -131,6 +131,19 @@ def _evidence_block(fp: dict) -> str:
     )
     return _block("Evidence", body)
 
+_SEVERITY_RANK = {"critical": 4, "high": 3, "medium": 2, "low": 1}
+
+
+def _readers(finding: dict) -> int:
+    return len(set(finding.get("seen_by") or []))
+
+
+def _by_agreement(findings: list) -> list:
+    """Findings more than one reader saw come first, then the rest; by severity within each, and in the order
+    found within a tie. Nothing is dropped or hidden: only the order of the page changes."""
+    return sorted(findings, key=lambda f: (-(_readers(f) > 1), -_SEVERITY_RANK.get(str(f.get("severity") or "").lower(), 0)))
+
+
 def report_page(record: dict, retention: str = "") -> str:
     """One run: the verdict, every step, every finding with its source, what was not checked."""
     result = record.get("result") or {}
@@ -159,16 +172,27 @@ def report_page(record: dict, retention: str = "") -> str:
         badge = f'<span class="sev {sev_class}">{e(severity)}</span>' if severity else ""
         line = f" @ {e(str(f.get('line')))}" if f.get("line") else ""
         seen = f.get("seen_by") or []
-        by = "rules + model" if len(seen) > 1 else str(f.get("source") or "")
+        by = " + ".join(str(s) for s in seen) if len(seen) > 1 else str(f.get("source") or "")
         source = f" <i>({e(by)})</i>" if by else ""
         fix = f"<br><small>fix: {e(str(f.get('fix')))}</small>" if f.get("fix") else ""
         covered = (f"<br><small>possibly covered by {e(str(f.get('possibly_covered_by')))}</small>"
                    if f.get("possibly_covered_by") else "")
-        return f"<li>{badge}{e(str(f.get('rule') or ''))}{line}: {e(str(f.get('message') or ''))}{source}{fix}{covered}</li>"
+        note = f.get("accepted") if isinstance(f.get("accepted"), dict) else None
+        taken = (f"<br><small class=\"accepted\">accepted: {e(str(note.get('reason') or ''))} "
+                 f"({e(str(note.get('by') or ''))}, {e(str(note.get('at') or ''))}). "
+                 f"The verdict above is the checks', not this note.</small>") if note else ""
+        return (f"<li>{badge}{e(str(f.get('rule') or ''))}{line}: {e(str(f.get('message') or ''))}"
+                f"{source}{fix}{covered}{taken}</li>")
 
-    own = [f for f in findings if not f.get("in_patch")]
+    own = _by_agreement([f for f in findings if not f.get("in_patch")])
     in_patch = [f for f in findings if f.get("in_patch")]
-    found = "".join(_finding(f) for f in own) or "<li>nothing matched</li>"
+    many, one = [f for f in own if _readers(f) > 1], [f for f in own if _readers(f) <= 1]
+    if many and one:          # a heading only where there are two kinds to tell apart
+        found = ("<li class=\"meta\">seen by more than one reader</li>" + "".join(_finding(f) for f in many)
+                 + "<li class=\"meta\">seen by one reader</li>" + "".join(_finding(f) for f in one))
+    else:
+        found = "".join(_finding(f) for f in own)
+    found = found or "<li>nothing matched</li>"
     overlap = result.get("agreement") or {}
     if overlap:
         patch_note = f" \u00b7 in the model's patch: {overlap['in_patch']}" if overlap.get("in_patch") else ""

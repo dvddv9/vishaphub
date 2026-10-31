@@ -23,8 +23,9 @@ _KEY = re.compile(r"vhk_[A-Za-z0-9_-]{32,128}")
 
 ROLES = ("owner", "member", "viewer")
 PERMISSIONS = {
-    "owner": frozenset({"run.create", "run.read", "run.delete.any", "run.delete.own", "audit.read"}),
-    "member": frozenset({"run.create", "run.read", "run.delete.own"}),
+    "owner": frozenset({"run.create", "run.read", "run.delete.any", "run.delete.own", "run.accept.any", "run.accept.own",
+                        "audit.read"}),
+    "member": frozenset({"run.create", "run.read", "run.delete.own", "run.accept.own"}),
     "viewer": frozenset({"run.read"}),
 }
 

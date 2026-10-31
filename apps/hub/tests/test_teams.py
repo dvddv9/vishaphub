@@ -882,6 +882,51 @@ if __name__ == "__main__":
     unittest.main()
 
 
+@needs_pg
+class AcceptTests(TeamCase):
+    """A person's note on a finding: who may write it, that it lands in the run, and that the audit never holds it."""
+
+    KEY = None
+
+    def setUp(self):
+        super().setUp()
+        from hub import accepted
+        self.KEY = accepted.key_of({"rule": "x", "message": "looks fine"})        # the finding `_Said` reports
+
+    def accept(self, who, run_id, reason="fixture only", key=None):
+        return self.call("POST", f"/api/runs/{run_id}/accept", self.keys[who],
+                         {"key": key or self.KEY, "reason": reason})
+
+    def test_a_member_marks_their_own_run_and_the_run_shows_it_with_the_verdict_unmoved(self):
+        run_id = self.run_as("amy")
+        assert self.accept("amy", run_id)[0] == 200
+        run = json.loads(self.call("GET", f"/api/runs/{run_id}", self.keys["amy"])[2])
+        assert run["verdict"] == "SAFE" and run["result"]["findings"][0]["accepted"]["reason"] == "fixture only"
+        assert self.call("POST", f"/api/runs/{run_id}/unaccept", self.keys["amy"], {"key": self.KEY})[0] == 200
+        assert "accepted" not in json.loads(self.call("GET", f"/api/runs/{run_id}", self.keys["amy"])[2])["result"]["findings"][0]
+
+    def test_a_viewer_may_not_and_a_member_may_not_mark_a_run_that_is_not_theirs_but_an_owner_may(self):
+        run_id = self.run_as("amy")
+        assert self.accept("vic", run_id)[0] == 403
+        assert self.accept("alice", self.run_as("alice", "b = 2", "another"), key="0" * 12)[0] == 400
+        theirs = self.run_as("alice", "c = 3", "looks fine")
+        assert self.accept("amy", theirs)[0] == 403
+        assert self.accept("alice", run_id)[0] == 200
+
+    def test_another_team_cannot_mark_it_and_cannot_tell_it_exists(self):
+        run_id = self.run_as("alice")
+        assert self.accept("bob", run_id)[0] == 404
+        assert self.accept("bob", "0000000000000000")[0] == 404
+
+    def test_a_refused_mark_says_why_and_the_audit_holds_the_finding_but_never_the_reason(self):
+        run_id = self.run_as("amy")
+        status, _h, raw = self.accept("amy", run_id, reason="")
+        assert status == 400 and b"reason" in raw
+        assert self.accept("amy", run_id, reason="a reason nobody should find in the audit trail")[0] == 200
+        audit = json.dumps(self.admin_rows("SELECT action, detail FROM audit_log WHERE action = 'run.accept'"), default=str)
+        assert "nobody should find" not in audit and self.KEY in audit and "invalid" in audit and "ok" in audit
+
+
 class _Statused(_Said):
     """A run that was only partly checked and carries a patch nobody verified."""
 

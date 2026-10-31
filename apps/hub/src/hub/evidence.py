@@ -66,12 +66,12 @@ def _fix_check(pc: dict | None) -> dict | None:
 
 
 def build(*, supplied_files: dict, checked_files: dict, patch: dict, checks: dict, answer: dict, model_verdict: str,
-          rules: dict, attempts: int, stop_reason: str, not_checked: list, patch_check: dict | None = None, fix_attempts: list | None = None) -> dict:
+          rules: dict, attempts: int, stop_reason: str, not_checked: list, patch_check: dict | None = None, fix_attempts: list | None = None, external: list | None = None) -> dict:
     validator = checks.get("validator") or {}
     analyser = checks.get("analyser") or {}
     iso = validator.get("isolation") or {}
     patch_files = file_hashes(patch)
-    return {
+    out = {
         "snapshot": {"files": file_hashes(supplied_files), "sha256": sha(file_hashes(supplied_files))},
         "patch": {"proposed": bool(patch), "diff_sha256": sha(patch_files) if patch else "", "files": patch_files},
         # What each reader really read. A model patch is only analysed by the rules unless the client sent no
@@ -96,3 +96,6 @@ def build(*, supplied_files: dict, checked_files: dict, patch: dict, checks: dic
                         "validator": sum(len(c.get("findings") or []) for c in validator.get("checks", []))},
         "not_checked": list(not_checked or []),
     }
+    if external:     # only when present: a run without a SARIF keeps the fingerprint it always had
+        out["external"] = {"count": len(external), "sha256": sha(external)}
+    return out

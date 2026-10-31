@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
-from . import db, limits
+from . import accepted, db, limits
 from . import meter as meter_mod
 from .access import Principal, key_hash
 
@@ -137,8 +137,37 @@ class TeamStore:
             self._audit(conn, p, "run.read", run_id, ip, {"found": row is not None})
         if row is None:
             return None
-        return {"id": row[0], "at": row[1].isoformat(), "verdict": row[2], "ok": row[3], "plan": row[4],
-                "summary": row[5] or "", "result": row[6], "cost": row[7]}
+        return accepted.shown({"id": row[0], "at": row[1].isoformat(), "verdict": row[2], "ok": row[3], "plan": row[4],
+                               "summary": row[5] or "", "result": row[6], "cost": row[7]})
+
+    def annotate(self, p: Principal, run_id: str, change, ip: str = "", detail: dict | None = None) -> tuple[str, str]:
+        """Change the result of one run: ("ok", ""), ("missing", ""), ("forbidden", "") or ("invalid", why).
+
+        `change` takes the stored result and returns the new one, or raises ValueError. Only the result column is
+        written: the run keeps its verdict, plan and expiry. The audit row names the run and the finding, never
+        the reason.
+        """
+        note = dict(detail or {})
+        with self._tx(p.team_id) as conn:
+            row = conn.execute(
+                "SELECT creators, result FROM runs WHERE team_id = %s::uuid AND run_id = %s AND expires_at > now() "
+                "FOR UPDATE", (p.team_id, run_id)).fetchone()
+            if row is None:
+                self._audit(conn, p, "run.accept", run_id, ip, {**note, "outcome": "missing"})
+                return "missing", ""
+            mine = p.user_id in {str(u) for u in row[0]}
+            if not (p.can("run.accept.any") or (p.can("run.accept.own") and mine)):
+                self._audit(conn, p, "run.accept", run_id, ip, {**note, "outcome": "forbidden"})
+                return "forbidden", ""
+            try:
+                new = change(row[1] or {})
+            except ValueError as exc:
+                self._audit(conn, p, "run.accept", run_id, ip, {**note, "outcome": "invalid"})
+                return "invalid", str(exc)
+            conn.execute("UPDATE runs SET result = %s WHERE team_id = %s::uuid AND run_id = %s",
+                         (_jsonb(new), p.team_id, run_id))
+            self._audit(conn, p, "run.accept", run_id, ip, {**note, "outcome": "ok"})
+        return "ok", ""
 
     def list(self, p: Principal, limit: int = 20, ip: str = "") -> list[dict]:
         with self._tx(p.team_id) as conn:

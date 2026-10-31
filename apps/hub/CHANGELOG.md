@@ -4,6 +4,23 @@ All notable changes to VishapHub. Format based on [Keep a Changelog](https://kee
 
 ## [Unreleased]
 
+### Added
+
+- **An external scanner's SARIF as a third reader.** `/run` takes an optional `sarif`. Its findings join the hub's
+  own where they name the same class near the same line, stay where nothing else saw them, and a lone one raises the
+  verdict to `REQUIRES_REVIEW`. It never lowers a verdict and never drops a finding. The fingerprint records the
+  findings only when they were sent.
+- **A person's note on a finding.** `POST /api/runs/<id>/accept` and `/unaccept`: who, when and a reason, kept in
+  the run's own result (no migration) and shown beside the finding. The verdict is not touched. In a team the
+  creator (`run.accept.own`) or an owner (`run.accept.any`) may; the audit row holds the finding, not the reason.
+- **Standing rules.** `/run` takes an optional `accept_rules`: findings like this are noted as accepted, for this
+  reason. They write notes, never exclusions.
+- **Findings more than one reader saw come first** in the report and in the page.
+
+### Fixed
+
+- The report and the page named every two-reader finding "rules + model"; they now name the readers that saw it.
+
 ## [0.5.0] - 2026-10-31
 
 ### Added

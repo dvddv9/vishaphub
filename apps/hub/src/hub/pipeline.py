@@ -33,7 +33,9 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 
+from . import accepted as accepted_mod
 from . import evidence as evidence_mod
+from . import external as external_mod
 from . import findings as findings_mod
 from . import fingerprint, fixloop, languages, local, patchcheck, proposal, statuses
 from .envelope import Envelope, Kind
@@ -87,9 +89,13 @@ class RunResult:
     agreement: dict = field(default_factory=dict)
     #: The result of a real patch check, when one ran; empty means none did (fix status FIX_UNVERIFIED).
     patch_check: dict = field(default_factory=dict)
+    #: What came from an external scanner's SARIF: how many were received, paired, or stood alone. Empty if none.
+    external: dict = field(default_factory=dict)
+    #: Notes put on findings by the client's standing rules (`accepted.standing`); the verdict is not touched.
+    accepted: dict = field(default_factory=dict)
 
     def as_dict(self) -> dict:
-        return {
+        payload = {
             "schema": "vishap.run/1",          # the stable contract, see docs/ci.md
             "ok": self.ok,
             "mode": self.mode,
@@ -115,6 +121,11 @@ class RunResult:
                                          patch=self.patch, model_verdict=self.model_verdict,
                                          not_checked=self.not_checked, patch_check=self.patch_check or None),
         }
+        if self.external:
+            payload["external"] = self.external
+        if self.accepted:
+            payload["accepted"] = self.accepted
+        return payload
 
 
 def _error(steps: list[Step], session_id: str, trace: list[str], reason: str,
@@ -179,7 +190,8 @@ def _not_checked(plan: Plan, checks: dict, has_proof: bool, model_trouble: str =
 def run_plan(plan: Plan, material: str = "", files: dict | None = None,
              spec: object = None, filename: str = "input.txt",
              question: str = "", api_key: str = "", model: str = "",
-             on_step=None, check_patch: bool = False, fix_loop: bool = False) -> RunResult:
+             on_step=None, check_patch: bool = False, fix_loop: bool = False,
+             external: list | None = None, accept_rules: list | None = None) -> RunResult:
     """Execute the plan and return one honest verdict.
 
     ``on_step`` is called with ``(stage, payload)`` after every stage that produced a
@@ -407,6 +419,17 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
     if not (checks["generator"] and checks["analyser"]):
         overlap = {}                  # one reader only: there is nothing to agree with
 
+    # An external scanner is a third reader. It is joined where it agrees and kept where it stands alone; a lone
+    # finding raises the verdict to REQUIRES_REVIEW and never lowers it.
+    external_summary: dict = {}
+    if external:
+        merged, external_summary = external_mod.attach(merged, external)
+        if external_summary["external_only"] and rank(final) < rank("REQUIRES_REVIEW"):
+            final = "REQUIRES_REVIEW"
+            said = ("an external scanner reported something the rules did not confirm" if checks["analyser"]
+                    else "an external scanner reported findings; the rules did not run to confirm them")
+            reason = (reason + "; " if reason else "") + said
+
     patch_check: dict = {}
     final_patch = answer.get("patch") or {}
     fix_rows: list[dict] = []
@@ -444,6 +467,7 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
         rules_verdict=rules_verdict,
         not_checked=_not_checked(plan, checks, bool(answer.get("proof")), model_trouble),
         patch_check=patch_check,
+        external=external_summary,
     )
     result.fingerprint = fingerprint.of(
         material=material,
@@ -458,6 +482,8 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
             stop_reason=(stop_reason or f"the plan ran to its end ({passes_run} pass(es))")
             + (f"; fix loop: {fix_stop}" if fix_stop else ""),
             fix_attempts=fix_rows,
-            not_checked=result.not_checked, patch_check=patch_check),
+            not_checked=result.not_checked, patch_check=patch_check, external=external),
     )
+    if accept_rules:
+        result.accepted = accepted_mod.standing(result.findings, accept_rules, str(result.fingerprint.get("at") or ""))
     return result

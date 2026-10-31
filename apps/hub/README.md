@@ -108,7 +108,17 @@ nothing is worse than a page that says «bring a key».
 | `GET /api/runs` | your own recent runs, JSON | nothing | last 200 kept |
 | `GET /api/runs/<id>.json` | one run, JSON, owner only | nothing | — |
 | `GET /api/runs/<id>.sarif` | one run as SARIF 2.1.0, owner only | nothing | needs the analyser in the image, else `501` |
+| `POST /api/runs/<id>/accept`, `/unaccept` | a person's note on a finding, `{"key", "reason"}`; the verdict is not touched | nothing | the owner of the run, or in a team its creator or an owner; a reason of at most 300 characters, 100 notes a run |
 | `GET /styles.css`, `/app.js`, `/favicon.svg` | the page's own assets | nothing | `max-age=300`, must-revalidate |
+
+Two optional fields of `/run` and `/run/stream` bring a verdict's context in, and neither can lower it:
+
+- `sarif`: the SARIF 2.1.0 of a scanner you ran (Semgrep, OpenGrep, CodeQL). Its findings are joined to the hub's own
+  where they name the same class near the same line (`seen_by` gains `external`); one nothing else saw stays in the
+  list and raises the verdict to `REQUIRES_REVIEW`. Up to 300 results are read. A document that is not SARIF is a `400`.
+- `accept_rules`: standing notes, `[{"cwe": "CWE-89", "file": "tests/*", "reason": "fixtures"}]`. Each rule names at least
+  one of `cwe`, `rule`, `file` (a glob) and a reason; a finding it matches is noted as accepted (by `rule:<n>`), still
+  listed, and the verdict stays the checks'. A rule that matches everything is refused.
 
 One rule separates the two halves of the surface: **`/api/*` is JSON, everything else
 is a page**. A wrong address under `/api` answers a JSON error; a wrong address
