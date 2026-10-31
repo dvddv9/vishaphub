@@ -53,3 +53,16 @@ existed.
 
 Retention days per team, quotas per minute and per day, and the audit trail (`GET /api/team/audit`, owners only)
 are the team mode's (`VISHAP_HUB_DATABASE_URL`). An expired run is not returned and is purged on a schedule.
+
+## Comparing and deleting, on the pages
+
+- `/compare?a=<id>&b=<id>` is the page for the same comparison; the report page has a form for it.
+- `/r/<id>/delete` asks first, in words: what goes, what does not, and that it cannot be undone. Looking at that page
+  deletes nothing; the button is a POST, and a POST that comes from another site is refused.
+- **Team:** the run row goes with its result, findings and patch. The audit row stays (who, when, the run id, no content).
+  Usage counters keep their numbers and let go of the id. An owner may delete any run; a member only their own; a viewer none.
+- **Visitor:** the run and the claim on it go. Two visitors who run exactly the same material share one record and both
+  own it: removing yours takes the run out of your reach, and the record itself goes when nobody owns it. The page's own
+  example cannot be deleted.
+- Not covered: copies made outside the hub (an exported file, a link someone saved). Running the same material again
+  makes a new run with the same id.

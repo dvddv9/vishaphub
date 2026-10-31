@@ -932,3 +932,43 @@ class ProductApiTeamTests(TeamCase):
         assert self.call("DELETE", f"/api/runs/{run_id}", self.keys["alice"])[0] == 200
         for path in (f"/api/runs/{run_id}.md", f"/api/verify/{run_id}", f"/api/runs/{run_id}.sarif"):
             assert self.call("GET", path, self.keys["alice"])[0] == 404, path
+
+
+@needs_pg
+class CompareDeleteTeamTests(TeamCase):
+    def test_a_team_compares_its_own_runs_and_never_another_teams(self):
+        a, b = self.run_as("alice", "a = 1"), self.run_as("alice", "b = 2")
+        theirs = self.run_as("bob", "c = 3")
+        status, _h, raw = self.call("GET", f"/api/compare?a={a}&b={b}", self.keys["amy"])        # same team
+        assert status == 200 and json.loads(raw)["a"]["id"] == a
+        answers = {self.call("GET", f"/api/compare?a={a}&b={theirs}", self.keys["alice"])[::2],
+                   self.call("GET", f"/api/compare?a={a}&b=0000000000000000", self.keys["alice"])[::2]}
+        assert len(answers) == 1 and next(iter(answers))[0] == 404                               # no hint which one
+        assert self.call("GET", f"/api/compare?a={a}&b={b}", self.keys["bob"])[0] == 404
+        assert self.call("GET", f"/compare?a={a}&b={b}", self.keys["alice"])[0] == 200
+
+    def test_the_owner_deletes_from_the_page_and_the_audit_row_stays_without_content(self):
+        run_id = self.run_as("alice", "secret = 1", said="ALPHA-ONLY-TEXT")
+        status, _h, page = self.call("GET", f"/r/{run_id}/delete", self.keys["alice"])
+        assert status == 200 and b"audit row stays" in page and b"cannot be undone" in page
+        status, _h, raw = self.call("POST", f"/r/{run_id}/delete", self.keys["alice"], {})
+        assert status == 200 and b"Run deleted" in raw
+        assert self.admin_rows("SELECT count(*) FROM runs WHERE run_id = %s", run_id)[0][0] == 0
+        audit = self.admin_rows("SELECT action, detail FROM audit_log WHERE target = %s AND action = 'run.delete'", run_id)
+        assert audit and "deleted" in json.dumps(audit[0][1]) and "ALPHA-ONLY-TEXT" not in json.dumps(audit)
+        assert self.call("GET", f"/r/{run_id}", self.keys["alice"])[0] == 404
+
+    def test_only_who_may_delete_can_and_another_team_cannot_even_tell_it_exists(self):
+        run_id = self.run_as("alice", "a = 1")
+        assert self.call("POST", f"/r/{run_id}/delete", self.keys["vic"], {})[0] == 403       # a viewer
+        assert self.call("POST", f"/r/{run_id}/delete", self.keys["amy"], {})[0] == 403       # a member, not the maker
+        assert self.call("POST", f"/r/{run_id}/delete", self.keys["bob"], {})[0] == 404       # another team
+        assert self.admin_rows("SELECT count(*) FROM runs WHERE run_id = %s", run_id)[0][0] == 1
+
+    def test_a_post_from_another_site_deletes_nothing_even_with_the_team_cookie(self):
+        run_id = self.run_as("alice", "a = 1")
+        cookie = f"{access.KEY_COOKIE}={self.keys['alice']}"
+        status, _h, raw = self.call("POST", f"/r/{run_id}/delete", None, {}, headers={"Origin": "https://evil.example"},
+                                    cookie=cookie)
+        assert status == 403 and b"another site" in raw
+        assert self.admin_rows("SELECT count(*) FROM runs WHERE run_id = %s", run_id)[0][0] == 1
