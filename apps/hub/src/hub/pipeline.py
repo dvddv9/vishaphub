@@ -35,7 +35,7 @@ from dataclasses import dataclass, field
 
 from . import evidence as evidence_mod
 from . import findings as findings_mod
-from . import fingerprint, local, patchcheck, proposal, statuses
+from . import fingerprint, fixloop, local, patchcheck, proposal, statuses
 from .envelope import Envelope, Kind
 from .router import Plan, Stage
 from .verdicts import BLOCKING_VERDICTS, normalise, rank, strictest
@@ -178,7 +178,7 @@ def _not_checked(plan: Plan, checks: dict, has_proof: bool, model_trouble: str =
 def run_plan(plan: Plan, material: str = "", files: dict | None = None,
              spec: object = None, filename: str = "input.txt",
              question: str = "", api_key: str = "", model: str = "",
-             on_step=None, check_patch: bool = False) -> RunResult:
+             on_step=None, check_patch: bool = False, fix_loop: bool = False) -> RunResult:
     """Execute the plan and return one honest verdict.
 
     ``on_step`` is called with ``(stage, payload)`` after every stage that produced a
@@ -188,6 +188,10 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
     ``check_patch`` applies the model's patch to a copy of the files the client sent and re-checks it
     (`patchcheck`), so the fix status can be more than FIX_UNVERIFIED. Off by default: it runs the
     deliverable's tests, which only happens where the isolation is confirmed.
+
+    ``fix_loop`` goes further (`fixloop`): a patch that is rejected or only partly verified goes back to the
+    model with the reason, up to three attempts in all. The status always comes from the check, never from
+    the model, and the risk verdict is untouched.
     """
 
     def emit(stage: str, payload: dict) -> None:
@@ -398,8 +402,20 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
         overlap = {}                  # one reader only: there is nothing to agree with
 
     patch_check: dict = {}
-    if check_patch and answer.get("patch") and supplied_files:
-        patch_check = patchcheck.check(supplied_files, files=answer["patch"],
+    final_patch = answer.get("patch") or {}
+    fix_rows: list[dict] = []
+    fix_stop = ""
+    if final_patch and supplied_files and fix_loop:
+        check_spec = _spec_for_validator(spec, supplied_files)
+        spec_text = str(spec or "") if not isinstance(spec, dict) else ""
+        loop = fixloop.run(
+            supplied_files, check_spec, final_patch,
+            lambda more: proposal.propose(material=material, spec=spec_text, question=question + more,
+                                          api_key=api_key, model=model))
+        patch_check, fix_rows, final_patch, fix_stop = (loop["patch_check"], loop["attempts"], loop["patch"],
+                                                        loop["stop_reason"])
+    elif check_patch and final_patch and supplied_files:
+        patch_check = patchcheck.check(supplied_files, files=final_patch,
                                        spec=_spec_for_validator(spec, supplied_files))
 
     result = RunResult(
@@ -414,7 +430,7 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
         summary=answer.get("summary", ""),
         findings=merged,
         agreement=overlap,
-        patch=answer.get("patch") or {},
+        patch=final_patch,
         questions=answer.get("questions") or [],
         proof=answer.get("proof") or [],
         model=answer.get("model", ""),
@@ -433,7 +449,9 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
         evidence=evidence_mod.build(
             supplied_files=supplied_files, checked_files=files, patch=result.patch, checks=checks, answer=answer,
             model_verdict=model_verdict, rules=fingerprint.rules_version(), attempts=passes_run,
-            stop_reason=stop_reason or f"the plan ran to its end ({passes_run} pass(es))",
+            stop_reason=(stop_reason or f"the plan ran to its end ({passes_run} pass(es))")
+            + (f"; fix loop: {fix_stop}" if fix_stop else ""),
+            fix_attempts=fix_rows,
             not_checked=result.not_checked, patch_check=patch_check),
     )
     return result

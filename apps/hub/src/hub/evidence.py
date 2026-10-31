@@ -66,7 +66,7 @@ def _fix_check(pc: dict | None) -> dict | None:
 
 
 def build(*, supplied_files: dict, checked_files: dict, patch: dict, checks: dict, answer: dict, model_verdict: str,
-          rules: dict, attempts: int, stop_reason: str, not_checked: list, patch_check: dict | None = None) -> dict:
+          rules: dict, attempts: int, stop_reason: str, not_checked: list, patch_check: dict | None = None, fix_attempts: list | None = None) -> dict:
     validator = checks.get("validator") or {}
     analyser = checks.get("analyser") or {}
     iso = validator.get("isolation") or {}
@@ -84,6 +84,7 @@ def build(*, supplied_files: dict, checked_files: dict, patch: dict, checks: dic
         "checks_run": _check_rows(validator, analyser),
         "exploit_tests": list((patch_check or {}).get("exploit") or []),
         "fix_check": _fix_check(patch_check),
+        "fix_attempts": list(fix_attempts or []),
         "attempts": attempts,
         "stop_reason": stop_reason,
         "cleanup": {"confirmed": iso.get("cleanup_confirmed") if iso else None},
