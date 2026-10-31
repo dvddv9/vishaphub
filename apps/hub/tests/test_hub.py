@@ -88,7 +88,12 @@ def test_pipeline_needs_files_for_validation():
     assert "needs files" in result.reason
 
 
-def test_pipeline_validates_a_clean_deliverable():
+def test_pipeline_validates_a_clean_deliverable(monkeypatch):
+    # Wiring test: the pipeline hands files to the validator and reports its verdict. Production calls
+    # require a real network namespace (see test_local); this host may not have one.
+    from hub import local
+    real = local.validate_code
+    monkeypatch.setattr(local, "validate_code", lambda files, spec: real(files, spec, require_netns=False))
     result = run_plan(plan_for("validate"), files=GOOD, spec=SPEC)
     assert result.verdict == "PASS"
     assert result.ok is True

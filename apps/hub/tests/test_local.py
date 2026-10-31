@@ -122,7 +122,8 @@ def test_validator_runs_in_process(tmp_path):
         "test_calc.py": "from calc import add\n\n\ndef test_add():\n    assert add(2, 3) == 5\n",
     }
     spec = {"entry": "calc", "files": list(files), "exports": ["add"], "tests": ["test_calc.py"]}
-    result = local.validate_code(files, spec)
+    # Unit fixture: explicitly use the Python guard; production calls require a real netns.
+    result = local.validate_code(files, spec, require_netns=False)
     assert result["ok"] is True
     assert result["report"]["verdict"] == "PASS"
     assert len(result["report"]["checks"]) == 6
@@ -131,9 +132,19 @@ def test_validator_runs_in_process(tmp_path):
 def test_a_path_escape_leaves_nothing_to_check():
     # The escape is dropped, and with it everything the caller sent: an empty
     # deliverable must not come back as PASS.
-    result = local.validate_code({"../../etc/passwd": "x"}, {"files": []})
+    result = local.validate_code({"../../etc/passwd": "x"}, {"files": []}, require_netns=False)
     assert result["ok"] is False
     assert "no usable files" in result["error"]
+
+
+def test_hub_validator_refuses_submitted_code_without_a_network_namespace():
+    files = {
+        "test_escape.py": "open('ran.txt', 'w').write('x')\n\ndef test_escape():\n    assert True\n",
+    }
+    result = local.validate_code(files, {"tests": ["test_escape.py"]})
+    assert result["ok"] is True
+    assert result["report"]["verdict"] == "FAIL"
+    assert "no network namespace" in result["report"]["reason"]
 
 
 def test_a_finding_from_the_rules_says_what_is_wrong_and_how_to_fix_it():

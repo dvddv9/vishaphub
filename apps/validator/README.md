@@ -96,6 +96,14 @@ module, a `curl` subprocess). For those, run the container itself without a netw
 - Not isolated: the disk the process can reach, and loopback services of the host in the namespace-less case
   are closed by the guard but reachable by anything that goes round it.
 
+Both service images set `VISHAP_VALIDATOR_REQUIRE_NETNS=1`. The current non-root container images do not grant
+the privilege needed by `unshare -n`, so checks in those deployments intentionally fail closed. Do not remove
+the setting to make checks pass. Before enabling untrusted-code validation, provide a dedicated worker that
+creates a per-run container with `--network none`, read-only root filesystem, bounded writable temp storage,
+CPU/memory/PID/time limits, and process-tree cleanup; then verify the escape tests against that worker. Docker
+is not available inside the current app containers or this development environment, so that worker cannot be
+created or verified here.
+
 ## Design rules
 
 - **No network, no LLM.** A validator that needs a model to say «pass» is not a validator.
