@@ -28,7 +28,17 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs
 
-from . import access, alerts, demo, fingerprint, limits, meter, sarif, templates
+from . import (
+    access,
+    alerts,
+    demo,
+    external,
+    fingerprint,
+    limits,
+    meter,
+    sarif,
+    templates,
+)
 from .chat import reply
 from .pipeline import run_plan
 from .router import RouteError, plan_for
@@ -608,6 +618,15 @@ class Handler(BaseHTTPRequestHandler):
             # inferred, not asked for: the page promised an answer to the question, so say it was not put to a model
             plan.note = ((plan.note + " \u00b7 " if plan.note else "")
                          + "your question was not put to a model: no model key was sent")
+        external_findings: list = []
+        if body.get("sarif") is not None:
+            try:
+                external_findings, notes = external.parse_sarif(body.get("sarif"))
+            except ValueError as exc:
+                self._send(400, {"ok": False, "error": f"sarif: {exc}"})
+                return None
+            if notes:
+                plan.note = (plan.note + "; " if plan.note else "") + "; ".join(notes)
         return {
             "plan": plan,
             "material": material,
@@ -618,6 +637,8 @@ class Handler(BaseHTTPRequestHandler):
             "model": str(body.get("model") or ""),
             # opt-in: check the model's patch and send a rejected one back, up to three attempts
             "fix_loop": bool(body.get("verify_fix")),
+            # findings of a scanner the client ran, from the SARIF it sent: a third reader, never a lowering one
+            "external": external_findings,
         }
 
     def _respond(self, result, args: dict | None = None, owner: str = "", extra: dict | None = None,
