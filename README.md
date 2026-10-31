@@ -94,6 +94,12 @@ Four rules flag every call site on purpose (`subprocess` in Python, `ProcessBuil
 
 The first run found three critical examples (PHP shell calls, PHP `eval`, Go `sh -c`) that the rules called SAFE. Rules were written for them; `labelled/RESULTS.before-rules.md` keeps the first run, `RESULTS.md` compares, and the four examples the rules were written for or beside are marked `rules_written_after`, because they guard against regression but are not independent evidence of recall.
 
+### Small comparison with open scanners (31 Oct 2026)
+
+Five Python samples were run through Vishap Hub/Analyzer, Semgrep 1.183.0 (`p/python`) and Bandit 1.9.4 (default rules). Vishap Hub and the Analyzer share the same static rules, so they are not independent scanners. The JSON summary reports approximate label matches (±2 lines) of Vishap 65, Semgrep 14 and Bandit 32. The written table disagrees with the JSON for Bandit's auth sample (3/4 versus 4/4 matches), so the Bandit total is provisional. A finding can overlap multiple labels; these counts are not precision or recall. The `user_service.py` labels were helper-authored, not independently verified.
+
+The model was also run on six payloads, including one with a prompt-injection comment. It returned `EMERGENCY` on the injected sample; the rules returned `REQUIRES_REVIEW`, and the Hub kept the stricter result. Fingerprints were independently recomputed for all six reports. No tool produced a patch that was then verified, and the validator was not run. The small, non-independent sample does not establish overall superiority; Vishap also missed material logic and security issues. Detailed outputs were kept outside the repository and are not linked here.
+
 ## Teams
 
 Team mode is off until `VISHAP_HUB_DATABASE_URL` is set. Without it nothing below is loaded and the hub behaves as described above. With it, the runs of signed-in people are kept in Postgres, per team, and survive a restart. The driver is the hub's only dependency (`pip install "vishap-hub[postgres]"`), and the image has it.
