@@ -26,6 +26,7 @@ class Listener:
         self.sock.settimeout(0.2)
         self.port = self.sock.getsockname()[1]
         self.accepted = 0
+        self.accepted_event = threading.Event()
         self._stop = False
         self._t = threading.Thread(target=self._loop, daemon=True)
         self._t.start()
@@ -37,6 +38,7 @@ class Listener:
             except OSError:
                 continue
             self.accepted += 1
+            self.accepted_event.set()
             conn.close()
 
     def close(self):
@@ -101,7 +103,8 @@ def test_code_that_reaches_for_the_network_fails_and_nothing_gets_through(root, 
 def test_the_control_run_gets_through_so_the_failures_above_mean_something(root, listener, monkeypatch, name):
     monkeypatch.setenv("VISHAP_VALIDATOR_NO_NETWORK", "0")
     _behavior_with(root, WAYS_OUT[name].format(port=listener.port))
-    # urllib gets a closed connection back and may raise on the empty reply; the point is the accept.
+    # A completed TCP handshake does not mean the accept thread has been scheduled yet.
+    assert listener.accepted_event.wait(2), "listener did not accept the control connection"
     assert listener.accepted >= 1
 
 
