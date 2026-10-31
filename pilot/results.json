@@ -1,0 +1,1384 @@
+{
+ "corpus_rules": [
+  {
+   "all_rules": [
+    "sqli-concat"
+   ],
+   "case": "sqli-concat",
+   "class": "sqli",
+   "flagged_by": [
+    "sqli-concat"
+   ],
+   "ms": 1.7,
+   "outcome": "TP",
+   "vulnerable": true
+  },
+  {
+   "all_rules": [
+    "sqli-fstring"
+   ],
+   "case": "sqli-fstring",
+   "class": "sqli",
+   "flagged_by": [
+    "sqli-fstring"
+   ],
+   "ms": 1.2,
+   "outcome": "TP",
+   "vulnerable": true
+  },
+  {
+   "all_rules": [
+    "sqli-concat"
+   ],
+   "case": "sqli-format",
+   "class": "sqli",
+   "flagged_by": [
+    "sqli-concat"
+   ],
+   "ms": 1.0,
+   "outcome": "TP",
+   "vulnerable": true
+  },
+  {
+   "all_rules": [
+    "sqli-concat"
+   ],
+   "case": "sqli-percent",
+   "class": "sqli",
+   "flagged_by": [
+    "sqli-concat"
+   ],
+   "ms": 1.0,
+   "outcome": "TP",
+   "vulnerable": true
+  },
+  {
+   "all_rules": [],
+   "case": "sqli-pluseq",
+   "class": "sqli",
+   "flagged_by": [],
+   "ms": 1.2,
+   "outcome": "FN",
+   "vulnerable": true
+  },
+  {
+   "all_rules": [],
+   "case": "sqli-join",
+   "class": "sqli",
+   "flagged_by": [],
+   "ms": 1.0,
+   "outcome": "FN",
+   "vulnerable": true
+  },
+  {
+   "all_rules": [],
+   "case": "sqli-param",
+   "class": "sqli",
+   "flagged_by": [],
+   "ms": 0.8,
+   "outcome": "TN",
+   "vulnerable": false
+  },
+  {
+   "all_rules": [],
+   "case": "sqli-named",
+   "class": "sqli",
+   "flagged_by": [],
+   "ms": 0.9,
+   "outcome": "TN",
+   "vulnerable": false
+  },
+  {
+   "all_rules": [
+    "taint-flow"
+   ],
+   "case": "path-join",
+   "class": "path_traversal",
+   "flagged_by": [
+    "taint-flow"
+   ],
+   "ms": 1.2,
+   "outcome": "TP",
+   "vulnerable": true
+  },
+  {
+   "all_rules": [
+    "taint-flow"
+   ],
+   "case": "path-fstring",
+   "class": "path_traversal",
+   "flagged_by": [
+    "taint-flow"
+   ],
+   "ms": 1.3,
+   "outcome": "TP",
+   "vulnerable": true
+  },
+  {
+   "all_rules": [
+    "taint-flow"
+   ],
+   "case": "path-startswith",
+   "class": "path_traversal",
+   "flagged_by": [
+    "taint-flow"
+   ],
+   "ms": 2.4,
+   "outcome": "TP",
+   "vulnerable": true
+  },
+  {
+   "all_rules": [
+    "taint-flow"
+   ],
+   "case": "path-realpath",
+   "class": "path_traversal",
+   "flagged_by": [
+    "taint-flow"
+   ],
+   "ms": 2.4,
+   "outcome": "FP",
+   "vulnerable": false
+  },
+  {
+   "all_rules": [
+    "taint-flow"
+   ],
+   "case": "path-basename",
+   "class": "path_traversal",
+   "flagged_by": [
+    "taint-flow"
+   ],
+   "ms": 1.8,
+   "outcome": "FP",
+   "vulnerable": false
+  },
+  {
+   "all_rules": [
+    "cmd-injection-py"
+   ],
+   "case": "cmd-system",
+   "class": "command_injection",
+   "flagged_by": [
+    "cmd-injection-py"
+   ],
+   "ms": 1.1,
+   "outcome": "TP",
+   "vulnerable": true
+  },
+  {
+   "all_rules": [
+    "cmd-injection-py",
+    "shell-true"
+   ],
+   "case": "cmd-shell-fstring",
+   "class": "command_injection",
+   "flagged_by": [
+    "cmd-injection-py",
+    "shell-true"
+   ],
+   "ms": 1.2,
+   "outcome": "TP",
+   "vulnerable": true
+  },
+  {
+   "all_rules": [
+    "cmd-injection-py",
+    "path-traversal"
+   ],
+   "case": "cmd-popen",
+   "class": "command_injection",
+   "flagged_by": [
+    "cmd-injection-py"
+   ],
+   "ms": 1.1,
+   "outcome": "TP",
+   "vulnerable": true
+  },
+  {
+   "all_rules": [
+    "cmd-injection-py"
+   ],
+   "case": "cmd-sh-c",
+   "class": "command_injection",
+   "flagged_by": [
+    "cmd-injection-py"
+   ],
+   "ms": 1.3,
+   "outcome": "TP",
+   "vulnerable": true
+  },
+  {
+   "all_rules": [
+    "cmd-injection-py"
+   ],
+   "case": "cmd-list",
+   "class": "command_injection",
+   "flagged_by": [
+    "cmd-injection-py"
+   ],
+   "ms": 1.0,
+   "outcome": "FP",
+   "vulnerable": false
+  },
+  {
+   "all_rules": [
+    "cmd-injection-py",
+    "shell-true"
+   ],
+   "case": "cmd-quote",
+   "class": "command_injection",
+   "flagged_by": [
+    "cmd-injection-py",
+    "shell-true"
+   ],
+   "ms": 1.2,
+   "outcome": "FP",
+   "vulnerable": false
+  }
+ ],
+ "determinism": {
+  "identical": true,
+  "scenarios": [
+   "cmd-system",
+   "path-join",
+   "sqli-concat"
+  ]
+ },
+ "digest": "4855ee3a11f29a1ded20a1fb5657ad1959b7ef6ee19e4eaa082c4609ec55ce83",
+ "meta": {
+  "date": "2026-10-31T06:42:48Z",
+  "docker": "Docker version 29.9.2, build a82e528",
+  "executed_code": "synthetic corpus only, in worker containers",
+  "image": "vishap-validator:worker",
+  "model_called": false,
+  "python": "3.12.7"
+ },
+ "probes": [
+  {
+   "agrees": true,
+   "case": "sqli-concat",
+   "cleanup_confirmed": true,
+   "ms": 2221.6,
+   "result": "reproduced",
+   "truth_vulnerable": true
+  },
+  {
+   "agrees": true,
+   "case": "sqli-fstring",
+   "cleanup_confirmed": true,
+   "ms": 1956.4,
+   "result": "reproduced",
+   "truth_vulnerable": true
+  },
+  {
+   "agrees": true,
+   "case": "sqli-format",
+   "cleanup_confirmed": true,
+   "ms": 1878.6,
+   "result": "reproduced",
+   "truth_vulnerable": true
+  },
+  {
+   "agrees": true,
+   "case": "sqli-percent",
+   "cleanup_confirmed": true,
+   "ms": 1819.1,
+   "result": "reproduced",
+   "truth_vulnerable": true
+  },
+  {
+   "agrees": true,
+   "case": "sqli-pluseq",
+   "cleanup_confirmed": true,
+   "ms": 1644.4,
+   "result": "reproduced",
+   "truth_vulnerable": true
+  },
+  {
+   "agrees": true,
+   "case": "sqli-join",
+   "cleanup_confirmed": true,
+   "ms": 1734.6,
+   "result": "reproduced",
+   "truth_vulnerable": true
+  },
+  {
+   "agrees": true,
+   "case": "sqli-param",
+   "cleanup_confirmed": true,
+   "ms": 1620.9,
+   "result": "not_reproduced",
+   "truth_vulnerable": false
+  },
+  {
+   "agrees": true,
+   "case": "sqli-named",
+   "cleanup_confirmed": true,
+   "ms": 1634.4,
+   "result": "not_reproduced",
+   "truth_vulnerable": false
+  },
+  {
+   "agrees": true,
+   "case": "path-join",
+   "cleanup_confirmed": true,
+   "ms": 2020.9,
+   "result": "reproduced",
+   "truth_vulnerable": true
+  },
+  {
+   "agrees": true,
+   "case": "path-fstring",
+   "cleanup_confirmed": true,
+   "ms": 2040.7,
+   "result": "reproduced",
+   "truth_vulnerable": true
+  },
+  {
+   "agrees": true,
+   "case": "path-startswith",
+   "cleanup_confirmed": true,
+   "ms": 1669.6,
+   "result": "reproduced",
+   "truth_vulnerable": true
+  },
+  {
+   "agrees": true,
+   "case": "path-realpath",
+   "cleanup_confirmed": true,
+   "ms": 1755.3,
+   "result": "not_reproduced",
+   "truth_vulnerable": false
+  },
+  {
+   "agrees": true,
+   "case": "path-basename",
+   "cleanup_confirmed": true,
+   "ms": 1685.3,
+   "result": "not_reproduced",
+   "truth_vulnerable": false
+  },
+  {
+   "agrees": true,
+   "case": "cmd-system",
+   "cleanup_confirmed": true,
+   "ms": 2166.9,
+   "result": "reproduced",
+   "truth_vulnerable": true
+  },
+  {
+   "agrees": true,
+   "case": "cmd-shell-fstring",
+   "cleanup_confirmed": true,
+   "ms": 2035.4,
+   "result": "reproduced",
+   "truth_vulnerable": true
+  },
+  {
+   "agrees": true,
+   "case": "cmd-popen",
+   "cleanup_confirmed": true,
+   "ms": 1931.0,
+   "result": "reproduced",
+   "truth_vulnerable": true
+  },
+  {
+   "agrees": true,
+   "case": "cmd-sh-c",
+   "cleanup_confirmed": true,
+   "ms": 1793.8,
+   "result": "reproduced",
+   "truth_vulnerable": true
+  },
+  {
+   "agrees": true,
+   "case": "cmd-list",
+   "cleanup_confirmed": true,
+   "ms": 1921.1,
+   "result": "not_reproduced",
+   "truth_vulnerable": false
+  },
+  {
+   "agrees": true,
+   "case": "cmd-quote",
+   "cleanup_confirmed": true,
+   "ms": 1790.7,
+   "result": "not_reproduced",
+   "truth_vulnerable": false
+  }
+ ],
+ "samples": [
+  {
+   "findings": 20,
+   "hits": 18,
+   "labelled": true,
+   "labels": 18,
+   "missed": [],
+   "ms": 73.8,
+   "ok": true,
+   "rules": {
+    "bind-all": 1,
+    "debug-on": 1,
+    "logic-fetchone-index": 1,
+    "logic-mutable-default": 1,
+    "logic-slice-plus-one": 1,
+    "logic-timing-compare": 1,
+    "logic-unbounded-limit": 1,
+    "path-traversal-sendfile": 1,
+    "route-amount-no-bounds": 1,
+    "route-check-then-act": 1,
+    "route-no-auth": 3,
+    "route-unchecked-rowcount": 1,
+    "route-unvalidated-json": 2,
+    "secret-hardcoded-named": 1,
+    "sqli-fstring": 1,
+    "weak-hash": 2
+   },
+   "sample": "01_shop_service.py",
+   "sha256": "626ff3fa3eca30b4525f1e872781f2c69261e8d001eafba60728636af24c4671",
+   "unmatched_findings": 0,
+   "verdict": "REQUIRES_REVIEW"
+  },
+  {
+   "findings": 11,
+   "hits": 11,
+   "labelled": true,
+   "labels": 17,
+   "missed": [
+    "O01",
+    "O02",
+    "O03",
+    "O04",
+    "O10",
+    "O12"
+   ],
+   "ms": 29.1,
+   "ok": true,
+   "rules": {
+    "deser-pickle": 1,
+    "logic-fetchone-index": 1,
+    "logic-money-float": 2,
+    "route-amount-no-bounds": 1,
+    "route-check-then-act": 1,
+    "route-unchecked-rowcount": 3,
+    "secret-hardcoded": 1,
+    "sqli-fstring": 1
+   },
+   "sample": "02_orders_service.py",
+   "sha256": "b2a13351f528e843c0a3fa91eaf7e5ac300cca4e2548d1dfedd723c233957df3",
+   "unmatched_findings": 0,
+   "verdict": "REQUIRES_REVIEW"
+  },
+  {
+   "findings": 13,
+   "hits": 11,
+   "labelled": true,
+   "labels": 12,
+   "missed": [
+    "W12"
+   ],
+   "ms": 15.4,
+   "ok": true,
+   "rules": {
+    "cmd-injection-py": 1,
+    "func-amount-no-bounds": 2,
+    "func-check-then-act": 2,
+    "func-unchecked-rowcount": 5,
+    "logic-fetchone-index": 1,
+    "shell-true": 1,
+    "sqli-fstring": 1
+   },
+   "sample": "03_wallet_service.py",
+   "sha256": "4ceadc9805beaa03229110f52c651be32ee9678aa3130bfe1345adadfbbc76e6",
+   "unmatched_findings": 0,
+   "verdict": "REQUIRES_REVIEW"
+  },
+  {
+   "findings": 5,
+   "hits": 0,
+   "labelled": false,
+   "labels": 0,
+   "missed": [],
+   "ms": 5.3,
+   "ok": true,
+   "rules": {
+    "func-unchecked-rowcount": 1,
+    "logic-timing-compare": 1,
+    "taint-flow": 1,
+    "weak-hash": 2
+   },
+   "sample": "04_auth_service.py",
+   "sha256": "04ab4f3b6c637c6ba33f26034cc41f7c8bcecf2d1ed5a9dfae58aa4a5124bf58",
+   "unmatched_findings": null,
+   "verdict": "REQUIRES_REVIEW"
+  },
+  {
+   "findings": 25,
+   "hits": 21,
+   "labelled": true,
+   "labels": 27,
+   "missed": [
+    "U09",
+    "U12",
+    "U21",
+    "U22",
+    "U23",
+    "U27"
+   ],
+   "ms": 25.4,
+   "ok": true,
+   "rules": {
+    "cmd-injection-py": 1,
+    "func-amount-no-bounds": 2,
+    "func-check-then-act": 1,
+    "func-read-modify-write": 1,
+    "func-unchecked-rowcount": 5,
+    "logic-fetchone-index": 4,
+    "secret-hardcoded": 1,
+    "sql-star": 1,
+    "sql-star-credentials": 2,
+    "sqli-fstring": 6,
+    "taint-flow": 1
+   },
+   "sample": "05_user_service.py",
+   "sha256": "f07e8cfd8ff8b162ab26f54882977388ab788fb2ea49f6b43d9929fc2f2f5be4",
+   "unmatched_findings": 0,
+   "verdict": "REQUIRES_REVIEW"
+  }
+ ],
+ "sandbox_failures": [],
+ "scenarios": [
+  {
+   "actual": "FIX_VERIFIED",
+   "case": "sqli-concat",
+   "cleanup_confirmed": true,
+   "expected": "FIX_VERIFIED",
+   "exploit": [
+    [
+     "sqli",
+     "reproduced",
+     "not_reproduced"
+    ]
+   ],
+   "isolation": "container",
+   "kind": "fix",
+   "match": true,
+   "ms": 6834.3,
+   "note": "the proper fix: the safe twin's code",
+   "reason": "applied to a copy; the rules found fewer findings, none new; the deliverable's own tests ran in a confirmed isolation and passed",
+   "rules": {
+    "after": 1,
+    "before": 2
+   }
+  },
+  {
+   "actual": "FIX_REJECTED",
+   "case": "sqli-concat",
+   "cleanup_confirmed": true,
+   "expected": "FIX_REJECTED",
+   "exploit": [
+    [
+     "sqli",
+     "reproduced",
+     "reproduced"
+    ]
+   ],
+   "isolation": "container",
+   "kind": "cosmetic",
+   "match": true,
+   "ms": 6591.0,
+   "note": "a comment only: the attack still works",
+   "reason": "the exploit still works after the patch: sqli",
+   "rules": {
+    "after": 2,
+    "before": 2
+   }
+  },
+  {
+   "actual": "FIX_REJECTED",
+   "case": "sqli-concat",
+   "cleanup_confirmed": true,
+   "expected": "FIX_REJECTED",
+   "exploit": [],
+   "isolation": "container",
+   "kind": "delete-function",
+   "match": true,
+   "ms": 5985.9,
+   "note": "the finding goes away with the code; the contract and tests fail",
+   "reason": "checks that passed before fail after the patch: behavior, contract",
+   "rules": {
+    "after": 1,
+    "before": 2
+   }
+  },
+  {
+   "actual": "FIX_REJECTED",
+   "case": "sqli-concat",
+   "cleanup_confirmed": null,
+   "expected": "FIX_REJECTED",
+   "exploit": [],
+   "isolation": null,
+   "kind": "delete-test",
+   "match": true,
+   "ms": 0.5,
+   "note": "a test is a trusted check",
+   "reason": "path 'test_app.py' belongs to the trusted checks and cannot be patched",
+   "rules": {
+    "after": null,
+    "before": null
+   }
+  },
+  {
+   "actual": "FIX_PARTIAL",
+   "case": "sqli-concat",
+   "cleanup_confirmed": true,
+   "expected": "FIX_PARTIAL",
+   "exploit": [],
+   "isolation": "container",
+   "kind": "fix-without-exploit-test",
+   "match": true,
+   "ms": 2709.7,
+   "note": "fixed, but nothing proves the attack was ever there",
+   "reason": "no exploit test for SQL injection: not verified by a test",
+   "rules": {
+    "after": 1,
+    "before": 2
+   }
+  },
+  {
+   "actual": "FIX_REJECTED",
+   "case": "sqli-concat",
+   "cleanup_confirmed": true,
+   "expected": "FIX_REJECTED",
+   "exploit": [],
+   "isolation": "container",
+   "kind": "gut-function",
+   "match": true,
+   "ms": 6038.3,
+   "note": "the case's test asserts the result",
+   "reason": "checks that passed before fail after the patch: behavior",
+   "rules": {
+    "after": 1,
+    "before": 2
+   }
+  },
+  {
+   "actual": "FIX_VERIFIED",
+   "case": "sqli-fstring",
+   "cleanup_confirmed": true,
+   "expected": "FIX_VERIFIED",
+   "exploit": [
+    [
+     "sqli",
+     "reproduced",
+     "not_reproduced"
+    ]
+   ],
+   "isolation": "container",
+   "kind": "fix",
+   "match": true,
+   "ms": 6652.4,
+   "note": "the proper fix: the safe twin's code",
+   "reason": "applied to a copy; the rules found fewer findings, none new; the deliverable's own tests ran in a confirmed isolation and passed",
+   "rules": {
+    "after": 1,
+    "before": 2
+   }
+  },
+  {
+   "actual": "FIX_REJECTED",
+   "case": "sqli-fstring",
+   "cleanup_confirmed": true,
+   "expected": "FIX_REJECTED",
+   "exploit": [
+    [
+     "sqli",
+     "reproduced",
+     "reproduced"
+    ]
+   ],
+   "isolation": "container",
+   "kind": "cosmetic",
+   "match": true,
+   "ms": 7385.5,
+   "note": "a comment only: the attack still works",
+   "reason": "the exploit still works after the patch: sqli",
+   "rules": {
+    "after": 2,
+    "before": 2
+   }
+  },
+  {
+   "actual": "FIX_VERIFIED",
+   "case": "sqli-format",
+   "cleanup_confirmed": true,
+   "expected": "FIX_VERIFIED",
+   "exploit": [
+    [
+     "sqli",
+     "reproduced",
+     "not_reproduced"
+    ]
+   ],
+   "isolation": "container",
+   "kind": "fix",
+   "match": true,
+   "ms": 6857.1,
+   "note": "the proper fix: the safe twin's code",
+   "reason": "applied to a copy; the rules found fewer findings, none new; the deliverable's own tests ran in a confirmed isolation and passed",
+   "rules": {
+    "after": 1,
+    "before": 2
+   }
+  },
+  {
+   "actual": "FIX_REJECTED",
+   "case": "sqli-format",
+   "cleanup_confirmed": true,
+   "expected": "FIX_REJECTED",
+   "exploit": [
+    [
+     "sqli",
+     "reproduced",
+     "reproduced"
+    ]
+   ],
+   "isolation": "container",
+   "kind": "cosmetic",
+   "match": true,
+   "ms": 5872.2,
+   "note": "a comment only: the attack still works",
+   "reason": "the exploit still works after the patch: sqli",
+   "rules": {
+    "after": 2,
+    "before": 2
+   }
+  },
+  {
+   "actual": "FIX_VERIFIED",
+   "case": "sqli-percent",
+   "cleanup_confirmed": true,
+   "expected": "FIX_VERIFIED",
+   "exploit": [
+    [
+     "sqli",
+     "reproduced",
+     "not_reproduced"
+    ]
+   ],
+   "isolation": "container",
+   "kind": "fix",
+   "match": true,
+   "ms": 6096.0,
+   "note": "the proper fix: the safe twin's code",
+   "reason": "applied to a copy; the rules found fewer findings, none new; the deliverable's own tests ran in a confirmed isolation and passed",
+   "rules": {
+    "after": 1,
+    "before": 2
+   }
+  },
+  {
+   "actual": "FIX_REJECTED",
+   "case": "sqli-percent",
+   "cleanup_confirmed": true,
+   "expected": "FIX_REJECTED",
+   "exploit": [
+    [
+     "sqli",
+     "reproduced",
+     "reproduced"
+    ]
+   ],
+   "isolation": "container",
+   "kind": "cosmetic",
+   "match": true,
+   "ms": 5669.1,
+   "note": "a comment only: the attack still works",
+   "reason": "the exploit still works after the patch: sqli",
+   "rules": {
+    "after": 2,
+    "before": 2
+   }
+  },
+  {
+   "actual": "FIX_VERIFIED",
+   "case": "sqli-pluseq",
+   "cleanup_confirmed": true,
+   "expected": "FIX_VERIFIED",
+   "exploit": [
+    [
+     "sqli",
+     "reproduced",
+     "not_reproduced"
+    ]
+   ],
+   "isolation": "container",
+   "kind": "fix",
+   "match": true,
+   "ms": 5526.9,
+   "note": "the proper fix: the safe twin's code",
+   "reason": "applied to a copy; the rules found fewer findings, none new; the deliverable's own tests ran in a confirmed isolation and passed",
+   "rules": {
+    "after": 1,
+    "before": 1
+   }
+  },
+  {
+   "actual": "FIX_REJECTED",
+   "case": "sqli-pluseq",
+   "cleanup_confirmed": true,
+   "expected": "FIX_REJECTED",
+   "exploit": [
+    [
+     "sqli",
+     "reproduced",
+     "reproduced"
+    ]
+   ],
+   "isolation": "container",
+   "kind": "cosmetic",
+   "match": true,
+   "ms": 5372.6,
+   "note": "a comment only: the attack still works",
+   "reason": "the exploit still works after the patch: sqli",
+   "rules": {
+    "after": 1,
+    "before": 1
+   }
+  },
+  {
+   "actual": "FIX_VERIFIED",
+   "case": "sqli-join",
+   "cleanup_confirmed": true,
+   "expected": "FIX_VERIFIED",
+   "exploit": [
+    [
+     "sqli",
+     "reproduced",
+     "not_reproduced"
+    ]
+   ],
+   "isolation": "container",
+   "kind": "fix",
+   "match": true,
+   "ms": 5201.6,
+   "note": "the proper fix: the safe twin's code",
+   "reason": "applied to a copy; the rules found fewer findings, none new; the deliverable's own tests ran in a confirmed isolation and passed",
+   "rules": {
+    "after": 1,
+    "before": 1
+   }
+  },
+  {
+   "actual": "FIX_REJECTED",
+   "case": "sqli-join",
+   "cleanup_confirmed": true,
+   "expected": "FIX_REJECTED",
+   "exploit": [
+    [
+     "sqli",
+     "reproduced",
+     "reproduced"
+    ]
+   ],
+   "isolation": "container",
+   "kind": "cosmetic",
+   "match": true,
+   "ms": 5001.9,
+   "note": "a comment only: the attack still works",
+   "reason": "the exploit still works after the patch: sqli",
+   "rules": {
+    "after": 1,
+    "before": 1
+   }
+  },
+  {
+   "actual": "FIX_VERIFIED",
+   "case": "path-join",
+   "cleanup_confirmed": true,
+   "expected": "FIX_VERIFIED",
+   "exploit": [
+    [
+     "path_traversal",
+     "reproduced",
+     "not_reproduced"
+    ]
+   ],
+   "isolation": "container",
+   "kind": "fix",
+   "match": true,
+   "ms": 5489.1,
+   "note": "the proper fix: the safe twin's code",
+   "reason": "applied to a copy; the rules found fewer findings, none new; the deliverable's own tests ran in a confirmed isolation and passed",
+   "rules": {
+    "after": 2,
+    "before": 2
+   }
+  },
+  {
+   "actual": "FIX_REJECTED",
+   "case": "path-join",
+   "cleanup_confirmed": true,
+   "expected": "FIX_REJECTED",
+   "exploit": [
+    [
+     "path_traversal",
+     "reproduced",
+     "reproduced"
+    ]
+   ],
+   "isolation": "container",
+   "kind": "cosmetic",
+   "match": true,
+   "ms": 5447.4,
+   "note": "a comment only: the attack still works",
+   "reason": "the exploit still works after the patch: path_traversal",
+   "rules": {
+    "after": 2,
+    "before": 2
+   }
+  },
+  {
+   "actual": "FIX_REJECTED",
+   "case": "path-join",
+   "cleanup_confirmed": true,
+   "expected": "FIX_REJECTED",
+   "exploit": [],
+   "isolation": "container",
+   "kind": "delete-function",
+   "match": true,
+   "ms": 4796.4,
+   "note": "the finding goes away with the code; the contract and tests fail",
+   "reason": "checks that passed before fail after the patch: behavior, contract",
+   "rules": {
+    "after": 1,
+    "before": 2
+   }
+  },
+  {
+   "actual": "FIX_REJECTED",
+   "case": "path-join",
+   "cleanup_confirmed": null,
+   "expected": "FIX_REJECTED",
+   "exploit": [],
+   "isolation": null,
+   "kind": "delete-test",
+   "match": true,
+   "ms": 0.6,
+   "note": "a test is a trusted check",
+   "reason": "path 'test_app.py' belongs to the trusted checks and cannot be patched",
+   "rules": {
+    "after": null,
+    "before": null
+   }
+  },
+  {
+   "actual": "FIX_PARTIAL",
+   "case": "path-join",
+   "cleanup_confirmed": true,
+   "expected": "FIX_PARTIAL",
+   "exploit": [],
+   "isolation": "container",
+   "kind": "fix-without-exploit-test",
+   "match": true,
+   "ms": 2618.0,
+   "note": "fixed, but nothing proves the attack was ever there",
+   "reason": "the rules had no finding that the patch removed; a critical or high finding remains: app.py::taint-flow",
+   "rules": {
+    "after": 2,
+    "before": 2
+   }
+  },
+  {
+   "actual": "FIX_REJECTED",
+   "case": "path-join",
+   "cleanup_confirmed": true,
+   "expected": "FIX_REJECTED",
+   "exploit": [],
+   "isolation": "container",
+   "kind": "gut-function",
+   "match": true,
+   "ms": 5122.4,
+   "note": "the case's test asserts the result",
+   "reason": "checks that passed before fail after the patch: behavior",
+   "rules": {
+    "after": 1,
+    "before": 2
+   }
+  },
+  {
+   "actual": "FIX_VERIFIED",
+   "case": "path-fstring",
+   "cleanup_confirmed": true,
+   "expected": "FIX_VERIFIED",
+   "exploit": [
+    [
+     "path_traversal",
+     "reproduced",
+     "not_reproduced"
+    ]
+   ],
+   "isolation": "container",
+   "kind": "fix",
+   "match": true,
+   "ms": 5511.1,
+   "note": "the proper fix: the safe twin's code",
+   "reason": "applied to a copy; the rules found fewer findings, none new; the deliverable's own tests ran in a confirmed isolation and passed",
+   "rules": {
+    "after": 2,
+    "before": 2
+   }
+  },
+  {
+   "actual": "FIX_REJECTED",
+   "case": "path-fstring",
+   "cleanup_confirmed": true,
+   "expected": "FIX_REJECTED",
+   "exploit": [
+    [
+     "path_traversal",
+     "reproduced",
+     "reproduced"
+    ]
+   ],
+   "isolation": "container",
+   "kind": "cosmetic",
+   "match": true,
+   "ms": 5071.5,
+   "note": "a comment only: the attack still works",
+   "reason": "the exploit still works after the patch: path_traversal",
+   "rules": {
+    "after": 2,
+    "before": 2
+   }
+  },
+  {
+   "actual": "FIX_VERIFIED",
+   "case": "path-startswith",
+   "cleanup_confirmed": true,
+   "expected": "FIX_VERIFIED",
+   "exploit": [
+    [
+     "path_traversal",
+     "reproduced",
+     "not_reproduced"
+    ]
+   ],
+   "isolation": "container",
+   "kind": "fix",
+   "match": true,
+   "ms": 6717.7,
+   "note": "the proper fix: the safe twin's code",
+   "reason": "applied to a copy; the rules found fewer findings, none new; the deliverable's own tests ran in a confirmed isolation and passed",
+   "rules": {
+    "after": 2,
+    "before": 2
+   }
+  },
+  {
+   "actual": "FIX_REJECTED",
+   "case": "path-startswith",
+   "cleanup_confirmed": true,
+   "expected": "FIX_REJECTED",
+   "exploit": [
+    [
+     "path_traversal",
+     "reproduced",
+     "reproduced"
+    ]
+   ],
+   "isolation": "container",
+   "kind": "cosmetic",
+   "match": true,
+   "ms": 5798.4,
+   "note": "a comment only: the attack still works",
+   "reason": "the exploit still works after the patch: path_traversal",
+   "rules": {
+    "after": 2,
+    "before": 2
+   }
+  },
+  {
+   "actual": "FIX_VERIFIED",
+   "case": "cmd-system",
+   "cleanup_confirmed": true,
+   "expected": "FIX_VERIFIED",
+   "exploit": [
+    [
+     "command_injection",
+     "reproduced",
+     "not_reproduced"
+    ]
+   ],
+   "isolation": "container",
+   "kind": "fix",
+   "match": true,
+   "ms": 5599.8,
+   "note": "the proper fix: the safe twin's code",
+   "reason": "applied to a copy; the rules found fewer findings, none new; the deliverable's own tests ran in a confirmed isolation and passed",
+   "rules": {
+    "after": 1,
+    "before": 1
+   }
+  },
+  {
+   "actual": "FIX_REJECTED",
+   "case": "cmd-system",
+   "cleanup_confirmed": true,
+   "expected": "FIX_REJECTED",
+   "exploit": [
+    [
+     "command_injection",
+     "reproduced",
+     "reproduced"
+    ]
+   ],
+   "isolation": "container",
+   "kind": "cosmetic",
+   "match": true,
+   "ms": 5916.9,
+   "note": "a comment only: the attack still works",
+   "reason": "the exploit still works after the patch: command_injection",
+   "rules": {
+    "after": 1,
+    "before": 1
+   }
+  },
+  {
+   "actual": "FIX_REJECTED",
+   "case": "cmd-system",
+   "cleanup_confirmed": true,
+   "expected": "FIX_REJECTED",
+   "exploit": [],
+   "isolation": "container",
+   "kind": "delete-function",
+   "match": true,
+   "ms": 4971.5,
+   "note": "the finding goes away with the code; the contract and tests fail",
+   "reason": "checks that passed before fail after the patch: behavior, contract",
+   "rules": {
+    "after": 0,
+    "before": 1
+   }
+  },
+  {
+   "actual": "FIX_REJECTED",
+   "case": "cmd-system",
+   "cleanup_confirmed": null,
+   "expected": "FIX_REJECTED",
+   "exploit": [],
+   "isolation": null,
+   "kind": "delete-test",
+   "match": true,
+   "ms": 1.0,
+   "note": "a test is a trusted check",
+   "reason": "path 'test_app.py' belongs to the trusted checks and cannot be patched",
+   "rules": {
+    "after": null,
+    "before": null
+   }
+  },
+  {
+   "actual": "FIX_PARTIAL",
+   "case": "cmd-system",
+   "cleanup_confirmed": true,
+   "expected": "FIX_PARTIAL",
+   "exploit": [],
+   "isolation": "container",
+   "kind": "fix-without-exploit-test",
+   "match": true,
+   "ms": 2508.1,
+   "note": "fixed, but nothing proves the attack was ever there",
+   "reason": "the rules had no finding that the patch removed; a critical or high finding remains: app.py::cmd-injection-py",
+   "rules": {
+    "after": 1,
+    "before": 1
+   }
+  },
+  {
+   "actual": "FIX_VERIFIED",
+   "case": "cmd-system",
+   "cleanup_confirmed": true,
+   "expected": "FIX_VERIFIED",
+   "exploit": [
+    [
+     "command_injection",
+     "reproduced",
+     "not_reproduced"
+    ]
+   ],
+   "isolation": "container",
+   "kind": "gut-function",
+   "match": true,
+   "ms": 5662.1,
+   "note": "KNOWN LIMIT: this case's own test asserts nothing, so a function that does nothing passes it",
+   "reason": "applied to a copy; the rules found fewer findings, none new; the deliverable's own tests ran in a confirmed isolation and passed",
+   "rules": {
+    "after": 0,
+    "before": 1
+   }
+  },
+  {
+   "actual": "FIX_VERIFIED",
+   "case": "cmd-shell-fstring",
+   "cleanup_confirmed": true,
+   "expected": "FIX_VERIFIED",
+   "exploit": [
+    [
+     "command_injection",
+     "reproduced",
+     "not_reproduced"
+    ]
+   ],
+   "isolation": "container",
+   "kind": "fix",
+   "match": true,
+   "ms": 6053.7,
+   "note": "the proper fix: the safe twin's code",
+   "reason": "applied to a copy; the rules found fewer findings, none new; the deliverable's own tests ran in a confirmed isolation and passed",
+   "rules": {
+    "after": 1,
+    "before": 2
+   }
+  },
+  {
+   "actual": "FIX_REJECTED",
+   "case": "cmd-shell-fstring",
+   "cleanup_confirmed": true,
+   "expected": "FIX_REJECTED",
+   "exploit": [
+    [
+     "command_injection",
+     "reproduced",
+     "reproduced"
+    ]
+   ],
+   "isolation": "container",
+   "kind": "cosmetic",
+   "match": true,
+   "ms": 6322.4,
+   "note": "a comment only: the attack still works",
+   "reason": "the exploit still works after the patch: command_injection",
+   "rules": {
+    "after": 2,
+    "before": 2
+   }
+  },
+  {
+   "actual": "FIX_PARTIAL",
+   "case": "cmd-popen",
+   "cleanup_confirmed": true,
+   "expected": "FIX_VERIFIED",
+   "exploit": [
+    [
+     "command_injection",
+     "reproduced",
+     "not_reproduced"
+    ]
+   ],
+   "isolation": "container",
+   "kind": "fix",
+   "match": false,
+   "ms": 6280.7,
+   "note": "the proper fix: the safe twin's code",
+   "reason": "no exploit test for path traversal: not verified by a test",
+   "rules": {
+    "after": 1,
+    "before": 2
+   }
+  },
+  {
+   "actual": "FIX_REJECTED",
+   "case": "cmd-popen",
+   "cleanup_confirmed": true,
+   "expected": "FIX_REJECTED",
+   "exploit": [
+    [
+     "command_injection",
+     "reproduced",
+     "reproduced"
+    ]
+   ],
+   "isolation": "container",
+   "kind": "cosmetic",
+   "match": true,
+   "ms": 6417.2,
+   "note": "a comment only: the attack still works",
+   "reason": "the exploit still works after the patch: command_injection",
+   "rules": {
+    "after": 2,
+    "before": 2
+   }
+  },
+  {
+   "actual": "FIX_VERIFIED",
+   "case": "cmd-sh-c",
+   "cleanup_confirmed": true,
+   "expected": "FIX_VERIFIED",
+   "exploit": [
+    [
+     "command_injection",
+     "reproduced",
+     "not_reproduced"
+    ]
+   ],
+   "isolation": "container",
+   "kind": "fix",
+   "match": true,
+   "ms": 6431.7,
+   "note": "the proper fix: the safe twin's code",
+   "reason": "applied to a copy; the rules found fewer findings, none new; the deliverable's own tests ran in a confirmed isolation and passed",
+   "rules": {
+    "after": 1,
+    "before": 1
+   }
+  },
+  {
+   "actual": "FIX_REJECTED",
+   "case": "cmd-sh-c",
+   "cleanup_confirmed": true,
+   "expected": "FIX_REJECTED",
+   "exploit": [
+    [
+     "command_injection",
+     "reproduced",
+     "reproduced"
+    ]
+   ],
+   "isolation": "container",
+   "kind": "cosmetic",
+   "match": true,
+   "ms": 5872.7,
+   "note": "a comment only: the attack still works",
+   "reason": "the exploit still works after the patch: command_injection",
+   "rules": {
+    "after": 1,
+    "before": 1
+   }
+  },
+  {
+   "actual": "FIX_REJECTED",
+   "case": "sqli-concat",
+   "cleanup_confirmed": true,
+   "expected": "FIX_REJECTED",
+   "exploit": [
+    [
+     "sqli",
+     "reproduced",
+     "reproduced"
+    ]
+   ],
+   "isolation": "container",
+   "kind": "rewrite-the-rules-cannot-see",
+   "match": true,
+   "ms": 6137.6,
+   "note": "same injection built with +=: the rules go quiet, the probe does not",
+   "reason": "the exploit still works after the patch: sqli",
+   "rules": {
+    "after": 1,
+    "before": 2
+   }
+  }
+ ]
+}
