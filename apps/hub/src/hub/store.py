@@ -36,6 +36,14 @@ def _owns(record: dict, owner: str | None) -> bool:
     return any(hmac.compare_digest(owner, str(o)) for o in record.get("owners") or [])
 
 
+def _statuses_of(result: object) -> dict:
+    """The fix and verification statuses, so a list can show an incomplete run as incomplete."""
+    st = (result or {}).get("statuses") if isinstance(result, dict) else None
+    if not isinstance(st, dict):
+        return {}
+    return {"fix": (st.get("fix") or {}).get("status"), "verification": (st.get("verification") or {}).get("status")}
+
+
 def _summary(record: dict) -> dict:
     return {
         "id": record.get("id"),
@@ -44,6 +52,7 @@ def _summary(record: dict) -> dict:
         "ok": record.get("ok"),
         "plan": record.get("plan"),
         "summary": record.get("summary", "")[:200],
+        **_statuses_of(record.get("result")),
     }
 
 

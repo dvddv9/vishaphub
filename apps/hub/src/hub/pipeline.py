@@ -90,6 +90,7 @@ class RunResult:
 
     def as_dict(self) -> dict:
         return {
+            "schema": "vishap.run/1",          # the stable contract, see docs/ci.md
             "ok": self.ok,
             "mode": self.mode,
             "verdict": self.verdict,

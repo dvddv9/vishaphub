@@ -880,3 +880,55 @@ class OfflineTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class _Statused(_Said):
+    """A run that was only partly checked and carries a patch nobody verified."""
+
+    def as_dict(self):
+        data = super().as_dict()
+        data["statuses"] = {"fix": {"status": "FIX_UNVERIFIED"},
+                            "verification": {"status": "PARTIAL", "ran": ["analyser"], "not_run": ["validator"]}}
+        return data
+
+
+@needs_pg
+class ProductApiTeamTests(TeamCase):
+    def run_statused(self, who, material="a = 1"):
+        with mock.patch.object(server, "run_plan", lambda **kw: _Statused()):
+            status, _h, raw = self.call("POST", "/run", self.keys[who], {"material": material, "api_key": "k"})
+        assert status == 200, raw
+        return json.loads(raw)["fingerprint"]["id"]
+
+    def test_the_team_list_carries_the_fix_and_verification_statuses(self):
+        new = self.run_statused("alice", "a = 1")
+        old = self.run_as("alice", "b = 2")                       # a run stored without statuses
+        rows = {r["id"]: r for r in json.loads(self.call("GET", "/api/runs", self.keys["alice"])[2])["runs"]}
+        assert (rows[new]["fix"], rows[new]["verification"]) == ("FIX_UNVERIFIED", "PARTIAL")
+        assert (rows[old]["fix"], rows[old]["verification"]) == (None, None)
+        page = self.call("GET", "/runs", self.keys["alice"])[2].decode()
+        assert "partial" in page and "fix unverified" in page
+
+    def test_the_exports_and_the_integrity_check_are_as_private_as_the_run(self):
+        run_id = self.run_statused("alice", "secret = 1")
+        for path in (f"/api/runs/{run_id}.md", f"/api/verify/{run_id}"):
+            assert self.call("GET", path, self.keys["alice"])[0] == 200, path
+            assert self.call("GET", path, self.keys["vic"])[0] == 200, path           # a viewer of the same team
+            status, _h, body = self.call("GET", path, self.keys["bob"])               # another team
+            assert status == 404 and run_id.encode() not in body, path
+        assert self.call("POST", f"/api/verify/{run_id}", self.keys["bob"], {"files": {"a": "b"}})[0] == 404
+        assert json.loads(self.call("GET", f"/api/verify/{run_id}", self.keys["alice"])[2])["intact"] is True
+
+    def test_reading_an_export_is_audited_like_reading_the_run(self):
+        run_id = self.run_statused("alice", "a = 1")
+        before = self.admin_rows("SELECT count(*) FROM audit_log WHERE action = 'run.read' AND target = %s", run_id)[0][0]
+        assert self.call("GET", f"/api/runs/{run_id}.md", self.keys["alice"])[0] == 200
+        assert self.call("GET", f"/api/verify/{run_id}", self.keys["alice"])[0] == 200
+        after = self.admin_rows("SELECT count(*) FROM audit_log WHERE action = 'run.read' AND target = %s", run_id)[0][0]
+        assert after == before + 2
+
+    def test_a_deleted_run_is_gone_from_the_exports_too(self):
+        run_id = self.run_statused("alice", "a = 1")
+        assert self.call("DELETE", f"/api/runs/{run_id}", self.keys["alice"])[0] == 200
+        for path in (f"/api/runs/{run_id}.md", f"/api/verify/{run_id}", f"/api/runs/{run_id}.sarif"):
+            assert self.call("GET", path, self.keys["alice"])[0] == 404, path

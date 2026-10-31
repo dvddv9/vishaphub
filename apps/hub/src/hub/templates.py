@@ -184,7 +184,11 @@ def report_page(record: dict, retention: str = "") -> str:
     summary = str(result.get("summary") or "")
     reason = str(result.get("reason") or "")
     body = f"""
-<p class="crumb"><a href="/runs">{ARROW_BACK} recent runs</a></p>
+<p class="crumb"><a href="/runs">{ARROW_BACK} recent runs</a><span class="exports"> {DOT} export:
+<a href="/api/runs/{e(str(record.get('id') or ''))}.json">JSON</a> {DOT}
+<a href="/api/runs/{e(str(record.get('id') or ''))}.sarif">SARIF</a> {DOT}
+<a href="/api/runs/{e(str(record.get('id') or ''))}.md">Markdown</a> {DOT}
+<a href="/api/verify/{e(str(record.get('id') or ''))}">check integrity</a></span></p>
 <section class="rep-hero">
 <div class="rep-verdict {state}"><span class="label">verdict</span><b>{verdict}</b></div>
 <div class="rep-head">
@@ -207,6 +211,19 @@ def report_page(record: dict, retention: str = "") -> str:
                   description=f"A reproducible VishapHub run: verdict {result.get('verdict', '')}.")
 
 
+def _status_chips(r: dict) -> str:
+    """A run that did not check everything says so in the list: an empty or partial run must not look green."""
+    out = ""
+    ver = str(r.get("verification") or "")
+    if ver and ver != "COMPLETE":
+        out += ('<span class="vchip warn" title="not everything the plan covers was checked">'
+                f'{e(ver.replace("_", " ").lower())}</span>')
+    fix = str(r.get("fix") or "")
+    if fix and fix != "NO_PATCH":
+        out += f'<span class="vchip">{e(fix.lower().replace("_", " "))}</span>'
+    return out
+
+
 def runs_page(runs: list[dict]) -> str:
     head = ('<h1 class="page-title">Recent runs</h1>'
             '<p class="page-lead">The runs this hub remembers, newest first. Open one to read it, or send the link.</p>')
@@ -219,7 +236,8 @@ def runs_page(runs: list[dict]) -> str:
         f'<span class="vchip {_verdict_class(str(r.get("verdict") or ""))}">{e(str(r.get("verdict") or "-"))}</span>'
         f'<a href="/r/{e(str(r.get("id") or ""))}">{e(str(r.get("id") or ""))}</a>'
         f'<span>{e(str(r.get("at") or ""))}</span>'
-        f'<span>{e(f" {ARROW} ".join((r.get("plan") or {}).get("stages") or []))}</span></div>'
+        f'<span>{e(f" {ARROW} ".join((r.get("plan") or {}).get("stages") or []))}</span>'
+        + _status_chips(r) + "</div>"
         + (f'<div class="sum">{e(str(r.get("summary") or ""))}</div>' if r.get("summary") else "")
         + "</li>"
         for r in runs

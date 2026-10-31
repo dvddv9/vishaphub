@@ -143,12 +143,13 @@ class TeamStore:
     def list(self, p: Principal, limit: int = 20, ip: str = "") -> list[dict]:
         with self._tx(p.team_id) as conn:
             rows = conn.execute(
-                "SELECT run_id, created_at, verdict, ok, plan, summary FROM runs "
+                "SELECT run_id, created_at, verdict, ok, plan, summary, "
+                "result #>> '{statuses,fix,status}', result #>> '{statuses,verification,status}' FROM runs "
                 "WHERE team_id = %s::uuid AND expires_at > now() ORDER BY created_at DESC LIMIT %s",
                 (p.team_id, max(1, min(limit, 200)))).fetchall()
             self._audit(conn, p, "run.list", None, ip, {"count": len(rows)})
         return [{"id": r[0], "at": r[1].isoformat(), "verdict": r[2], "ok": r[3], "plan": r[4],
-                 "summary": (r[5] or "")[:200]} for r in rows]
+                 "summary": (r[5] or "")[:200], "fix": r[6], "verification": r[7]} for r in rows]
 
     def delete(self, p: Principal, run_id: str, ip: str = "") -> str:
         """'deleted', 'missing' or 'forbidden'. The run row goes, with the result and patch in it; the audit

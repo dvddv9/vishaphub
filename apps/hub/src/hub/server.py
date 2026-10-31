@@ -149,6 +149,9 @@ def _intent_for(body: dict, material: str, spec: str) -> str:
 
 
 class Handler(BaseHTTPRequestHandler):
+    #: what a pipeline asked of this request (`fail_on`, `require_complete`); set by _run_args, read when answering
+    _ci_opts: tuple = ("fail", False)
+
     server_version = f"vishap-hub/{__version__}"
     timeout = READ_TIMEOUT or None
 
@@ -474,6 +477,22 @@ class Handler(BaseHTTPRequestHandler):
             if ok:
                 self._send(200, {"events": events}, extra=PRIVATE)
             return
+        if path.startswith("/api/runs/") and path.endswith(".md"):
+            ok, record = self._visible(path[len("/api/runs/"):].removesuffix(".md"), principal, ip)
+            if not ok:
+                return
+            if record is None:
+                self._send(404, {"error": "no such run, or it is not yours, or it has expired"}, extra=PRIVATE)
+                return
+            from . import export as export_mod
+            self._send(200, export_mod.markdown(record), "text/markdown", extra=PRIVATE)
+            return
+        if path.startswith("/api/verify/"):
+            ok, record = self._visible(path[len("/api/verify/"):], principal, ip)
+            if not ok:
+                return
+            self._verify_answer(record, None)
+            return
         if path == "/api/runs" and principal is not None:
             ok, runs = self._team(TEAMS.list, principal, 20, ip)
             if ok:
@@ -595,6 +614,12 @@ class Handler(BaseHTTPRequestHandler):
         if not (material.strip() or has_spec or has_files or question.strip()):
             self._send(400, {"ok": False, "error": "generation needs a spec, material or a question; nothing was sent"})
             return None
+        from . import ci as ci_mod
+        fail_on = str(body.get("fail_on") or ci_mod.DEFAULT_FAIL_ON).strip().lower()
+        if fail_on not in ci_mod.FAIL_ON:
+            self._send(400, {"ok": False, "error": f"fail_on must be one of {', '.join(ci_mod.FAIL_ON)}; nothing was run"})
+            return None
+        self._ci_opts = (fail_on, bool(body.get("require_complete")))
         intent = _intent_for(body, material, spec_text)
         try:
             plan = plan_for(intent, int(body.get("iterations") or 1))
@@ -620,13 +645,37 @@ class Handler(BaseHTTPRequestHandler):
             "fix_loop": bool(body.get("verify_fix")),
         }
 
+    def _visible(self, run_id: str, principal, ip: str):
+        """(ok, record): the run if this caller may read it. `ok` False means the answer was already sent."""
+        if principal is not None:
+            ok, record = self._team(TEAMS.get, principal, run_id, ip)
+            if not ok:
+                return False, None
+            return True, record or RUNS.get_for(run_id, None)       # the page's own example is public
+        token = self._token()
+        return True, RUNS.get_for(run_id, owner_key(token) if token else None)
+
+    def _verify_answer(self, record: dict | None, files: dict | None) -> None:
+        """Re-check a stored record: the digest from its body and, given files, their hashes."""
+        if record is None:
+            self._send(404, {"error": "no such run, or it is not yours, or it has expired"}, extra=PRIVATE)
+            return
+        result = record.get("result") if isinstance(record.get("result"), dict) else record
+        fp = result.get("fingerprint") or {}
+        intact, why = fingerprint.verify(fp, files)
+        self._send(200, {"id": record.get("id") or fp.get("id"), "intact": intact, "reason": why,
+                         "files_checked": files is not None, "digest": fp.get("digest")}, extra=PRIVATE)
+
     def _respond(self, result, args: dict | None = None, owner: str = "", extra: dict | None = None,
                  principal=None) -> None:
         payload = result.as_dict()
         if not payload["ok"]:
             payload["error"] = payload.get("reason") or "the run did not pass its gates"
         self._remember(payload, args, owner, principal)
-        self._send(200 if payload["ok"] else 502, payload, extra=extra)
+        from . import ci as ci_mod
+        # per request, and a copy: the store holds `payload` itself, and the decision is not part of the run
+        answer = {**payload, "ci": ci_mod.decide(payload, *self._ci_opts)}
+        self._send(200 if payload["ok"] else 502, answer, extra=extra)
 
     def _stream(self, args: dict, owner: str = "", extra: dict | None = None, principal=None) -> None:
         """The same run, announced stage by stage: a minute of silence reads as broken."""
@@ -662,8 +711,10 @@ class Handler(BaseHTTPRequestHandler):
         if not payload["ok"]:
             payload["error"] = payload.get("reason") or "the run did not pass its gates"
         self._remember(payload, args, owner, principal)
+        from . import ci as ci_mod
+        answer = {**payload, "ci": ci_mod.decide(payload, *self._ci_opts)}
         try:
-            event("done", payload)
+            event("done", answer)
         except _ClientGone:
             return
 
@@ -727,6 +778,24 @@ class Handler(BaseHTTPRequestHandler):
             self._send(303, b"", "text/plain", extra={
                 "location": "/login", **PRIVATE,
                 "set-cookie": f"{access.KEY_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"})
+            return
+
+        if path.startswith("/api/verify/"):
+            principal, refused = self._principal()
+            if refused:
+                return
+            body = self._body()
+            if body is None:
+                return
+            files = body.get("files")
+            if not isinstance(files, dict) or not files or len(files) > 200 or not all(
+                    isinstance(k, str) and isinstance(v, str) for k, v in files.items()):
+                self._send(400, {"error": "send {\"files\": {path: text}} (at most 200 files) to check them against the record"})
+                return
+            ok, record = self._visible(path[len("/api/verify/"):], principal, self._client_ip())
+            if not ok:
+                return
+            self._verify_answer(record, files)
             return
 
         if path == "/chat":

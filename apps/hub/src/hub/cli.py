@@ -10,7 +10,7 @@ import json
 import os
 import sys
 
-from . import patchcheck
+from . import ci, patchcheck
 from .pipeline import run_plan
 from .router import RouteError, plan_for
 from .version import __version__
@@ -87,6 +87,10 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--api-key", default="", help="model key; defaults to VISHAP_HUB_LLM_KEY")
     run.add_argument("--model", default="", help="model name; defaults to the hub's own choice")
     run.add_argument("--json", action="store_true")
+    run.add_argument("--fail-on", choices=ci.FAIL_ON, default=ci.DEFAULT_FAIL_ON,
+                     help="the lowest verdict that fails the check (default: fail)")
+    run.add_argument("--require-complete", action="store_true",
+                     help="exit 3 when the verdict is fine but the checking was incomplete (a run that checked nothing is not a pass)")
 
     pc = sub.add_parser("patch-check", help="apply a patch to a copy of a snapshot and say what it is worth")
     pc.add_argument("--snapshot", required=True, help="directory with the original code")
@@ -123,7 +127,9 @@ def main(argv: list[str] | None = None) -> int:
     result = run_plan(plan, material=material, files=files, spec=spec_text,
                       question=args.question, api_key=args.api_key, model=args.model)
 
-    payload = {"plan": plan.as_dict(), "result": result.as_dict()}
+    data = result.as_dict()
+    decision = ci.decide(data, args.fail_on, args.require_complete)
+    payload = {"plan": plan.as_dict(), "result": data, "ci": decision}
     if args.json:
         print(json.dumps(payload, ensure_ascii=False, indent=2))
     else:
@@ -134,7 +140,11 @@ def main(argv: list[str] | None = None) -> int:
         for step in result.steps:
             state = "ok" if step.ok else "fail"
             print(f"  [{state}] {step.stage:<10} {step.verdict:<18} {step.detail}")
-    return 0 if result.ok else 1
+        st = data["statuses"]
+        print(f"fix:     {st['fix']['status']}   verification: {st['verification']['status']}")
+        print(f"ci:      {'pass' if decision['pass'] else 'FAIL'} (exit {decision['exit_code']})"
+              + "".join(f"\n         - {why}" for why in decision["reasons"]))
+    return decision["exit_code"]
 
 
 if __name__ == "__main__":
