@@ -33,6 +33,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 
+from . import accepted as accepted_mod
 from . import evidence as evidence_mod
 from . import external as external_mod
 from . import findings as findings_mod
@@ -90,6 +91,8 @@ class RunResult:
     patch_check: dict = field(default_factory=dict)
     #: What came from an external scanner's SARIF: how many were received, paired, or stood alone. Empty if none.
     external: dict = field(default_factory=dict)
+    #: Notes put on findings by the client's standing rules (`accepted.standing`); the verdict is not touched.
+    accepted: dict = field(default_factory=dict)
 
     def as_dict(self) -> dict:
         payload = {
@@ -119,6 +122,8 @@ class RunResult:
         }
         if self.external:
             payload["external"] = self.external
+        if self.accepted:
+            payload["accepted"] = self.accepted
         return payload
 
 
@@ -185,7 +190,7 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
              spec: object = None, filename: str = "input.txt",
              question: str = "", api_key: str = "", model: str = "",
              on_step=None, check_patch: bool = False, fix_loop: bool = False,
-             external: list | None = None) -> RunResult:
+             external: list | None = None, accept_rules: list | None = None) -> RunResult:
     """Execute the plan and return one honest verdict.
 
     ``on_step`` is called with ``(stage, payload)`` after every stage that produced a
@@ -473,4 +478,6 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
             fix_attempts=fix_rows,
             not_checked=result.not_checked, patch_check=patch_check, external=external),
     )
+    if accept_rules:
+        result.accepted = accepted_mod.standing(result.findings, accept_rules, str(result.fingerprint.get("at") or ""))
     return result

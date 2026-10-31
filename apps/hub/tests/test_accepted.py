@@ -161,3 +161,64 @@ def test_the_refusals_say_what_is_wrong(port):
     assert call(port, "/api/runs/run1/accept", {"key": KEY, "reason": "x"}, token="")[0] == 403
     assert call(port, "/api/runs/run1/accept", {"key": KEY, "reason": "x"}, token=STRANGER)[0] == 404
     assert call(port, "/api/runs/nope/accept", {"key": KEY, "reason": "x"})[0] == 404
+
+
+# ---- standing rules -----------------------------------------------------------------
+
+def test_a_rule_names_what_it_matches_and_why_and_a_rule_that_matches_everything_is_refused():
+    assert accepted.parse_rules([{"cwe": "89", "reason": " fixtures "}, {"file": "tests/*", "reason": "tests"}]) == [
+        {"reason": "fixtures", "cwe": "89"}, {"reason": "tests", "file": "tests/*"}]
+    bad = [None, {}, [5], [{"reason": "x"}], [{"cwe": "CWE-89"}], [{"cwe": "banana", "reason": "x"}],
+           [{"cwe": "CWE-89", "reason": "x", "severity": "low"}], [{"rule": "", "reason": "x"}],
+           [{"file": "*", "reason": "x" * (accepted.MAX_REASON + 1)}], [{"cwe": "1", "reason": "x"}] * (accepted.MAX_RULES + 1)]
+    for raw in bad:
+        with pytest.raises(ValueError):
+            accepted.parse_rules(raw)
+
+
+def test_a_rule_matches_by_class_rule_name_and_file_and_the_first_matching_rule_names_itself():
+    findings = [dict(FINDING), dict(OTHER), dict(FINDING, line=30, in_patch=True)]
+    rules = accepted.parse_rules([{"cwe": "CWE-862", "reason": "no auth on purpose"},
+                                  {"cwe": "89", "file": "APP.PY", "reason": "fixture"},
+                                  {"cwe": "89", "reason": "never reached"}])
+    marks = accepted.standing(findings, rules, "t")
+    assert marks == {accepted.key_of(OTHER): {"reason": "no auth on purpose", "by": "rule:1", "at": "t"},
+                     KEY: {"reason": "fixture", "by": "rule:2", "at": "t"}}          # the patch's finding is not matched
+    assert accepted.standing(findings, accepted.parse_rules([{"rule": "other", "reason": "x"}]), "t") == {}
+    assert accepted.standing(findings, accepted.parse_rules([{"file": "nope.py", "reason": "x"}]), "t") == {}
+
+
+def test_standing_rules_in_a_run_note_the_findings_and_leave_the_verdict_alone():
+    from hub.pipeline import run_plan
+    from hub.router import plan_for
+    material = "cur.execute(\"select * from t where a = \" + x)\n"
+    base = run_plan(plan_for("analyse"), material=material, files={"calc.py": "x = 1\n"})
+    rules = accepted.parse_rules([{"cwe": "CWE-89", "reason": "fixture"}])
+    got = run_plan(plan_for("analyse"), material=material, files={"calc.py": "x = 1\n"}, accept_rules=rules)
+    assert got.verdict == base.verdict and got.findings == base.findings
+    assert got.accepted and all(note["by"] == "rule:1" and note["reason"] == "fixture" for note in got.accepted.values())
+    assert "accepted" not in base.as_dict() and got.as_dict()["accepted"] == got.accepted
+
+
+@pytest.fixture()
+def run_port(monkeypatch):
+    from hub import limits
+    saved = dict(server_module.LIMITERS)
+    for kind in server_module.LIMITERS:
+        server_module.LIMITERS[kind] = limits.RateLimiter(0)
+    monkeypatch.setattr(server_module, "RUNS", store.RunStore())
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    yield httpd.server_address[1]
+    httpd.shutdown()
+    httpd.server_close()
+    server_module.LIMITERS.update(saved)
+
+
+def test_a_run_over_http_takes_standing_rules_and_bad_ones_are_a_400(run_port):
+    material = "cur.execute(\"select * from t where a = \" + x)\n"
+    status, body = call(run_port, "/run", {"material": material, "intent": "analyse",
+                                           "accept_rules": [{"cwe": "CWE-89", "reason": "fixture"}]})
+    assert status == 200 and body["accepted"] and all(n["reason"] == "fixture" for n in body["accepted"].values())
+    status, body = call(run_port, "/run", {"material": material, "intent": "analyse", "accept_rules": [{"cwe": "89"}]})
+    assert status == 400 and body["error"].startswith("accept_rules:") and "reason" in body["error"]

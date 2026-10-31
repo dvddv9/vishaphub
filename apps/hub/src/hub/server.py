@@ -629,6 +629,13 @@ class Handler(BaseHTTPRequestHandler):
                 return None
             if notes:
                 plan.note = (plan.note + "; " if plan.note else "") + "; ".join(notes)
+        rules: list = []
+        if body.get("accept_rules") is not None:
+            try:
+                rules = accepted.parse_rules(body.get("accept_rules"))
+            except ValueError as exc:
+                self._send(400, {"ok": False, "error": f"accept_rules: {exc}"})
+                return None
         return {
             "plan": plan,
             "material": material,
@@ -641,6 +648,8 @@ class Handler(BaseHTTPRequestHandler):
             "fix_loop": bool(body.get("verify_fix")),
             # findings of a scanner the client ran, from the SARIF it sent: a third reader, never a lowering one
             "external": external_findings,
+            # standing notes: findings like these are accepted, for this reason; the verdict is not touched
+            "accept_rules": rules,
         }
 
     def _respond(self, result, args: dict | None = None, owner: str = "", extra: dict | None = None,
