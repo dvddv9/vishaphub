@@ -289,6 +289,8 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
                     return _error(steps, envelope.session_id, trace,
                                   "validator returned no verdict; nothing was verified", plan_dict)
                 checks["validator"] = {"verdict": verdict, "checks": report.get("checks", [])}
+                if result.get("isolation"):
+                    checks["validator"]["isolation"] = result["isolation"]
                 current["validator"] = verdict
                 steps.append(Step("validator", verdict not in BLOCKING_VERDICTS, verdict,
                                   detail=f"{report.get('finding_count', 0)} findings"))
