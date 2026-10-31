@@ -34,18 +34,29 @@ from urllib.parse import urlparse
 
 from . import egress
 
-PROVIDERS = ("anthropic", "openai", "deepseek", "none")
+PROVIDERS = ("anthropic", "openai", "deepseek", "ollama", "none")
 ANTHROPIC_BASE = "https://api.anthropic.com"
 OPENAI_BASE = "https://api.openai.com/v1"
 DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-5-5"
 DEEPSEEK_BASE = "https://api.deepseek.com"
 DEFAULT_DEEPSEEK_MODEL = "deepseek-flash"
+DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
+OLLAMA_BASE = "http://localhost:11434/v1"
+DEFAULT_OLLAMA_MODEL = "llama3.1"
 
 #: what a visitor may pick on the page. A NAME, never an address: the address is fixed here.
 PRESETS = {
     "anthropic": ("anthropic", ANTHROPIC_BASE, DEFAULT_ANTHROPIC_MODEL),
     "deepseek": ("openai", DEEPSEEK_BASE, DEFAULT_DEEPSEEK_MODEL),
+    "openai": ("openai", OPENAI_BASE, DEFAULT_OPENAI_MODEL),
+    "ollama": ("openai", OLLAMA_BASE, DEFAULT_OLLAMA_MODEL),
 }
+_BUILT_IN = ("anthropic", "deepseek", "openai", "ollama")
+
+
+def _loopback_only() -> bool:
+    """The hub listens on this machine only. Then «the Ollama on this machine» is the visitor's own."""
+    return _env("VISHAP_HUB_HOST").lower() in ("127.0.0.1", "localhost", "::1")
 
 #: a name that means "this machine" from inside a container as well
 _LOCAL_NAMES = {"localhost", "host.docker.internal"}
@@ -102,12 +113,13 @@ def settings(model: str = "", preset: str = "") -> Settings:
     custom_url = _env("VISHAP_HUB_LLM_URL").rstrip("/")
     preset = (preset or "").strip().lower()
     # A visitor's pick swaps one built-in provider for another. It never applies to a custom address.
-    picked = preset in PRESETS and preset != operator and operator in ("anthropic", "deepseek") and not custom_url
+    picked = (preset in PRESETS and preset != operator and operator in _BUILT_IN and not custom_url
+              and (preset != "ollama" or _loopback_only()))
     if picked:
-        provider, model, env_model, base = preset, "", "", ""
+        provider, env_model, base = preset, "", ""
     else:
         env_model, base = _env("VISHAP_HUB_LLM_MODEL"), custom_url
-    base = base or {"anthropic": ANTHROPIC_BASE, "deepseek": DEEPSEEK_BASE}.get(provider, OPENAI_BASE)
+    base = base or {"anthropic": ANTHROPIC_BASE, "deepseek": DEEPSEEK_BASE, "ollama": OLLAMA_BASE}.get(provider, OPENAI_BASE)
     wire = "anthropic" if provider == "anthropic" else "openai"
     parsed = urlparse(base)
     if parsed.scheme not in ("http", "https") or not parsed.hostname:
@@ -122,6 +134,10 @@ def settings(model: str = "", preset: str = "") -> Settings:
             name = DEFAULT_ANTHROPIC_MODEL
         elif provider == "deepseek":
             name = DEFAULT_DEEPSEEK_MODEL
+        elif picked and provider in PRESETS:
+            name = PRESETS[provider][2]
+        elif provider == "ollama":
+            name = DEFAULT_OLLAMA_MODEL
         else:
             raise ConfigError("set VISHAP_HUB_LLM_MODEL: the openai provider has no default model")
 
@@ -145,6 +161,8 @@ def key_for(api_key: str = "", preset: str = "") -> str:
     preset = (preset or "").strip().lower()
     if preset in PRESETS and preset != operator:
         return ""
+    if operator == "ollama":
+        return _env("VISHAP_HUB_LLM_KEY")
     return _env("VISHAP_HUB_LLM_KEY")
 
 

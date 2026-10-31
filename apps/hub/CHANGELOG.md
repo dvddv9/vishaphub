@@ -17,6 +17,7 @@ All notable changes to VishapHub. Format based on [Keep a Changelog](https://kee
 
 ### Added
 
+- **ChatGPT (OpenAI) and Ollama** as page choices, with an optional model-name field; Ollama is offered only while the hub is bound to this machine. `--provider ollama` in `init`.
 - **DeepSeek** as a provider: `VISHAP_HUB_LLM_PROVIDER=deepseek`, `vishap-hub init --provider deepseek`, and a CLI `--provider` on `run`.
 
 - **An external scanner's SARIF as a third reader.** `/run` takes an optional `sarif`. Its findings join the hub's

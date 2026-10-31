@@ -13,7 +13,7 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue)) { throw "Docker is 
 
 if (Test-Path .env) { Write-Host ".env already exists - keeping it. Delete it to answer the questions again." }
 else {
-  Write-Host "1/4 Which model? anthropic = Claude, deepseek = DeepSeek, openai = OpenAI-compatible (OpenAI, OpenRouter, Ollama, LM Studio, vLLM), none = rules only"
+  Write-Host "1/4 Which model? anthropic = Claude, deepseek = DeepSeek, openai = ChatGPT or any OpenAI-compatible server (OpenRouter, Ollama, LM Studio, vLLM), none = rules only"
   $provider = Ask "provider" "anthropic"
   $url = ""; $model = ""; $key = $env:VISHAP_HUB_LLM_KEY
   switch ($provider) {

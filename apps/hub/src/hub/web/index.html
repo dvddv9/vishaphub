@@ -131,7 +131,7 @@
         <section class="panel" aria-labelledby="chat-title">
           <h3 class="k" id="chat-title">talk to Vishap</h3>
           <div class="chat" id="chat" role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversation">
-            <div class="msg sys" data-i18n="keySys">The hub holds no model key. The rules check your code for free; to have the model read it too, add an Anthropic or DeepSeek key below (it stays in this browser).</div>
+            <div class="msg sys" data-i18n="keySys">The hub holds no model key. The rules check your code for free; to have the model read it too, add a key below: Anthropic, DeepSeek or ChatGPT (Ollama needs none; the key stays in this browser).</div>
           </div>
           <div class="composer">
             <label class="sr-only" for="text">Message to Vishap</label>
@@ -175,7 +175,11 @@
           <select id="provider" class="provider">
             <option value="anthropic">Anthropic (Claude)</option>
             <option value="deepseek">DeepSeek</option>
+            <option value="openai">ChatGPT (OpenAI)</option>
+            <option value="ollama">Ollama (on this computer)</option>
           </select>
+          <label class="sr-only" for="modelname">Model name</label>
+          <input id="modelname" type="text" autocomplete="off" class="provider" placeholder="model name (optional)">
           <label class="sr-only" for="key">Your model key</label>
           <input id="key" type="password" autocomplete="off" placeholder="sk-… (optional, kept in this browser)">
           <div class="row mt-sm">

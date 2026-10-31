@@ -21,7 +21,7 @@ docker info >/dev/null 2>&1 || { say "Docker is installed but not running (or yo
 if [ -f .env ]; then
   say ".env already exists - keeping it. Delete it to answer the questions again."
 else
-  say "1/4 Which model? anthropic = Claude, deepseek = DeepSeek, openai = OpenAI-compatible (OpenAI, OpenRouter, Ollama, LM Studio, vLLM), none = rules only"
+  say "1/4 Which model? anthropic = Claude, deepseek = DeepSeek, openai = ChatGPT or any OpenAI-compatible server (OpenRouter, Ollama, LM Studio, vLLM), none = rules only"
   ask "provider" anthropic; PROVIDER=$REPLY
   URL=""; MODEL=""; KEY="${VISHAP_HUB_LLM_KEY:-}"
   case "$PROVIDER" in
