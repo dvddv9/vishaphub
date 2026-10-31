@@ -55,3 +55,19 @@ Today only NO_PATCH and FIX_UNVERIFIED are produced. The other three are reserve
 
 `statuses.verification.isolation` names the isolation the validator ran under (kind, image, container,
 whether the cleanup was confirmed), when it ran in a worker container.
+## Evidence and integrity
+
+The run's fingerprint (`fingerprint.body.evidence`) carries what a claim rests on, and the digest covers it:
+
+- the snapshot the client sent (file hashes), the model's patch (diff hash and file hashes);
+- what the validator actually ran on: the client's own files, or the model's patch when the client sent
+  none (`validator_ran_on`), and what the analyser read. A model patch is otherwise only read by the
+  rules, which is why a proposed fix stays `FIX_UNVERIFIED`;
+- the versions of the rules and the sandbox profile (`worker-v1` flags and caps, with a hash);
+- every check that ran, with its result, and what was left unverified;
+- the number of attempts and why they stopped;
+- whether the temporary environment's cleanup was confirmed (`null` when no container was used).
+
+Nothing in it is random: no time, no container name. The same run gives the same bytes.
+`fingerprint.verify(fp, files)` recomputes the digest and, given the files, their hashes; the report page
+shows "record intact" or "record NOT intact" for the stored record.

@@ -86,6 +86,49 @@ def _statuses_block(result: dict) -> str:
             "the model can only raise a verdict, never lower it.</p>")
     return _block("Three results", f'<div class="table-wrap"><table class="statuses"><tr><th>result</th><th>status</th><th>what stands behind it</th></tr>{rows}</table></div>{note}')
 
+def _evidence_block(fp: dict) -> str:
+    """What the run rests on, in four separate columns of the truth, plus whether the record is intact."""
+    from . import fingerprint
+
+    ev = ((fp or {}).get("body") or {}).get("evidence")
+    if not isinstance(ev, dict):
+        return ""                         # a run stored before the evidence existed
+    ok, why = fingerprint.verify(fp)
+    rules = ev.get("rules_found") or {}
+    model = ev.get("model") or {}
+    ran = [c for c in ev.get("checks_run") or [] if not c.get("skipped")]
+    skipped = [c for c in ev.get("checks_run") or [] if c.get("skipped")]
+    prof = (ev.get("versions") or {}).get("sandbox_profile") or {}
+    clean = (ev.get("cleanup") or {}).get("confirmed")
+    clean_text = "not applicable (no container)" if clean is None else ("confirmed" if clean else "NOT confirmed")
+    ran_rows = "".join(f"<li>{e(str(c.get('stage')))} \u00b7 {e(str(c.get('name')))}: "
+                       f"{'ok' if c.get('ok') else 'FAILED'}, {int(c.get('findings') or 0)} finding(s)</li>"
+                       for c in ran) or "<li>no check ran</li>"
+    skipped_rows = "".join(f"<li>{e(str(c.get('name')))} (skipped)</li>" for c in skipped)
+    unverified = "".join(f"<li>{e(str(x))}</li>" for x in ev.get("not_checked") or []) + skipped_rows or "<li>-</li>"
+    model_line = (f"consulted: {e(str(model.get('name') or '?'))}, verdict {e(str(model.get('verdict') or '-'))}, "
+                  f"{int(model.get('findings') or 0)} finding(s)") if model.get("consulted") else "not consulted"
+    patch = ev.get("patch") or {}
+    patch_line = (f"diff <code>{e(str(patch.get('diff_sha256') or '')[:16])}</code> over "
+                  f"{len(patch.get('files') or {})} file(s)") if patch.get("proposed") else "no patch"
+    profile_hash = (f" \u00b7 profile <code>{e(str(prof.get('sha256') or '')[:16])}</code>" if prof.get('sha256') else "")
+    integrity = ("<span class=\"vchip pass\">record intact</span>" if ok
+                 else f"<span class=\"vchip bad\">record NOT intact: {e(why)}</span>")
+    body = (
+        f"<p class=\"meta\">{integrity} \u00b7 snapshot <code>{e(str((ev.get('snapshot') or {}).get('sha256') or '')[:16])}</code>"
+        f" \u00b7 {patch_line} \u00b7 attempts {int(ev.get('attempts') or 0)}: {e(str(ev.get('stop_reason') or ''))}</p>"
+        "<div class=\"table-wrap\"><table class=\"statuses\"><tr><th>who</th><th>what it says</th></tr>"
+        f"<tr><td>rules found</td><td>analyser {int(rules.get('analyser') or 0)} \u00b7 validator {int(rules.get('validator') or 0)} finding(s)</td></tr>"
+        f"<tr><td>model said</td><td>{model_line}</td></tr>"
+        f"<tr><td>validator ran on</td><td>{e(str((ev.get('validator_ran_on') or {}).get('what') or 'nothing'))} ({len((ev.get('validator_ran_on') or {}).get('files') or {})} file(s))</td></tr>"
+        f"<tr><td>tests that really ran</td><td><ul>{ran_rows}</ul></td></tr>"
+        f"<tr><td>left unverified</td><td><ul>{unverified}</ul></td></tr>"
+        "</table></div>"
+        f"<p class=\"meta\">sandbox: {e(str(prof.get('name') or '-'))}{profile_hash}"
+        f" \u00b7 cleanup {clean_text}</p>"
+    )
+    return _block("Evidence", body)
+
 def report_page(record: dict, retention: str = "") -> str:
     """One run: the verdict, every step, every finding with its source, what was not checked."""
     result = record.get("result") or {}
@@ -153,6 +196,7 @@ def report_page(record: dict, retention: str = "") -> str:
 </div>
 </section>
 {_statuses_block(result)}
+{_evidence_block(fp)}
 {_block("Steps", f'<div class="table-wrap"><table><tr><th>stage</th><th>verdict</th><th>state</th><th>detail</th></tr>{rows}</table></div>')}
 {_block("Findings", f"<ul>{found}</ul>")}
 {patch_block}

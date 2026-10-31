@@ -50,7 +50,7 @@ def canonical(payload: dict) -> bytes:
 
 
 def of(material: str, spec: object, files: dict, plan: dict, verdict: str,
-       steps: list[dict], rules: dict | None = None) -> dict:
+       steps: list[dict], rules: dict | None = None, evidence: dict | None = None) -> dict:
     """The run as a reproducible record, with a digest over everything that decided it."""
     rules = rules or rules_version()
     body = {
@@ -65,6 +65,8 @@ def of(material: str, spec: object, files: dict, plan: dict, verdict: str,
         "steps": [{"stage": s.get("stage"), "verdict": s.get("verdict"), "ok": s.get("ok")}
                   for s in steps],
     }
+    if evidence is not None:
+        body["evidence"] = evidence
     digest = hashlib.sha256(canonical(body)).hexdigest()
     return {
         "id": digest[:16],
@@ -73,3 +75,25 @@ def of(material: str, spec: object, files: dict, plan: dict, verdict: str,
         "rules": rules,
         "body": body,
     }
+
+
+def verify(fp: dict, files: dict | None = None) -> tuple[bool, str]:
+    """Is this fingerprint intact? Recomputes the digest from the body, and the file hashes from the files.
+
+    A run that cannot be re-checked is an opinion with a timestamp; this is the re-check. It proves the
+    record was not altered after the fact, and, given the files, that they are the files it names.
+    """
+    body = (fp or {}).get("body")
+    if not isinstance(body, dict) or not (fp or {}).get("digest"):
+        return False, "the record carries no body or no digest"
+    digest = hashlib.sha256(canonical(body)).hexdigest()
+    if digest != fp["digest"]:
+        return False, "the digest does not match the body: the record was changed"
+    if fp.get("id") != digest[:16]:
+        return False, "the id does not match the digest"
+    if files is not None:
+        named = body.get("files") or {}
+        actual = {n: hashlib.sha256(t.encode("utf-8")).hexdigest() for n, t in sorted(files.items())}
+        if actual != named:
+            return False, "the files are not the files the record names"
+    return True, "intact"
