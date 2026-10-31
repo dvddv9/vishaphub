@@ -124,7 +124,7 @@ SECURITY_HEADERS = {
     "x-frame-options": "DENY",
     "referrer-policy": "strict-origin-when-cross-origin",
     "content-security-policy": (
-        "default-src 'self'; img-src 'self' data:; media-src 'self'; "
+        "default-src 'self'; img-src 'self' data:; media-src 'self' blob:; "
         "style-src 'self'; script-src 'self'; "
         "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'"
     ),

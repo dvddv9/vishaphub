@@ -229,6 +229,11 @@ class PagesTests(ServerCase):
         assert "style-src 'self'" in csp
         assert "unsafe-inline" not in csp
 
+    def test_the_csp_lets_the_page_play_the_speech_it_fetches(self):
+        # The page plays /speak through a blob: URL; without blob: here the browser refuses it and the voice is silent.
+        _status, headers, _ = self.get_with_headers("/")
+        assert "media-src 'self' blob:" in headers.get("content-security-policy", "")
+
     def test_an_unknown_run_is_a_page_not_json(self):
         status, body = self.get("/r/deadbeefdeadbeef")
         assert status == 404
