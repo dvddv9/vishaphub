@@ -19,10 +19,9 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 
-from . import meter, privacy
+from . import llm, meter, privacy
 
-ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
-DEFAULT_MODEL = "claude-sonnet-5-5"
+DEFAULT_MODEL = llm.DEFAULT_ANTHROPIC_MODEL
 MAX_TURNS = 12
 PROMPT_PATH = os.path.join(os.path.dirname(__file__), "prompt", "vishap.md")
 
@@ -33,6 +32,12 @@ FALLBACK = (
     "I can route the request and explain the result, but the verdict is theirs, not mine. "
     "Without a model key I can only tell you this and point at console.anthropic.com for "
     "a key."
+)
+
+FALLBACK_NO_MODEL = (
+    "I am Vishap. This installation runs without a language model: the rules and the validator "
+    "check what you send, and the verdict is theirs. I can explain what the hub does, but I cannot "
+    "read your code or answer free-form questions about it."
 )
 
 
@@ -68,8 +73,14 @@ def reply(message: str, messages: list, api_key: str, model: str = "") -> dict:
     if not text:
         return {"ok": False, "error": "empty message", "text": ""}
 
+    try:
+        current = llm.settings(model)
+    except llm.ConfigError as exc:
+        return {"ok": False, "text": "", "error": str(exc)}
+    if current.provider == "none":
+        return {"ok": True, "model": "local", "text": FALLBACK_NO_MODEL}
     key = (api_key or os.getenv("VISHAP_HUB_LLM_KEY") or "").strip()
-    if not key:
+    if not key and current.key_required:
         return {"ok": True, "model": "local", "text": FALLBACK, "key_required": True}
 
     # The message and the history are the client's words: redacted like every other text that goes to
@@ -83,27 +94,13 @@ def reply(message: str, messages: list, api_key: str, model: str = "") -> dict:
             redactions = privacy.merge_counts(redactions, found)
     except privacy.RedactionUnavailable:
         return {"ok": False, "text": "", "error": privacy.REFUSAL}
-    payload = {
-        "model": (model or os.getenv("VISHAP_HUB_LLM_MODEL") or DEFAULT_MODEL).strip(),
-        # Measured 2026-10-29: the worst full answer took 1298 output tokens, and thinking
-        # is about 60% of what is spent. 1200 cut one long answer in three; 2400 leaves room.
-        "max_tokens": 2400,
-        "system": _prompt(),
-        "messages": [*turns, {"role": "user", "content": text[:4000]}],
-    }
-    body = json.dumps(payload).encode("utf-8")
-    request = urllib.request.Request(
-        ANTHROPIC_URL,
-        data=body,
-        method="POST",
-        headers={
-            "x-api-key": key,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-        },
-    )
+    # Measured 2026-10-29: the worst full answer took 1298 output tokens, and thinking
+    # is about 60% of what is spent. 1200 cut one long answer in three; 2400 leaves room.
+    url, headers, payload = llm.request_parts(
+        current, key, _prompt(), [*turns, {"role": "user", "content": text[:4000]}], 2400)
+    request = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), method="POST", headers=headers)
     try:
-        with urllib.request.urlopen(request, timeout=120) as response:
+        with urllib.request.urlopen(request, timeout=llm.timeout(120)) as response:
             data = json.load(response)
     except urllib.error.HTTPError as exc:
         detail = privacy.scrub_error(exc.read().decode("utf-8", "replace"), 300)
@@ -111,11 +108,10 @@ def reply(message: str, messages: list, api_key: str, model: str = "") -> dict:
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
         return {"ok": False, "text": "", "error": f"{type(exc).__name__}: {privacy.scrub_error(str(exc))}"}
 
-    meter.record(data.get("usage"))                 # paid for, whatever the answer turns out to be
-    blocks = data.get("content") or []
-    parts = [b.get("text", "") for b in blocks if isinstance(b, dict) and b.get("type") == "text"]
-    answer = "\n".join(part for part in parts if part).strip()
-    if data.get("stop_reason") == "max_tokens":
+    got = llm.read_reply(current, data)
+    meter.record(got.usage)                         # paid for, whatever the answer turns out to be
+    answer = got.text
+    if got.truncated:
         # Cut by the limit. Text that came out is still worth showing, but it is marked
         # "truncated" so the client cannot mistake it for a whole answer. No text at all
         # (the budget went to thinking) is not an answer and stays a failure.

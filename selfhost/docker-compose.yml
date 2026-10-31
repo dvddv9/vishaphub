@@ -1,0 +1,85 @@
+# VishapHub on your own machine or server.
+#
+#   solo (default)      hub only; runs are kept in a file on a volume
+#   --profile team      adds Postgres and a one-off migration (teams, keys, quotas, retention)
+#
+# Settings come from ./.env (see .env.example). The installer writes it for you.
+name: vishaphub
+
+x-hub-env: &hub-env
+  VISHAP_HUB_LLM_PROVIDER: ${VISHAP_HUB_LLM_PROVIDER:-anthropic}
+  VISHAP_HUB_LLM_URL: ${VISHAP_HUB_LLM_URL:-}
+  VISHAP_HUB_LLM_MODEL: ${VISHAP_HUB_LLM_MODEL:-}
+  VISHAP_HUB_LLM_KEY: ${VISHAP_HUB_LLM_KEY:-}
+  VISHAP_HUB_LLM_KEY_REQUIRED: ${VISHAP_HUB_LLM_KEY_REQUIRED:-}
+  VISHAP_HUB_OFFLINE: ${VISHAP_HUB_OFFLINE:-}
+  VISHAP_HUB_ALLOWED_HOSTS: ${VISHAP_HUB_ALLOWED_HOSTS:-}
+  VISHAP_HUB_VOICE: ${VISHAP_HUB_VOICE:-1}
+  VISHAP_HUB_ISOLATION: ${VISHAP_HUB_ISOLATION:-host}
+  # The image forces strict isolation; VISHAP_HUB_ISOLATION=host is the installer's explicit choice and
+  # overrides it per run. The result of such a run says "host, not confirmed".
+  VISHAP_HUB_RUNS_FILE: /data/runs.json
+  VISHAP_HUB_REQUIRE_KEY: ${VISHAP_HUB_REQUIRE_KEY:-}
+  VISHAP_HUB_DATABASE_URL: ${VISHAP_HUB_DATABASE_URL:-}
+  PORT: "8080"
+
+services:
+  hub:
+    build:
+      context: ..
+      dockerfile: apps/hub/Dockerfile
+    image: vishaphub/hub:local
+    restart: unless-stopped
+    environment: *hub-env
+    depends_on:                      # only when the team profile is on; otherwise these are ignored
+      db: {condition: service_healthy, required: false}
+      migrate: {condition: service_completed_successfully, required: false}
+    ports:
+      # Loopback only. To serve other people put a TLS proxy in front, or set VISHAP_HUB_BIND=0.0.0.0.
+      - "${VISHAP_HUB_BIND:-127.0.0.1}:${VISHAP_HUB_PORT:-8080}:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # a model server (Ollama, LM Studio, vLLM) on this machine
+    volumes:
+      - hub-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 256
+    mem_limit: 1g
+
+  db:
+    profiles: [team]
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vishap_owner
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}   # empty: postgres refuses to start, so team mode needs the installer
+      POSTGRES_DB: vishap
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vishap_owner -d vishap"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    profiles: [team]
+    image: vishaphub/hub:local
+    depends_on:
+      db: {condition: service_healthy}
+    restart: "no"
+    environment:
+      VISHAP_HUB_ADMIN_DATABASE_URL: postgresql://vishap_owner:${POSTGRES_PASSWORD:-}@db:5432/vishap
+      VISHAP_HUB_APP_PASSWORD: ${VISHAP_HUB_APP_PASSWORD:-}
+    # Team mode needs both passwords from .env (the installer writes them); an empty one stops here.
+    command: ["sh", "-c", "[ -n \"$$VISHAP_HUB_APP_PASSWORD\" ] || { echo 'VISHAP_HUB_APP_PASSWORD is empty: run the installer' >&2; exit 1; }; exec python -m hub.admin migrate --app-password \"$$VISHAP_HUB_APP_PASSWORD\""]
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: [ALL]
+
+volumes:
+  hub-data:
+  db-data:

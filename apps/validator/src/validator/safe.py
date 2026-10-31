@@ -228,12 +228,16 @@ def isolation_note() -> str:
     return "network: container (loopback only, outbound refused, root read-only, no secrets in env)"
 
 
-def refusal(require_netns: bool = False) -> str:
+def refusal(require_netns: bool = False, host_ok: bool = False) -> str:
     """Why submitted code must not be run on this host at all, or "".
 
     VISHAP_VALIDATOR_REQUIRE_NETNS=1 is for a host that serves other people: without a real network
     namespace, or a worker container that confirmed its own isolation, nothing submitted is run.
+    `host_ok` is the installer's own decision to run on this machine (the hub's VISHAP_HUB_ISOLATION=host):
+    it overrides both the argument and the variable, and the caller records that the run was not isolated.
     """
+    if host_ok:
+        return ""
     require = require_netns or os.getenv("VISHAP_VALIDATOR_REQUIRE_NETNS") == "1"
     if require and isolation() not in ("netns", "container"):
         ev = container_evidence()

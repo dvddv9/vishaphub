@@ -16,9 +16,22 @@ All notable changes to VishapHub. Format based on [Keep a Changelog](https://kee
 - **Standing rules.** `/run` takes an optional `accept_rules`: findings like this are noted as accepted, for this
   reason. They write notes, never exclusions.
 - **Findings more than one reader saw come first** in the report and in the page.
+- **Self-hosting.** `selfhost/`: a Docker Compose bundle (solo, or `--profile team` with Postgres and migration) with
+  `install.sh` / `install.ps1`, `vishap.sh` / `vishap.ps1` (status, logs, backup, restore, upgrade), a pipx installer, and
+  a per-user Windows installer that carries its own Python (`selfhost/windows/build.ps1`). `vishap-hub init`, `doctor`
+  and `serve` set up and run it on one machine from a settings file (`~/.vishaphub/config.env`). See `docs/self-hosted.md`.
+- **Any model.** `VISHAP_HUB_LLM_PROVIDER` = `anthropic`, `openai` (OpenAI, OpenRouter, Ollama, LM Studio, vLLM: any server
+  with the OpenAI chat API; `VISHAP_HUB_LLM_URL`, `VISHAP_HUB_LLM_MODEL`) or `none` (rules and validator only). The key is
+  optional for a server on this machine. Redaction, the meter and the error scrubbing are unchanged.
+- **Offline mode.** `VISHAP_HUB_OFFLINE=1` refuses connections outside this machine and the private network
+  (`VISHAP_HUB_ALLOWED_HOSTS` adds hosts) and turns the voice off; `VISHAP_HUB_VOICE=0` turns it off alone.
+- **The installer chooses how submitted code runs.** `VISHAP_HUB_ISOLATION` = `auto` (as before), `docker` (only in a worker
+  container) or `host` (on this machine, for code you trust; the result says `isolation: host, confirmed: false`). An
+  unknown value runs nothing. `validator.safe.refusal` and `validate` take `host_ok`.
 
 ### Fixed
 
+- The hub image's `/data` is writable by the non-root user, so a mounted volume can hold the runs.
 - The report and the page named every two-reader finding "rules + model"; they now name the readers that saw it.
 
 ## [0.5.0] - 2026-10-31

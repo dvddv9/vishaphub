@@ -21,6 +21,8 @@ import shutil
 import tempfile
 import threading
 
+from . import isolation
+
 MAX_FILES = 200
 
 # Worker containers: how many run at once, and how long a caller waits for a free slot. A busy hub says so
@@ -86,18 +88,29 @@ def run_exploits(files: dict, targets: list, *, require_netns: bool = True) -> d
     try:
         if not written:
             return {"ok": False, "error": "no usable files after sanitisation"}
+        try:
+            mode = isolation.policy()
+        except isolation.PolicyError as exc:
+            return {"ok": False, "error": str(exc)}
         image = os.getenv("VISHAP_HUB_WORKER_IMAGE", "")
-        if image and require_netns:
+        if mode == "docker" and not image:
+            return {"ok": False, "error": "isolation is 'docker' but VISHAP_HUB_WORKER_IMAGE is not set; nothing was run"}
+        if image and mode != "host" and (require_netns or mode == "docker"):
             return _exploits_in_worker(root, targets, image)
+        host = mode == "host"
         try:
             from validator import exploits
+            from validator.safe import isolation as network_kind
             from validator.safe import refusal
         except ImportError:
             return {"ok": False, "error": "validator is not installed in this image"}
-        why = refusal(require_netns=require_netns)
+        why = refusal(require_netns=require_netns, host_ok=host)
         if why:
             return {"ok": False, "error": why}
-        return {"ok": True, "exploits": exploits.run_targets(root, targets)}
+        out = {"ok": True, "exploits": exploits.run_targets(root, targets)}
+        if host:
+            out["isolation"] = isolation.host_record(network_kind())
+        return out
     except Exception as exc:  # noqa: BLE001 - reported, never silent
         return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
     finally:
@@ -158,9 +171,16 @@ def validate_code(files: dict, spec: dict, *, require_netns: bool = True) -> dic
         if not written:
             return {"ok": False, "error": "no usable files after sanitisation"}
 
+        try:
+            mode = isolation.policy()
+        except isolation.PolicyError as exc:
+            return {"ok": False, "error": str(exc)}
         image = os.getenv("VISHAP_HUB_WORKER_IMAGE", "")
-        if image and require_netns:
+        if mode == "docker" and not image:
+            return {"ok": False, "error": "isolation is 'docker' but VISHAP_HUB_WORKER_IMAGE is not set; nothing was run"}
+        if image and mode != "host" and (require_netns or mode == "docker"):
             return _validate_in_worker(root, spec, image)
+        host = mode == "host"
 
         report = run_validate(root, Spec(
             language=spec.get("language", "python"),
@@ -168,8 +188,13 @@ def validate_code(files: dict, spec: dict, *, require_netns: bool = True) -> dic
             exports=list(spec.get("exports", [])),
             tests=list(spec.get("tests", [])),
             entry=spec.get("entry", ""),
-        ), require_netns=require_netns)
-        return {"ok": True, "report": report.as_dict()}
+        ), require_netns=require_netns, host_ok=host)
+        out = {"ok": True, "report": report.as_dict()}
+        if host:
+            from validator.safe import isolation as network_kind
+
+            out["isolation"] = isolation.host_record(network_kind())
+        return out
     except Exception as exc:  # noqa: BLE001 - reported, never silent
         return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
     finally:

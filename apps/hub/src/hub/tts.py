@@ -8,7 +8,10 @@ from __future__ import annotations
 
 import asyncio
 import io
+import os
 import re
+
+from . import egress
 
 #: One multilingual female voice for both languages — the one Windows offers as «Ava Multilingual».
 #: Keeping one voice is what lets a Russian answer and an English answer sound like the same product;
@@ -19,7 +22,24 @@ RATE = "-5%"
 MAX_CHARS = 1200
 
 
+def _voice_off() -> bool:
+    return (os.getenv("VISHAP_HUB_VOICE") or "").strip().lower() in ("0", "false", "no", "off")
+
+
+def reason() -> str:
+    """Why speech is not offered, in words for the person who asked for it."""
+    if egress.offline():
+        return "speech needs an online service and is off in offline mode"
+    if _voice_off():
+        return "speech is turned off on this installation (VISHAP_HUB_VOICE=0)"
+    return "speech is not installed in this image"
+
+
 def available() -> bool:
+    """The voice is synthesised by an online service, so the text leaves the machine. Off when the operator
+    says so (VISHAP_HUB_VOICE=0) and always off in offline mode."""
+    if egress.offline() or _voice_off():
+        return False
     try:
         import edge_tts  # noqa: F401
     except ImportError:

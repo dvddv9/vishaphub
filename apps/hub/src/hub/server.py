@@ -34,9 +34,11 @@ from . import (
     access,
     alerts,
     demo,
+    egress,
     external,
     fingerprint,
     limits,
+    llm,
     meter,
     sarif,
     templates,
@@ -47,6 +49,7 @@ from .router import RouteError, plan_for
 from .store import RunStore, owner_key
 from .teamstore import DEFAULT_RETENTION_DAYS, Denied, TeamStore
 from .tts import available as tts_available
+from .tts import reason as tts_reason
 from .tts import speak as tts_speak
 from .tts import voice_for
 from .version import __version__
@@ -133,7 +136,7 @@ DEFAULT_REVIEW_QUESTION = "Review this code for security vulnerabilities and mis
 
 def _model_key_available(body: dict) -> bool:
     """A key the model could be called with: the caller's own, or one the operator set on the hub."""
-    return bool((str(body.get("api_key") or "") or os.getenv("VISHAP_HUB_LLM_KEY") or "").strip())
+    return llm.available(str(body.get("api_key") or ""))
 
 
 def _intent_for(body: dict, material: str, spec: str) -> str:
@@ -994,7 +997,7 @@ class Handler(BaseHTTPRequestHandler):
             if principal is None:
                 # The site's chat spends the owner's key: an anonymous message that reaches a
                 # model is a bill too. A keyless message is answered locally and costs nothing.
-                key_present = bool((str(body.get("api_key") or "") or os.getenv("VISHAP_HUB_LLM_KEY") or "").strip())
+                key_present = llm.available(str(body.get("api_key") or ""))
                 spend = CHAT_BUDGET.take(len(message)) if key_present else limits.Spend(True)
                 if not spend.allowed:
                     self._send(413 if spend.too_big else 429, {"ok": False, "error": spend.reason},
@@ -1028,7 +1031,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(413, {"ok": False, "error": f"text is longer than {ceiling} characters"})
                 return
             if not tts_available():
-                self._send(503, {"ok": False, "error": "speech is not installed in this image"})
+                self._send(503, {"ok": False, "error": tts_reason()})
                 return
             key = limits.TTSCache.key(text, voice_for(text))
             cached = TTS_CACHE.get(key)
@@ -1116,12 +1119,16 @@ def _purge_loop(minutes: int) -> None:
 
 
 def main() -> None:
+    egress.install()                                 # acts only while VISHAP_HUB_OFFLINE is set
     port = int(os.getenv("PORT", "8080"))
+    host = os.getenv("VISHAP_HUB_HOST", "0.0.0.0").strip() or "0.0.0.0"
     if TEAMS is not None:
         threading.Thread(target=_purge_loop, args=(limits.int_env("VISHAP_HUB_PURGE_MINUTES", 60),),
                          daemon=True).start()
-    server = ThreadingHTTPServer(("0.0.0.0", port), Handler)
+    server = ThreadingHTTPServer((host, port), Handler)
     print(f"vishap-hub {__version__} listening on {port}", flush=True)
+    if egress.offline():
+        print("offline mode: connections to public addresses are refused", flush=True)
     server.serve_forever()
 
 
