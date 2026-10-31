@@ -121,6 +121,27 @@ class RunStore:
             mine = [r for r in self._runs.values() if _owns(r, owner)]
         return [_summary(r) for r in reversed(mine[-limit:])]
 
+    def delete(self, run_id: str, owner: str | None) -> str:
+        """'deleted', 'unlinked', 'forbidden' or 'missing' (the same word for a run that is not yours).
+
+        Two visitors who run the same material share one record and both own it. Removing yours takes the run
+        out of your list and your reach; the record itself goes only when nobody owns it any more.
+        """
+        with self._lock:
+            record = self._runs.get(str(run_id))
+            if record is None or not _owns(record, owner):
+                return "missing"
+            if record.get("demo"):
+                return "forbidden"                      # the page's own example is not anyone's to delete
+            rest = [o for o in record.get("owners") or [] if not hmac.compare_digest(str(owner), str(o))]
+            if rest:
+                record["owners"] = rest
+                self._flush()
+                return "unlinked"
+            del self._runs[str(run_id)]
+            self._flush()
+            return "deleted"
+
     def get(self, run_id: str) -> dict | None:
         """Unfiltered. For code that holds the whole store; a door uses `get_for`."""
         with self._lock:

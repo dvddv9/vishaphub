@@ -26,7 +26,7 @@ import secrets
 import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlsplit
 
 from . import access, alerts, demo, fingerprint, limits, meter, sarif, templates
 from .chat import reply
@@ -435,7 +435,7 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, {"ok": True, "version": __version__})
             return
         principal, ip = None, self._client_ip()
-        if path.startswith(("/api/", "/runs", "/r/")):
+        if path.startswith(("/api/", "/runs", "/r/", "/compare")):
             principal, refused = self._principal()
             if refused:
                 return
@@ -492,6 +492,12 @@ class Handler(BaseHTTPRequestHandler):
             if not ok:
                 return
             self._verify_answer(record, None)
+            return
+        if path == "/api/compare":
+            ok, diff = self._compare()
+            if ok:
+                self._send(200 if diff is not None else 404, diff if diff is not None else {
+                    "error": "one of the runs is not yours, does not exist, or has expired"}, extra=PRIVATE)
             return
         if path == "/api/runs" and principal is not None:
             ok, runs = self._team(TEAMS.list, principal, 20, ip)
@@ -572,6 +578,30 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self._html(200, templates.runs_page(RUNS.list_for(owner_key(token), 20)), extra=PRIVATE)
             return
+        if path == "/compare":
+            ok, diff = self._compare()
+            if not ok:
+                return
+            if diff is None:
+                self._html(404, templates.message_page(
+                    "Nothing to compare",
+                    "One of the runs is not yours, does not exist, or has expired. Both must be open to you."),
+                    extra=PRIVATE)
+                return
+            self._html(200, templates.compare_page(diff), extra=PRIVATE)
+            return
+        if path.startswith("/r/") and path.endswith("/delete") and len(path) > 10:
+            ok, record = self._visible(path[3:-len("/delete")], principal, ip)
+            if not ok:
+                return
+            if record is None:
+                self._html(404, templates.message_page(
+                    "No such run", "No run with this id is open to you: it may have expired, or it is not yours."),
+                    extra=PRIVATE)
+                return
+            note = TEAMS.retention_note(principal) if principal is not None else RUNS.retention()
+            self._html(200, templates.delete_page(record, note, team=principal is not None), extra=PRIVATE)
+            return
         if path.startswith("/r/") and len(path) > 3 and principal is not None:
             ok, record = self._team(TEAMS.get, principal, path[3:], ip)
             if not ok:
@@ -644,6 +674,41 @@ class Handler(BaseHTTPRequestHandler):
             # opt-in: check the model's patch and send a rejected one back, up to three attempts
             "fix_loop": bool(body.get("verify_fix")),
         }
+
+    def _same_origin(self) -> bool:
+        """A POST that changes something must come from this site. A browser always sends Origin on a POST; a
+        request without one is not a browser, and has no cookie of ours to abuse."""
+        origin = self.headers.get("origin")
+        return not origin or urlsplit(origin).netloc == (self.headers.get("host") or "")
+
+    def _compare(self):
+        """(ok, diff): both runs ?a= and ?b= must be open to this caller. A diff of None is one answer for
+        every reason (missing, not yours, expired), so it does not say which run."""
+        from . import compare as compare_mod
+        query = parse_qs(self.path.split("?", 1)[1]) if "?" in self.path else {}
+        a_id, b_id = (query.get("a") or [""])[0].strip(), (query.get("b") or [""])[0].strip()
+        if not a_id or not b_id:
+            self._send(400, {"error": "name the two runs: ?a=<id>&b=<id>"})
+            return False, None
+        principal, refused = self._principal()
+        if refused:
+            return False, None
+        ip = self._client_ip()
+        ok_a, rec_a = self._visible(a_id, principal, ip)
+        ok_b, rec_b = self._visible(b_id, principal, ip) if ok_a else (False, None)
+        if not (ok_a and ok_b):
+            return False, None
+        if rec_a is None or rec_b is None:
+            return True, None
+        return True, compare_mod.diff(rec_a, rec_b)
+
+    def _delete_run(self, run_id: str, principal) -> str | None:
+        """'deleted' / 'unlinked' / 'forbidden' / 'missing'. None means the answer was already sent."""
+        if principal is not None:
+            ok, outcome = self._team(TEAMS.delete, principal, run_id, self._client_ip())
+            return outcome if ok else None
+        token = self._token()
+        return RUNS.delete(run_id, owner_key(token) if token else None)
 
     def _visible(self, run_id: str, principal, ip: str):
         """(ok, record): the run if this caller may read it. `ok` False means the answer was already sent."""
@@ -780,6 +845,34 @@ class Handler(BaseHTTPRequestHandler):
                 "set-cookie": f"{access.KEY_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"})
             return
 
+        if path.startswith("/r/") and path.endswith("/delete") and len(path) > 10:
+            if not self._same_origin():
+                self._html(403, templates.message_page(
+                    "Not deleted", "This request came from another site. Open the run here and delete it from its page."),
+                    extra=PRIVATE)
+                return
+            principal, refused = self._principal()
+            if refused:
+                return
+            self._drain()
+            outcome = self._delete_run(path[3:-len("/delete")], principal)
+            if outcome is None:
+                return
+            words = {
+                "deleted": (200, "Run deleted", (
+                    "The run is gone: its findings, patch, fingerprint and record. "
+                    "Running exactly the same material again will make a new run with the same id.")),
+                "unlinked": (200, "Removed from your runs", (
+                    "The run is out of your list and your reach. Someone else "
+                    "ran exactly the same material, so their copy stays for them.")),
+                "forbidden": (403, "Not deleted", (
+                    "Only an owner, or the person who made the run, may delete it. "
+                    "The page's own example cannot be deleted.")),
+                "missing": (404, "No such run", (
+                    "No run with this id is open to you: it may be gone already, or it is not yours.")),
+            }[outcome]
+            self._html(words[0], templates.message_page(words[1], words[2]), extra=PRIVATE)
+            return
         if path.startswith("/api/verify/"):
             principal, refused = self._principal()
             if refused:
@@ -906,15 +999,18 @@ class Handler(BaseHTTPRequestHandler):
         principal, refused = self._principal()
         if refused:
             return
-        if principal is None:
-            self._send(401, {"error": "an API key is required to delete a run"}, extra=PRIVATE)
+        if principal is None and self._token() is None:
+            self._send(401, {"error": "an API key, or the owner token the run was made with, is required to delete a run"},
+                       extra=PRIVATE)
             return
-        ok, outcome = self._team(TEAMS.delete, principal, path[len("/api/runs/"):].removesuffix(".json"),
-                                 self._client_ip())
-        if not ok:
+        outcome = self._delete_run(path[len("/api/runs/"):].removesuffix(".json"), principal)
+        if outcome is None:
             return
         if outcome == "deleted":
             self._send(200, {"deleted": True}, extra=PRIVATE)
+        elif outcome == "unlinked":
+            self._send(200, {"deleted": False, "unlinked": True,
+                             "note": "someone else ran the same material; their copy stays for them"}, extra=PRIVATE)
         elif outcome == "forbidden":
             self._send(403, {"error": "only an owner, or the person who made the run, may delete it"}, extra=PRIVATE)
         else:

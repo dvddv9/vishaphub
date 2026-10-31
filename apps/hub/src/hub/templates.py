@@ -188,7 +188,11 @@ def report_page(record: dict, retention: str = "") -> str:
 <a href="/api/runs/{e(str(record.get('id') or ''))}.json">JSON</a> {DOT}
 <a href="/api/runs/{e(str(record.get('id') or ''))}.sarif">SARIF</a> {DOT}
 <a href="/api/runs/{e(str(record.get('id') or ''))}.md">Markdown</a> {DOT}
-<a href="/api/verify/{e(str(record.get('id') or ''))}">check integrity</a></span></p>
+<a href="/api/verify/{e(str(record.get('id') or ''))}">check integrity</a> {DOT}
+<a href="/r/{e(str(record.get('id') or ''))}/delete">delete this run</a></span></p>
+<form class="cmp" action="/compare" method="get"><input type="hidden" name="a" value="{e(str(record.get('id') or ''))}">
+<label>compare with another run <input name="b" placeholder="run id" pattern="[0-9a-f]{{16}}" required></label>
+<button type="submit">compare</button></form>
 <section class="rep-hero">
 <div class="rep-verdict {state}"><span class="label">verdict</span><b>{verdict}</b></div>
 <div class="rep-head">
@@ -245,6 +249,72 @@ def runs_page(runs: list[dict]) -> str:
     body = f'{head}<ul class="runs-list">{items}</ul>'
     return layout(f"Recent runs {DOT} VishapHub", body,
                   description="The runs this VishapHub remembers, newest first.")
+
+
+def _change(label: str, pair: dict) -> str:
+    if not pair.get("changed"):
+        return f"<tr><td>{e(label)}</td><td>{e(str(pair.get('a') or '-'))}</td><td>unchanged</td></tr>"
+    return (f"<tr><td>{e(label)}</td><td>{e(str(pair.get('a') or '-'))}</td>"
+            f"<td><b>{e(str(pair.get('b') or '-'))}</b></td></tr>")
+
+
+def _finding_rows(items: list[dict]) -> str:
+    return "".join(f"<li><code>{e(str(i['rule']))}</code> {e(str(i['severity']))}: {e(str(i['message']))}"
+                   + (f" (x{i['count']})" if i["count"] > 1 else "") + "</li>" for i in items) or "<li>-</li>"
+
+
+def compare_page(d: dict) -> str:
+    """Two runs side by side: what is different, and whether the same judge looked at the same thing."""
+    a, b = d["a"], d["b"]
+    link = lambda x: f'<a href="/r/{e(str(x["id"]))}"><code>{e(str(x["id"]))}</code></a> {e(str(x.get("at") or ""))}'
+    top = ('<p class="rep-reason">These two are the same run: same fingerprint.</p>' if d["identical"] else "")
+    rules = "".join(f"<li>{e(name)}: <code>{e(str(v['a']))}</code> {ARROW} <code>{e(str(v['b']))}</code></li>"
+                    for name, v in d["rules"].items()) or "<li>the same rules judged both</li>"
+    ev = d["evidence"]
+    table = "".join((
+        _change("risk verdict" + (f" ({d['verdict']['direction']})" if d["verdict"]["changed"] else ""), d["verdict"]),
+        _change("fix status", d["fix"]), _change("verification", d["verification"]),
+        _change("snapshot", ev["snapshot"]), _change("proposed patch", ev["patch"]),
+        _change("sandbox profile", ev["sandbox_profile"]), _change("attempts", ev["attempts"]),
+    ))
+    body = (
+        f'<p class="crumb"><a href="/runs">{ARROW_BACK} recent runs</a></p>'
+        '<h1 class="page-title">Two runs compared</h1>'
+        f'<p class="page-lead">{e(d["summary"])}.</p>{top}'
+        f'<p class="meta">A: {link(a)} {DOT} B: {link(b)}</p>'
+        + _block("What changed", f'<div class="table-wrap"><table><tr><th></th><th>A</th><th>B</th></tr>{table}</table></div>')
+        + _block("Findings", f'<p class="meta">{d["findings"]["unchanged"]} finding(s) in both. Compared by rule, severity '
+                 'and message, not by line.</p><h3>Only in B (added)</h3><ul>'
+                 f'{_finding_rows(d["findings"]["added"])}</ul><h3>Only in A (gone in B)</h3><ul>'
+                 f'{_finding_rows(d["findings"]["removed"])}</ul>')
+        + _block("Who judged", f"<ul>{rules}</ul>")
+    )
+    return layout(f"Compare {DOT} VishapHub", body, description="Two VishapHub runs compared.")
+
+
+def delete_page(record: dict, retention: str = "", team: bool = False) -> str:
+    """The confirmation before a run is deleted: what goes, what stays, and that it cannot be undone."""
+    run_id = e(str(record.get("id") or ""))
+    if team:
+        goes = ("the run row with its result, findings and patch. The audit row stays: who deleted it, when, and "
+                "the run id, with no content. Usage counters keep their numbers and let go of the id.")
+    else:
+        goes = ("the run with its findings, patch, fingerprint and record, and your claim on it. If someone else "
+                "ran exactly the same material, their copy stays for them.")
+    body = (
+        f'<p class="crumb"><a href="/r/{run_id}">{ARROW_BACK} back to the run</a></p>'
+        f'<h1 class="page-title">Delete run <code>{run_id}</code>?</h1>'
+        f'<p class="page-lead">This cannot be undone.</p>'
+        f'<section class="block"><h2>What goes</h2><p>{e(goes)}</p></section>'
+        '<section class="block"><h2>What does not go</h2><p>Copies you made yourself (an exported file, a link you '
+        'sent, an issue you opened) are yours to remove. Running exactly the same material again makes a new run '
+        'with the same id.</p></section>'
+        + (f'<p class="meta">{e(retention)}</p>' if retention else "")
+        + f'<form method="post" action="/r/{run_id}/delete" class="confirm">'
+        '<button type="submit" class="btn danger">Delete this run</button> '
+        f'<a href="/r/{run_id}">Keep it</a></form>'
+    )
+    return layout(f"Delete run {record.get('id', '')} {DOT} VishapHub", body, description="Delete a VishapHub run.")
 
 
 def login_page(error: str = "") -> str:
