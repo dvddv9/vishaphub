@@ -237,7 +237,7 @@ def test_the_address_is_the_operators_not_the_clients(monkeypatch, fake_model, h
 def test_request_shapes():
     anthropic = llm.Settings("anthropic", "https://gateway.invalid/v1", "m", True)
     assert llm.endpoint(anthropic) == "https://gateway.invalid/v1/messages"
-    url, headers, payload = llm.request_parts(anthropic, "", "sys", [{"role": "user", "content": "q"}], 10)
+    _url, headers, payload = llm.request_parts(anthropic, "", "sys", [{"role": "user", "content": "q"}], 10)
     assert "x-api-key" not in headers and payload["system"] == "sys" and payload["max_tokens"] == 10
 
     hosted = llm.Settings("openai", "https://api.openai.com/v1", "gpt", True)

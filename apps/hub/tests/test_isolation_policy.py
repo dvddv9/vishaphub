@@ -1,7 +1,4 @@
 """The installer chooses how submitted code is run; an unknown choice runs nothing."""
-import json
-import os
-import sys
 from pathlib import Path
 
 import pytest

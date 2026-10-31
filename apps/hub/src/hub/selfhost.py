@@ -182,7 +182,8 @@ def serve() -> int:
         print(f"cannot start: {exc}", file=sys.stderr)
         return 2
     os.environ.setdefault("VISHAP_HUB_HOST", "127.0.0.1")
-    from . import server          # imported late: it reads its settings from the environment at import time
+    # imported late: the server reads its settings from the environment at import time
+    from . import server
     server.main()
     return 0
 

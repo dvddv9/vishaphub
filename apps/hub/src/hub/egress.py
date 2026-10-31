@@ -89,11 +89,10 @@ def _guard(name: str):
     real = _original[name]
 
     def guarded(self, address, *args, **kwargs):
-        if offline() and isinstance(address, tuple) and address:
-            if not host_allowed(str(address[0])):
-                raise EgressBlocked(
-                    f"offline mode: a connection to {address[0]} is refused; only the private network is allowed "
-                    "(see VISHAP_HUB_ALLOWED_HOSTS)")
+        if offline() and isinstance(address, tuple) and address and not host_allowed(str(address[0])):
+            raise EgressBlocked(
+                f"offline mode: a connection to {address[0]} is refused; only the private network is allowed "
+                "(see VISHAP_HUB_ALLOWED_HOSTS)")
         return real(self, address, *args, **kwargs)
 
     guarded.__wrapped__ = real

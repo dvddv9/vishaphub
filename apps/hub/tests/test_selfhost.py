@@ -19,8 +19,8 @@ def home(tmp_path, monkeypatch):
 
 
 def args(**kw):
-    base = dict(provider=None, url="", model="", key=None, offline=None, isolation=None, worker_image="",
-                port=0, force=False)
+    base = {"provider": None, "url": "", "model": "", "key": None, "offline": None, "isolation": None,
+            "worker_image": "", "port": 0, "force": False}
     base.update(kw)
     return argparse.Namespace(**base)
 
