@@ -41,8 +41,9 @@ A fix status complements the risk verdict and never softens it: a verified fix d
 | FIX_PARTIAL | some mandatory checks passed, some did not |
 | FIX_REJECTED | the patch failed, left its allowed paths, or touched trusted checks |
 
-Today only NO_PATCH and FIX_UNVERIFIED are produced. The other three are reserved for the patch check
-(`statuses.fix` accepts them; an unknown status is refused, not shown).
+A run produces NO_PATCH or FIX_UNVERIFIED by default. The other three come from the patch check
+(`hub/patchcheck.py`, see `docs/patch-check.md`), which a run asks for with `check_patch=True` and which
+`vishap-hub patch-check` runs on its own. An unknown status is refused, not shown.
 
 ## Verification status
 

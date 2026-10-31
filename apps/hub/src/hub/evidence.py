@@ -53,8 +53,20 @@ def _check_rows(validator: dict, analyser: dict) -> list[dict]:
     return rows
 
 
+def _fix_check(pc: dict | None) -> dict | None:
+    """What the patch check decided and on what: hashes and counts, no text of the code."""
+    if not pc:
+        return None
+    v = pc.get("validator") or {}
+    return {"status": pc.get("status"), "reason": pc.get("reason"), "applied": bool(pc.get("applied")),
+            "diff_sha256": pc.get("diff_sha256", ""), "snapshot_sha256": pc.get("snapshot_sha256", ""),
+            "patched_sha256": pc.get("patched_sha256", ""), "files_changed": pc.get("files_changed", []),
+            "removed": pc.get("removed") or {"files": [], "symbols": []},
+            "rules": pc.get("rules") or {}, "validator": {"verdict": v.get("verdict", ""), "tests_ran": bool(v.get("tests_ran"))}}
+
+
 def build(*, supplied_files: dict, checked_files: dict, patch: dict, checks: dict, answer: dict, model_verdict: str,
-          rules: dict, attempts: int, stop_reason: str, not_checked: list) -> dict:
+          rules: dict, attempts: int, stop_reason: str, not_checked: list, patch_check: dict | None = None) -> dict:
     validator = checks.get("validator") or {}
     analyser = checks.get("analyser") or {}
     iso = validator.get("isolation") or {}
@@ -70,7 +82,8 @@ def build(*, supplied_files: dict, checked_files: dict, patch: dict, checks: dic
         "analyser_read": {"material": bool(analyser), "patch_files": sorted(patch_files) if analyser else []},
         "versions": {"rules": rules, "sandbox_profile": _sandbox_profile(validator)},
         "checks_run": _check_rows(validator, analyser),
-        "exploit_tests": list((checks.get("exploit") or {}).get("tests", [])),
+        "exploit_tests": list((patch_check or {}).get("exploit") or []),
+        "fix_check": _fix_check(patch_check),
         "attempts": attempts,
         "stop_reason": stop_reason,
         "cleanup": {"confirmed": iso.get("cleanup_confirmed") if iso else None},
