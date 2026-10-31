@@ -6,7 +6,7 @@ does not keep them, and an export must not become the place that does.
 """
 from __future__ import annotations
 
-from . import fingerprint
+from . import fingerprint, languages
 
 
 def _cell(value: object) -> str:
@@ -75,6 +75,7 @@ def markdown(record: dict) -> str:
                                 f"{model.get('findings', 0)} finding(s)" if model.get("consulted") else "not consulted"),
                 "- Checks that ran: " + (", ".join(f"{c.get('stage')}/{c.get('name')} "
                                                    f"({'ok' if c.get('ok') else 'FAILED'})" for c in ran) or "none"),
+                *[f"- Language evidence: {languages.sentence(x)}" for x in ev.get("languages") or []],
                 f"- Sandbox: {prof.get('name') or '-'}; cleanup "
                 + ("not applicable" if clean is None else "confirmed" if clean else "NOT confirmed"), ""]
     rules_v = fp.get("rules") or {}

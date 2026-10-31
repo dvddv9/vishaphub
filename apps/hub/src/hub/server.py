@@ -150,7 +150,7 @@ def _intent_for(body: dict, material: str, spec: str) -> str:
 
 class Handler(BaseHTTPRequestHandler):
     #: what a pipeline asked of this request (`fail_on`, `require_complete`); set by _run_args, read when answering
-    _ci_opts: tuple = ("fail", False)
+    _ci_opts: tuple = ("fail", False, False)
 
     server_version = f"vishap-hub/{__version__}"
     timeout = READ_TIMEOUT or None
@@ -493,6 +493,10 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self._verify_answer(record, None)
             return
+        if path == "/api/languages":
+            from . import languages as languages_mod
+            self._send(200, languages_mod.table())
+            return
         if path == "/api/compare":
             ok, diff = self._compare()
             if ok:
@@ -649,7 +653,7 @@ class Handler(BaseHTTPRequestHandler):
         if fail_on not in ci_mod.FAIL_ON:
             self._send(400, {"ok": False, "error": f"fail_on must be one of {', '.join(ci_mod.FAIL_ON)}; nothing was run"})
             return None
-        self._ci_opts = (fail_on, bool(body.get("require_complete")))
+        self._ci_opts = (fail_on, bool(body.get("require_complete")), bool(body.get("require_measured")))
         intent = _intent_for(body, material, spec_text)
         try:
             plan = plan_for(intent, int(body.get("iterations") or 1))
