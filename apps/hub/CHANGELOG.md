@@ -4,43 +4,48 @@ All notable changes to VishapHub. Format based on [Keep a Changelog](https://kee
 
 ## [Unreleased]
 
-### Changed (image)
-
-- **A lighter image: 1.06 GB to 264 MB, build 221 s to 78 s.** The hub imports nothing from the analyser's
-  `requirements.txt`: its static rules are standard-library only (loaded over all 104 labelled examples in 11
-  languages, no third-party module is imported). The image no longer installs fastapi, celery, stripe,
-  opentelemetry and the rest, nor a compiler. What it does install is pinned: `pytest` (the validator's
-  `behavior` check runs the deliverable's tests with it), `edge-tts` (the voice) and `psycopg[binary]` (team
-  mode). A `.dockerignore` keeps `.git`, caches and `.env` files out of the build context.
-
-### Security
-
-- **A silent or malformed connection can no longer hold the hub's threads.** A read timeout (30 s, `VISHAP_HUB_READ_TIMEOUT`), a ceiling on runs in flight (4, `VISHAP_HUB_MAX_CONCURRENT_RUNS`; the 5th is a `503` before it spends any budget), and a `Content-Length` that is not a number is a `400` instead of a dropped connection (`/run`, `/chat`, `/speak`, `/login`).
-- **A run that raises is a `500` that says so, not a dead socket, and neither `/run` nor `/run/stream` hands the exception text to the client** (it goes to the log).
-- **`render.yaml` sets `VISHAP_HUB_TRUST_HEADER=x-forwarded-for` and `VISHAP_HUB_TRUSTED_HOPS=1`**, so the per-address limits are per visitor behind Render's proxy and not one bucket for everyone. Check it with `GET /api/team/diagnostics`.
-- **Validator 0.3.0: the visitor's tests no longer see the hub's environment.** The hub runs a deliverable's own tests and imports its entry point inside the service process; those subprocesses used to inherit every variable of the host (model key, database URLs). They now get `PATH`, temp dirs and locale only. A spec path that is absolute, climbs with `..` or an entry that is not a dotted module name is refused (`FAIL`, nothing run) - a test file outside the deliverable used to be executed. Pytest exiting 0 with every test skipped is no longer a green run; `todos`/`stubborn` in code are no longer `stub` markers. Not a sandbox: the code under test can still reach the network.
-
-### Changed
-
-- **Run page and report.** The rules' findings about the model's own patch sit in their own block (their line numbers refer to the patch); the model's summary is labelled as the model's, with a note that the hub did not run its patch; a second route the rules flag without authentication says which model finding may already cover it (`possibly_covered_by`; nothing is dropped).
+## [0.5.0] - 2026-10-31
 
 ### Added
 
-- **`review`.** Material with a question now means the model reads it and the rules check it
-  (before, the question was ignored whenever there was material). The stricter verdict wins,
-  the model's findings are marked `source: model`, a rejected key leaves the rules' answer with the
-  missing reading named instead of an error, and without any key the run says the question was not put
-  to a model. `{"intent": "review"}` is the explicit form.
-- **Findings from two readers are joined.** A model finding and a rules finding for the same class of
-  defect near the same line are one finding with `seen_by`; `agreement` counts what each reader found
-  alone and what both did. The report page and the main page show it, with the rules' fix.
+- **Opt-in checked fix loop.** Send `"verify_fix": true` to `/run` or `/run/stream` to check the model's patch,
+  feed a rejected or partial result back with its reason, and try at most twice more. The result is the best
+  patch that the hub checked; the model cannot lower the risk verdict. The loop stops without retry when checks
+  cannot be run. Each retry is an additional model call.
+- **Evidence for each fix attempt.** The result fingerprint records the patch hash, files, status and reason for
+  every attempt, plus why the loop stopped.
+- **Review mode.** Material with a question can be sent to the model while the rules check it. The stricter
+  verdict wins; without a model key the result says the question was not sent to a model.
+- **Findings from two readers are joined.** Findings for the same class of defect near the same line carry
+  `seen_by`; the report shows what each reader found alone and what both found.
+
+### Changed
+
+- **A lighter image: 1.06 GB to 264 MB, build 221 s to 78 s.** The hub no longer installs the analyser's unused
+  dependency set or a compiler. It installs pinned `pytest`, `edge-tts` and `psycopg[binary]` requirements; the
+  `.dockerignore` excludes `.git`, caches and `.env` files from the build context.
+- **Safer request handling.** A 30-second read timeout and a cap of four concurrent runs protect HTTP threads;
+  malformed content lengths return `400`, and an unhandled run error returns `500` without exposing exception
+  text to the client.
+- **Validator isolation.** Submitted tests get a clean environment. Strict execution requires a confirmed network
+  namespace or worker container; skipped-only test runs do not count as a pass. A Python socket guard is not
+  reported as process-level isolation.
+- **Reports.** The model's summary and patch are separated from the rules' findings. The report says whether the
+  hub ran the proposed patch and links a possible overlap between model and rules findings.
+- **Documentation.** The README includes the small open-scanner comparison and its limits. `SECURITY.md` and
+  `docs/privacy.md` describe the current data paths, storage, retention and team isolation.
+
+### Security
+
+- **Trusted proxy settings.** Render configures `X-Forwarded-For` and one trusted hop. Check the selected address
+  through `/api/team/diagnostics` before claiming per-visitor limits publicly.
+- **Team data boundary.** Query filters and Postgres row-level security scope `runs`, `audit_log` and `usage` to
+  the active team for the restricted `vishap_hub_app` role. CI exercises the integration tests against Postgres.
 
 ### Fixed
 
-- The rules' findings had an empty `message` (the scan calls it `title`); they now carry `message`,
-  `cwe` and `fix`.
-- A `REQUIRES_REVIEW` verdict carried the definition of `SAFE` as its `meaning`; it now says what
-  REQUIRES_REVIEW means for that run (the rules found something / they cannot vouch for this text).
+- Findings carry their message, CWE and fix; `REQUIRES_REVIEW` reports its own meaning instead of the definition
+  for `SAFE`.
 
 ## [0.4.0] — 2026-10-30
 
@@ -57,17 +62,16 @@ All notable changes to VishapHub. Format based on [Keep a Changelog](https://kee
 - **SARIF export.** `GET /api/runs/<id>.sarif` returns SARIF 2.1.0, written by the analyser's
   own writer. Owner check identical to the report itself; `501` when the analyser is absent.
 - **Redaction before the model.** `proposal._call` passes the material through
-  `src.tools.redact` before it leaves; counts by category come back in the result.
+  `src.tools.redact` before it leaves; counts by category come back with the answer.
 
 ### Security
 
-- **Owner on every run.** Without a token `403`; for someone else's run `404`, so existence is
-  not confirmed. `/api/runs`, `/r/<id>`, `/api/runs/<id>` and the SARIF export share the check.
-- `API_KEY_PEPPER` in the analyser is refused at startup when it is still a placeholder and
-  tenant keys are on.
+- **Owner on every run.** Without a token `403`; for somebody else's run `404`, so existence is not confirmed.
+  `/api/runs`, `/r/<id>`, `/api/runs/<id>` and the SARIF export share the check.
+- `API_KEY_PEPPER` in the analyser is refused at startup when it is still a placeholder and tenant keys are on.
 
-### Known gaps
+### Known gaps at the 0.4.0 release
 
-- Card numbers are not redacted (no PAN pattern).
-- Runs live in memory (200 last, until restart) unless the file mirror or Postgres is set.
-- Row-level security is proven in the analyser, not in the hub.
+- Card numbers were not redacted at that release.
+- Hub row-level security had not yet been documented as independently verified at that release.
+- Runs lived in memory (200 last, until restart) unless the file mirror or Postgres was set.
