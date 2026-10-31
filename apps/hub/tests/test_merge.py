@@ -75,7 +75,7 @@ def test_a_suspicious_model_can_raise_the_alarm(monkeypatch):
                       api_key="k")
     assert result.verdict == "EMERGENCY"
     assert result.ok is False
-    assert "the model saw danger" in result.reason
+    assert "the model rated the risk higher" in result.reason
 
 
 # generated code is checked like any other code --------------------------------

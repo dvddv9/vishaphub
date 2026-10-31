@@ -12,7 +12,6 @@ instead of inventing an answer. The key is the caller's — the hub holds none.
 from __future__ import annotations
 
 import json
-import os
 import re
 import urllib.error
 import urllib.request
@@ -77,9 +76,9 @@ def _recommendation(raw: object) -> str:
     return text if text in SEVERITY_ORDER else "REQUIRES_REVIEW"
 
 
-def _call(key: str, model: str, material: str, spec: str, question: str) -> dict:
+def _call(key: str, model: str, material: str, spec: str, question: str, preset: str = "") -> dict:
     try:
-        current = llm.settings(model)
+        current = llm.settings(model, preset)
     except llm.ConfigError as exc:
         return {"ok": False, "error": str(exc)}
     # Everything the client typed is redacted before it is put in the request, not only the material:
@@ -125,21 +124,21 @@ def _call(key: str, model: str, material: str, spec: str, question: str) -> dict
 
 
 def propose(material: str = "", spec: str = "", question: str = "",
-            api_key: str = "", model: str = "") -> dict:
+            api_key: str = "", model: str = "", preset: str = "") -> dict:
     """One model call. Returns the proposal or an honest refusal — never a verdict."""
     try:
-        current = llm.settings(model)
+        current = llm.settings(model, preset)
     except llm.ConfigError as exc:
         return {"ok": False, "error": str(exc)}
     if current.provider == "none":
         return {"ok": False, "model_disabled": True,
                 "error": "no model is configured on this installation (VISHAP_HUB_LLM_PROVIDER=none)"}
-    key = (api_key or os.getenv("VISHAP_HUB_LLM_KEY") or "").strip()
+    key = llm.key_for(api_key, preset)
     if not key and current.key_required:
         return {"ok": False, "error": "no model key: set VISHAP_HUB_LLM_KEY or send api_key",
                 "key_required": True}
 
-    answer = _call(key, model, material, spec, question)
+    answer = _call(key, model, material, spec, question, preset)
     if not answer["ok"]:
         return answer
 

@@ -83,7 +83,7 @@ def _ask(question: str, default: str, answers: list[str] | None, secret: bool = 
 def wizard(args, answers: list[str] | None = None) -> dict[str, str]:
     """Ask what is not given as a flag. `answers` is for tests: it replaces the keyboard."""
     v: dict[str, str] = {}
-    provider = args.provider or _ask("Model: anthropic (Claude), openai (OpenAI, OpenRouter, Ollama, LM Studio, vLLM) "
+    provider = args.provider or _ask("Model: anthropic (Claude), deepseek, openai (ChatGPT, OpenRouter, LM Studio, vLLM), ollama (local) "
                                      "or none (rules only)", "anthropic", answers)
     if provider not in llm.PROVIDERS:
         raise SystemExit(f"unknown provider: {provider} (use one of {', '.join(llm.PROVIDERS)})")
@@ -91,7 +91,9 @@ def wizard(args, answers: list[str] | None = None) -> dict[str, str]:
     if provider == "openai":
         v["VISHAP_HUB_LLM_URL"] = args.url or _ask("Server address", "http://localhost:11434/v1", answers)
         v["VISHAP_HUB_LLM_MODEL"] = args.model or _ask("Model name, as the server calls it", "llama3.1", answers)
-    elif provider == "anthropic" and args.model:
+    elif provider == "ollama":
+        v["VISHAP_HUB_LLM_MODEL"] = args.model or _ask("Model name, as `ollama list` shows it", "llama3.1", answers)
+    elif provider in ("anthropic", "deepseek") and args.model:
         v["VISHAP_HUB_LLM_MODEL"] = args.model
     if provider != "none":
         key = args.key if args.key is not None else _ask("Key (empty for a server on this machine)", "", answers, secret=True)

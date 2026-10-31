@@ -20,7 +20,7 @@ const I18N = {
     materialPh: "e.g. paste something like this:\n\n@app.get(\"/user\")\ndef user():\n    name = request.args.get(\"name\", \"\")\n    cur.execute(f\"select * from users where name = '{name}'\")",
     exampleQuestion: "is this safe?",
     sampleBtn: "paste a sample and run",
-    keySys: "The hub holds no model key. The rules check your code for free; to have the model read it too, add your own Anthropic key below (it stays in this browser).",
+    keySys: "The hub holds no model key. The rules check your code for free; to have the model read it too, add a key below: Anthropic, DeepSeek or ChatGPT (Ollama needs none; the key stays in this browser).",
     keyHint: "Optional. Without a key only the rules run; with your key the model reads the code as well, and the stricter verdict wins. The key is kept in this browser and sent with your run.",
     noModelSummary: "No model read this run, so there is no model summary. The rules found {n} finding(s): open FINDINGS. Add your own key below to have the model read the code too.",
     verdictHint: "REQUIRES_REVIEW means a person should read the findings. The hub does not issue SAFE yet: its rules are not measured well enough for any language.",
@@ -53,7 +53,7 @@ const I18N = {
     materialPh: "например, вставь что-то такое:\n\n@app.get(\"/user\")\ndef user():\n    name = request.args.get(\"name\", \"\")\n    cur.execute(f\"select * from users where name = '{name}'\")",
     exampleQuestion: "это безопасно?",
     sampleBtn: "вставить пример и запустить",
-    keySys: "У хаба нет ключа модели. Правила проверяют код бесплатно; чтобы код читала ещё и модель, добавь свой ключ Anthropic ниже (он остаётся в этом браузере).",
+    keySys: "У хаба нет ключа модели. Правила проверяют код бесплатно; чтобы код читала ещё и модель, добавь ключ ниже: Anthropic, DeepSeek или ChatGPT (для Ollama ключ не нужен; ключ остаётся в этом браузере).",
     keyHint: "Не обязательно. Без ключа работают только правила; с твоим ключом код читает ещё и модель, и побеждает более строгий вердикт. Ключ хранится в этом браузере и уходит вместе с твоим запуском.",
     noModelSummary: "\u042d\u0442\u0443 \u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0443 \u043d\u0435 \u0447\u0438\u0442\u0430\u043b\u0430 \u043c\u043e\u0434\u0435\u043b\u044c, \u043f\u043e\u044d\u0442\u043e\u043c\u0443 \u0441\u0432\u043e\u0434\u043a\u0438 \u043c\u043e\u0434\u0435\u043b\u0438 \u043d\u0435\u0442. \u041f\u0440\u0430\u0432\u0438\u043b\u0430 \u043d\u0430\u0448\u043b\u0438 \u043d\u0430\u0445\u043e\u0434\u043e\u043a: {n}. \u041e\u0442\u043a\u0440\u043e\u0439 \u0432\u043a\u043b\u0430\u0434\u043a\u0443 findings. \u0414\u043e\u0431\u0430\u0432\u044c \u0441\u0432\u043e\u0439 \u043a\u043b\u044e\u0447 \u043d\u0438\u0436\u0435, \u0447\u0442\u043e\u0431\u044b \u043a\u043e\u0434 \u043f\u0440\u043e\u0447\u0438\u0442\u0430\u043b\u0430 \u0435\u0449\u0451 \u0438 \u043c\u043e\u0434\u0435\u043b\u044c.",
     verdictHint: "REQUIRES_REVIEW значит: человеку стоит прочитать находки. SAFE хаб пока не выдаёт: его правила не измерены достаточно хорошо ни для одного языка.",
@@ -128,7 +128,13 @@ $("tryExample").onclick = () => {
 
 $("sampleRun").onclick = $("tryExample").onclick;
 
-$("save").onclick = () => { localStorage.setItem("vishap_key", $("key").value.trim()); bubble("sys", t("savedKey")); };
+const providerValue = () => { const v = $("provider").value; return ["deepseek","openai","ollama"].includes(v) ? v : "anthropic"; };
+const modelValue = () => ($("modelname").value || "").trim();
+try { $("provider").value = localStorage.getItem("vishap_provider") || "anthropic"; } catch (e) {}
+try { $("modelname").value = localStorage.getItem("vishap_model") || ""; } catch (e) {}
+$("provider").onchange = () => { try { localStorage.setItem("vishap_provider", providerValue()); } catch (e) {} };
+$("modelname").onchange = () => { try { localStorage.setItem("vishap_model", modelValue()); } catch (e) {} };
+$("save").onclick = () => { localStorage.setItem("vishap_key", $("key").value.trim()); localStorage.setItem("vishap_provider", providerValue()); bubble("sys", t("savedKey")); };
 $("clear").onclick = () => { localStorage.removeItem("vishap_key"); $("key").value=""; bubble("sys", t("clearedKey")); };
 $("key").value = localStorage.getItem("vishap_key") || "";
 
@@ -139,7 +145,7 @@ async function ask(message){
   const thinking = bubble("sys", "…");
   try {
     const res = await fetch("/chat", {method:"POST", headers:{"content-type":"application/json"},
-      body: JSON.stringify({message, messages: history, api_key: localStorage.getItem("vishap_key") || ""})});
+      body: JSON.stringify({message, messages: history, api_key: localStorage.getItem("vishap_key") || "", provider: providerValue(), model: modelValue()})});
     const data = await res.json();
     thinking.remove();
     if (!data.ok){ bubble("sys", data.error || "failed"); return; }
@@ -192,6 +198,7 @@ $("mic").onclick = () => {
 let lastSpoken = "";
 
 let lastResult = null;
+try { const saved = sessionStorage.getItem("vishap_last"); if (saved) { lastResult = JSON.parse(saved); $("download").disabled = false; } } catch (e) {}
 
 const sevRank = {critical: 4, high: 3, medium: 2, low: 1};
 const readers = f => new Set(f.seen_by || []).size;
@@ -221,6 +228,7 @@ function groupFindings(list, fn){
 
 function renderReport(data){
   lastResult = data;
+  try { sessionStorage.setItem("vishap_last", JSON.stringify(data)); } catch (e) {}
   const box = $("report");
   const ag = data.agreement || {};
   const head = Object.keys(ag).length
@@ -351,7 +359,7 @@ async function pipeline(){
 
   const wake = setTimeout(() => { $("waking").style.display = "block"; }, 8000);
   const body = JSON.stringify({material, question, spec: "",
-                               api_key: localStorage.getItem("vishap_key") || ""});
+                               api_key: localStorage.getItem("vishap_key") || "", provider: providerValue(), model: modelValue()});
   const clearWake = () => { clearTimeout(wake); $("waking").style.display = "none"; };
 
   // The run is announced stage by stage: a minute of silence reads as broken.

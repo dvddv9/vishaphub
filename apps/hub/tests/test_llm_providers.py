@@ -257,3 +257,59 @@ def test_a_reply_in_either_dialect_is_read_whatever_its_shape():
     for odd in (None, [], {}, {"choices": []}, {"choices": [None]}, {"choices": [{"message": {"content": None}}]}):
         assert llm.read_reply(openai, odd).text == ""
         assert llm.read_reply(anthropic, odd).text == ""
+
+
+def test_deepseek_is_a_preset_with_a_fixed_address_and_its_own_default_model(monkeypatch):
+    from hub import llm
+    monkeypatch.setenv("VISHAP_HUB_LLM_PROVIDER", "deepseek")
+    for name in ("VISHAP_HUB_LLM_URL", "VISHAP_HUB_LLM_MODEL"):
+        monkeypatch.delenv(name, raising=False)
+    s = llm.settings()
+    assert (s.provider, s.base_url, s.model) == ("openai", "https://api.deepseek.com", "deepseek-flash")
+    assert llm.endpoint(s) == "https://api.deepseek.com/chat/completions"
+
+
+def test_a_visitor_can_pick_deepseek_by_name_but_never_by_address(monkeypatch):
+    from hub import llm
+    monkeypatch.setenv("VISHAP_HUB_LLM_PROVIDER", "anthropic")
+    monkeypatch.delenv("VISHAP_HUB_LLM_URL", raising=False)
+    s = llm.settings(preset="deepseek")
+    assert s.base_url == "https://api.deepseek.com" and s.provider == "openai"
+    assert llm.settings(preset="http://evil.example/v1").base_url == "https://api.anthropic.com"
+    # an operator who set their own address is not overridden by the page
+    monkeypatch.setenv("VISHAP_HUB_LLM_URL", "https://gateway.example/v1")
+    assert llm.settings(preset="deepseek").base_url == "https://gateway.example/v1"
+
+
+def test_the_operators_key_is_never_sent_to_a_provider_the_operator_did_not_choose(monkeypatch):
+    from hub import llm
+    monkeypatch.setenv("VISHAP_HUB_LLM_PROVIDER", "anthropic")
+    monkeypatch.setenv("VISHAP_HUB_LLM_KEY", "operator-secret")
+    assert llm.key_for("", "deepseek") == ""
+    assert llm.key_for("their-own", "deepseek") == "their-own"
+    assert llm.key_for("", "") == "operator-secret"
+    assert llm.key_for("", "anthropic") == "operator-secret"
+    assert llm.available("", "deepseek") is False
+    assert llm.available("their-own", "deepseek") is True
+
+
+def test_chatgpt_and_ollama_are_presets_with_fixed_addresses(monkeypatch):
+    from hub import llm
+    monkeypatch.setenv("VISHAP_HUB_LLM_PROVIDER", "anthropic")
+    for name in ("VISHAP_HUB_LLM_URL", "VISHAP_HUB_LLM_MODEL"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("VISHAP_HUB_HOST", "127.0.0.1")
+    gpt = llm.settings(preset="openai")
+    assert gpt.base_url == "https://api.openai.com/v1" and gpt.key_required and gpt.model == llm.DEFAULT_OPENAI_MODEL
+    ollama = llm.settings(preset="ollama")
+    assert ollama.base_url == "http://localhost:11434/v1" and not ollama.key_required
+    assert llm.settings("my-model", "ollama").model == "my-model"
+    assert llm.available("", "ollama") is True
+
+
+def test_the_ollama_pick_is_ignored_when_the_hub_is_not_bound_to_this_machine(monkeypatch):
+    from hub import llm
+    monkeypatch.setenv("VISHAP_HUB_LLM_PROVIDER", "anthropic")
+    monkeypatch.delenv("VISHAP_HUB_LLM_URL", raising=False)
+    monkeypatch.setenv("VISHAP_HUB_HOST", "0.0.0.0")
+    assert llm.settings(preset="ollama").base_url == "https://api.anthropic.com"
