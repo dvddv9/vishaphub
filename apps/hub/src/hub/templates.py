@@ -88,7 +88,7 @@ def _statuses_block(result: dict) -> str:
 
 def _evidence_block(fp: dict) -> str:
     """What the run rests on, in four separate columns of the truth, plus whether the record is intact."""
-    from . import fingerprint
+    from . import fingerprint, languages
 
     ev = ((fp or {}).get("body") or {}).get("evidence")
     if not isinstance(ev, dict):
@@ -112,6 +112,7 @@ def _evidence_block(fp: dict) -> str:
     patch_line = (f"diff <code>{e(str(patch.get('diff_sha256') or '')[:16])}</code> over "
                   f"{len(patch.get('files') or {})} file(s)") if patch.get("proposed") else "no patch"
     profile_hash = (f" \u00b7 profile <code>{e(str(prof.get('sha256') or '')[:16])}</code>" if prof.get('sha256') else "")
+    lang_rows = "".join(f"<li>{e(languages.sentence(x))}</li>" for x in ev.get("languages") or []) or "<li>-</li>"
     integrity = ("<span class=\"vchip pass\">record intact</span>" if ok
                  else f"<span class=\"vchip bad\">record NOT intact: {e(why)}</span>")
     body = (
@@ -123,6 +124,7 @@ def _evidence_block(fp: dict) -> str:
         f"<tr><td>validator ran on</td><td>{e(str((ev.get('validator_ran_on') or {}).get('what') or 'nothing'))} ({len((ev.get('validator_ran_on') or {}).get('files') or {})} file(s))</td></tr>"
         f"<tr><td>tests that really ran</td><td><ul>{ran_rows}</ul></td></tr>"
         f"<tr><td>left unverified</td><td><ul>{unverified}</ul></td></tr>"
+        f"<tr><td>language evidence</td><td><ul>{lang_rows}</ul></td></tr>"
         "</table></div>"
         f"<p class=\"meta\">sandbox: {e(str(prof.get('name') or '-'))}{profile_hash}"
         f" \u00b7 cleanup {clean_text}</p>"
@@ -208,7 +210,15 @@ def report_page(record: dict, retention: str = "") -> str:
     summary = str(result.get("summary") or "")
     reason = str(result.get("reason") or "")
     body = f"""
-<p class="crumb"><a href="/runs">{ARROW_BACK} recent runs</a></p>
+<p class="crumb"><a href="/runs">{ARROW_BACK} recent runs</a><span class="exports"> {DOT} export:
+<a href="/api/runs/{e(str(record.get('id') or ''))}.json">JSON</a> {DOT}
+<a href="/api/runs/{e(str(record.get('id') or ''))}.sarif">SARIF</a> {DOT}
+<a href="/api/runs/{e(str(record.get('id') or ''))}.md">Markdown</a> {DOT}
+<a href="/api/verify/{e(str(record.get('id') or ''))}">check integrity</a> {DOT}
+<a href="/r/{e(str(record.get('id') or ''))}/delete">delete this run</a></span></p>
+<form class="cmp" action="/compare" method="get"><input type="hidden" name="a" value="{e(str(record.get('id') or ''))}">
+<label>compare with another run <input name="b" placeholder="run id" pattern="[0-9a-f]{{16}}" required></label>
+<button type="submit">compare</button></form>
 <section class="rep-hero">
 <div class="rep-verdict {state}"><span class="label">verdict</span><b>{verdict}</b></div>
 <div class="rep-head">
@@ -231,6 +241,19 @@ def report_page(record: dict, retention: str = "") -> str:
                   description=f"A reproducible VishapHub run: verdict {result.get('verdict', '')}.")
 
 
+def _status_chips(r: dict) -> str:
+    """A run that did not check everything says so in the list: an empty or partial run must not look green."""
+    out = ""
+    ver = str(r.get("verification") or "")
+    if ver and ver != "COMPLETE":
+        out += ('<span class="vchip warn" title="not everything the plan covers was checked">'
+                f'{e(ver.replace("_", " ").lower())}</span>')
+    fix = str(r.get("fix") or "")
+    if fix and fix != "NO_PATCH":
+        out += f'<span class="vchip">{e(fix.lower().replace("_", " "))}</span>'
+    return out
+
+
 def runs_page(runs: list[dict]) -> str:
     head = ('<h1 class="page-title">Recent runs</h1>'
             '<p class="page-lead">The runs this hub remembers, newest first. Open one to read it, or send the link.</p>')
@@ -243,7 +266,8 @@ def runs_page(runs: list[dict]) -> str:
         f'<span class="vchip {_verdict_class(str(r.get("verdict") or ""))}">{e(str(r.get("verdict") or "-"))}</span>'
         f'<a href="/r/{e(str(r.get("id") or ""))}">{e(str(r.get("id") or ""))}</a>'
         f'<span>{e(str(r.get("at") or ""))}</span>'
-        f'<span>{e(f" {ARROW} ".join((r.get("plan") or {}).get("stages") or []))}</span></div>'
+        f'<span>{e(f" {ARROW} ".join((r.get("plan") or {}).get("stages") or []))}</span>'
+        + _status_chips(r) + "</div>"
         + (f'<div class="sum">{e(str(r.get("summary") or ""))}</div>' if r.get("summary") else "")
         + "</li>"
         for r in runs
@@ -251,6 +275,72 @@ def runs_page(runs: list[dict]) -> str:
     body = f'{head}<ul class="runs-list">{items}</ul>'
     return layout(f"Recent runs {DOT} VishapHub", body,
                   description="The runs this VishapHub remembers, newest first.")
+
+
+def _change(label: str, pair: dict) -> str:
+    if not pair.get("changed"):
+        return f"<tr><td>{e(label)}</td><td>{e(str(pair.get('a') or '-'))}</td><td>unchanged</td></tr>"
+    return (f"<tr><td>{e(label)}</td><td>{e(str(pair.get('a') or '-'))}</td>"
+            f"<td><b>{e(str(pair.get('b') or '-'))}</b></td></tr>")
+
+
+def _finding_rows(items: list[dict]) -> str:
+    return "".join(f"<li><code>{e(str(i['rule']))}</code> {e(str(i['severity']))}: {e(str(i['message']))}"
+                   + (f" (x{i['count']})" if i["count"] > 1 else "") + "</li>" for i in items) or "<li>-</li>"
+
+
+def compare_page(d: dict) -> str:
+    """Two runs side by side: what is different, and whether the same judge looked at the same thing."""
+    a, b = d["a"], d["b"]
+    link = lambda x: f'<a href="/r/{e(str(x["id"]))}"><code>{e(str(x["id"]))}</code></a> {e(str(x.get("at") or ""))}'
+    top = ('<p class="rep-reason">These two are the same run: same fingerprint.</p>' if d["identical"] else "")
+    rules = "".join(f"<li>{e(name)}: <code>{e(str(v['a']))}</code> {ARROW} <code>{e(str(v['b']))}</code></li>"
+                    for name, v in d["rules"].items()) or "<li>the same rules judged both</li>"
+    ev = d["evidence"]
+    table = "".join((
+        _change("risk verdict" + (f" ({d['verdict']['direction']})" if d["verdict"]["changed"] else ""), d["verdict"]),
+        _change("fix status", d["fix"]), _change("verification", d["verification"]),
+        _change("snapshot", ev["snapshot"]), _change("proposed patch", ev["patch"]),
+        _change("sandbox profile", ev["sandbox_profile"]), _change("attempts", ev["attempts"]),
+    ))
+    body = (
+        f'<p class="crumb"><a href="/runs">{ARROW_BACK} recent runs</a></p>'
+        '<h1 class="page-title">Two runs compared</h1>'
+        f'<p class="page-lead">{e(d["summary"])}.</p>{top}'
+        f'<p class="meta">A: {link(a)} {DOT} B: {link(b)}</p>'
+        + _block("What changed", f'<div class="table-wrap"><table><tr><th></th><th>A</th><th>B</th></tr>{table}</table></div>')
+        + _block("Findings", f'<p class="meta">{d["findings"]["unchanged"]} finding(s) in both. Compared by rule, severity '
+                 'and message, not by line.</p><h3>Only in B (added)</h3><ul>'
+                 f'{_finding_rows(d["findings"]["added"])}</ul><h3>Only in A (gone in B)</h3><ul>'
+                 f'{_finding_rows(d["findings"]["removed"])}</ul>')
+        + _block("Who judged", f"<ul>{rules}</ul>")
+    )
+    return layout(f"Compare {DOT} VishapHub", body, description="Two VishapHub runs compared.")
+
+
+def delete_page(record: dict, retention: str = "", team: bool = False) -> str:
+    """The confirmation before a run is deleted: what goes, what stays, and that it cannot be undone."""
+    run_id = e(str(record.get("id") or ""))
+    if team:
+        goes = ("the run row with its result, findings and patch. The audit row stays: who deleted it, when, and "
+                "the run id, with no content. Usage counters keep their numbers and let go of the id.")
+    else:
+        goes = ("the run with its findings, patch, fingerprint and record, and your claim on it. If someone else "
+                "ran exactly the same material, their copy stays for them.")
+    body = (
+        f'<p class="crumb"><a href="/r/{run_id}">{ARROW_BACK} back to the run</a></p>'
+        f'<h1 class="page-title">Delete run <code>{run_id}</code>?</h1>'
+        f'<p class="page-lead">This cannot be undone.</p>'
+        f'<section class="block"><h2>What goes</h2><p>{e(goes)}</p></section>'
+        '<section class="block"><h2>What does not go</h2><p>Copies you made yourself (an exported file, a link you '
+        'sent, an issue you opened) are yours to remove. Running exactly the same material again makes a new run '
+        'with the same id.</p></section>'
+        + (f'<p class="meta">{e(retention)}</p>' if retention else "")
+        + f'<form method="post" action="/r/{run_id}/delete" class="confirm">'
+        '<button type="submit" class="btn danger">Delete this run</button> '
+        f'<a href="/r/{run_id}">Keep it</a></form>'
+    )
+    return layout(f"Delete run {record.get('id', '')} {DOT} VishapHub", body, description="Delete a VishapHub run.")
 
 
 def login_page(error: str = "") -> str:

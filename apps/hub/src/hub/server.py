@@ -27,7 +27,7 @@ import sys
 import threading
 from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlsplit
 
 from . import (
     accepted,
@@ -161,6 +161,9 @@ def _intent_for(body: dict, material: str, spec: str) -> str:
 
 
 class Handler(BaseHTTPRequestHandler):
+    #: what a pipeline asked of this request (`fail_on`, `require_complete`); set by _run_args, read when answering
+    _ci_opts: tuple = ("fail", False, False)
+
     server_version = f"vishap-hub/{__version__}"
     timeout = READ_TIMEOUT or None
 
@@ -444,7 +447,7 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, {"ok": True, "version": __version__})
             return
         principal, ip = None, self._client_ip()
-        if path.startswith(("/api/", "/runs", "/r/")):
+        if path.startswith(("/api/", "/runs", "/r/", "/compare")):
             principal, refused = self._principal()
             if refused:
                 return
@@ -485,6 +488,32 @@ class Handler(BaseHTTPRequestHandler):
             ok, events = self._team(TEAMS.audit_events, principal, limit, before)
             if ok:
                 self._send(200, {"events": events}, extra=PRIVATE)
+            return
+        if path.startswith("/api/runs/") and path.endswith(".md"):
+            ok, record = self._visible(path[len("/api/runs/"):].removesuffix(".md"), principal, ip)
+            if not ok:
+                return
+            if record is None:
+                self._send(404, {"error": "no such run, or it is not yours, or it has expired"}, extra=PRIVATE)
+                return
+            from . import export as export_mod
+            self._send(200, export_mod.markdown(record), "text/markdown", extra=PRIVATE)
+            return
+        if path.startswith("/api/verify/"):
+            ok, record = self._visible(path[len("/api/verify/"):], principal, ip)
+            if not ok:
+                return
+            self._verify_answer(record, None)
+            return
+        if path == "/api/languages":
+            from . import languages as languages_mod
+            self._send(200, languages_mod.table())
+            return
+        if path == "/api/compare":
+            ok, diff = self._compare()
+            if ok:
+                self._send(200 if diff is not None else 404, diff if diff is not None else {
+                    "error": "one of the runs is not yours, does not exist, or has expired"}, extra=PRIVATE)
             return
         if path == "/api/runs" and principal is not None:
             ok, runs = self._team(TEAMS.list, principal, 20, ip)
@@ -565,6 +594,30 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self._html(200, templates.runs_page(RUNS.list_for(owner_key(token), 20)), extra=PRIVATE)
             return
+        if path == "/compare":
+            ok, diff = self._compare()
+            if not ok:
+                return
+            if diff is None:
+                self._html(404, templates.message_page(
+                    "Nothing to compare",
+                    "One of the runs is not yours, does not exist, or has expired. Both must be open to you."),
+                    extra=PRIVATE)
+                return
+            self._html(200, templates.compare_page(diff), extra=PRIVATE)
+            return
+        if path.startswith("/r/") and path.endswith("/delete") and len(path) > 10:
+            ok, record = self._visible(path[3:-len("/delete")], principal, ip)
+            if not ok:
+                return
+            if record is None:
+                self._html(404, templates.message_page(
+                    "No such run", "No run with this id is open to you: it may have expired, or it is not yours."),
+                    extra=PRIVATE)
+                return
+            note = TEAMS.retention_note(principal) if principal is not None else RUNS.retention()
+            self._html(200, templates.delete_page(record, note, team=principal is not None), extra=PRIVATE)
+            return
         if path.startswith("/r/") and len(path) > 3 and principal is not None:
             ok, record = self._team(TEAMS.get, principal, path[3:], ip)
             if not ok:
@@ -607,6 +660,12 @@ class Handler(BaseHTTPRequestHandler):
         if not (material.strip() or has_spec or has_files or question.strip()):
             self._send(400, {"ok": False, "error": "generation needs a spec, material or a question; nothing was sent"})
             return None
+        from . import ci as ci_mod
+        fail_on = str(body.get("fail_on") or ci_mod.DEFAULT_FAIL_ON).strip().lower()
+        if fail_on not in ci_mod.FAIL_ON:
+            self._send(400, {"ok": False, "error": f"fail_on must be one of {', '.join(ci_mod.FAIL_ON)}; nothing was run"})
+            return None
+        self._ci_opts = (fail_on, bool(body.get("require_complete")), bool(body.get("require_measured")))
         intent = _intent_for(body, material, spec_text)
         try:
             plan = plan_for(intent, int(body.get("iterations") or 1))
@@ -652,13 +711,72 @@ class Handler(BaseHTTPRequestHandler):
             "accept_rules": rules,
         }
 
+    def _same_origin(self) -> bool:
+        """A POST that changes something must come from this site. A browser always sends Origin on a POST; a
+        request without one is not a browser, and has no cookie of ours to abuse."""
+        origin = self.headers.get("origin")
+        return not origin or urlsplit(origin).netloc == (self.headers.get("host") or "")
+
+    def _compare(self):
+        """(ok, diff): both runs ?a= and ?b= must be open to this caller. A diff of None is one answer for
+        every reason (missing, not yours, expired), so it does not say which run."""
+        from . import compare as compare_mod
+        query = parse_qs(self.path.split("?", 1)[1]) if "?" in self.path else {}
+        a_id, b_id = (query.get("a") or [""])[0].strip(), (query.get("b") or [""])[0].strip()
+        if not a_id or not b_id:
+            self._send(400, {"error": "name the two runs: ?a=<id>&b=<id>"})
+            return False, None
+        principal, refused = self._principal()
+        if refused:
+            return False, None
+        ip = self._client_ip()
+        ok_a, rec_a = self._visible(a_id, principal, ip)
+        ok_b, rec_b = self._visible(b_id, principal, ip) if ok_a else (False, None)
+        if not (ok_a and ok_b):
+            return False, None
+        if rec_a is None or rec_b is None:
+            return True, None
+        return True, compare_mod.diff(rec_a, rec_b)
+
+    def _delete_run(self, run_id: str, principal) -> str | None:
+        """'deleted' / 'unlinked' / 'forbidden' / 'missing'. None means the answer was already sent."""
+        if principal is not None:
+            ok, outcome = self._team(TEAMS.delete, principal, run_id, self._client_ip())
+            return outcome if ok else None
+        token = self._token()
+        return RUNS.delete(run_id, owner_key(token) if token else None)
+
+    def _visible(self, run_id: str, principal, ip: str):
+        """(ok, record): the run if this caller may read it. `ok` False means the answer was already sent."""
+        if principal is not None:
+            ok, record = self._team(TEAMS.get, principal, run_id, ip)
+            if not ok:
+                return False, None
+            return True, record or RUNS.get_for(run_id, None)       # the page's own example is public
+        token = self._token()
+        return True, RUNS.get_for(run_id, owner_key(token) if token else None)
+
+    def _verify_answer(self, record: dict | None, files: dict | None) -> None:
+        """Re-check a stored record: the digest from its body and, given files, their hashes."""
+        if record is None:
+            self._send(404, {"error": "no such run, or it is not yours, or it has expired"}, extra=PRIVATE)
+            return
+        result = record.get("result") if isinstance(record.get("result"), dict) else record
+        fp = result.get("fingerprint") or {}
+        intact, why = fingerprint.verify(fp, files)
+        self._send(200, {"id": record.get("id") or fp.get("id"), "intact": intact, "reason": why,
+                         "files_checked": files is not None, "digest": fp.get("digest")}, extra=PRIVATE)
+
     def _respond(self, result, args: dict | None = None, owner: str = "", extra: dict | None = None,
                  principal=None) -> None:
         payload = result.as_dict()
         if not payload["ok"]:
             payload["error"] = payload.get("reason") or "the run did not pass its gates"
         self._remember(payload, args, owner, principal)
-        self._send(200 if payload["ok"] else 502, payload, extra=extra)
+        from . import ci as ci_mod
+        # per request, and a copy: the store holds `payload` itself, and the decision is not part of the run
+        answer = {**payload, "ci": ci_mod.decide(payload, *self._ci_opts)}
+        self._send(200 if payload["ok"] else 502, answer, extra=extra)
 
     def _stream(self, args: dict, owner: str = "", extra: dict | None = None, principal=None) -> None:
         """The same run, announced stage by stage: a minute of silence reads as broken."""
@@ -694,8 +812,10 @@ class Handler(BaseHTTPRequestHandler):
         if not payload["ok"]:
             payload["error"] = payload.get("reason") or "the run did not pass its gates"
         self._remember(payload, args, owner, principal)
+        from . import ci as ci_mod
+        answer = {**payload, "ci": ci_mod.decide(payload, *self._ci_opts)}
         try:
-            event("done", payload)
+            event("done", answer)
         except _ClientGone:
             return
 
@@ -809,6 +929,52 @@ class Handler(BaseHTTPRequestHandler):
                 "set-cookie": f"{access.KEY_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"})
             return
 
+        if path.startswith("/r/") and path.endswith("/delete") and len(path) > 10:
+            if not self._same_origin():
+                self._html(403, templates.message_page(
+                    "Not deleted", "This request came from another site. Open the run here and delete it from its page."),
+                    extra=PRIVATE)
+                return
+            principal, refused = self._principal()
+            if refused:
+                return
+            self._drain()
+            outcome = self._delete_run(path[3:-len("/delete")], principal)
+            if outcome is None:
+                return
+            words = {
+                "deleted": (200, "Run deleted", (
+                    "The run is gone: its findings, patch, fingerprint and record. "
+                    "Running exactly the same material again will make a new run with the same id.")),
+                "unlinked": (200, "Removed from your runs", (
+                    "The run is out of your list and your reach. Someone else "
+                    "ran exactly the same material, so their copy stays for them.")),
+                "forbidden": (403, "Not deleted", (
+                    "Only an owner, or the person who made the run, may delete it. "
+                    "The page's own example cannot be deleted.")),
+                "missing": (404, "No such run", (
+                    "No run with this id is open to you: it may be gone already, or it is not yours.")),
+            }[outcome]
+            self._html(words[0], templates.message_page(words[1], words[2]), extra=PRIVATE)
+            return
+        if path.startswith("/api/verify/"):
+            principal, refused = self._principal()
+            if refused:
+                return
+            body = self._body()
+            if body is None:
+                return
+            files = body.get("files")
+            if not isinstance(files, dict) or not files or len(files) > 200 or not all(
+                    isinstance(k, str) and isinstance(v, str) for k, v in files.items()):
+                self._send(400, {"error": "send {\"files\": {path: text}} (at most 200 files) to check them against the record"})
+                return
+            ok, record = self._visible(path[len("/api/verify/"):], principal, self._client_ip())
+            if not ok:
+                return
+            self._verify_answer(record, files)
+            return
+
         if path == "/chat":
             principal, refused = self._spender()
             if refused:
@@ -917,15 +1083,18 @@ class Handler(BaseHTTPRequestHandler):
         principal, refused = self._principal()
         if refused:
             return
-        if principal is None:
-            self._send(401, {"error": "an API key is required to delete a run"}, extra=PRIVATE)
+        if principal is None and self._token() is None:
+            self._send(401, {"error": "an API key, or the owner token the run was made with, is required to delete a run"},
+                       extra=PRIVATE)
             return
-        ok, outcome = self._team(TEAMS.delete, principal, path[len("/api/runs/"):].removesuffix(".json"),
-                                 self._client_ip())
-        if not ok:
+        outcome = self._delete_run(path[len("/api/runs/"):].removesuffix(".json"), principal)
+        if outcome is None:
             return
         if outcome == "deleted":
             self._send(200, {"deleted": True}, extra=PRIVATE)
+        elif outcome == "unlinked":
+            self._send(200, {"deleted": False, "unlinked": True,
+                             "note": "someone else ran the same material; their copy stays for them"}, extra=PRIVATE)
         elif outcome == "forbidden":
             self._send(403, {"error": "only an owner, or the person who made the run, may delete it"}, extra=PRIVATE)
         else:

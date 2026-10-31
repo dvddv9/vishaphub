@@ -23,7 +23,7 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [tool.setuptools.package-data]
-hub = ["web/*.html", "prompt/*.md", "web/*.mp3", "migrations/*.sql"]
+hub = ["web/*.html", "prompt/*.md", "web/*.mp3", "migrations/*.sql", "data/*.json"]
 
 [tool.ruff]
 # src/ is the source root. Without this, import sorting depends on where ruff is started:

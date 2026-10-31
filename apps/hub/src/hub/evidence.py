@@ -90,6 +90,8 @@ def build(*, supplied_files: dict, checked_files: dict, patch: dict, checks: dic
         "cleanup": {"confirmed": iso.get("cleanup_confirmed") if iso else None},
         "model": {"consulted": bool(checks.get("generator")), "name": answer.get("model", ""),
                   "verdict": model_verdict or "", "findings": len(answer.get("findings") or [])},
+        # how well the rules are measured for each language they read: counts from a labelled benchmark
+        "languages": list(analyser.get("languages") or []),
         "rules_found": {"analyser": len(analyser.get("findings") or []),
                         "validator": sum(len(c.get("findings") or []) for c in validator.get("checks", []))},
         "not_checked": list(not_checked or []),

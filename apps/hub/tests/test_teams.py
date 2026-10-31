@@ -925,3 +925,95 @@ class AcceptTests(TeamCase):
         assert self.accept("amy", run_id, reason="a reason nobody should find in the audit trail")[0] == 200
         audit = json.dumps(self.admin_rows("SELECT action, detail FROM audit_log WHERE action = 'run.accept'"), default=str)
         assert "nobody should find" not in audit and self.KEY in audit and "invalid" in audit and "ok" in audit
+
+
+class _Statused(_Said):
+    """A run that was only partly checked and carries a patch nobody verified."""
+
+    def as_dict(self):
+        data = super().as_dict()
+        data["statuses"] = {"fix": {"status": "FIX_UNVERIFIED"},
+                            "verification": {"status": "PARTIAL", "ran": ["analyser"], "not_run": ["validator"]}}
+        return data
+
+
+@needs_pg
+class ProductApiTeamTests(TeamCase):
+    def run_statused(self, who, material="a = 1"):
+        with mock.patch.object(server, "run_plan", lambda **kw: _Statused()):
+            status, _h, raw = self.call("POST", "/run", self.keys[who], {"material": material, "api_key": "k"})
+        assert status == 200, raw
+        return json.loads(raw)["fingerprint"]["id"]
+
+    def test_the_team_list_carries_the_fix_and_verification_statuses(self):
+        new = self.run_statused("alice", "a = 1")
+        old = self.run_as("alice", "b = 2")                       # a run stored without statuses
+        rows = {r["id"]: r for r in json.loads(self.call("GET", "/api/runs", self.keys["alice"])[2])["runs"]}
+        assert (rows[new]["fix"], rows[new]["verification"]) == ("FIX_UNVERIFIED", "PARTIAL")
+        assert (rows[old]["fix"], rows[old]["verification"]) == (None, None)
+        page = self.call("GET", "/runs", self.keys["alice"])[2].decode()
+        assert "partial" in page and "fix unverified" in page
+
+    def test_the_exports_and_the_integrity_check_are_as_private_as_the_run(self):
+        run_id = self.run_statused("alice", "secret = 1")
+        for path in (f"/api/runs/{run_id}.md", f"/api/verify/{run_id}"):
+            assert self.call("GET", path, self.keys["alice"])[0] == 200, path
+            assert self.call("GET", path, self.keys["vic"])[0] == 200, path           # a viewer of the same team
+            status, _h, body = self.call("GET", path, self.keys["bob"])               # another team
+            assert status == 404 and run_id.encode() not in body, path
+        assert self.call("POST", f"/api/verify/{run_id}", self.keys["bob"], {"files": {"a": "b"}})[0] == 404
+        assert json.loads(self.call("GET", f"/api/verify/{run_id}", self.keys["alice"])[2])["intact"] is True
+
+    def test_reading_an_export_is_audited_like_reading_the_run(self):
+        run_id = self.run_statused("alice", "a = 1")
+        before = self.admin_rows("SELECT count(*) FROM audit_log WHERE action = 'run.read' AND target = %s", run_id)[0][0]
+        assert self.call("GET", f"/api/runs/{run_id}.md", self.keys["alice"])[0] == 200
+        assert self.call("GET", f"/api/verify/{run_id}", self.keys["alice"])[0] == 200
+        after = self.admin_rows("SELECT count(*) FROM audit_log WHERE action = 'run.read' AND target = %s", run_id)[0][0]
+        assert after == before + 2
+
+    def test_a_deleted_run_is_gone_from_the_exports_too(self):
+        run_id = self.run_statused("alice", "a = 1")
+        assert self.call("DELETE", f"/api/runs/{run_id}", self.keys["alice"])[0] == 200
+        for path in (f"/api/runs/{run_id}.md", f"/api/verify/{run_id}", f"/api/runs/{run_id}.sarif"):
+            assert self.call("GET", path, self.keys["alice"])[0] == 404, path
+
+
+@needs_pg
+class CompareDeleteTeamTests(TeamCase):
+    def test_a_team_compares_its_own_runs_and_never_another_teams(self):
+        a, b = self.run_as("alice", "a = 1"), self.run_as("alice", "b = 2")
+        theirs = self.run_as("bob", "c = 3")
+        status, _h, raw = self.call("GET", f"/api/compare?a={a}&b={b}", self.keys["amy"])        # same team
+        assert status == 200 and json.loads(raw)["a"]["id"] == a
+        answers = {self.call("GET", f"/api/compare?a={a}&b={theirs}", self.keys["alice"])[::2],
+                   self.call("GET", f"/api/compare?a={a}&b=0000000000000000", self.keys["alice"])[::2]}
+        assert len(answers) == 1 and next(iter(answers))[0] == 404                               # no hint which one
+        assert self.call("GET", f"/api/compare?a={a}&b={b}", self.keys["bob"])[0] == 404
+        assert self.call("GET", f"/compare?a={a}&b={b}", self.keys["alice"])[0] == 200
+
+    def test_the_owner_deletes_from_the_page_and_the_audit_row_stays_without_content(self):
+        run_id = self.run_as("alice", "secret = 1", said="ALPHA-ONLY-TEXT")
+        status, _h, page = self.call("GET", f"/r/{run_id}/delete", self.keys["alice"])
+        assert status == 200 and b"audit row stays" in page and b"cannot be undone" in page
+        status, _h, raw = self.call("POST", f"/r/{run_id}/delete", self.keys["alice"], {})
+        assert status == 200 and b"Run deleted" in raw
+        assert self.admin_rows("SELECT count(*) FROM runs WHERE run_id = %s", run_id)[0][0] == 0
+        audit = self.admin_rows("SELECT action, detail FROM audit_log WHERE target = %s AND action = 'run.delete'", run_id)
+        assert audit and "deleted" in json.dumps(audit[0][1]) and "ALPHA-ONLY-TEXT" not in json.dumps(audit)
+        assert self.call("GET", f"/r/{run_id}", self.keys["alice"])[0] == 404
+
+    def test_only_who_may_delete_can_and_another_team_cannot_even_tell_it_exists(self):
+        run_id = self.run_as("alice", "a = 1")
+        assert self.call("POST", f"/r/{run_id}/delete", self.keys["vic"], {})[0] == 403       # a viewer
+        assert self.call("POST", f"/r/{run_id}/delete", self.keys["amy"], {})[0] == 403       # a member, not the maker
+        assert self.call("POST", f"/r/{run_id}/delete", self.keys["bob"], {})[0] == 404       # another team
+        assert self.admin_rows("SELECT count(*) FROM runs WHERE run_id = %s", run_id)[0][0] == 1
+
+    def test_a_post_from_another_site_deletes_nothing_even_with_the_team_cookie(self):
+        run_id = self.run_as("alice", "a = 1")
+        cookie = f"{access.KEY_COOKIE}={self.keys['alice']}"
+        status, _h, raw = self.call("POST", f"/r/{run_id}/delete", None, {}, headers={"Origin": "https://evil.example"},
+                                    cookie=cookie)
+        assert status == 403 and b"another site" in raw
+        assert self.admin_rows("SELECT count(*) FROM runs WHERE run_id = %s", run_id)[0][0] == 1
