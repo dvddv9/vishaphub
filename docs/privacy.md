@@ -11,7 +11,16 @@ Measured on 2026-10-31 against the code in this repository. Where something was 
   credential-looking environment variable names.
 - No submitted code is sent to a hosted sandbox; hosted code execution is not enabled.
 
-## 2. Model provider (Anthropic API)
+## 2. Model provider (Anthropic API, or the one the installer chose)
+
+The provider is set per installation (`VISHAP_HUB_LLM_PROVIDER`): `anthropic`, `openai` (any server that speaks
+the OpenAI chat API: OpenAI, OpenRouter, or a local Ollama / LM Studio / vLLM) or `none`. With `none` nothing is
+sent anywhere. With a local server the text goes to that server, not to a vendor; redaction applies the same way.
+`VISHAP_HUB_OFFLINE=1` makes the process refuse any connection outside loopback and the private network
+(plus `VISHAP_HUB_ALLOWED_HOSTS`), and turns the voice off: the voice (`edge-tts`) is an online Microsoft service
+and sends the text it speaks. Without offline mode, the voice is on unless `VISHAP_HUB_VOICE=0`. The offline guard
+is checked in `apps/hub/tests/test_egress.py` against real sockets; it stops Python-level connections of the hub
+process, not a program the hub does not start.
 
 When a run, review or chat uses a model, the text the client supplied goes to the provider only after
 redaction: material, spec, question, chat message and chat history (`hub/privacy.py`, using the analyser's

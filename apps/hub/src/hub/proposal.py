@@ -17,11 +17,10 @@ import re
 import urllib.error
 import urllib.request
 
-from . import meter, privacy
+from . import llm, meter, privacy
 from .verdicts import SEVERITY_ORDER
 
-ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
-DEFAULT_MODEL = "claude-sonnet-5-5"
+DEFAULT_MODEL = llm.DEFAULT_ANTHROPIC_MODEL
 MAX_MATERIAL = 60_000
 MAX_SPEC = 20_000
 MAX_QUESTION = 2_000
@@ -79,6 +78,10 @@ def _recommendation(raw: object) -> str:
 
 
 def _call(key: str, model: str, material: str, spec: str, question: str) -> dict:
+    try:
+        current = llm.settings(model)
+    except llm.ConfigError as exc:
+        return {"ok": False, "error": str(exc)}
     # Everything the client typed is redacted before it is put in the request, not only the material:
     # a card number in the question or the spec reaches the provider just as well. Redact first, cut
     # after, so a number split by the length limit is not left half-visible.
@@ -95,31 +98,21 @@ def _call(key: str, model: str, material: str, spec: str, question: str) -> dict
     if spec.strip():
         user.append(f"Spec:\n{spec.strip()[:MAX_SPEC]}")
     user.append(f"Material:\n{material.strip()[:MAX_MATERIAL]}")
-    payload = {
-        "model": model or DEFAULT_MODEL,
-        "max_tokens": 4000,
-        "system": SYSTEM,
-        "messages": [{"role": "user", "content": "\n\n".join(user)}],
-    }
-    request = urllib.request.Request(
-        ANTHROPIC_URL,
-        data=json.dumps(payload).encode("utf-8"),
-        method="POST",
-        headers={"x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-    )
+    url, headers, payload = llm.request_parts(
+        current, key, SYSTEM, [{"role": "user", "content": "\n\n".join(user)}], 4000)
+    request = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), method="POST", headers=headers)
     try:
-        with urllib.request.urlopen(request, timeout=180) as response:
+        with urllib.request.urlopen(request, timeout=llm.timeout(180)) as response:
             data = json.load(response)
     except urllib.error.HTTPError as exc:
         return {"ok": False, "error": f"model refused: HTTP {exc.code} {privacy.scrub_error(exc.read().decode('utf-8', 'replace'))}"}
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
         return {"ok": False, "error": f"{type(exc).__name__}: {privacy.scrub_error(str(exc))}"}
 
-    meter.record(data.get("usage"))                 # paid for, whatever the answer turns out to be
-    parts = [b.get("text", "") for b in (data.get("content") or [])
-             if isinstance(b, dict) and b.get("type") == "text"]
-    text = "\n".join(parts).strip()
-    if data.get("stop_reason") == "max_tokens":
+    got = llm.read_reply(current, data)
+    meter.record(got.usage)                         # paid for, whatever the answer turns out to be
+    text = got.text
+    if got.truncated:
         # A truncated answer is not a model that refused to answer in JSON: the JSON was
         # cut mid-way. Naming the real cause keeps the reader from fixing the wrong thing,
         # and with thinking on by default the whole budget can go before any text appears.
@@ -134,8 +127,15 @@ def _call(key: str, model: str, material: str, spec: str, question: str) -> dict
 def propose(material: str = "", spec: str = "", question: str = "",
             api_key: str = "", model: str = "") -> dict:
     """One model call. Returns the proposal or an honest refusal — never a verdict."""
+    try:
+        current = llm.settings(model)
+    except llm.ConfigError as exc:
+        return {"ok": False, "error": str(exc)}
+    if current.provider == "none":
+        return {"ok": False, "model_disabled": True,
+                "error": "no model is configured on this installation (VISHAP_HUB_LLM_PROVIDER=none)"}
     key = (api_key or os.getenv("VISHAP_HUB_LLM_KEY") or "").strip()
-    if not key:
+    if not key and current.key_required:
         return {"ok": False, "error": "no model key: set VISHAP_HUB_LLM_KEY or send api_key",
                 "key_required": True}
 

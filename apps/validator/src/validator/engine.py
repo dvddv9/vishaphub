@@ -23,9 +23,9 @@ ORDER = (structure, syntax, contract, coverage, behavior, conformance)
 STOP_ON_FAILURE = {"structure", "syntax"}
 
 
-def validate(root: str, spec: Spec, *, require_netns: bool = False) -> Report:
+def validate(root: str, spec: Spec, *, require_netns: bool = False, host_ok: bool = False) -> Report:
     checks: list[CheckResult] = []
-    why = refusal(require_netns=require_netns)
+    why = refusal(require_netns=require_netns, host_ok=host_ok)
     if why:
         return Report(verdict=Verdict.FAIL, checks=[CheckResult(
             name="isolation", ok=False,

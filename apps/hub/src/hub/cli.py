@@ -10,7 +10,7 @@ import json
 import os
 import sys
 
-from . import ci, patchcheck
+from . import ci, egress, patchcheck, selfhost
 from .pipeline import run_plan
 from .router import RouteError, plan_for
 from .version import __version__
@@ -71,9 +71,24 @@ def _patch_check(args) -> int:
     return EXIT_FOR_FIX[out["status"]]
 
 def main(argv: list[str] | None = None) -> int:
+    egress.install()                                 # acts only while VISHAP_HUB_OFFLINE is set
     parser = argparse.ArgumentParser(prog="vishap-hub", description="Carry a request through one plan.")
     parser.add_argument("--version", action="version", version=f"vishap-hub {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
+
+    ini = sub.add_parser("init", help="set this machine up: model, privacy, how code is run")
+    ini.add_argument("--provider", choices=["anthropic", "openai", "none"])
+    ini.add_argument("--url", default="")
+    ini.add_argument("--model", default="")
+    ini.add_argument("--key", default=None, help="model key (prefer the prompt: a flag stays in shell history)")
+    ini.add_argument("--offline", dest="offline", action="store_true", default=None)
+    ini.add_argument("--online", dest="offline", action="store_false")
+    ini.add_argument("--isolation", choices=["host", "auto", "docker"])
+    ini.add_argument("--worker-image", default="")
+    ini.add_argument("--port", type=int, default=0)
+    ini.add_argument("--force", action="store_true", help="replace an existing settings file")
+    sub.add_parser("doctor", help="say what this installation will do and what cannot work")
+    sub.add_parser("serve", help="start the hub on this machine (127.0.0.1 unless VISHAP_HUB_HOST says otherwise)")
 
     run = sub.add_parser("run", help="plan and execute")
     run.add_argument("--intent", required=True,
@@ -101,6 +116,13 @@ def main(argv: list[str] | None = None) -> int:
     pc.add_argument("--json", action="store_true")
 
     args = parser.parse_args(argv)
+    if args.command == "init":
+        return selfhost.init(args)
+    if args.command == "doctor":
+        return selfhost.doctor()
+    if args.command == "serve":
+        return selfhost.serve()
+    selfhost.load()                                  # `run` honours the same settings file
     if args.command == "patch-check":
         return _patch_check(args)
     if args.command != "run":

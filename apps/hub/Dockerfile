@@ -27,7 +27,7 @@ RUN pip install -e ./packages/core -e ./apps/validator \
     && pip install "psycopg[binary]==3.3.6" "pytest==9.1.1" "edge-tts==7.3.1"
 
 # Non-root on purpose: the code under test is somebody else's code.
-RUN useradd -m -u 1000 hub
+RUN useradd -m -u 1000 hub && mkdir /data && chown hub /data
 USER hub
 
 # The image is meant to run read-only: nothing is written outside /tmp (runs live in memory
