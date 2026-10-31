@@ -25,10 +25,12 @@ import re
 import secrets
 import sys
 import threading
+from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs
 
 from . import (
+    accepted,
     access,
     alerts,
     demo,
@@ -720,8 +722,56 @@ class Handler(BaseHTTPRequestHandler):
             finally:
                 self._finish_usage(None, 0, "error")           # a no-op once _remember has run
 
+    def _accept(self, path: str) -> None:
+        """A person marks a finding of a finished run as accepted, with a reason, or takes the mark back.
+
+        The verdict is not touched: the mark is a note beside the finding, not a verdict.
+        """
+        undo = path.endswith("/unaccept")
+        run_id = path[len("/api/runs/"):].rsplit("/", 1)[0]
+        principal, refused = self._principal()
+        if refused:
+            return
+        body = self._body()
+        if body is None:
+            return
+        key = str(body.get("key") or "")
+        who = f"user:{principal.user_id}" if principal is not None else "owner"
+        at = datetime.now(UTC).isoformat(timespec="seconds")
+
+        def change(result: dict) -> dict:
+            return (accepted.unmark(result, key) if undo
+                    else accepted.mark(result, key, body.get("reason"), who, at))
+
+        if principal is not None:
+            ok, outcome = self._team(TEAMS.annotate, principal, run_id, change, self._client_ip(),
+                                     {"key": key, "undo": undo})
+            if not ok:
+                return
+        else:
+            token = self._token()
+            if token is None:
+                self._send(403, {"error": "no owner: make a run from this browser first, "
+                                          f"or send the {OWNER_HEADER} header you made it with"}, extra=PRIVATE)
+                return
+            outcome = RUNS.annotate(run_id, owner_key(token), change)
+        status, message = outcome
+        if status == "ok":
+            self._send(200, {"ok": True, "key": key, "accepted": not undo}, extra=PRIVATE)
+        elif status == "forbidden":
+            self._send(403, {"error": "only an owner, or the person who made the run, may mark its findings"},
+                       extra=PRIVATE)
+        elif status == "invalid":
+            self._send(400, {"ok": False, "error": message}, extra=PRIVATE)
+        else:
+            self._send(404, {"error": "no such run, or it is not yours, or it has expired"}, extra=PRIVATE)
+
     def do_POST(self) -> None:  # stdlib naming
         path = self.path.split("?", 1)[0]
+
+        if path.startswith("/api/runs/") and path.endswith(("/accept", "/unaccept")):
+            self._accept(path)
+            return
 
         if path == "/login":
             form = self._form()

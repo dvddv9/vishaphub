@@ -22,6 +22,8 @@ import json
 import os
 import threading
 
+from . import accepted
+
 DEFAULT_KEEP = 200
 
 
@@ -91,6 +93,9 @@ class RunStore:
                 # same material, same plan, same id: both visitors keep their run. The demo
                 # flag is NOT merged - it belongs to this record's own content alone.
                 record["owners"] = sorted(set(old.get("owners") or []) | set(record.get("owners") or []))
+                kept = (old.get("result") or {}).get("accepted")
+                if kept and isinstance(record.get("result"), dict) and not record["result"].get("accepted"):
+                    record["result"] = {**record["result"], "accepted": kept}     # the same run again keeps its notes
             self._runs[run_id] = record
             self._runs.move_to_end(run_id)
             while len(self._runs) > self.keep:
@@ -104,7 +109,24 @@ class RunStore:
             record = self._runs.get(str(run_id))
         if record is None or not (record.get("demo") or _owns(record, owner)):
             return None
-        return {k: v for k, v in record.items() if k != "owners"}
+        return accepted.shown({k: v for k, v in record.items() if k != "owners"})
+
+    def annotate(self, run_id: str, owner: str | None, change) -> tuple[str, str]:
+        """Change the result of a run this owner made: ("ok", ""), ("missing", "") or ("invalid", why).
+
+        `change` takes the stored result and returns the new one, or raises ValueError. A run that is not
+        theirs is "missing", the same answer as a run that is not there.
+        """
+        with self._lock:
+            record = self._runs.get(str(run_id))
+            if record is None or not _owns(record, owner):
+                return "missing", ""
+            try:
+                record["result"] = change(record.get("result") or {})
+            except ValueError as exc:
+                return "invalid", str(exc)
+            self._flush()
+        return "ok", ""
 
     def list_for(self, owner: str | None, limit: int = 20) -> list[dict]:
         """Newest first, only the runs `owner` made: id, verdict, time and the plan - not the material."""

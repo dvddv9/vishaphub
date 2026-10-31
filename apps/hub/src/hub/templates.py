@@ -157,12 +157,17 @@ def report_page(record: dict, retention: str = "") -> str:
         badge = f'<span class="sev {sev_class}">{e(severity)}</span>' if severity else ""
         line = f" @ {e(str(f.get('line')))}" if f.get("line") else ""
         seen = f.get("seen_by") or []
-        by = "rules + model" if len(seen) > 1 else str(f.get("source") or "")
+        by = " + ".join(str(s) for s in seen) if len(seen) > 1 else str(f.get("source") or "")
         source = f" <i>({e(by)})</i>" if by else ""
         fix = f"<br><small>fix: {e(str(f.get('fix')))}</small>" if f.get("fix") else ""
         covered = (f"<br><small>possibly covered by {e(str(f.get('possibly_covered_by')))}</small>"
                    if f.get("possibly_covered_by") else "")
-        return f"<li>{badge}{e(str(f.get('rule') or ''))}{line}: {e(str(f.get('message') or ''))}{source}{fix}{covered}</li>"
+        note = f.get("accepted") if isinstance(f.get("accepted"), dict) else None
+        taken = (f"<br><small class=\"accepted\">accepted: {e(str(note.get('reason') or ''))} "
+                 f"({e(str(note.get('by') or ''))}, {e(str(note.get('at') or ''))}). "
+                 f"The verdict above is the checks', not this note.</small>") if note else ""
+        return (f"<li>{badge}{e(str(f.get('rule') or ''))}{line}: {e(str(f.get('message') or ''))}"
+                f"{source}{fix}{covered}{taken}</li>")
 
     own = [f for f in findings if not f.get("in_patch")]
     in_patch = [f for f in findings if f.get("in_patch")]

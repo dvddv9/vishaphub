@@ -210,7 +210,7 @@ function renderReport(data){
       : (data.model ? "(model returned no summary)" : t("noModelSummary").replace("{n}", String((data.findings || []).length))),
     findings: (data.findings || []).length
       ? head + groupFindings(data.findings, f => {
-        const by = (f.seen_by || []).length > 1 ? "rules + model" : (f.source || "");
+        const by = (f.seen_by || []).length > 1 ? f.seen_by.join(" + ") : (f.source || "");
         return `${(f.severity||"").toUpperCase()}${f.rule ? " \u00b7 " + f.rule : ""}${f.line ? " @ " + f.line : ""}${by ? " [" + by + "]" : ""}\n  ${f.message||""}${f.fix ? "\n  fix: " + f.fix : ""}${f.possibly_covered_by ? "\n  possibly covered by " + f.possibly_covered_by : ""}`;
       }).join("\n\n")
       : "nothing matched",
