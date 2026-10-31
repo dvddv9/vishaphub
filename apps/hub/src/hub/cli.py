@@ -89,6 +89,8 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--json", action="store_true")
     run.add_argument("--fail-on", choices=ci.FAIL_ON, default=ci.DEFAULT_FAIL_ON,
                      help="the lowest verdict that fails the check (default: fail)")
+    run.add_argument("--require-measured", action="store_true",
+                     help="exit 3 when the rules are not measured well enough (labelled examples) for a language the run read")
     run.add_argument("--require-complete", action="store_true",
                      help="exit 3 when the verdict is fine but the checking was incomplete (a run that checked nothing is not a pass)")
 
@@ -128,7 +130,7 @@ def main(argv: list[str] | None = None) -> int:
                       question=args.question, api_key=args.api_key, model=args.model)
 
     data = result.as_dict()
-    decision = ci.decide(data, args.fail_on, args.require_complete)
+    decision = ci.decide(data, args.fail_on, args.require_complete, args.require_measured)
     payload = {"plan": plan.as_dict(), "result": data, "ci": decision}
     if args.json:
         print(json.dumps(payload, ensure_ascii=False, indent=2))

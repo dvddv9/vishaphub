@@ -27,7 +27,8 @@ _THRESHOLD = {"review": SEVERITY_ORDER["REQUIRES_REVIEW"], "fail": SEVERITY_ORDE
 EXIT_PASS, EXIT_FAIL, EXIT_USAGE, EXIT_INCOMPLETE = 0, 1, 2, 3
 
 
-def decide(result: dict, fail_on: str = DEFAULT_FAIL_ON, require_complete: bool = False) -> dict:
+def decide(result: dict, fail_on: str = DEFAULT_FAIL_ON, require_complete: bool = False,
+           require_measured: bool = False) -> dict:
     if fail_on not in FAIL_ON:
         raise ValueError(f"fail_on must be one of {', '.join(FAIL_ON)}")
     verdict = str((result or {}).get("verdict") or "")
@@ -49,7 +50,15 @@ def decide(result: dict, fail_on: str = DEFAULT_FAIL_ON, require_complete: bool 
         reasons.append(f"the checking was {verification or 'unknown'}: ran "
                        f"{', '.join(ver.get('ran') or []) or 'nothing'}; not run "
                        f"{', '.join(ver.get('not_run') or []) or 'nothing listed'}")
-    code = EXIT_FAIL if failed else (EXIT_INCOMPLETE if require_complete and not complete else EXIT_PASS)
+    langs = [x for x in (((result or {}).get("checks") or {}).get("analyser") or {}).get("languages") or []]
+    unmeasured = [x for x in langs if x.get("adequacy") != "measured"]
+    if require_measured and unmeasured and not failed:
+        reasons.append("the rules are not measured well enough for: " + "; ".join(
+            f"{x.get('language')} ({x.get('adequacy')}: {x.get('dangerous_examples', 0)} dangerous, "
+            f"{x.get('safe_examples', 0)} safe labelled examples)" for x in unmeasured))
+    stop = (require_complete and not complete) or (require_measured and bool(unmeasured))
+    code = EXIT_FAIL if failed else (EXIT_INCOMPLETE if stop else EXIT_PASS)
     return {"schema": SCHEMA, "pass": code == EXIT_PASS, "exit_code": code, "fail_on": fail_on,
             "require_complete": bool(require_complete), "verdict": verdict, "fix": fix,
-            "verification": verification, "complete": complete, "reasons": reasons}
+            "verification": verification, "complete": complete, "require_measured": bool(require_measured),
+            "languages": {x.get("language"): x.get("adequacy") for x in langs}, "reasons": reasons}

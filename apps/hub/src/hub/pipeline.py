@@ -35,7 +35,7 @@ from dataclasses import dataclass, field
 
 from . import evidence as evidence_mod
 from . import findings as findings_mod
-from . import fingerprint, fixloop, local, patchcheck, proposal, statuses
+from . import fingerprint, fixloop, languages, local, patchcheck, proposal, statuses
 from .envelope import Envelope, Kind
 from .router import Plan, Stage
 from .verdicts import BLOCKING_VERDICTS, normalise, rank, strictest
@@ -331,6 +331,7 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
                 found: list[dict] = []
                 reasons: list[str] = []
                 meaning = ""
+                seen_langs: list[str] = []
                 for source, text in pieces:
                     result = local.analyse_static(text, model_verdict=model_verdict)
                     if not result.get("ok"):
@@ -348,12 +349,16 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
                                       "analyser returned no verdict; no security answer available", plan_dict)
                     worst = strictest(worst, piece_verdict)
                     meaning = meaning or str(result.get("meaning") or "")
+                    lang = str((result.get("coverage") or {}).get("language") or "unknown")
+                    if lang not in seen_langs:
+                        seen_langs.append(lang)
                     reasons.append(f"{source}: {result.get('reason') or piece_verdict}")
                     for item in result.get("findings") or []:
                         found.append({**item, "source": source})
 
                 checks["analyser"] = {"verdict": worst, "findings": found, "mode": "rules_only",
-                                      "reasons": reasons, "meaning": meaning}
+                                      "reasons": reasons, "meaning": meaning,
+                                      "languages": [languages.evidence_for(lang) for lang in seen_langs]}
                 current["analyser"] = worst
                 why = "" if worst == "SAFE" else (reasons[0] if len(reasons) == 1 else "see the reasons")
                 steps.append(Step("analyser", True, worst,

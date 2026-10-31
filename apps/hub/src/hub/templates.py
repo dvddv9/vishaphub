@@ -88,7 +88,7 @@ def _statuses_block(result: dict) -> str:
 
 def _evidence_block(fp: dict) -> str:
     """What the run rests on, in four separate columns of the truth, plus whether the record is intact."""
-    from . import fingerprint
+    from . import fingerprint, languages
 
     ev = ((fp or {}).get("body") or {}).get("evidence")
     if not isinstance(ev, dict):
@@ -112,6 +112,7 @@ def _evidence_block(fp: dict) -> str:
     patch_line = (f"diff <code>{e(str(patch.get('diff_sha256') or '')[:16])}</code> over "
                   f"{len(patch.get('files') or {})} file(s)") if patch.get("proposed") else "no patch"
     profile_hash = (f" \u00b7 profile <code>{e(str(prof.get('sha256') or '')[:16])}</code>" if prof.get('sha256') else "")
+    lang_rows = "".join(f"<li>{e(languages.sentence(x))}</li>" for x in ev.get("languages") or []) or "<li>-</li>"
     integrity = ("<span class=\"vchip pass\">record intact</span>" if ok
                  else f"<span class=\"vchip bad\">record NOT intact: {e(why)}</span>")
     body = (
@@ -123,6 +124,7 @@ def _evidence_block(fp: dict) -> str:
         f"<tr><td>validator ran on</td><td>{e(str((ev.get('validator_ran_on') or {}).get('what') or 'nothing'))} ({len((ev.get('validator_ran_on') or {}).get('files') or {})} file(s))</td></tr>"
         f"<tr><td>tests that really ran</td><td><ul>{ran_rows}</ul></td></tr>"
         f"<tr><td>left unverified</td><td><ul>{unverified}</ul></td></tr>"
+        f"<tr><td>language evidence</td><td><ul>{lang_rows}</ul></td></tr>"
         "</table></div>"
         f"<p class=\"meta\">sandbox: {e(str(prof.get('name') or '-'))}{profile_hash}"
         f" \u00b7 cleanup {clean_text}</p>"
