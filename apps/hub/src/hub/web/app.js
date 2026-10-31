@@ -193,9 +193,30 @@ let lastSpoken = "";
 
 let lastResult = null;
 
+const sevRank = {critical: 4, high: 3, medium: 2, low: 1};
+const readers = f => new Set(f.seen_by || []).size;
+
+// More than one reader first, then the rest; by severity within each, in the order found within a tie.
+// Nothing is dropped: only the order of the list changes.
+function byAgreement(list){
+  const rank = f => sevRank[String(f.severity || "").toLowerCase()] || 0;
+  return list.map((f, i) => [f, i])
+    .sort((a, b) => (readers(b[0]) > 1) - (readers(a[0]) > 1) || rank(b[0]) - rank(a[0]) || a[1] - b[1])
+    .map(x => x[0]);
+}
+
 function groupFindings(list, fn){
-  const own = list.filter(f => !f.in_patch), pat = list.filter(f => f.in_patch);
-  return [...own.map(fn), ...(pat.length ? ["IN THE MODEL'S PATCH (line numbers refer to the patch)"] : []), ...pat.map(fn)];
+  const own = byAgreement(list.filter(f => !f.in_patch)), pat = list.filter(f => f.in_patch);
+  const both = own.some(f => readers(f) > 1) && own.some(f => readers(f) <= 1);
+  const shown = [];
+  let last = null;
+  own.forEach(f => {
+    const kind = readers(f) > 1 ? "many" : "one";
+    if (both && kind !== last) shown.push(kind === "many" ? "SEEN BY MORE THAN ONE READER" : "SEEN BY ONE READER");
+    last = kind;
+    shown.push(fn(f));
+  });
+  return [...shown, ...(pat.length ? ["IN THE MODEL'S PATCH (line numbers refer to the patch)"] : []), ...pat.map(fn)];
 }
 
 function renderReport(data){
