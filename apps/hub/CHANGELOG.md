@@ -8,7 +8,16 @@ All notable changes to VishapHub. Format based on [Keep a Changelog](https://kee
 
 - **The page lost its style and script when the hub was installed with pip, pipx or the Windows installer.** `package-data` listed the page and the greeting but not `styles.css`, `app.js` or `favicon.svg`, so those were 404 outside the source tree (the Docker image runs from the tree and was not affected). They are listed now, and a test fails if the server serves a file the package leaves out.
 
+### Fixed (continued)
+
+- **A DeepSeek key typed in the page was sent to Anthropic and rejected.** The page now has a provider choice (Anthropic or DeepSeek) next to the key field. It sends a preset *name*; the addresses are fixed in the code, and a custom `VISHAP_HUB_LLM_URL` is never overridden. The operator's own key is not used for a provider the operator did not choose.
+- The run page's JSON, SARIF and Markdown links download the file instead of showing it; the page's «↓ json» button works again after a reload (the last result is kept for the tab).
+- The reason «the model saw danger the rules did not» was shown whenever the model's verdict was higher than the rules', even if both saw the same findings. It now says what is true: the model rated the risk higher, with both verdicts.
+- Analyser: `cmd-injection-py` no longer fires on `subprocess.run([...])` with an argument list (`shell=True` is still caught by `shell-true`).
+
 ### Added
+
+- **DeepSeek** as a provider: `VISHAP_HUB_LLM_PROVIDER=deepseek`, `vishap-hub init --provider deepseek`, and a CLI `--provider` on `run`.
 
 - **An external scanner's SARIF as a third reader.** `/run` takes an optional `sarif`. Its findings join the hub's
   own where they name the same class near the same line, stay where nothing else saw them, and a lone one raises the

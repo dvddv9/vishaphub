@@ -38,3 +38,17 @@ def test_a_run_nobody_read_says_so_instead_of_blaming_the_model():
     assert 't("noModelSummary")' in app and "(model returned no summary)" in app
     assert 'const states = {"model": checks.generator ? "done" : ""};' in app
     assert 'const states = {"model":"done"}' not in app
+
+
+def test_the_page_offers_a_provider_choice_and_sends_a_name_not_an_address():
+    page = _page()
+    assert 'id="provider"' in page and 'value="deepseek"' in page
+    js = (pathlib.Path(__file__).parent.parent / "src" / "hub" / "web" / "app.js").read_text(encoding="utf-8")
+    assert "provider: providerValue()" in js and js.count("provider: providerValue()") >= 2
+
+
+def test_the_run_page_links_download_the_files():
+    from hub import templates
+    src = (pathlib.Path(templates.__file__)).read_text(encoding="utf-8")
+    for ext in ("json", "sarif", "md"):
+        assert f'.{ext}" download>' in src

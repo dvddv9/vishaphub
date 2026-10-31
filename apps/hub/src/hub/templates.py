@@ -211,9 +211,9 @@ def report_page(record: dict, retention: str = "") -> str:
     reason = str(result.get("reason") or "")
     body = f"""
 <p class="crumb"><a href="/runs">{ARROW_BACK} recent runs</a><span class="exports"> {DOT} export:
-<a href="/api/runs/{e(str(record.get('id') or ''))}.json">JSON</a> {DOT}
-<a href="/api/runs/{e(str(record.get('id') or ''))}.sarif">SARIF</a> {DOT}
-<a href="/api/runs/{e(str(record.get('id') or ''))}.md">Markdown</a> {DOT}
+<a href="/api/runs/{e(str(record.get('id') or ''))}.json" download>JSON</a> {DOT}
+<a href="/api/runs/{e(str(record.get('id') or ''))}.sarif" download>SARIF</a> {DOT}
+<a href="/api/runs/{e(str(record.get('id') or ''))}.md" download>Markdown</a> {DOT}
 <a href="/api/verify/{e(str(record.get('id') or ''))}">check integrity</a> {DOT}
 <a href="/r/{e(str(record.get('id') or ''))}/delete">delete this run</a></span></p>
 <form class="cmp" action="/compare" method="get"><input type="hidden" name="a" value="{e(str(record.get('id') or ''))}">

@@ -8,6 +8,8 @@ point the hub at an address of its own choosing:
 * ``openai`` - any server that speaks the OpenAI chat-completions dialect: OpenAI itself, Ollama, vLLM,
   LM Studio, llama.cpp, OpenRouter, a corporate gateway. ``VISHAP_HUB_LLM_URL`` is its base URL (``.../v1``)
   and ``VISHAP_HUB_LLM_MODEL`` names the model, because there is no sensible default;
+* ``deepseek`` - DeepSeek's OpenAI-compatible API at its fixed address, default model ``deepseek-flash``
+  (override with ``VISHAP_HUB_LLM_MODEL``);
 * ``none`` - no model. The rules and the validator still run; nothing is sent anywhere.
 
 This module builds a request and reads an answer. It does not open a connection: ``proposal.py`` and
@@ -16,7 +18,7 @@ the process, and the existing redaction and metering stay where they were.
 
 Settings (all environment variables):
 
-``VISHAP_HUB_LLM_PROVIDER``      anthropic | openai | none
+``VISHAP_HUB_LLM_PROVIDER``      anthropic | openai | deepseek | none
 ``VISHAP_HUB_LLM_URL``           base URL of the provider
 ``VISHAP_HUB_LLM_MODEL``         model name
 ``VISHAP_HUB_LLM_KEY``           the key, when the provider wants one
@@ -32,10 +34,18 @@ from urllib.parse import urlparse
 
 from . import egress
 
-PROVIDERS = ("anthropic", "openai", "none")
+PROVIDERS = ("anthropic", "openai", "deepseek", "none")
 ANTHROPIC_BASE = "https://api.anthropic.com"
 OPENAI_BASE = "https://api.openai.com/v1"
 DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-5-5"
+DEEPSEEK_BASE = "https://api.deepseek.com"
+DEFAULT_DEEPSEEK_MODEL = "deepseek-flash"
+
+#: what a visitor may pick on the page. A NAME, never an address: the address is fixed here.
+PRESETS = {
+    "anthropic": ("anthropic", ANTHROPIC_BASE, DEFAULT_ANTHROPIC_MODEL),
+    "deepseek": ("openai", DEEPSEEK_BASE, DEFAULT_DEEPSEEK_MODEL),
+}
 
 #: a name that means "this machine" from inside a container as well
 _LOCAL_NAMES = {"localhost", "host.docker.internal"}
@@ -75,15 +85,30 @@ def is_local(url: str) -> bool:
         return False
 
 
-def settings(model: str = "") -> Settings:
-    """The operator's choice, validated. Raises ConfigError with the thing to fix."""
+def settings(model: str = "", preset: str = "") -> Settings:
+    """The operator's choice, validated. Raises ConfigError with the thing to fix.
+
+    ``preset`` is the name a visitor picked on the page (``anthropic`` or ``deepseek``). It is honoured only
+    when the operator left the model open (provider anthropic with no custom address, or DeepSeek), so a
+    visitor can swap one fixed provider for another but can never point the hub anywhere new.
+    """
     provider = (_env("VISHAP_HUB_LLM_PROVIDER") or "anthropic").lower()
     if provider not in PROVIDERS:
         raise ConfigError(f"VISHAP_HUB_LLM_PROVIDER={provider!r} is not one of: {', '.join(PROVIDERS)}")
     if provider == "none":
         return Settings("none", "", "", False)
 
-    base = _env("VISHAP_HUB_LLM_URL").rstrip("/") or (ANTHROPIC_BASE if provider == "anthropic" else OPENAI_BASE)
+    operator = provider
+    custom_url = _env("VISHAP_HUB_LLM_URL").rstrip("/")
+    preset = (preset or "").strip().lower()
+    # A visitor's pick swaps one built-in provider for another. It never applies to a custom address.
+    picked = preset in PRESETS and preset != operator and operator in ("anthropic", "deepseek") and not custom_url
+    if picked:
+        provider, model, env_model, base = preset, "", "", ""
+    else:
+        env_model, base = _env("VISHAP_HUB_LLM_MODEL"), custom_url
+    base = base or {"anthropic": ANTHROPIC_BASE, "deepseek": DEEPSEEK_BASE}.get(provider, OPENAI_BASE)
+    wire = "anthropic" if provider == "anthropic" else "openai"
     parsed = urlparse(base)
     if parsed.scheme not in ("http", "https") or not parsed.hostname:
         raise ConfigError(f"VISHAP_HUB_LLM_URL={base!r} is not an http(s) address")
@@ -91,10 +116,12 @@ def settings(model: str = "") -> Settings:
         raise ConfigError(f"offline mode: the model address {parsed.hostname} is not on the private network; "
                           "point VISHAP_HUB_LLM_URL at a local server or list the host in VISHAP_HUB_ALLOWED_HOSTS")
 
-    name = (model or _env("VISHAP_HUB_LLM_MODEL")).strip()
+    name = (model or env_model).strip()
     if not name:
         if provider == "anthropic":
             name = DEFAULT_ANTHROPIC_MODEL
+        elif provider == "deepseek":
+            name = DEFAULT_DEEPSEEK_MODEL
         else:
             raise ConfigError("set VISHAP_HUB_LLM_MODEL: the openai provider has no default model")
 
@@ -105,19 +132,32 @@ def settings(model: str = "") -> Settings:
         required = True
     else:
         required = not is_local(base)
-    return Settings(provider, base, name, required)
+    return Settings(wire, base, name, required)
 
 
-def available(api_key: str = "") -> bool:
+def key_for(api_key: str = "", preset: str = "") -> str:
+    """The key to send: the caller's own, else the operator's - but the operator's key is never sent to a
+    provider the operator did not choose."""
+    own = (api_key or "").strip()
+    if own:
+        return own
+    operator = (_env("VISHAP_HUB_LLM_PROVIDER") or "anthropic").lower()
+    preset = (preset or "").strip().lower()
+    if preset in PRESETS and preset != operator:
+        return ""
+    return _env("VISHAP_HUB_LLM_KEY")
+
+
+def available(api_key: str = "", preset: str = "") -> bool:
     """Would a model call be attempted for this caller? False for provider none, for a settings error and for
     a missing key where one is required. Used where the answer decides whether a request costs anything."""
     try:
-        current = settings()
+        current = settings(preset=preset)
     except ConfigError:
         return False
     if current.provider == "none":
         return False
-    return bool((api_key or _env("VISHAP_HUB_LLM_KEY")).strip()) or not current.key_required
+    return bool(key_for(api_key, preset)) or not current.key_required
 
 
 def timeout(default: int) -> int:

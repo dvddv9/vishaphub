@@ -77,7 +77,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     ini = sub.add_parser("init", help="set this machine up: model, privacy, how code is run")
-    ini.add_argument("--provider", choices=["anthropic", "openai", "none"])
+    ini.add_argument("--provider", choices=["anthropic", "deepseek", "openai", "none"])
     ini.add_argument("--url", default="")
     ini.add_argument("--model", default="")
     ini.add_argument("--key", default=None, help="model key (prefer the prompt: a flag stays in shell history)")
@@ -101,6 +101,7 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--iterations", type=int, default=1)
     run.add_argument("--api-key", default="", help="model key; defaults to VISHAP_HUB_LLM_KEY")
     run.add_argument("--model", default="", help="model name; defaults to the hub's own choice")
+    run.add_argument("--provider", default="", help="anthropic or deepseek, to use that provider's key and address")
     run.add_argument("--json", action="store_true")
     run.add_argument("--fail-on", choices=ci.FAIL_ON, default=ci.DEFAULT_FAIL_ON,
                      help="the lowest verdict that fails the check (default: fail)")
@@ -149,7 +150,7 @@ def main(argv: list[str] | None = None) -> int:
     files = _deliverable(args.deliverable) if args.deliverable else {}
 
     result = run_plan(plan, material=material, files=files, spec=spec_text,
-                      question=args.question, api_key=args.api_key, model=args.model)
+                      question=args.question, api_key=args.api_key, model=args.model, preset=args.provider)
 
     data = result.as_dict()
     decision = ci.decide(data, args.fail_on, args.require_complete, args.require_measured)

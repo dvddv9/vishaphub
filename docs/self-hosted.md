@@ -46,6 +46,7 @@ passwords** - keep it private). `upgrade` backs up first, pulls, rebuilds and mi
 | `VISHAP_HUB_LLM_PROVIDER` | Needs | Notes |
 |---|---|---|
 | `anthropic` | `VISHAP_HUB_LLM_KEY` | Claude; default model `claude-sonnet-5-5` |
+| `deepseek` | `VISHAP_HUB_LLM_KEY` | DeepSeek at `https://api.deepseek.com`; default model `deepseek-flash` (change with `VISHAP_HUB_LLM_MODEL`). The page also lets a visitor pick Anthropic or DeepSeek next to the key field; it sends a name, never an address, and the operator's own key is never sent to a provider the operator did not choose. |
 | `openai` | `VISHAP_HUB_LLM_URL`, `VISHAP_HUB_LLM_MODEL` (+ key for hosted ones) | OpenAI, OpenRouter, Ollama (`http://host.docker.internal:11434/v1`), LM Studio, vLLM. A key is required unless the URL is on this machine. |
 | `none` | nothing | rules and validator only; model-written parts say they are off |
 

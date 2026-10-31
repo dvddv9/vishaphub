@@ -60,7 +60,7 @@ def test_a_model_that_says_safe_does_not_turn_unmeasured_rules_into_safe(monkeyp
 def test_a_model_that_sees_danger_raises_the_verdict_and_the_run_says_so(monkeypatch):
     result = review(monkeypatch, fake(verdict="EMERGENCY"), RULES_QUIET)
     assert result.verdict == "EMERGENCY" and not result.ok
-    assert "the model saw danger the rules did not" in result.reason
+    assert "the model rated the risk higher than the rules did" in result.reason
 
 
 def test_a_model_that_cannot_answer_does_not_take_the_rules_answer_with_it(monkeypatch):

@@ -13,12 +13,12 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue)) { throw "Docker is 
 
 if (Test-Path .env) { Write-Host ".env already exists - keeping it. Delete it to answer the questions again." }
 else {
-  Write-Host "1/4 Which model? anthropic = Claude, openai = OpenAI-compatible (OpenAI, OpenRouter, Ollama, LM Studio, vLLM), none = rules only"
+  Write-Host "1/4 Which model? anthropic = Claude, deepseek = DeepSeek, openai = OpenAI-compatible (OpenAI, OpenRouter, Ollama, LM Studio, vLLM), none = rules only"
   $provider = Ask "provider" "anthropic"
   $url = ""; $model = ""; $key = $env:VISHAP_HUB_LLM_KEY
   switch ($provider) {
     "openai" { $url = Ask "address of the server" "http://host.docker.internal:11434/v1"; $model = Ask "model name (as the server calls it)" "llama3.1" }
-    { $_ -in "anthropic","none" } { }
+    { $_ -in "anthropic","deepseek","none" } { }
     default { throw "unknown provider: $provider" }
   }
   if ($provider -ne "none" -and -not $key -and -not $Yes) {

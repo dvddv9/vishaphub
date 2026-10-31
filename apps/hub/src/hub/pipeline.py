@@ -189,7 +189,7 @@ def _not_checked(plan: Plan, checks: dict, has_proof: bool, model_trouble: str =
 
 def run_plan(plan: Plan, material: str = "", files: dict | None = None,
              spec: object = None, filename: str = "input.txt",
-             question: str = "", api_key: str = "", model: str = "",
+             question: str = "", api_key: str = "", model: str = "", preset: str = "",
              on_step=None, check_patch: bool = False, fix_loop: bool = False,
              external: list | None = None, accept_rules: list | None = None) -> RunResult:
     """Execute the plan and return one honest verdict.
@@ -267,7 +267,7 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
                                   "generation needs a spec, material or a question; nothing was sent", plan_dict)
 
                 result = proposal.propose(material=material, spec=str(spec or "") if not isinstance(spec, dict) else "",
-                                          question=question, api_key=api_key, model=model)
+                                          question=question, api_key=api_key, model=model, preset=preset)
                 if not result.get("ok"):
                     reason = result.get("error") or "the model did not answer"
                     log.warning("generator failed: %s", reason)
@@ -413,7 +413,7 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
     if final == "EMERGENCY":
         reason = (reason + " · " if reason else "") + "an emergency-level security signal is present"
     if model_verdict and rules_verdict and rank(model_verdict) > rank(rules_verdict):
-        reason = (reason + " · " if reason else "") + "the model saw danger the rules did not"
+        reason = (reason + " · " if reason else "") + f"the model rated the risk higher than the rules did ({model_verdict} against {rules_verdict})"
 
     merged, overlap = findings_mod.merge(answer.get("findings") or [], (checks["analyser"] or {}).get("findings") or [])
     if not (checks["generator"] and checks["analyser"]):
@@ -440,7 +440,7 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
         loop = fixloop.run(
             supplied_files, check_spec, final_patch,
             lambda more: proposal.propose(material=material, spec=spec_text, question=question + more,
-                                          api_key=api_key, model=model))
+                                          api_key=api_key, model=model, preset=preset))
         patch_check, fix_rows, final_patch, fix_stop = (loop["patch_check"], loop["attempts"], loop["patch"],
                                                         loop["stop_reason"])
     elif check_patch and final_patch and supplied_files:

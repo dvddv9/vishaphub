@@ -62,7 +62,8 @@ RULES: tuple[Rule, ...] = (
        r"""(?i)\.(execute|executemany|query|raw)\s*\(\s*(f["']|`[^`]*\$\{)""",
        "Pass user data as bound parameters, never interpolate it into the SQL text."),
     _r("cmd-injection-py", "OS command executed from Python", "high", "CWE-78",
-       r"""\b(os\.system|os\.popen|subprocess\.(call|run|Popen|check_output|check_call)|commands\.getoutput)\s*\(""",
+       r"""\b(os\.system|os\.popen|commands\.getoutput)\s*\(|"""
+       r"""\bsubprocess\.(call|run|Popen|check_output|check_call)\s*\(\s*(?!\[)""",
        "Avoid the shell: pass an argument list to subprocess.run([...], shell=False) and validate input.",
        _PY),
     _r("shell-true", "subprocess with shell=True", "high", "CWE-78",

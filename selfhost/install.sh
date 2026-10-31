@@ -21,14 +21,14 @@ docker info >/dev/null 2>&1 || { say "Docker is installed but not running (or yo
 if [ -f .env ]; then
   say ".env already exists - keeping it. Delete it to answer the questions again."
 else
-  say "1/4 Which model? anthropic = Claude, openai = OpenAI-compatible (OpenAI, OpenRouter, Ollama, LM Studio, vLLM), none = rules only"
+  say "1/4 Which model? anthropic = Claude, deepseek = DeepSeek, openai = OpenAI-compatible (OpenAI, OpenRouter, Ollama, LM Studio, vLLM), none = rules only"
   ask "provider" anthropic; PROVIDER=$REPLY
   URL=""; MODEL=""; KEY="${VISHAP_HUB_LLM_KEY:-}"
   case "$PROVIDER" in
     openai)
       ask "address of the server" "http://host.docker.internal:11434/v1"; URL=$REPLY
       ask "model name (as the server calls it)" "llama3.1"; MODEL=$REPLY ;;
-    anthropic|none) ;;
+    anthropic|deepseek|none) ;;
     *) say "unknown provider: $PROVIDER"; exit 1 ;;
   esac
   if [ "$PROVIDER" != none ] && [ -z "$KEY" ] && [ "${YES:-0}" != 1 ]; then
