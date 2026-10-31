@@ -68,6 +68,27 @@ jobs:
       - run: python -m pytest -q tests
         working-directory: apps/validator
 
+  # Hostile code in a real worker container (`docker run --network none --read-only ...`). The tests are
+  # probes the submitted code runs against its own cage: network, DNS, a native connect that skips the
+  # Python guard, a child process without the guard, the process cap, writes outside the scratch, the
+  # worker's own environment. A PASS means every one was blocked; the worker must also refuse to run
+  # when it is not cut off from the network or has credentials in its environment.
+  worker:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: pip install pytest -e ./packages/core -e ./apps/validator
+      - name: Build the worker image
+        run: docker build -t vishap-validator:worker apps/validator
+      - name: Hostile code stays inside the container
+        run: python -m pytest -q -v tests/test_container_worker.py tests/test_container_isolation.py
+        working-directory: apps/validator
+        env:
+          VISHAP_TEST_WORKER_IMAGE: vishap-validator:worker
   hub:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
