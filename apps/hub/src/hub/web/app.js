@@ -26,6 +26,7 @@ const I18N = {
     verdictHint: "REQUIRES_REVIEW means a person should read the findings. The hub does not issue SAFE yet: its rules are not measured well enough for any language.",
     working: "working…", nothing: "nothing to work on", refused: "refused",
     verdictLabel: "verdict", notChecked: "not checked", openReport: "open the report",
+    statRisk: "risk verdict", statFix: "fix", statVerify: "verification",
     reportAt: "run", copy: "copy", copied: "copied", noAccess: "no access",
     micOff: "this browser has no speech input; Chrome and Edge do",
     micNo: "microphone refused or unavailable",
@@ -58,6 +59,7 @@ const I18N = {
     verdictHint: "REQUIRES_REVIEW значит: человеку стоит прочитать находки. SAFE хаб пока не выдаёт: его правила не измерены достаточно хорошо ни для одного языка.",
     working: "работаю…", nothing: "нечего проверять", refused: "отказ",
     verdictLabel: "вердикт", notChecked: "не проверено", openReport: "открыть отчёт",
+    statRisk: "вердикт риска", statFix: "исправление", statVerify: "проверка",
     reportAt: "прогон", copy: "копировать", copied: "скопировано", noAccess: "нет доступа",
     micOff: "в этом браузере нет распознавания речи; есть в Chrome и Edge",
     micNo: "микрофон недоступен или отклонён",
@@ -226,7 +228,12 @@ function renderReport(data){
     ? `<a href="/r/${encodeURIComponent(fp.id)}" target="_blank" rel="noopener"
          class="report-link">${escapeHtml(t("openReport"))} ↗</a>`
     : "";
-  box.innerHTML = `<div class="tabs">` + names.map((n, i) =>
+  const st = data.statuses || {};
+  const chip = (label, value) => value ? `<span class="stat"><span class="stat-k">${escapeHtml(label)}</span> <b>${escapeHtml(value)}</b></span>` : "";
+  const statusLine = st.risk
+    ? `<div class="stat-row">${chip(t("statRisk"), st.risk.verdict)}${chip(t("statFix"), (st.fix || {}).status)}${chip(t("statVerify"), (st.verification || {}).status)}</div>`
+    : "";
+  box.innerHTML = statusLine + `<div class="tabs">` + names.map((n, i) =>
       `<span class="tab ${i===0?"on":""}" data-pane="${escapeHtml(n)}">${escapeHtml(n)}</span>`).join("")
     + `<span class="copy" id="copy">${escapeHtml(t("copy"))}</span></div>
     <div class="pane" id="pane"></div>

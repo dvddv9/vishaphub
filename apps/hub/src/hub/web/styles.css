@@ -348,3 +348,8 @@ footer .right{margin-left:auto;color:var(--dim-2)}
   .badge{letter-spacing:.05em;padding:6px 10px}
   h1{font-size:36px}
 }
+
+.stat-row{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.stat{display:inline-flex;gap:6px;align-items:baseline;padding:6px 10px;border:1px solid var(--line,rgba(255,255,255,.14));border-radius:10px;font:12.5px var(--mono)}
+.stat-k{color:var(--dim-2)}
+table.statuses td:first-child{white-space:nowrap}

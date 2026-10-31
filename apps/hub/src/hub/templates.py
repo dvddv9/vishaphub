@@ -65,6 +65,27 @@ def _verdict_class(verdict: str) -> str:
     return "warn" if v and v != "-" else ""
 
 
+def _statuses_block(result: dict) -> str:
+    """The three results side by side: they answer different questions and are never merged."""
+    st = result.get("statuses")
+    if not isinstance(st, dict):
+        return ""                         # a run stored before the statuses existed
+    r, f, v = st.get("risk") or {}, st.get("fix") or {}, st.get("verification") or {}
+    basis = r.get("basis") or {}
+    stood = ", ".join(f"{k}: {basis[k]}" for k in ("rules", "tests", "model") if basis.get(k)) or "nothing ran"
+    guess = " (resting on the model alone: a guess)" if r.get("rests_on_model_alone") else ""
+    ran = ", ".join(v.get("ran") or []) or "nothing"
+    iso = v.get("isolation") or {}
+    where = f" \u00b7 isolation: {iso.get('kind')}, cleanup {'confirmed' if iso.get('cleanup_confirmed') else 'not confirmed'}" if iso else ""
+    rows = (
+        f"<tr><td>risk verdict</td><td><b>{e(str(r.get('verdict') or '-'))}</b></td><td>{e(stood)}{e(guess)}</td></tr>"
+        f"<tr><td>fix status</td><td><b>{e(str(f.get('status') or '-'))}</b></td><td>{e(str(f.get('reason') or ''))}</td></tr>"
+        f"<tr><td>verification</td><td><b>{e(str(v.get('status') or '-'))}</b></td><td>ran: {e(ran)}{e(where)}</td></tr>"
+    )
+    note = ('<p class="meta">Three results, three questions. A fix status never changes the risk verdict; '
+            "the model can only raise a verdict, never lower it.</p>")
+    return _block("Three results", f'<div class="table-wrap"><table class="statuses"><tr><th>result</th><th>status</th><th>what stands behind it</th></tr>{rows}</table></div>{note}')
+
 def report_page(record: dict, retention: str = "") -> str:
     """One run: the verdict, every step, every finding with its source, what was not checked."""
     result = record.get("result") or {}
@@ -131,6 +152,7 @@ def report_page(record: dict, retention: str = "") -> str:
 {f'<p class="meta">{e(retention)}</p>' if retention else ''}
 </div>
 </section>
+{_statuses_block(result)}
 {_block("Steps", f'<div class="table-wrap"><table><tr><th>stage</th><th>verdict</th><th>state</th><th>detail</th></tr>{rows}</table></div>')}
 {_block("Findings", f"<ul>{found}</ul>")}
 {patch_block}
