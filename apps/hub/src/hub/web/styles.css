@@ -186,6 +186,7 @@ textarea,input{width:100%;color:var(--ink);background:rgba(3,6,12,.55);border:1p
 textarea::placeholder,input::placeholder{color:var(--dim-2)}
 textarea:focus,input:focus{outline:none;border-color:rgba(52,211,153,.7);box-shadow:0 0 0 4px rgba(52,211,153,.14)}
 input{min-height:44px}
+.provider{min-height:44px;width:100%;margin-bottom:8px;background:inherit;color:inherit;border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:0 12px;font:inherit}
 .mic{width:48px;height:48px;padding:0;border-radius:12px;display:grid;place-items:center;font-size:18px;background:var(--glass);color:var(--ink);
   border:1px solid var(--line-2);cursor:pointer;transition:background .15s,border-color .15s}
 .mic:hover{background:var(--glass-2)}

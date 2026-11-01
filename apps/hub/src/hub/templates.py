@@ -106,8 +106,10 @@ def _evidence_block(fp: dict) -> str:
                        for c in ran) or "<li>no check ran</li>"
     skipped_rows = "".join(f"<li>{e(str(c.get('name')))} (skipped)</li>" for c in skipped)
     unverified = "".join(f"<li>{e(str(x))}</li>" for x in ev.get("not_checked") or []) + skipped_rows or "<li>-</li>"
+    asked = (f", question <code>{e(str(model.get('question_sha256') or '')[:8])}</code>"
+             if model.get("question_sha256") else "")
     model_line = (f"consulted: {e(str(model.get('name') or '?'))}, verdict {e(str(model.get('verdict') or '-'))}, "
-                  f"{int(model.get('findings') or 0)} finding(s)") if model.get("consulted") else "not consulted"
+                  f"{int(model.get('findings') or 0)} finding(s){asked}") if model.get("consulted") else "not consulted"
     patch = ev.get("patch") or {}
     patch_line = (f"diff <code>{e(str(patch.get('diff_sha256') or '')[:16])}</code> over "
                   f"{len(patch.get('files') or {})} file(s)") if patch.get("proposed") else "no patch"
@@ -115,13 +117,19 @@ def _evidence_block(fp: dict) -> str:
     lang_rows = "".join(f"<li>{e(languages.sentence(x))}</li>" for x in ev.get("languages") or []) or "<li>-</li>"
     integrity = ("<span class=\"vchip pass\">record intact</span>" if ok
                  else f"<span class=\"vchip bad\">record NOT intact: {e(why)}</span>")
+    snap_ev = ev.get("snapshot") or {}
+    snap = (f"<code>{e(str(snap_ev.get('sha256') or '')[:16])}</code>" if snap_ev.get("files")
+            else "none (no files were sent)")
+    vro = ev.get("validator_ran_on") or {}
+    ran_on = (f"{e(str(vro.get('what')))} ({len(vro.get('files') or {})} file(s))"
+              if vro.get("what") not in (None, "", "nothing") else "did not run: nothing for it to check")
     body = (
-        f"<p class=\"meta\">{integrity} \u00b7 snapshot <code>{e(str((ev.get('snapshot') or {}).get('sha256') or '')[:16])}</code>"
+        f"<p class=\"meta\">{integrity} \u00b7 snapshot {snap}"
         f" \u00b7 {patch_line} \u00b7 attempts {int(ev.get('attempts') or 0)}: {e(str(ev.get('stop_reason') or ''))}</p>"
         "<div class=\"table-wrap\"><table class=\"statuses\"><tr><th>who</th><th>what it says</th></tr>"
         f"<tr><td>rules found</td><td>analyser {int(rules.get('analyser') or 0)} \u00b7 validator {int(rules.get('validator') or 0)} finding(s)</td></tr>"
         f"<tr><td>model said</td><td>{model_line}</td></tr>"
-        f"<tr><td>validator ran on</td><td>{e(str((ev.get('validator_ran_on') or {}).get('what') or 'nothing'))} ({len((ev.get('validator_ran_on') or {}).get('files') or {})} file(s))</td></tr>"
+        f"<tr><td>validator ran on</td><td>{ran_on}</td></tr>"
         f"<tr><td>tests that really ran</td><td><ul>{ran_rows}</ul></td></tr>"
         f"<tr><td>left unverified</td><td><ul>{unverified}</ul></td></tr>"
         f"<tr><td>language evidence</td><td><ul>{lang_rows}</ul></td></tr>"
@@ -211,9 +219,9 @@ def report_page(record: dict, retention: str = "") -> str:
     reason = str(result.get("reason") or "")
     body = f"""
 <p class="crumb"><a href="/runs">{ARROW_BACK} recent runs</a><span class="exports"> {DOT} export:
-<a href="/api/runs/{e(str(record.get('id') or ''))}.json">JSON</a> {DOT}
-<a href="/api/runs/{e(str(record.get('id') or ''))}.sarif">SARIF</a> {DOT}
-<a href="/api/runs/{e(str(record.get('id') or ''))}.md">Markdown</a> {DOT}
+<a href="/api/runs/{e(str(record.get('id') or ''))}.json" download>JSON</a> {DOT}
+<a href="/api/runs/{e(str(record.get('id') or ''))}.sarif" download>SARIF</a> {DOT}
+<a href="/api/runs/{e(str(record.get('id') or ''))}.md" download>Markdown</a> {DOT}
 <a href="/api/verify/{e(str(record.get('id') or ''))}">check integrity</a> {DOT}
 <a href="/r/{e(str(record.get('id') or ''))}/delete">delete this run</a></span></p>
 <form class="cmp" action="/compare" method="get"><input type="hidden" name="a" value="{e(str(record.get('id') or ''))}">

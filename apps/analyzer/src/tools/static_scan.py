@@ -62,8 +62,15 @@ RULES: tuple[Rule, ...] = (
        r"""(?i)\.(execute|executemany|query|raw)\s*\(\s*(f["']|`[^`]*\$\{)""",
        "Pass user data as bound parameters, never interpolate it into the SQL text."),
     _r("cmd-injection-py", "OS command executed from Python", "high", "CWE-78",
-       r"""\b(os\.system|os\.popen|subprocess\.(call|run|Popen|check_output|check_call)|commands\.getoutput)\s*\(""",
+       r"""\b(os\.system|os\.popen|commands\.getoutput)\s*\(|"""
+       r"""\bsubprocess\.(call|run|Popen|check_output|check_call)\s*\(\s*(?!\[)""",
        "Avoid the shell: pass an argument list to subprocess.run([...], shell=False) and validate input.",
+       _PY),
+    # An argument list is not command injection (see cmd-injection-py), but a process is still started:
+    # keep it visible at low severity (bandit B603) so code that spawns processes is never called SAFE unseen.
+    _r("subprocess-argv", "Process started from Python (argument list, no shell)", "low", "CWE-78",
+       r"""\bsubprocess\.(call|run|Popen|check_output|check_call)\s*\(\s*\[""",
+       "Fine if every element is fixed or validated; confirm no element comes straight from user input.",
        _PY),
     _r("shell-true", "subprocess with shell=True", "high", "CWE-78",
        r"""shell\s*=\s*True""",

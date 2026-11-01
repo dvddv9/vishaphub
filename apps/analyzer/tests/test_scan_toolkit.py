@@ -408,3 +408,11 @@ def test_money_in_float_is_a_logic_finding_and_decimal_is_not():
     assert "logic-js-money-float" in ids("const amount = parseFloat(req.body.amount);\n", "m.js")
     assert "logic-money-float" not in ids("price = Decimal(data['price'])\n")
     assert "logic-money-float" not in ids("score = float(row['score'])\nratio = float(n) / d\n")
+
+
+def test_a_subprocess_call_with_an_argument_list_is_not_a_command_injection():
+    safe = 'import subprocess\nsubprocess.run(["ping", "-c", "1", host], check=True)\n'
+    unsafe = 'import subprocess\nsubprocess.run("ping -c 1 " + host, shell=True)\n'
+    ids = lambda text: [f["id"] for f in scan_material(text, "a.py")["findings"]]
+    assert "cmd-injection-py" not in ids(safe)
+    assert "cmd-injection-py" in ids(unsafe)

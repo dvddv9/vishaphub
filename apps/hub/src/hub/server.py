@@ -136,7 +136,7 @@ DEFAULT_REVIEW_QUESTION = "Review this code for security vulnerabilities and mis
 
 def _model_key_available(body: dict) -> bool:
     """A key the model could be called with: the caller's own, or one the operator set on the hub."""
-    return llm.available(str(body.get("api_key") or ""))
+    return llm.available(str(body.get("api_key") or ""), str(body.get("provider") or ""))
 
 
 def _intent_for(body: dict, material: str, spec: str) -> str:
@@ -682,6 +682,10 @@ class Handler(BaseHTTPRequestHandler):
             # inferred, not asked for: the page promised an answer to the question, so say it was not put to a model
             plan.note = ((plan.note + " \u00b7 " if plan.note else "")
                          + "your question was not put to a model: no model key was sent")
+        if (intent == "analyse" and material.strip() and not question.strip()
+                and not str(body.get("intent") or "").strip() and _model_key_available(body)):
+            plan.note = ((plan.note + " \u00b7 " if plan.note else "")
+                         + "the model was not asked: no question was given, so only the rules read this")
         external_findings: list = []
         if body.get("sarif") is not None:
             try:
@@ -706,6 +710,7 @@ class Handler(BaseHTTPRequestHandler):
             "question": question,
             "api_key": str(body.get("api_key") or ""),
             "model": str(body.get("model") or ""),
+            "preset": str(body.get("provider") or ""),
             # opt-in: check the model's patch and send a rejected one back, up to three attempts
             "fix_loop": bool(body.get("verify_fix")),
             # findings of a scanner the client ran, from the SARIF it sent: a third reader, never a lowering one
@@ -997,7 +1002,7 @@ class Handler(BaseHTTPRequestHandler):
             if principal is None:
                 # The site's chat spends the owner's key: an anonymous message that reaches a
                 # model is a bill too. A keyless message is answered locally and costs nothing.
-                key_present = llm.available(str(body.get("api_key") or ""))
+                key_present = llm.available(str(body.get("api_key") or ""), str(body.get("provider") or ""))
                 spend = CHAT_BUDGET.take(len(message)) if key_present else limits.Spend(True)
                 if not spend.allowed:
                     self._send(413 if spend.too_big else 429, {"ok": False, "error": spend.reason},
@@ -1007,7 +1012,7 @@ class Handler(BaseHTTPRequestHandler):
             with meter.metering() as m:
                 self._meter = m
                 try:
-                    result = reply(message, messages, str(body.get("api_key") or ""), str(body.get("model") or ""))
+                    result = reply(message, messages, str(body.get("api_key") or ""), str(body.get("model") or ""), str(body.get("provider") or ""))
                 finally:
                     self._finish_usage(None, 0, "error")           # a no-op once the normal end below has run
             self._send(200 if result["ok"] else 502, result)

@@ -131,7 +131,7 @@
         <section class="panel" aria-labelledby="chat-title">
           <h3 class="k" id="chat-title">talk to Vishap</h3>
           <div class="chat" id="chat" role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversation">
-            <div class="msg sys" data-i18n="keySys">The hub holds no model key. The rules check your code for free; to have the model read it too, add your own Anthropic key below (it stays in this browser).</div>
+            <div class="msg sys" data-i18n="keySys">The hub holds no model key. The rules check your code for free; to have the model read it too, add a key below: Anthropic, DeepSeek or ChatGPT (Ollama needs none; the key stays in this browser).</div>
           </div>
           <div class="composer">
             <label class="sr-only" for="text">Message to Vishap</label>
@@ -171,13 +171,22 @@
           <div id="report" class="report"></div>
 
           <h3 class="k k-gap">your model key</h3>
+          <label class="sr-only" for="provider">Model provider</label>
+          <select id="provider" class="provider">
+            <option value="anthropic">Anthropic (Claude)</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="openai">ChatGPT (OpenAI)</option>
+            <option value="ollama">Ollama (on this computer)</option>
+          </select>
+          <label class="sr-only" for="modelname">Model name</label>
+          <input id="modelname" type="text" autocomplete="off" class="provider" placeholder="model name (optional)">
           <label class="sr-only" for="key">Your model key</label>
-          <input id="key" type="password" autocomplete="off" placeholder="sk-ant-… (optional, kept in this browser)">
+          <input id="key" type="password" autocomplete="off" placeholder="sk-… (optional, kept in this browser)">
           <div class="row mt-sm">
             <button type="button" class="btn ghost sm" id="save">save</button>
             <button type="button" class="btn ghost sm" id="clear">clear</button>
           </div>
-          <p class="hint" data-i18n="keyHint">Optional. Without a key only the rules run; with your key the model reads the code as well, and the stricter verdict wins. The key is kept in this browser and sent with your run.</p>
+          <p class="hint" data-i18n="keyHint">Optional. Without a key only the rules run; with your key and a question the model reads the code as well, and the stricter verdict wins. The key is kept in this browser and sent with your run.</p>
         </section>
       </div>
     </section>

@@ -67,19 +67,19 @@ def _history(messages: list) -> list[dict]:
     return turns
 
 
-def reply(message: str, messages: list, api_key: str, model: str = "") -> dict:
+def reply(message: str, messages: list, api_key: str, model: str = "", preset: str = "") -> dict:
     """Answer one client message. Returns ``{"text": ..., "model": ..., "ok": ...}``."""
     text = (message or "").strip()
     if not text:
         return {"ok": False, "error": "empty message", "text": ""}
 
     try:
-        current = llm.settings(model)
+        current = llm.settings(model, preset)
     except llm.ConfigError as exc:
         return {"ok": False, "text": "", "error": str(exc)}
     if current.provider == "none":
         return {"ok": True, "model": "local", "text": FALLBACK_NO_MODEL}
-    key = (api_key or os.getenv("VISHAP_HUB_LLM_KEY") or "").strip()
+    key = llm.key_for(api_key, preset)
     if not key and current.key_required:
         return {"ok": True, "model": "local", "text": FALLBACK, "key_required": True}
 

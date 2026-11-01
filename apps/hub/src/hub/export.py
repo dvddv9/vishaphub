@@ -68,11 +68,11 @@ def markdown(record: dict) -> str:
         clean = (ev.get("cleanup") or {}).get("confirmed")
         out += ["## Evidence", "",
                 f"- Record: {'intact' if ok else 'NOT intact (' + why + ')'}; digest `{(fp.get('digest') or '')[:32]}`",
-                (f"- Snapshot: `{((ev.get('snapshot') or {}).get('sha256') or '')[:16]}`; attempts {ev.get('attempts')}: "
+                (f"- Snapshot: {('`' + str((ev.get('snapshot') or {}).get('sha256') or '')[:16] + '`') if (ev.get('snapshot') or {}).get('files') else 'none (no files were sent)'}; attempts {ev.get('attempts')}: "
                  f"{ev.get('stop_reason') or ''}"),
                 f"- Rules found: analyser {rules.get('analyser', 0)}, validator {rules.get('validator', 0)}",
                 "- Model: " + (f"{model.get('name') or '?'} said {model.get('verdict') or '-'}, "
-                                f"{model.get('findings', 0)} finding(s)" if model.get("consulted") else "not consulted"),
+                                f"{model.get('findings', 0)} finding(s)" + (f", question {str(model.get('question_sha256'))[:8]}" if model.get("question_sha256") else "") if model.get("consulted") else "not consulted"),
                 "- Checks that ran: " + (", ".join(f"{c.get('stage')}/{c.get('name')} "
                                                    f"({'ok' if c.get('ok') else 'FAILED'})" for c in ran) or "none"),
                 *[f"- Language evidence: {languages.sentence(x)}" for x in ev.get("languages") or []],
