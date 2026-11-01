@@ -2,6 +2,7 @@
 a run with no files does not show the hash of nothing as a snapshot, and the report does not claim a
 validator ran when none did."""
 import hashlib
+from pathlib import Path
 
 from hub import fingerprint, proposal, server, templates
 from hub.pipeline import run_plan
@@ -100,3 +101,13 @@ def test_the_review_is_always_the_base_task_and_the_question_is_added(monkeypatc
 
 def test_the_server_and_the_model_share_one_review_wording():
     assert server.DEFAULT_REVIEW_QUESTION == proposal.REVIEW_TASK
+
+def test_the_key_hint_says_a_question_is_needed_for_the_model_to_read():
+    # a saved key is sent with every run, and a key alone does not turn the model on (see ReviewRoutingTests),
+    # so the page must not promise that it does
+    web = Path(server.__file__).parent / "web"
+    page, script = (web / "index.html").read_text(encoding="utf-8"), (web / "app.js").read_text(encoding="utf-8")
+    assert "with your key and a question the model reads the code" in page
+    assert "with your key and a question the model reads the code" in script
+    assert "с твоим ключом и вопросом код читает ещё и модель" in script
+    assert "with your key the model reads the code as well" not in page + script
