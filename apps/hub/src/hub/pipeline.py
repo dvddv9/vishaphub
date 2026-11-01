@@ -156,6 +156,14 @@ def _analysis_pieces(material: str, patch: dict) -> list[tuple[str, str]]:
     return pieces
 
 
+def _validator_could_not_run(checks: dict) -> bool:
+    """True when the validator's only complaint is that it had nowhere safe to run: nothing was executed."""
+    for item in ((checks.get("validator") or {}).get("checks") or []):
+        if item.get("name") == "isolation" and not item.get("ok") and not item.get("skipped"):
+            return True
+    return False
+
+
 def _model_trouble(reason: str) -> str:
     """The model's failure in words a person can act on; the raw text goes to the log, not to a page."""
     text = str(reason or "")
@@ -180,6 +188,8 @@ def _not_checked(plan: Plan, checks: dict, has_proof: bool, model_trouble: str =
         missing.append("nothing was generated: no generator stage in this plan")
     if not (checks.get("validator") or {}).get("checks"):
         missing.append("the validator's stage-by-stage detail is not in this answer")
+    elif (checks.get("validator") or {}).get("status") == "NOT_RUN":
+        missing.append("the validator did not run: the host could not isolate submitted code")
     if has_proof:
         missing.append("the proof lines are the model's promise, not the output of a run")
     if model_trouble:
@@ -319,7 +329,20 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
                                       detail="the report carried no usable verdict"))
                     return _error(steps, envelope.session_id, trace,
                                   "validator returned no verdict; nothing was verified", plan_dict)
-                checks["validator"] = {"verdict": verdict, "checks": report.get("checks", [])}
+                validator_checks = report.get("checks", [])
+                if _validator_could_not_run({"validator": {"checks": validator_checks}}):
+                    checks["validator"] = {"verdict": None, "status": "NOT_RUN",
+                                            "checks": validator_checks}
+                    if result.get("isolation"):
+                        checks["validator"]["isolation"] = result["isolation"]
+                    detail = "NOT RUN: this host cannot isolate submitted code; no code was executed"
+                    steps.append(Step("validator", False, "NOT_RUN", detail=detail))
+                    trace.append(f"pass {pass_no} validator -> NOT_RUN (host isolation unavailable)")
+                    emit("validator", {"stage": "validator", "verdict": "NOT_RUN",
+                                       "ok": False, "findings": 0, "pass": pass_no})
+                    continue
+                checks["validator"] = {"verdict": verdict, "status": "COMPLETED",
+                                       "checks": validator_checks}
                 if result.get("isolation"):
                     checks["validator"]["isolation"] = result["isolation"]
                 current["validator"] = verdict
@@ -400,6 +423,9 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
     else:
         final = model_verdict or strictest_verdict or ""
 
+    if not final and _validator_could_not_run(checks):
+        final = "REQUIRES_REVIEW"
+        strictest_verdict = final
     if not final:
         return _error(steps, envelope.session_id, trace,
                       "no stage produced a verdict; an empty run is not a pass", plan_dict)
@@ -408,6 +434,10 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
     # REQUIRES_REVIEW is a successful run that found something.
     ok = final not in BLOCKING_VERDICTS
     reason = plan.note or ""
+    if _validator_could_not_run(checks):
+        reason = (reason + " — " if reason else "") + (
+            "validator status NOT_RUN: this host cannot isolate submitted code; no code was executed, "
+            "so this run does not establish whether the code passes the spec")
     if model_trouble:
         reason = (reason + " · " if reason else "") + f"the model did not answer: {model_trouble}"
     if final == "EMERGENCY":

@@ -122,6 +122,9 @@ def decide(scan: dict, quality: dict | None = None, model_verdict: str = "") -> 
                            f"false-SAFE upper bound {with_model['false_safe_upper_95']:.0%}")}
     if not entry or not entry.get("safe_allowed"):
         why = (entry or {}).get("why") or f"{lang or 'this language'} has no measurement"
+        if why.startswith(("G1 failed", "G2 failed")):
+            why += (" in the registered 402-example blind_public set (tests/bench/blind_public); "
+                    "the 106-example labelled benchmark is separate and does not decide SAFE eligibility")
         return review(f"unknown coverage: the rules for {lang or 'this language'} have no passing measurement ({why})")
     return {"verdict": "SAFE", "critical": False, "meaning": MEANING,
             "reason": (f"the rules found nothing in the {lang} text; measured on {entry['dangerous']} dangerous and "

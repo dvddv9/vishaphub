@@ -172,8 +172,11 @@ RULES: tuple[Rule, ...] = (
        r"""(?i)allow_origins\s*=\s*\[\s*["']\*["']|Access-Control-Allow-Origin["']?\s*[:,]\s*["']\*|origin\s*:\s*["']\*["']|cors\(\s*\)""",
        "List the exact trusted origins; never combine * with credentials."),
     _r("jwt-none", "JWT signature verification disabled", "high", "CWE-347",
-       r"""(?i)verify_signature["']?\s*:\s*False|algorithms\s*=\s*\[\s*["']none["']|jwt\.decode\([^)]*verify\s*=\s*False""",
+       r"""(?i)verify_signature["']?\s*:\s*False|algorithms\s*[:=]\s*\[[^\]]*["']none["']|jwt\.decode\([^)]*verify\s*=\s*False""",
        "Always verify the signature and pin the expected algorithm."),
+    _r("jwt-hardcoded-secret", "JWT signed or verified with a literal secret", "high", "CWE-798",
+       r"""\bjwt\.(?:verify|sign|decode|encode)\s*\([^,()]+,\s*["'](?![$<{])[^"'\s]{3,}["']""",
+       "Read the signing key from the environment or a secret manager and rotate the one in the code.", secret=True),
     _r("tmp-insecure", "Predictable temporary file", "medium", "CWE-377",
        r"""\btempfile\.mktemp\s*\(|open\s*\(\s*["']/tmp/""",
        "Use tempfile.NamedTemporaryFile / mkstemp.", _PY),
@@ -211,12 +214,27 @@ RULES: tuple[Rule, ...] = (
        r"""acl\s*=\s*"public-read(-write)?\"""", "Use private ACL and block public access.", ("terraform",)),
     _r("tf-unencrypted", "Storage encryption disabled", "medium", "CWE-311",
        r"""(storage_encrypted|encrypted)\s*=\s*false""", "Enable encryption at rest.", ("terraform",)),
+    _r("tf-public-db", "Database reachable from the internet", "high", "CWE-668",
+       r"""publicly_accessible\s*=\s*true""", "Set publicly_accessible = false and keep the instance in private subnets.", ("terraform",)),
     _r("k8s-privileged", "Privileged container", "high", "CWE-250",
        r"""privileged:\s*true|allowPrivilegeEscalation:\s*true|hostNetwork:\s*true|runAsUser:\s*0\b""",
        "Drop privileges: runAsNonRoot, no privilege escalation, no hostNetwork.", ("yaml",)),
     _r("docker-root", "Container runs as root / uses :latest", "low", "CWE-250",
        r"""(?im)^\s*USER\s+root\b|^\s*FROM\s+\S+:latest\b""",
        "Run as an unprivileged USER and pin image versions.", ("dockerfile",)),
+    _r("docker-curl-pipe", "Remote script piped into a shell during the build", "high", "CWE-494",
+       r"""(?im)^\s*RUN\b[^\n]*\b(?:curl|wget)\b[^\n|]*\|\s*(?:sudo\s+)?(?:ba|z)?sh\b""",
+       "Download to a file, verify a pinned SHA-256, then run it.", ("dockerfile",)),
+    _r("docker-add-url", "ADD fetches a remote URL without a checksum", "medium", "CWE-494",
+       r"""(?im)^\s*ADD\s+(?:--\S+\s+)*https?://""",
+       "Use curl with a pinned SHA-256 (or ADD --checksum) instead of a bare ADD of a URL.", ("dockerfile",)),
+    _r("docker-secret-env", "Secret baked into the image through ENV / ARG", "high", "CWE-798",
+       r"""(?im)^\s*(?:ENV|ARG)\s+\w*(?:secret|passw(?:or)?d|token|api_?key|access_?key|private_?key)\w*(?:\s*=\s*|\s+)["']?(?![$<{%])[^\s"']{6,}""",
+       "Inject secrets at run time (secret manager, IAM role, BuildKit --mount=type=secret); rotate the committed value.",
+       ("dockerfile",), secret=True),
+    _r("docker-chmod-777", "World-writable files in the image", "high", "CWE-732",
+       r"""(?im)^\s*RUN\b[^\n]*\bchmod\s+(?:-R\s+)?0?777\b""",
+       "Give the app user ownership (chown) and the least mode that works.", ("dockerfile",)),
     # ---- logs -------------------------------------------------------------
     _r("log-sqli", "SQL injection pattern in log line", "high", "CWE-89",
        r"""(?i)(union\s+select|or\s+1\s*=\s*1|'\s*or\s*'1'\s*=\s*'1|;\s*drop\s+table)""",
@@ -341,6 +359,11 @@ def detect_language(filename: str, code: str = "") -> str:
     if ext in by_ext:
         return by_ext[ext]
     head = code[:4000]
+    # Detect container build files before generic language heuristics: their RUN
+    # commands can look like shell or Python snippets when no filename is supplied.
+    if re.match(r"(?:[ \t]*(?:#[^\n]*|ARG[^\n]*)?\n)*[ \t]*FROM[ \t]+\S", head) and re.search(
+            r"^[ \t]*(?:RUN|CMD|COPY|ADD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|USER|VOLUME|HEALTHCHECK)[ \t]", head, re.M):
+        return "dockerfile"
     py, js = _sniff_scores(head)
     if py > js:
         return "python"
@@ -484,7 +507,12 @@ def scan_material(material: str, filename: str = "") -> dict:
             hit = next((f for f in findings if f["line"] == sink_line), None)
             if hit:
                 hit["tainted"] = True
-                if hit["severity"] in ("medium", "low"):
+                if hit["id"] == "subprocess-argv":
+                    # an argument list has no shell: tainted input here is argument injection at most, and the flow
+                    # step cannot see an allow-list in front of it, so it stays a lead (medium), not a verdict-maker
+                    if hit["severity"] == "low":
+                        hit["severity"] = "medium"
+                elif hit["severity"] in ("medium", "low"):
                     hit["severity"] = "high"
             else:
                 findings.append({
