@@ -482,7 +482,7 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
             stop_reason=(stop_reason or f"the plan ran to its end ({passes_run} pass(es))")
             + (f"; fix loop: {fix_stop}" if fix_stop else ""),
             fix_attempts=fix_rows,
-            not_checked=result.not_checked, patch_check=patch_check, external=external),
+            not_checked=result.not_checked, patch_check=patch_check, external=external, question=question),
     )
     if accept_rules:
         result.accepted = accepted_mod.standing(result.findings, accept_rules, str(result.fingerprint.get("at") or ""))

@@ -66,7 +66,7 @@ def _fix_check(pc: dict | None) -> dict | None:
 
 
 def build(*, supplied_files: dict, checked_files: dict, patch: dict, checks: dict, answer: dict, model_verdict: str,
-          rules: dict, attempts: int, stop_reason: str, not_checked: list, patch_check: dict | None = None, fix_attempts: list | None = None, external: list | None = None) -> dict:
+          rules: dict, attempts: int, stop_reason: str, not_checked: list, patch_check: dict | None = None, fix_attempts: list | None = None, external: list | None = None, question: str = "") -> dict:
     validator = checks.get("validator") or {}
     analyser = checks.get("analyser") or {}
     iso = validator.get("isolation") or {}
@@ -96,6 +96,14 @@ def build(*, supplied_files: dict, checked_files: dict, patch: dict, checks: dic
                         "validator": sum(len(c.get("findings") or []) for c in validator.get("checks", []))},
         "not_checked": list(not_checked or []),
     }
+    if out["model"]["consulted"]:
+        # what the model said decided the verdict, so the record holds the content and not only the count:
+        # two runs whose answers differ must not share a fingerprint. Only when present, so a run without
+        # findings or a question keeps the fingerprint it always had.
+        if answer.get("findings"):
+            out["model"]["findings_sha256"] = sha(answer.get("findings"))
+        if (question or "").strip():
+            out["model"]["question_sha256"] = hashlib.sha256(question.strip().encode("utf-8")).hexdigest()
     if external:     # only when present: a run without a SARIF keeps the fingerprint it always had
         out["external"] = {"count": len(external), "sha256": sha(external)}
     return out

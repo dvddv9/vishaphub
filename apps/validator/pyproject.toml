@@ -29,3 +29,6 @@ validator = ["web/*.html"]
 src = ["src"]
 # examples/bad is deliberately broken code (syntax errors included): input for the validator tests.
 extend-exclude = ["examples/bad"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

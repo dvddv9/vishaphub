@@ -23,6 +23,7 @@ DEFAULT_MODEL = llm.DEFAULT_ANTHROPIC_MODEL
 MAX_MATERIAL = 60_000
 MAX_SPEC = 20_000
 MAX_QUESTION = 2_000
+REVIEW_TASK = "Review this code for security vulnerabilities and mistakes, and say which ones matter most."
 
 SYSTEM = """You are Vishap, one process with three jobs on the same material:
 1. analyse it for security risks;
@@ -45,6 +46,8 @@ Rules:
 - do not invent files, APIs or line numbers — if you cannot see it, do not claim it;
 - if the material is fine, say SAFE and leave findings empty;
 - if you cannot answer without more information, ask at most three questions and keep the rest empty;
+- one finding per root cause, labelled with the single most specific CWE that fits (for example CWE-755 for an exception that is not handled, CWE-400 for unbounded resource use); do not report the same cause again under a second id;
+- test code that is empty, comment-only or missing is a coverage gap: report it with severity low and rule "test-gap", not as a vulnerability class such as CWE-862 or CWE-347, unless the code under test is in the material and lacks that control;
 - your verdict is a recommendation: deterministic checks run afterwards and the stricter result wins."""
 
 
@@ -92,7 +95,9 @@ def _call(key: str, model: str, material: str, spec: str, question: str, preset:
         return {"ok": False, "error": privacy.REFUSAL}
     redactions = privacy.merge_counts(r_question, r_spec, r_material)
     user = []
-    if question.strip():
+    if material.strip() and not spec.strip():
+        user.append(f"Task:\n{REVIEW_TASK}")      # the review is always the base task; a question is added to it
+    if question.strip() and question.strip() != REVIEW_TASK:      # the default is already the task
         user.append(f"Client question:\n{question.strip()[:MAX_QUESTION]}")
     if spec.strip():
         user.append(f"Spec:\n{spec.strip()[:MAX_SPEC]}")

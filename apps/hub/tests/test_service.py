@@ -534,6 +534,10 @@ class ReviewRoutingTests(ServerCase):
         seen = self.sent_to_run_plan({"material": "a = 1", "api_key": "sk-ant-x"})    # no question: nothing to ask
         assert self.stages(seen) == ["analyser"] and "not put to a model" not in seen["plan"].note
 
+    def test_a_key_without_a_question_says_the_model_was_not_asked(self):
+        seen = self.sent_to_run_plan({"material": "a = 1", "api_key": "sk-ant-x"})
+        assert self.stages(seen) == ["analyser"] and "the model was not asked" in seen["plan"].note
+
     def test_an_explicit_intent_wins_and_is_not_second_guessed(self):
         seen = self.sent_to_run_plan({"material": "a = 1", "question": "is this safe?", "api_key": "k", "intent": "analyse"})
         assert self.stages(seen) == ["analyser"] and "not put to a model" not in seen["plan"].note

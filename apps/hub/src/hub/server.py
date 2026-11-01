@@ -682,6 +682,10 @@ class Handler(BaseHTTPRequestHandler):
             # inferred, not asked for: the page promised an answer to the question, so say it was not put to a model
             plan.note = ((plan.note + " \u00b7 " if plan.note else "")
                          + "your question was not put to a model: no model key was sent")
+        if (intent == "analyse" and material.strip() and not question.strip()
+                and not str(body.get("intent") or "").strip() and _model_key_available(body)):
+            plan.note = ((plan.note + " \u00b7 " if plan.note else "")
+                         + "the model was not asked: no question was given, so only the rules read this")
         external_findings: list = []
         if body.get("sarif") is not None:
             try:
