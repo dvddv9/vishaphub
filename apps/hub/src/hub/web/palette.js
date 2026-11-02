@@ -1,6 +1,6 @@
 (() => {
-  const allowed = new Set(["balanced", "violet", "ocean", "sunset"]);
-  let selected = "balanced";
+  const allowed = new Set(["sunset"]);
+  let selected = "sunset";
   try {
     const version = localStorage.getItem("vishap_palette_version");
     const saved = localStorage.getItem("vishap_palette");

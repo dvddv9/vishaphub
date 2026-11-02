@@ -741,11 +741,11 @@ setProgress({});
 applyLang();
 updateProjectSummary();
 const palette = $("palette");
-const allowedPalettes = ["balanced", "violet", "ocean", "sunset"];
+const allowedPalettes = ["sunset"];
 palette.value = allowedPalettes.includes(document.documentElement.dataset.palette)
-  ? document.documentElement.dataset.palette : "balanced";
+  ? document.documentElement.dataset.palette : "sunset";
 palette.onchange = () => {
-  const selected = allowedPalettes.includes(palette.value) ? palette.value : "balanced";
+  const selected = "sunset";
   document.documentElement.dataset.palette = selected;
   localStorage.setItem("vishap_palette", selected);
   localStorage.setItem("vishap_palette_version", "2");
