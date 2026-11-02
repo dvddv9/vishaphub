@@ -16,6 +16,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from .engine import validate
 from .models import Spec
+from .paths import contained
 from .version import __version__
 
 MAX_BODY = 8_000_000
@@ -32,10 +33,9 @@ def _write_files(root: str, files: dict) -> None:
     for rel, text in files.items():
         if not isinstance(rel, str) or not isinstance(text, str):
             continue
-        safe = os.path.normpath(rel).lstrip("\\/")
-        if safe.startswith("..") or os.path.isabs(safe):
-            continue  # a path that climbs out is not a deliverable, it is an attack
-        target = os.path.join(root, safe)
+        target = contained(root, rel)
+        if target is None:
+            continue  # a path that climbs out, or names a drive, is not a deliverable, it is an attack
         os.makedirs(os.path.dirname(target) or root, exist_ok=True)
         with open(target, "w", encoding="utf-8") as fh:
             fh.write(text)

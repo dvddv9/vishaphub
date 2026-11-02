@@ -6,6 +6,9 @@ All notable changes to VishapHub. Format based on [Keep a Changelog](https://kee
 
 ### Fixed
 
+- **A submitted file name like `D:evil.py` could land outside the temp directory on Windows.** The old check only refused `..` and absolute paths; it did not know a bare drive letter escapes the root too. Paths are now checked on the joined result (`hub.paths.contained`), on any platform, in both the hub and the validator.
+
+
 - **The page lost its style and script when the hub was installed with pip, pipx or the Windows installer.** `package-data` listed the page and the greeting but not `styles.css`, `app.js` or `favicon.svg`, so those were 404 outside the source tree (the Docker image runs from the tree and was not affected). They are listed now, and a test fails if the server serves a file the package leaves out.
 
 ### Fixed (continued)
