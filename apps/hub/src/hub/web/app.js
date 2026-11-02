@@ -600,12 +600,14 @@ function showResult(data, started){
 
   $("verdict").dataset.v = data.verdict || "";
   renderReport(data);
-  $("cardVerdict").textContent = data.verdict || "—";
-  $("cardVerdict").dataset.v = data.verdict || "";
   const doneCount = [checks.analyser_input, checks.generator, checks.analyser, checks.validator, checks.creator, checks.creator_validator, checks.final_generator].filter(Boolean).length;
-  $("cardChecks").textContent = `${doneCount} of 7`;
-  $("cardFindings").textContent = String((data.findings || []).length);
-  $("cardTag").textContent = "live";
+  if ($("cardVerdict")) {
+    $("cardVerdict").textContent = data.verdict || "—";
+    $("cardVerdict").dataset.v = data.verdict || "";
+    $("cardChecks").textContent = `${doneCount} of 7`;
+    $("cardFindings").textContent = String((data.findings || []).length);
+    $("cardTag").textContent = "live";
+  }
   $("hear").disabled = false;
   $("download").disabled = false;
 
