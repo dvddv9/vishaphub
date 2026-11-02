@@ -19,6 +19,8 @@ import re
 from dataclasses import dataclass
 
 from src.tools.patterns import TEMPLATE_VALUE   # "{x}", "%s", "$x" are templates, not secrets
+from src.tools.secret_check import assess as _assess_secret
+from src.tools.language_support import LANGUAGE_EXTENSIONS
 
 MAX_LINE = 600          # longer lines are cut before matching (regex DoS guard)
 MAX_FINDINGS = 200
@@ -50,6 +52,12 @@ _JAVA = ("java",)
 _C = ("c", "cpp")
 _PHP = ("php",)
 _GO = ("go",)
+_RUBY = ("ruby",)
+_RUST = ("rust",)
+_CSHARP = ("csharp",)
+_KOTLIN = ("kotlin",)
+_SWIFT = ("swift",)
+_SCALA = ("scala",)
 
 RULES: tuple[Rule, ...] = (
     # ---- injection -------------------------------------------------------
@@ -95,6 +103,24 @@ RULES: tuple[Rule, ...] = (
     _r("cmd-injection-go", "Shell invoked from Go (sh -c)", "high", "CWE-78",
        r"""\bexec\.Command(?:Context)?\s*\([^)\n]*["'`](?:/bin/|/usr/bin/)?(?:ba|z)?sh["'`]\s*,\s*["'`]-c["'`]""",
        "Do not run a shell: pass the program and each argument to exec.Command separately, and validate input.", _GO),
+    _r("cmd-injection-ruby", "Ruby shell command contains interpolation", "high", "CWE-78",
+       r"""\b(?:system|exec|spawn|IO\.popen)\s*(?:\(\s*)?[\"'][^\"'\n]*#\{[^}]+\}""",
+       "Pass a fixed executable and separate argument array; validate every user-controlled argument.", _RUBY),
+    _r("cmd-injection-rust", "Rust command invokes a shell with -c", "high", "CWE-78",
+       r"""Command::new\s*\(\s*[\"'](?:sh|bash|zsh)[\"']\s*\)\s*\.arg\s*\(\s*[\"']-c[\"']""",
+       "Invoke a fixed executable with separate arguments; avoid a shell command string.", _RUST),
+    _r("cmd-injection-csharp", "C# process command is assembled dynamically", "high", "CWE-78",
+       r"""\b(?:Process\.Start|new\s+ProcessStartInfo)\s*\([^\n;]*(?:\+\s*\w+|\$[\"'])""",
+       "Use ProcessStartInfo.ArgumentList and validate each argument; do not concatenate a command line.", _CSHARP),
+    _r("cmd-injection-kotlin", "Kotlin starts a process from a dynamic command", "high", "CWE-78",
+       r"""Runtime\.getRuntime\(\)\.exec\s*\([^\n;]*(?:\+\s*\w+|\$\{)""",
+       "Use ProcessBuilder with fixed executable and separate validated arguments.", _KOTLIN),
+    _r("cmd-injection-swift", "Swift launches a shell command string", "high", "CWE-78",
+       r"""Process\(\)[^\n]*\.(?:launchPath|executableURL)\s*=\s*[\"']/bin/(?:ba)?sh[\"']""",
+       "Launch a fixed executable with an argument array; avoid passing untrusted text to a shell.", _SWIFT),
+    _r("cmd-injection-scala", "Scala invokes a shell command with -c", "high", "CWE-78",
+       r"""Process\s*\(\s*(?:Seq\s*\()?\s*[\"'](?:sh|bash)[\"']\s*,\s*[\"']-c[\"']""",
+       "Use a fixed executable with separate arguments; do not construct a shell command from input.", _SCALA),
     _r("eval-py", "eval()/exec() of dynamic code", "critical", "CWE-95",
        r"""(?<![\w.])(eval|exec)\s*\(""",
        "Remove eval/exec; use ast.literal_eval for literals or a dispatch table.", _PY),
@@ -350,14 +376,8 @@ def detect_language(filename: str, code: str = "") -> str:
     base = name.rsplit("/", 1)[-1]
     if base == "dockerfile" or base.startswith("dockerfile."):
         return "dockerfile"
-    by_ext = {
-        "py": "python", "pyw": "python", "js": "javascript", "jsx": "javascript", "mjs": "javascript",
-        "cjs": "javascript", "ts": "typescript", "tsx": "typescript", "java": "java", "c": "c", "h": "c",
-        "cc": "cpp", "cpp": "cpp", "hpp": "cpp", "go": "go", "php": "php", "tf": "terraform",
-        "tfvars": "terraform", "yaml": "yaml", "yml": "yaml", "log": "log", "sql": "sql", "sh": "shell",
-    }
-    if ext in by_ext:
-        return by_ext[ext]
+    if (language := LANGUAGE_EXTENSIONS.get("." + ext)):
+        return language
     head = code[:4000]
     # Detect container build files before generic language heuristics: their RUN
     # commands can look like shell or Python snippets when no filename is supplied.
@@ -404,6 +424,17 @@ def _comment_line(line: str, lang: str) -> bool:
 def _mask(text: str) -> str:
     t = text.strip()
     return (t[:4] + "…" + "*" * 6) if len(t) > 8 else "*" * len(t)
+
+
+_SECRET_RULES = frozenset({"secret-aws", "secret-token", "secret-hardcoded", "secret-hardcoded-named"})
+
+
+def _secret_value(rule: Rule, m: re.Match) -> str:
+    """The secret itself (not the variable name around it) for the offline value checks."""
+    if rule.id == "secret-hardcoded":
+        q = re.search(r"""["']([^"'\s]{6,})["']""", m.group(0))
+        return q.group(1) if q else ""
+    return m.group(0)
 
 
 def _snippet(line: str, rule: Rule, m: re.Match) -> str:
@@ -482,11 +513,27 @@ def scan_material(material: str, filename: str = "") -> dict:
                 if not m or (rule.id, i) in seen:
                     continue
                 seen.add((rule.id, i))
-                findings.append({
+                item = {
                     "id": rule.id, "title": rule.title, "severity": rule.severity, "cwe": rule.cwe,
                     "kind": rule.kind,
                     "line": i, "snippet": _snippet(line, rule, m), "fix": rule.fix,
-                })
+                }
+                if rule.id in _SECRET_RULES:
+                    # Offline value checks (no network, the value is never sent anywhere). They annotate; the
+                    # only severity change is a recognisable placeholder going to "low" - never off the list.
+                    try:
+                        secret_value = _secret_value(rule, m)
+                        from src.tools.secret_check import live_check_enabled, validate_live
+                        live = validate_live(rule.id, secret_value) if live_check_enabled() else None
+                        verdict = _assess_secret(rule.id, secret_value, live)
+                    except Exception:   # a check bug must not hide the finding
+                        verdict = None
+                    if verdict:
+                        item["confidence"] = verdict["confidence"]
+                        item["note"] = verdict["note"]
+                        if verdict["placeholder"] and item["severity"] in ("critical", "high", "medium"):
+                            item["severity"] = "low"
+                findings.append(item)
     except Exception as e:  # pragma: no cover - defensive: a scan bug must not kill a job
         failed = _result(lang, [], {}, error=f"{type(e).__name__}: {e}")
         failed["coverage"] = coverage_of(lang, 0, 0, [f"the scan failed: {type(e).__name__}: {e}"])
@@ -521,6 +568,14 @@ def scan_material(material: str, filename: str = "") -> dict:
                     "snippet": str(flow["sink"].get("content", ""))[:160],
                     "fix": "Validate/escape the value or use a safe API at this sink.", "tainted": True,
                 })
+    try:   # dependency manifests: requirements*.txt, pyproject.toml, package.json (see deps_audit.py)
+        from src.tools import deps_audit
+        audit = deps_audit.audit(filename, material)
+        if audit:
+            findings.extend(audit["findings"])
+            degraded.extend(audit["degraded"])
+    except Exception:
+        degraded.append("the dependency audit failed")
     routes: list = []
     try:   # route-by-route checklist: auth, race, rowcount, bounds (see route_checklist.py)
         from src.tools.route_checklist import checklist

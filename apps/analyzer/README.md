@@ -6,7 +6,7 @@
 [![PyPI](https://img.shields.io/pypi/v/vishap-analyzer.svg)](https://pypi.org/project/vishap-analyzer/)
 [![CI](https://github.com/dvddv9/vishap/actions/workflows/ci.yml/badge.svg)](https://github.com/dvddv9/vishap/actions/workflows/ci.yml)
 [![Docs](https://github.com/dvddv9/vishap/actions/workflows/docs.yml/badge.svg)](https://dvddv9.github.io/vishap/)
-[![Version](https://img.shields.io/badge/version-7.4.6-blue)](https://github.com/dvddv9/vishap/releases)
+[![Version](https://img.shields.io/badge/version-7.4.7-blue)](https://github.com/dvddv9/vishap/releases)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
 > 🐉 **Vishap** — 6-stage LLM pipeline for analyzing engineering materials (code, spec, logs, config, data).
@@ -17,13 +17,18 @@
 
 | Service | URL | Stack |
 |---------|-----|-------|
-| **Frontend** | [vishap-ui.onrender.com](https://vishap-ui.onrender.com) | Next.js 16 · Node 24 |
-| **Backend** | [vishap-zwpx.onrender.com](https://vishap-zwpx.onrender.com) | FastAPI · Docker |
-| **API docs** | [/docs](https://vishap-zwpx.onrender.com/docs) | Swagger UI |
+| **Hosted** | [vishap-hub.onrender.com](https://vishap-hub.onrender.com) | the analyser's rules run inside VishapHub; the standalone frontend and backend services are no longer deployed (both answered 404 on 2026-11-02) |
 
 > ⚠️ Free tier: first request may take 30–50 s (cold start).
 
-## 🎉 What's new in v7.4.6
+## 🎉 Release notes
+
+### v7.4.7
+
+- Repository scans can audit supported dependency manifests for unpinned and suspicious sources offline, and optionally query registries / OSV (`VISHAP_DEPS_ONLINE=1`).
+- Secret checks remain offline unless `VISHAP_SECRET_LIVE_CHECK=1` is set; live validation supports GitHub, Slack and Stripe credential formats and sends each candidate only to its provider's read-only endpoint.
+
+### v7.4.6
 
 - **`/analyze` is None-safe again** — a stage that returns `None` no longer causes an HTTP 500 (the guard was reverted by mistake and is restored).
 - **CI** — stale Stripe tests removed, Docker smoke test fixed, UTF-8 BOM stripped from sources.
@@ -56,10 +61,13 @@ Previous: [v7.3.17](#previous-v7317)
 ## 🛠️ Features
 
 - **6-stage pipeline:** Orchestrator (0) → Scanner (1) → Analyst (2) → Researcher (3) → Synthesizer (4) → Transmitter (5), with four more passes in between: Translator (1.5), Red team (2.5), Tester (3.5), Fixer (4.5) - the translator and the fixer report `skipped` when they have nothing to work on. Redaction runs before stage 0 and the audit after stage 5. The risk verdict (`EMERGENCY` / `REQUIRES_REVIEW` / `SAFE`) is computed by rules in `src/pipeline/verdict.py`, not written by the model. Optional web search (Tavily or DeepSeek, off by default) runs before stage 2.
-- **Multi-language:** Python, Java, C, **JavaScript / TypeScript** (AST + taint patterns).
+- **Repository SAST:** Python, JavaScript / TypeScript, Java, C / C++, Go, PHP, Ruby, Rust, C#, Kotlin, Swift and Scala; plus SQL, shell, Terraform / HCL, YAML, Dockerfiles and logs. Analysis depth varies by target: only Python currently has AST taint and the new bounded inter-file taint pass; other targets use static rules. See [SAST coverage and limits](docs/sast-capabilities.md).
+- **Developer workflow:** GitHub PR comments and a `vishap/security` commit status (configure it as a required branch check to block merges); local VS Code / compatible-editor diagnostics through [the extension](integrations/vscode/README.md).
+- **Accuracy:** per-language public-set evidence is in `src/tools/quality.json`; use [the shared SARIF comparison guide](docs/sast-capabilities.md#comparing-accuracy) for Semgrep / CodeQL comparisons. No vendor-ranking claim is made from the current corpus.
 - **LLM backend:** any OpenAI-compatible endpoint via `CUSTOM_LLM_URL` / `CUSTOM_LLM_KEY` / `CUSTOM_LLM_MODEL` (Claude by default; `.env.example` also has DeepSeek, OpenAI, Groq and Ollama examples).
 - **Async API:** FastAPI + Celery workers (optional in-process fallback).
 - **Security:** HMAC-SHA256 for API keys (with pepper), Fernet for secrets.
+- **Dependency and secret checks:** optional online OSV / registry checks for supported dependency manifests (`VISHAP_DEPS_ONLINE=1`). Secret detection is offline by default; `VISHAP_SECRET_LIVE_CHECK=1` sends supported GitHub, Slack and Stripe credentials to their provider's read-only authentication endpoint. Live checks are opt-in; other credential formats only receive structural checks.
 - **Observability:** Structlog (JSON), Prometheus `/metrics`, OpenTelemetry traces.
 - **CI/CD:** GitHub Actions (tests, lint, docs deploy).
 - **Desktop:** Tauri app for Windows.

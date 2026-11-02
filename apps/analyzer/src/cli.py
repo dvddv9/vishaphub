@@ -274,7 +274,7 @@ def main():
     p_scan.add_argument("--baseline", metavar="FILE", help="Compare with a saved baseline: report only what is new/fixed")
     p_scan.add_argument("--save-baseline", metavar="FILE", help="Save the current findings as the baseline")
     p_scan.add_argument("--diff", metavar="FILE", help="Unified diff ('-' for stdin): keep only findings on added lines")
-    p_scan.add_argument("--deps", action="store_true", help="Audit pinned dependencies against OSV (needs network)")
+    p_scan.add_argument("--deps", action="store_true", help="Check dependency registries and OSV for repository manifests (needs network)")
     p_scan.add_argument("--sarif", metavar="FILE", help="Write SARIF (one location per file)")
     p_scan.add_argument("--json", metavar="FILE", help="Write the full result as JSON")
     p_scan.add_argument("--output", "-o", metavar="FILE", help="Write the Markdown report to a file")
