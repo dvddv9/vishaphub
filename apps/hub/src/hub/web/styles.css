@@ -718,3 +718,11 @@ html[data-palette="balanced"] body{background:#080a0e!important;color:var(--ink-
 html[data-palette="balanced"] .nav{background:rgba(8,10,14,.94)!important}
 html[data-palette="balanced"] textarea,html[data-palette="balanced"] input,html[data-palette="balanced"] .provider,html[data-palette="balanced"] .mode-select{background:#0b0e13!important;color:var(--ink)!important}
 html[data-palette="balanced"] .panel,html[data-palette="balanced"] .step3,html[data-palette="balanced"] .stats{background:#11151b!important}
+:root{--emerald:#ed8a43;--cyan:#dca06c;--violet:#cc7042;--accent:linear-gradient(120deg,#d77436 0%,#ed9148 55%,#c65b38 100%);--focus:#f0a265}
+::selection{background:rgba(237,138,67,.3);color:#fff}
+.brand b,.eyebrow,.num,.report-link,.block code{color:#ed8a43}
+.mark{color:#17110d!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 8px 22px -12px rgba(225,119,53,.45)}
+.btn{color:#17110d!important;background:var(--accent)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 10px 24px -16px rgba(225,119,53,.42)!important}
+.btn:hover{filter:brightness(1.08)}
+textarea:focus,input:focus,.magic-panel>#material:focus,.magic-panel>#spec:focus,.magic-panel>#question:focus{border-color:#df8545!important;box-shadow:0 0 0 3px rgba(223,133,69,.15)!important}
+.drop:hover,.drop.hot{border-color:#df8545!important}
