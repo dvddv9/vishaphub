@@ -115,6 +115,7 @@ def _evidence_block(fp: dict) -> str:
     patch_line = (f"diff <code>{e(str(patch.get('diff_sha256') or '')[:16])}</code> over "
                   f"{len(patch.get('files') or {})} file(s)") if patch.get("proposed") else "no patch"
     corrected = ev.get("corrected_version") or {}
+    final_version = ev.get("final_version") or {}
     corrected_status = "validated after Creator" if corrected.get("verified") else "not verified after Creator"
     corrected_line = (f"{corrected_status}; hash <code>{e(str(corrected.get('sha256') or '')[:16])}</code>"
                       if corrected.get("files") else "none")
@@ -139,6 +140,7 @@ def _evidence_block(fp: dict) -> str:
         f"<tr><td>model said</td><td>{model_line}</td></tr>"
         f"<tr><td>validator ran on</td><td>{ran_on}</td></tr>"
         f"<tr><td>creator output</td><td>{corrected_line}</td></tr>"
+        f"<tr><td>final generator output</td><td>{'proposed, not re-verified' if final_version.get('files') else 'none'}</td></tr>"
         f"<tr><td>validator after Creator</td><td>{creator_v_line}</td></tr>"
         f"<tr><td>tests that really ran</td><td><ul>{ran_rows}</ul></td></tr>"
         f"<tr><td>left unverified</td><td><ul>{unverified}</ul></td></tr>"
@@ -223,6 +225,10 @@ def report_page(record: dict, retention: str = "") -> str:
     corrected_block = (_block("Corrected version (validated after Creator)", "<pre><code>"
                               + e("\n\n".join(f"--- {name}\n{text}" for name, text in sorted(corrected.items())))
                               + "</code></pre>") if corrected else "")
+    final_version = result.get("final_version") or {}
+    final_block = (_block("Final generator version (not re-verified)", "<pre><code>"
+                          + e("\n\n".join(f"--- {name}\n{text}" for name, text in sorted(final_version.items())))
+                          + "</code></pre>") if final_version else "")
     missed = "".join(f"<li>{e(str(item))}</li>" for item in not_checked) or "<li>-</li>"
     rule_chips = "".join(
         f"<span>{e(str(name))} <code>{e(str(version))}</code></span>"
@@ -257,6 +263,7 @@ def report_page(record: dict, retention: str = "") -> str:
 {_block("Findings", f"<ul>{found}</ul>")}
 {patch_block}
 {corrected_block}
+{final_block}
 {_block("Not checked", f"<ul>{missed}</ul>")}
 {_block("Rules that judged", f'<div class="meta-row">{rule_chips}</div>')}
 """

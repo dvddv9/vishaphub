@@ -80,6 +80,7 @@ class RunResult:
     findings: list = field(default_factory=list)
     patch: dict = field(default_factory=dict)
     corrected_version: dict = field(default_factory=dict)
+    final_version: dict = field(default_factory=dict)
     questions: list = field(default_factory=list)
     proof: list = field(default_factory=list)
     model: str = ""
@@ -112,6 +113,7 @@ class RunResult:
             "findings": self.findings,
             "patch": self.patch,
             "corrected_version": self.corrected_version,
+            "final_version": self.final_version,
             "questions": self.questions,
             "proof": self.proof,
             "model": self.model,
@@ -193,6 +195,10 @@ def _not_checked(plan: Plan, checks: dict, has_proof: bool, model_trouble: str =
         missing.append("nothing was generated: no generator stage in this plan")
     if Stage.CREATOR not in stages:
         missing.append("no corrected version was produced: no creator stage in this plan")
+    if Stage.FINAL_GENERATOR in stages and not checks.get("final_generator"):
+        missing.append("no final version was produced after the Creator validation")
+    if checks.get("final_generator") and not checks["final_generator"].get("verified"):
+        missing.append("the final generator version was not re-verified after it was produced")
     if not (checks.get("validator") or {}).get("checks"):
         missing.append("the validator's stage-by-stage detail is not in this answer")
     elif (checks.get("validator") or {}).get("status") == "NOT_RUN":
@@ -260,10 +266,12 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
     strictest_verdict: str | None = None
     model_verdict = ""
     rules_verdict = ""
-    checks: dict = {"generator": None, "validator": None, "creator_validator": None, "analyser": None}
+    checks: dict = {"generator": None, "validator": None, "creator_validator": None,
+                    "final_generator": None, "analyser": None}
     answer: dict = {}
     creator_answer: dict = {}
     corrected_version: dict = {}
+    final_version: dict = {}
     model_trouble = ""
     previous: dict[str, str] = {}
     supplied_files = dict(files)
@@ -323,6 +331,42 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
                 trace.append(f"pass {pass_no} generator -> {model_verdict} ({len(patch)} file(s))")
                 emit("generator", {"stage": "generator", "verdict": model_verdict, "ok": True,
                                    "files": len(patch), "pass": pass_no})
+                continue
+
+            if stage is Stage.FINAL_GENERATOR:
+                if not corrected_version:
+                    steps.append(Step("final_generator", False, detail="no Creator version supplied"))
+                    return _error(steps, envelope.session_id, trace,
+                                  "final generation needs the corrected Creator version", plan_dict)
+                final_prompt = (
+                    "Return the final complete files after the corrected version has passed validation. "
+                    "Preserve the validated behavior and do not introduce new changes. Put every final "
+                    "complete file in the JSON patch. This final generator output is not verified again in "
+                    "this run, so do not claim it is verified.\n\n"
+                    "Validator result:\n" + json.dumps(checks.get("creator_validator") or {},
+                                                          ensure_ascii=False, default=str)
+                )
+                material_for_final = "\n\n".join(
+                    f"--- {name}\n{text}" for name, text in sorted(corrected_version.items())
+                )
+                final_answer = proposal.propose(
+                    material=material_for_final,
+                    spec=str(spec or "") if not isinstance(spec, dict) else json.dumps(spec, ensure_ascii=False),
+                    question=final_prompt, api_key=api_key, model=model, preset=preset,
+                )
+                final_version = dict(final_answer.get("patch") or {}) if final_answer.get("ok") else {}
+                if not final_version:
+                    error = final_answer.get("error") or "the final generator returned no files"
+                    steps.append(Step("final_generator", False, detail=error))
+                    return _error(steps, envelope.session_id, trace,
+                                  "final generator did not return a final version", plan_dict)
+                checks["final_generator"] = {"model": final_answer.get("model", ""),
+                                              "files": len(final_version), "verified": False}
+                steps.append(Step("final_generator", True,
+                                  detail=f"{len(final_version)} final file(s) · not re-verified"))
+                trace.append(f"pass {pass_no} final_generator -> {len(final_version)} final file(s), not re-verified")
+                emit("final_generator", {"stage": "final_generator", "ok": True,
+                                          "files": len(final_version), "verified": False, "pass": pass_no})
                 continue
 
             if stage is Stage.VALIDATOR:
@@ -594,6 +638,7 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
         agreement=overlap,
         patch=final_patch,
         corrected_version=corrected_version,
+        final_version=final_version,
         questions=answer.get("questions") or [],
         proof=answer.get("proof") or [],
         model=answer.get("model", ""),
@@ -612,7 +657,7 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
         steps=[s.as_dict() for s in steps],
         evidence=evidence_mod.build(
             supplied_files=supplied_files, checked_files=files, patch=result.patch,
-            corrected_version=corrected_version, checks=checks, answer=answer,
+            corrected_version=corrected_version, final_version=final_version, checks=checks, answer=answer,
             model_verdict=model_verdict, rules=fingerprint.rules_version(), attempts=passes_run,
             stop_reason=(stop_reason or f"the plan ran to its end ({passes_run} pass(es))")
             + (f"; fix loop: {fix_stop}" if fix_stop else ""),

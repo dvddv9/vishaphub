@@ -18,6 +18,7 @@ class Stage(str, Enum):
     ANALYSER = "analyser"
     VALIDATOR = "validator"
     CREATOR = "creator"
+    FINAL_GENERATOR = "final_generator"
 
 
 ROUTES: dict[str, tuple[Stage, ...]] = {
@@ -31,13 +32,14 @@ ROUTES: dict[str, tuple[Stage, ...]] = {
     "review": (Stage.GENERATOR, Stage.ANALYSER),
     "generate+validate": (Stage.GENERATOR, Stage.VALIDATOR),
     "generate+validate+analyse": (Stage.ANALYSER, Stage.GENERATOR, Stage.ANALYSER,
-                                  Stage.VALIDATOR, Stage.CREATOR, Stage.VALIDATOR),
+                                  Stage.VALIDATOR, Stage.CREATOR, Stage.VALIDATOR,
+                                  Stage.FINAL_GENERATOR),
     "validate+analyse": (Stage.VALIDATOR, Stage.ANALYSER),
 }
 
 #: The only order the hub ever executes, regardless of how the request was written.
 CANONICAL_ORDER = (Stage.ANALYSER, Stage.GENERATOR, Stage.ANALYSER,
-                   Stage.VALIDATOR, Stage.CREATOR, Stage.VALIDATOR)
+                   Stage.VALIDATOR, Stage.CREATOR, Stage.VALIDATOR, Stage.FINAL_GENERATOR)
 
 MAX_ITERATIONS = 3
 
