@@ -1,4 +1,4 @@
-<img width="3327" height="1683" alt="Снимок экрана3 2026-10-29 201505" src="https://github.com/user-attachments/assets/b2a21529-e613-4d23-9dc1-9590524f06c7" />
+
 
 
 # VishapHub
