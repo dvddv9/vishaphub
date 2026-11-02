@@ -38,19 +38,18 @@
   <main id="main">
     <section class="hero" aria-labelledby="hero-title">
       <div class="hero-copy">
-        <span class="badge"><span class="dot" aria-hidden="true"></span>security · generation · security · validation · correction</span>
+        <span class="badge"><span class="dot" aria-hidden="true"></span>analyser &rarr; generator &rarr; analyser &rarr; validator &rarr; creator</span>
         <h1 id="hero-title" data-i18n-html="title">Carry the request.<br><em>Prove</em> the result.</h1>
         <p class="lead" data-i18n="lead">
-          Paste code, a spec or logs. I screen supplied code, generate from the spec, screen
-          the generated code, then validate it against that spec.
-          I ask only what is missing and return what the pipeline said.
+          Paste code, a spec or logs. The pipeline screens your input, generates from the spec,
+          screens the generated code, validates it, then returns a corrected version from Creator.
         </p>
         <div class="cta">
           <button type="button" class="btn" id="tryExample" data-i18n="try">Try with an example</button>
           <button type="button" class="btn ghost" id="focusComposer" data-i18n="talk">Talk to Vishap</button>
           <a href="/runs" class="cta-link" data-i18n="recent">recent runs</a>
         </div>
-        <p class="meta" data-i18n="meta">5 stages · 6 validator checks · strictest verdict wins · audit trail</p>
+        <p class="meta" data-i18n="meta">Creator returns corrected files ? 5 stages ? 6 validator checks ? audit trail</p>
         <dl class="stats">
           <div class="stat"><dt>generator</dt><dd>spec → code</dd></div>
           <div class="stat"><dt>validator</dt><dd>6 checks</dd></div>
@@ -89,6 +88,10 @@
             <div>
               <p class="label">Trace</p>
               <p class="small mt-xs">pass 1 analyser → generator → analyser → validator → creator</p>
+            <div>
+              <p class="label">Creator output</p>
+              <div class="row mt-sm"><span class="tag ok">corrected files</span><span class="tag">not re-verified</span></div>
+            </div>
             </div>
           </div>
         </div>
@@ -124,8 +127,8 @@
         </li>
         <li class="step3">
           <span class="num" aria-hidden="true">5</span>
-          <h3 data-i18n="s5t">Create fix</h3>
-          <p data-i18n="s5p">The creator returns a corrected version, which is not re-verified here.</p>
+          <h3 data-i18n="s5t">Creator / corrected version</h3>
+          <p data-i18n="s5p">Creator returns corrected files from the findings. The final version is not re-verified in this run.</p>
         </li>
       </ol>
       <p class="how-foot" data-i18n="howFoot">The strictest verdict wins. Whatever was not checked is listed, not hidden.</p>
