@@ -14,6 +14,7 @@
 <link rel="canonical" href="/">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/styles.css">
+<script src="/palette.js" defer></script>
 <script src="/app.js" defer></script>
 </head>
 <body>
@@ -30,6 +31,14 @@
     <span class="spacer"></span>
     <span class="pill live"><span class="dot" aria-hidden="true"></span>live</span>
     <button type="button" class="btn ghost sm" id="lang" aria-label="Switch language">RU</button>
+    <label class="palette-control">
+      <span class="sr-only" data-i18n="paletteLabel">Color palette</span>
+      <select id="palette" class="palette-select" data-i18n-aria="paletteLabel" aria-label="Color palette">
+        <option value="violet">Violet</option>
+        <option value="ocean">Ocean</option>
+        <option value="sunset">Sunset</option>
+      </select>
+    </label>
     <button type="button" class="btn ghost sm" id="say" aria-pressed="false">▶ hear me</button>
   </div>
 </header>

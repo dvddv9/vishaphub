@@ -60,6 +60,7 @@ WEB = os.path.join(os.path.dirname(__file__), "web")
 STATIC = {
     "/styles.css": ("styles.css", "text/css", True),
     "/app.js": ("app.js", "application/javascript", True),
+    "/palette.js": ("palette.js", "application/javascript", True),
     "/favicon.svg": ("favicon.svg", "image/svg+xml", True),
     "/greeting.mp3": ("greeting.mp3", "audio/mpeg", True),
 }

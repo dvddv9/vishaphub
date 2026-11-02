@@ -83,6 +83,7 @@ const I18N = {
     creatorRescanDone: "Static rescan complete: {n} finding(s). No tests or runtime checks were run.",
     creatorRescanFailed: "Static rescan could not be completed: {error}",
     creatorRescanReport: "Open static rescan report",
+    paletteLabel: "Color palette",
   },
   ru: {
     title: "Принять запрос.<br><em>Доказать</em> результат.",
@@ -166,6 +167,7 @@ const I18N = {
     creatorRescanDone: "Статическая проверка завершена: находок — {n}. Тесты и поведение программы не проверялись.",
     creatorRescanFailed: "Не удалось выполнить статическую проверку: {error}",
     creatorRescanReport: "Открыть отчёт статической проверки",
+    paletteLabel: "Цветовая палитра",
   }
 };
 let lang = localStorage.getItem("vishap_lang")
@@ -695,6 +697,15 @@ $("download").onclick = () => {
 setProgress({});
 applyLang();
 updateProjectSummary();
+const palette = $("palette");
+const allowedPalettes = ["violet", "ocean", "sunset"];
+palette.value = allowedPalettes.includes(document.documentElement.dataset.palette)
+  ? document.documentElement.dataset.palette : "violet";
+palette.onchange = () => {
+  const selected = allowedPalettes.includes(palette.value) ? palette.value : "violet";
+  document.documentElement.dataset.palette = selected;
+  localStorage.setItem("vishap_palette", selected);
+};
 $("lang").onclick = () => {
   lang = lang === "ru" ? "en" : "ru";
   localStorage.setItem("vishap_lang", lang);

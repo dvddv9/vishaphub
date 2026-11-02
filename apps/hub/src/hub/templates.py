@@ -29,6 +29,7 @@ def layout(title: str, body: str, description: str = "") -> str:
 {desc}
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/styles.css">
+<script src="/palette.js" defer></script>
 </head><body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="nav"><div class="nav-in">
