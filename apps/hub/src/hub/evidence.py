@@ -65,7 +65,8 @@ def _fix_check(pc: dict | None) -> dict | None:
             "rules": pc.get("rules") or {}, "validator": {"verdict": v.get("verdict", ""), "tests_ran": bool(v.get("tests_ran"))}}
 
 
-def build(*, supplied_files: dict, checked_files: dict, patch: dict, checks: dict, answer: dict, model_verdict: str,
+def build(*, supplied_files: dict, checked_files: dict, patch: dict, corrected_version: dict | None = None,
+          checks: dict, answer: dict, model_verdict: str,
           rules: dict, attempts: int, stop_reason: str, not_checked: list, patch_check: dict | None = None, fix_attempts: list | None = None, external: list | None = None, question: str = "") -> dict:
     validator = checks.get("validator") or {}
     analyser = checks.get("analyser") or {}
@@ -96,6 +97,10 @@ def build(*, supplied_files: dict, checked_files: dict, patch: dict, checks: dic
                         "validator": sum(len(c.get("findings") or []) for c in validator.get("checks", []))},
         "not_checked": list(not_checked or []),
     }
+    if corrected_version:
+        corrected_files = file_hashes(corrected_version)
+        out["corrected_version"] = {"files": corrected_files, "sha256": sha(corrected_files),
+                                    "verified": False}
     if out["model"]["consulted"]:
         # what the model said decided the verdict, so the record holds the content and not only the count:
         # two runs whose answers differ must not share a fingerprint. Only when present, so a run without

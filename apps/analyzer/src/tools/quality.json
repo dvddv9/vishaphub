@@ -3,27 +3,38 @@
  "frozen_ids_sha256": "65bf534b5830d412480919303bfab44658db9353618fcec2580b05959c5dcef0",
  "keyed_by": "the language the engine detects when text is pasted without a file name",
  "languages": {
-  "javascript": {
-   "dangerous": 7,
-   "safe": 1,
-   "false_safe": 4,
-   "critical_false_safe": 1,
-   "false_safe_upper_95": 0.8418,
-   "review_burden": 0.0,
+  "java": {
+   "dangerous": 132,
+   "safe": 132,
+   "false_safe": 0,
+   "critical_false_safe": 0,
+   "false_safe_upper_95": 0.0283,
+   "review_burden": 0.977,
+   "measured": true,
+   "safe_allowed": true,
+   "why": "passed G1 and G2"
+  },
+  "php": {
+   "dangerous": 38,
+   "safe": 18,
+   "false_safe": 21,
+   "critical_false_safe": 4,
+   "false_safe_upper_95": 0.6985,
+   "review_burden": 0.278,
    "measured": false,
    "safe_allowed": false,
-   "why": "unmeasured: 7 dangerous and 1 safe examples, 20 and 20 are needed"
+   "why": "unmeasured: 38 dangerous and 18 safe examples, 20 and 20 are needed"
   },
   "python": {
-   "dangerous": 205,
-   "safe": 135,
-   "false_safe": 146,
-   "critical_false_safe": 27,
-   "false_safe_upper_95": 0.7698,
-   "review_burden": 0.104,
-   "measured": true,
+   "dangerous": 71,
+   "safe": 2,
+   "false_safe": 12,
+   "critical_false_safe": 0,
+   "false_safe_upper_95": 0.2726,
+   "review_burden": 1.0,
+   "measured": false,
    "safe_allowed": false,
-   "why": "G1 failed: 27 critical example(s) got SAFE"
+   "why": "unmeasured: 71 dangerous and 2 safe examples, 20 and 20 are needed"
   }
  }
 }

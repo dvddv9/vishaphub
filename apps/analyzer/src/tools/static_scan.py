@@ -69,6 +69,39 @@ RULES: tuple[Rule, ...] = (
     _r("sqli-fstring", "SQL query built with an f-string / template literal", "critical", "CWE-89",
        r"""(?i)\.(execute|executemany|query|raw)\s*\(\s*(f["']|`[^`]*\$\{)""",
        "Pass user data as bound parameters, never interpolate it into the SQL text."),
+    _r("java-sql-execution-review", "Java SQL execution requires a parameterization review", "medium", "CWE-89",
+       r"""\b(?:executeQuery|executeUpdate)\s*\(""",
+       "Use PreparedStatement placeholders for values; review SQL assembled before this call.", _JAVA),
+    _r("java-ldap-review", "Java LDAP search requires a filter-injection review", "medium", "CWE-90",
+       r"""(?is)(?:javax\.naming\.directory|DirContext|LdapContext)[\s\S]{0,1800}?\.search\s*\(""",
+       "Build LDAP filters with escaping or a safe query API; do not concatenate request values.", _JAVA),
+    _r("java-ldap-filter-review", "Java LDAP filter is assembled as text", "medium", "CWE-90",
+       r"""(?i)\b(?:search_?)?filter\s*=\s*[^;]*(?:\+|request|parameter)""",
+       "Use a parameterized LDAP filter or escape filter metacharacters in every untrusted value.", _JAVA),
+    _r("java-path-review", "Java file paths require a traversal review", "medium", "CWE-22",
+       r"""\bnew\s+(?:java\.io\.)?File\s*\(|\bPaths\.get\s*\(""",
+       "Resolve user-controlled paths against a fixed base directory and verify the final path stays inside it.", _JAVA),
+    _r("java-stream-path-review", "Java file stream opens a computed path", "medium", "CWE-22",
+       r"""\b(?:FileInputStream|FileOutputStream|RandomAccessFile)\s*\(\s*[A-Za-z_$]""",
+       "Canonicalize the path and enforce an allowed base directory before opening the file.", _JAVA),
+    _r("java-cookie-review", "Java cookie flags require a security review", "low", "CWE-614",
+       r"""\bnew\s+(?:javax\.servlet\.http\.)?Cookie\s*\(""",
+       "Set Secure, HttpOnly, and an appropriate SameSite policy before sending the cookie.", _JAVA),
+    _r("java-xss-review", "Java response output requires an HTML-escaping review", "medium", "CWE-79",
+       r"""\bresponse\.getWriter\s*\(\s*\)\s*\.\s*(?:print|println|printf|write)\s*\(""",
+       "HTML-encode untrusted values for their output context before writing the response.", _JAVA),
+    _r("java-xpath-review", "Java XPath evaluation requires an injection review", "medium", "CWE-643",
+       r"""\bXPath(?:Expression)?\b[\s\S]{0,1200}?\.evaluate\s*\(""",
+       "Use variable resolvers or safely escaped XPath variables instead of concatenating input.", _JAVA),
+    _r("java-digest-review", "Java digest algorithm requires a cryptographic review", "low", "CWE-327",
+       r"""\bMessageDigest\.getInstance\s*\(""",
+       "Use SHA-256 or stronger for integrity and a password hashing function for credentials.", _JAVA),
+    _r("java-redirect-review", "Java redirect target requires an allow-list review", "medium", "CWE-601",
+       r"""\b(?:response|resp)\.sendRedirect\s*\(""",
+       "Allow-list redirect destinations and reject external or protocol-relative URLs.", _JAVA),
+    _r("java-session-boundary-review", "Java session state uses a caller-controlled boundary", "medium", "CWE-501",
+       r"""\.(?:putValue|setAttribute)\s*\(""",
+       "Verify session keys and values are server-controlled and authorized for this user.", _JAVA),
     _r("cmd-injection-py", "OS command executed from Python", "high", "CWE-78",
        r"""\b(os\.system|os\.popen|commands\.getoutput)\s*\(|"""
        r"""\bsubprocess\.(call|run|Popen|check_output|check_call)\s*\(\s*(?!\[)""",
@@ -87,7 +120,7 @@ RULES: tuple[Rule, ...] = (
        r"""\b(child_process\.)?(exec|execSync|spawn|spawnSync)\s*\(\s*[`"'][^)]*(\$\{|["']\s*\+)""",
        "Use execFile/spawn with an argument array and no shell; validate input.", _JS),
     _r("cmd-injection-java", "Runtime.exec / ProcessBuilder with dynamic input", "high", "CWE-78",
-       r"""Runtime\.getRuntime\(\)\.exec\s*\(|new\s+ProcessBuilder\s*\(""",
+       r"""Runtime\.getRuntime\(\)\.exec\s*\(|Runtime\.getRuntime\s*\(\s*\)|new\s+ProcessBuilder\s*\(""",
        "Pass fixed argument arrays, never a concatenated command string; allow-list inputs.", _JAVA),
     _r("cmd-injection-c", "system()/popen() call", "high", "CWE-78",
        r"""\b(system|popen|execl|execlp|execvp)\s*\(""",
@@ -97,6 +130,21 @@ RULES: tuple[Rule, ...] = (
     _r("cmd-injection-php", "Shell command executed from PHP", "high", "CWE-78",
        r"""(?<![\w$>:])(system|exec|shell_exec|passthru|popen|proc_open|pcntl_exec)\s*\((?![^\n]*escapeshell(?:arg|cmd)\s*\()""",
        "Avoid the shell; if a command is unavoidable, pass only escapeshellarg()-escaped values from an allow-list.", _PHP),
+    _r("php-sqli-review", "PHP database query requires a parameterization review", "medium", "CWE-89",
+       r"""(?i)(?:mysqli_query|mysql_query|->(?:query|exec))\s*\(""",
+       "Use prepared statements and bound parameters for every value from a request.", _PHP),
+    _r("php-xss-review", "PHP output requires an HTML-escaping review", "medium", "CWE-79",
+       r"""(?i)\b(?:echo|print)\s*(?:\(?\s*)\$_(?:GET|POST|REQUEST|COOKIE)\b""",
+       "Escape untrusted output with htmlspecialchars using the correct encoding and quote flags.", _PHP),
+    _r("php-file-path-review", "PHP file access requires a path traversal review", "medium", "CWE-22",
+       r"""(?i)\b(?:include|include_once|require|require_once|readfile|file_get_contents|fopen)\s*\([^\n)]*\$_(?:GET|POST|REQUEST|COOKIE)""",
+       "Resolve input against an allowed base directory and verify the canonical path before access.", _PHP),
+    _r("php-weak-hash-review", "PHP uses a legacy hash function", "medium", "CWE-327",
+       r"""(?i)\b(?:md5|sha1)\s*\(""",
+       "Use a password hashing API for passwords and SHA-256 or stronger for integrity checks.", _PHP),
+    _r("php-weak-random-review", "PHP uses a non-cryptographic random source", "low", "CWE-338",
+       r"""\b(?:rand|mt_rand)\s*\(""",
+       "Use random_int or random_bytes for tokens, keys, and other security-sensitive values.", _PHP),
     _r("eval-php", "eval() of dynamic code", "critical", "CWE-95",
        r"""(?<![\w$>:])eval\s*\(""",
        "Never evaluate strings as code; parse data with json_decode.", _PHP),
@@ -130,6 +178,9 @@ RULES: tuple[Rule, ...] = (
     _r("ssti", "Server-side template built from a string", "high", "CWE-1336",
        r"""render_template_string\s*\(|Template\s*\([^)]*\)\s*\.render""",
        "Render fixed template files and pass data as context variables.", _PY),
+    _r("jinja-autoescape-review", "Jinja2 environment requires an autoescape review", "medium", "CWE-79",
+       r"""(?:jinja2\.)?Environment\s*\(""",
+       "Confirm autoescape is enabled for every HTML template; select_autoescape is safer than relying on defaults.", _PY),
     _r("path-traversal", "File path built from input without normalization", "medium", "CWE-22",
        r"""open\s*\([^)]*\+|open\s*\([^)]*\.\.[/\\]|os\.path\.join\s*\([^)]*(request|input|argv|params)""",
        "Resolve the path and verify it stays inside an allowed base directory.", _PY),
@@ -152,6 +203,26 @@ RULES: tuple[Rule, ...] = (
     _r("deser-pickle", "Unsafe deserialization (pickle / marshal / shelve)", "critical", "CWE-502",
        r"""\b(pickle|cPickle|dill|marshal|shelve)\.(loads?|Unpickler)\s*\(""",
        "Never unpickle untrusted data; use JSON or a schema-validated format.", _PY),
+    _r("deser-python-ecosystem", "Unsafe object deserialization", "high", "CWE-502",
+       r"""\b(?:shelve\.open|jsonpickle\.(?:decode|loads?)|(?:pandas|pd)\.read_pickle|"""
+       r"""torch\.(?:load|serialization\.load))\s*\(""",
+       "Do not deserialize untrusted objects; prefer schema-validated data and restricted model weights.", _PY),
+    _r("remote-model-code", "Model loader permits remote code execution", "high", "CWE-829",
+       r"""(?is)\bfrom_pretrained\s*\([^)]{0,2000}?\btrust_remote_code\s*=\s*True""",
+       "Keep trust_remote_code disabled unless the pinned repository and every loaded file have been reviewed.", _PY),
+    _r("python-xml-parser-review", "XML parsing requires external-entity protection", "medium", "CWE-611",
+       r"""\b(?:xml\.etree(?:\.ElementTree)?|xml\.sax|xml\.dom\.(?:minidom|expatbuilder)|"""
+       r"""xml\.parsers\.expat|ElementTree\.(?:parse|fromstring)|ET\.(?:parse|fromstring))\b""",
+       "Disable DTD and external entity processing or use defusedxml for untrusted XML.", _PY),
+    _r("python-network-timeout-review", "Network request requires a finite timeout", "low", "CWE-400",
+       r"""(?is)\b(?:requests|httpx)\.(?:get|post|put|delete|head|request)\s*\((?:(?!\btimeout\s*=)[^)]{0,1000})\)""",
+       "Set a finite connect and read timeout so a remote peer cannot hold the process indefinitely.", _PY),
+    _r("python-dynamic-import-review", "Dynamic module loading requires an input review", "low", "CWE-470",
+       r"""\b(?:__import__|importlib\.import_module)\s*\(""",
+       "Use a fixed allow-list of module names; never select an import target directly from request data.", _PY),
+    _r("python-process-api-review", "Direct process APIs require an argument and path review", "low", "CWE-78",
+       r"""\bos\.(?:exec\w*|spawn\w*|startfile|fork|forkpty)\s*\(""",
+       "Use a fixed executable and argument list; validate inputs and avoid PATH-dependent resolution.", _PY),
     _r("deser-yaml", "yaml.load without a safe loader", "high", "CWE-502",
        r"""yaml\.load\s*\((?![^)]*Loader\s*=\s*(yaml\.)?(Safe|CSafe)Loader)""",
        "Use yaml.safe_load.", _PY),
@@ -161,18 +232,51 @@ RULES: tuple[Rule, ...] = (
     _r("deser-php", "PHP unserialize() on input", "high", "CWE-502",
        r"""\bunserialize\s*\(""",
        "Use json_decode; never unserialize untrusted data.", _PHP),
+    _r("xmlrpc-server-review", "XML-RPC server requires an authentication and exposure review", "medium", "CWE-306",
+       r"""\b(?:SimpleXMLRPCServer|CGIXMLRPCRequestHandler)\s*\(""",
+       "Check authentication, authorization, request size limits, and whether the endpoint is network-exposed.", _PY),
+    _r("cgi-handler-review", "CGI handler requires an environment and proxy review", "medium", "CWE-441",
+       r"""\b(?:CGIHandler|CGIScript|CGIDirectory)\s*\(""",
+       "Review inherited HTTP_* variables and proxy handling before exposing this CGI endpoint.", _PY),
+    _r("tar-extractall-review", "Archive extraction requires path traversal protection", "high", "CWE-22",
+       r"""\b(?:tarfile\.)?extractall\s*\(""",
+       "Use tarfile's data filter or validate every member path and link before extraction.", _PY),
+    _r("plain-telnet", "Telnet sends credentials and data without encryption", "high", "CWE-319",
+       r"""\btelnetlib\.Telnet\s*\(""",
+       "Replace Telnet with an authenticated encrypted protocol such as SSH.", _PY),
+    _r("plain-ftp", "FTP sends credentials and data without encryption", "high", "CWE-319",
+       r"""(?:\bftplib\.)?\bFTP\s*\(""",
+       "Use FTP_TLS with certificate verification or an encrypted transfer protocol.", _PY),
+    _r("chmod-permission-review", "File permissions are changed; verify they remain restrictive", "low", "CWE-732",
+       r"""\bos\.chmod\s*\(""",
+       "Check the requested mode against the file's purpose; avoid granting group or world write/execute access.", _PY),
+    _r("paramiko-hostkey-review", "SSH host keys are not verified", "high", "CWE-295",
+       r"""\b(?:AutoAddPolicy|WarningPolicy)\s*\(?\s*\)?""",
+       "Load known host keys and reject unknown keys instead of accepting or merely warning about them.", _PY),
+    _r("weak-tls-version", "Deprecated SSL/TLS protocol version", "high", "CWE-327",
+       r"""(?i)\b(?:ssl\.)?PROTOCOL_SSLv[23]\b|\b(?:ssl\.)?PROTOCOL_TLSv1(?:_1)?\b|"""
+       r"""\bSSL\.(?:SSLv[23]|TLSv1(?:_1)?)_METHOD\b""",
+       "Require TLS 1.2 or newer and use the library's secure default context.", _PY),
+    _r("weak-python-key-size", "Cryptographic key size is below current minimums", "high", "CWE-326",
+       r"""(?i)\b(?:key_size\s*=\s*(?:512|1024)|\w*(?:RSA|DSA)\w*\.generate\s*\(\s*(?:bits\s*=\s*)?(?:512|1024)|"""
+       r"""(?:rsa|dsa)\.generate_private_key\s*\([^)]*?key_size\s*=\s*(?:512|1024)|\bSECT(?:163|233)\w*)""",
+       "Use at least 2048-bit RSA/DSA keys and current elliptic curves.", _PY),
+    _r("unauthenticated-cipher-mode", "Cipher mode does not provide authenticated encryption", "medium", "CWE-327",
+       r"""\bAES\.MODE_(?:CBC|CFB|OFB)\b""",
+       "Use an authenticated mode such as AES-GCM or ChaCha20-Poly1305 and verify the authentication tag.", _PY),
     # ---- crypto / secrets -------------------------------------------------
     _r("weak-hash", "Weak hash (MD5 / SHA-1)", "medium", "CWE-327",
-       r"""(?i)\b(hashlib\.(md5|sha1)|MessageDigest\.getInstance\(\s*["'](MD5|SHA-?1)["']|createHash\(\s*["'](md5|sha1)["']|\bMD5\s*\(|\bSHA1\s*\()""",
+       r"""(?i)\b(hashlib\.(md5|sha1)|hashlib\.new\s*\(\s*["'](?:md4|md5|sha-?1|sha1)["']|MessageDigest\.getInstance\(\s*["'](MD5|SHA-?1)["']|createHash\(\s*["'](md5|sha1)["']|\bMD5\s*\(|\bSHA1\s*\()""",
        "Use SHA-256+ for integrity and bcrypt/scrypt/argon2 for passwords."),
     _r("weak-cipher", "Weak cipher or mode (DES / RC4 / ECB)", "medium", "CWE-327",
        r"""(?i)\b(DES|RC4|Blowfish)\b\s*[.(]|MODE_ECB|["']AES/ECB|["']DES["']""",
        "Use AES-GCM or ChaCha20-Poly1305."),
     _r("insecure-random", "Non-cryptographic random (check it is not used for tokens / keys)", "low", "CWE-338",
-       r"""\brandom\.(random|randint|choice|randrange)\s*\(|Math\.random\s*\(|\bnew\s+Random\s*\(|\brand\s*\(\s*\)""",
+       r"""\brandom\.(random|randint|choice|randrange)\s*\(|Math\.random\s*\(|\bnew\s+(?:java\.util\.)?Random\s*\(|\brand\s*\(\s*\)""",
        "Use secrets (Python), crypto.randomBytes (Node) or SecureRandom (Java) for tokens and keys."),
     _r("tls-verify-off", "TLS certificate verification disabled", "high", "CWE-295",
-       r"""verify\s*=\s*False|rejectUnauthorized\s*:\s*false|InsecureSkipVerify\s*:\s*true|CERT_NONE|NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*["']?0""",
+       r"""verify\s*=\s*False|rejectUnauthorized\s*:\s*false|InsecureSkipVerify\s*:\s*true|CERT_NONE|"""
+       r"""ssl\._create_unverified_context\s*\(|NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*["']?0""",
        "Keep certificate verification on; pin or install the proper CA instead."),
     _r("secret-aws", "AWS access key id in source", "critical", "CWE-798",
        r"""\bAKIA[0-9A-Z]{16}\b""",
@@ -384,11 +488,18 @@ def detect_language(filename: str, code: str = "") -> str:
     if re.match(r"(?:[ \t]*(?:#[^\n]*|ARG[^\n]*)?\n)*[ \t]*FROM[ \t]+\S", head) and re.search(
             r"^[ \t]*(?:RUN|CMD|COPY|ADD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|USER|VOLUME|HEALTHCHECK)[ \t]", head, re.M):
         return "dockerfile"
+    # Strong syntax markers must win over Python/JavaScript keyword scores. Pasted
+    # Java and PHP often contain words such as "if", "import" or "return" that
+    # otherwise make the Python guess look more likely than it is.
+    if re.search(r"(?m)^\s*<\?php\b", head) or re.search(r"\$_(?:GET|POST|REQUEST|SERVER|COOKIE|FILES)\b", head):
+        return "php"
+    if re.search(r"(?m)^\s*(?:package|import)\s+(?:java|javax|jakarta)\.", head) or re.search(
+            r"\b(?:@Override|@WebServlet|public\s+(?:abstract\s+|final\s+)?(?:class|interface|enum|record)\b|"
+            r"public\s+static\s+void\s+main\s*\()", head):
+        return "java"
     py, js = _sniff_scores(head)
     if py > js:
         return "python"
-    if re.search(r"\bpublic\s+(class|interface)\b", head):
-        return "java"
     if re.search(r"#include\s*<", head):
         return "c"
     if js > py:
@@ -512,6 +623,22 @@ def scan_material(material: str, filename: str = "") -> dict:
                 m = rule.pattern.search(line)
                 if not m or (rule.id, i) in seen:
                     continue
+                # Avoid flagging an explicitly finite request timeout or a bound-parameter
+                # PreparedStatement as if each were missing its core safety control.
+                if rule.id == "python-network-timeout-review" and re.search(r"\btimeout\s*=", line):
+                    continue
+                if rule.id == "java-sql-execution-review":
+                    prepared = re.findall(
+                        r"\bPreparedStatement\s+(\w+)\s*=\s*[^;]*\bprepareStatement\s*\(([^;]*)\)",
+                        material, re.I,
+                    )
+                    safely_bound = any(
+                        "?" in sql and re.search(rf"\b{re.escape(name)}\.set\w+\s*\(", material)
+                        and re.search(rf"\b{re.escape(name)}\.execute(?:Query|Update)\s*\(", line)
+                        for name, sql in prepared
+                    )
+                    if safely_bound:
+                        continue
                 seen.add((rule.id, i))
                 item = {
                     "id": rule.id, "title": rule.title, "severity": rule.severity, "cwe": rule.cwe,

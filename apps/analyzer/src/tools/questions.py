@@ -96,6 +96,13 @@ def candidates(findings: list, code: str, scope: str = "") -> list:
     # a low finding is not worth a person's time unless the answer could make it a secret that matters
     out = [g for g in out if g["top_severity"] != "low" or g["kind"] == "secret_kind"]
     out.sort(key=lambda g: (-WEIGHT.get(g["top_severity"], 0), -len(g["finding_ids"]), g["question_id"]))
+    # A low-confidence credential can turn into a critical issue once identified. Keep
+    # one such question near the front instead of letting routine exposure questions
+    # consume the entire five-question budget.
+    secret = next((g for g in out if g["kind"] == "secret_kind"), None)
+    if secret and out.index(secret) >= MAX_QUESTIONS:
+        out.remove(secret)
+        out.insert(1 if out else 0, secret)
     return out
 
 

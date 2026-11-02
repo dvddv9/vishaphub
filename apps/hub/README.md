@@ -1,6 +1,6 @@
 # VishapHub
 
-The layer that carries a request between the client and three jobs:
+The layer that carries a request between the client and three services, used in five stages on the full build route:
 **generator** (code from a spec), **validator** (does the code match the promise),
 **analyser** (is it safe).
 
@@ -15,9 +15,11 @@ different tables and could disagree about the same material. Now there is one:
 
 ```
 POST /run  →  router (what was asked)  →  run_plan
+                                          ├── analyser   : screen supplied code before generation
                                           ├── generator  : the model proposes — a patch, findings, questions, proof
-                                          ├── validator  : six stages on the patch that was proposed
-                                          └── analyser   : patterns on the material AND on the proposed code
+                                          ├── analyser   : screen the generated code
+                                          ├── validator  : six stages on the generated code
+                                          └── creator    : propose a corrected version from the findings
                                          → verdicts.py: the strictest verdict wins
 ```
 
@@ -44,7 +46,7 @@ Three rules hold the whole thing together:
 | `validate` | validator |
 | `generate+validate` | generator → validator |
 | `validate+analyse` | validator → analyser |
-| `generate+validate+analyse` | generator → validator → analyser |
+| `generate+validate+analyse` | analyser → generator → analyser → validator → creator |
 | `review` | generator (the model reads the material) + analyser (the rules check it) |
 
 `POST /run` infers the intent when the client does not name one: spec + material means
@@ -69,7 +71,8 @@ about the model's own patch, a different question). Nothing is ever dropped by t
 
 Rules that matter:
 
-- **order is fixed**: generation, validation, security — dangerous code does not travel further;
+- **order is fixed**: analyse supplied code → generate → analyse generated code → validate → creator proposes a correction;
+  findings from both scans contribute to the final security result, and the correction is marked not re-verified;
 - **iterations** capped at 3, and only for multi-stage routes; stop early when the verdict stops improving;
 - **the generator runs once** — later passes re-check the same patch instead of paying the model again;
 - **partial runs are marked**: a single stage returns `partial: true` with a note, so the client never reads «done» where «not verified» is true.

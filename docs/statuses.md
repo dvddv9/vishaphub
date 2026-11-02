@@ -23,7 +23,7 @@ Ranked in `hub/verdicts.py`. The strictest wins. What stands behind it is named 
 
 | Verdict | Meaning |
 |---|---|
-| SAFE / PASS | the rules found nothing / the tests passed. Not a promise; the hub does not issue SAFE yet |
+| SAFE / PASS | the rules found nothing / the tests passed. Not a promise; rules-only SAFE is currently eligible for Java only |
 | NEEDS_REVIEW / REQUIRES_REVIEW | a person should read the findings |
 | FAIL | a broken promise: a check failed |
 | EMERGENCY | a security signal; it is never hidden by a failing test |

@@ -681,8 +681,7 @@ class Handler(BaseHTTPRequestHandler):
         if intent.strip().lower() == "review" and has_spec:
             # A caller who supplied a spec is asking for it to be checked, even on
             # the review route. Keep the model and rules review and add validation.
-            plan.stages = tuple(stage for stage in CANONICAL_ORDER
-                                if stage in (*plan.stages, Stage.VALIDATOR))
+            plan.stages = (*plan.stages, Stage.VALIDATOR)
             plan.partial = len(plan.stages) < len(CANONICAL_ORDER)
             plan.note = "the model and rules reviewed the material; the supplied spec was also validated"
         if intent.strip().lower() == "review" and not question.strip():
