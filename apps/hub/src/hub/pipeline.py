@@ -270,6 +270,8 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
         nonlocal strictest_verdict
         strictest_verdict = verdict if strictest_verdict is None else strictest(strictest_verdict, verdict)
 
+    analyser_pass_count = plan.stages.count(Stage.ANALYSER)
+    analyser_seen = 0
     for pass_no in range(1, int(plan.iterations) + 1):
         passes_run = pass_no
         current: dict[str, str] = {}
@@ -366,13 +368,19 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
                 continue
 
             if stage is Stage.ANALYSER:
-                # The first pass inspects caller input. The second inspects generated output;
-                # keep the two reports separate long enough to preserve both in the result.
-                before_generation = checks["generator"] is None
-                if before_generation:
+                # The full route has two separate passes: one for caller input and one
+                # for generated output. A single-pass review must still inspect its
+                # input after the model has answered; generation plans inspect both
+                # caller input and the proposed files in that same pass.
+                analyser_seen += 1
+                before_generation = (analyser_pass_count > 1
+                                     and (analyser_seen - 1) % analyser_pass_count == 0)
+                if analyser_pass_count > 1 and before_generation:
                     pieces = _analysis_pieces(material, supplied_files)
-                else:
+                elif analyser_pass_count > 1:
                     pieces = _analysis_pieces("", files)
+                else:
+                    pieces = _analysis_pieces(material, {**supplied_files, **files})
                 if not pieces:
                     steps.append(Step("analyser", False, detail="no material supplied"))
                     return _error(steps, envelope.session_id, trace,

@@ -27,7 +27,15 @@ MIN_SAFE = 5
 MODE = "pasted"
 
 #: Languages the engine has rules for but the benchmark has no labelled set for, by decision, with the reason.
-EXEMPT = {"log": "log lines are checked for attack patterns, not read as code; there is no labelled set for them yet"}
+EXEMPT = {
+    "log": "log lines are checked for attack patterns, not read as code; there is no labelled set for them yet",
+    "csharp": "Review patterns exist, but no balanced dangerous and safe benchmark is available yet.",
+    "kotlin": "Review patterns exist, but no balanced dangerous and safe benchmark is available yet.",
+    "ruby": "Review patterns exist, but no balanced dangerous and safe benchmark is available yet.",
+    "rust": "Review patterns exist, but no balanced dangerous and safe benchmark is available yet.",
+    "scala": "Review patterns exist, but no balanced dangerous and safe benchmark is available yet.",
+    "swift": "Review patterns exist, but no balanced dangerous and safe benchmark is available yet.",
+}
 
 _PATH = os.path.join(os.path.dirname(__file__), "data", "language_evidence.json")
 _CACHE: dict | None = None

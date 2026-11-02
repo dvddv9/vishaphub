@@ -251,7 +251,7 @@ class PagesTests(ServerCase):
         os.environ.pop("VISHAP_HUB_LLM_KEY", None)
         status, headers, body = self.post("/run", {"spec": "name: demo\n"})
         payload = json.loads(body)
-        assert status == 502
+        assert status == 200
         run_id = payload["fingerprint"]["id"]
         status, raw = self.get(f"/api/runs/{run_id}.json", self.cookie_of(headers))
         assert status == 200

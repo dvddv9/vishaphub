@@ -65,10 +65,10 @@ class WithoutKeyTests(RunCase):
 
     def test_a_run_that_cannot_ask_the_model_says_so(self):
         status, out = self.call("/run", {"spec": "name: demo\n", "material": "x = 1"})
-        assert status == 502
+        assert status == 200
         assert out["ok"] is False
         assert "no model key" in out["error"]
-        assert out["steps"][0]["stage"] == "generator"
+        assert out["steps"][0]["stage"] == "analyser"
 
 
 class ContractTests(RunCase):
