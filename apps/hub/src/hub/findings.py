@@ -54,9 +54,14 @@ def merge(model: list, rules: list) -> tuple[list[dict], dict]:
     paired: dict[str, str] = {}
 
     for rule_finding in rules:
-        if str(rule_finding.get("source") or "") != "material":
+        source = str(rule_finding.get("source") or "")
+        if source.startswith("patch:"):
             out.append({**rule_finding, "seen_by": ["rules"], "in_patch": True})
             in_patch += 1
+            continue
+        if source != "material":
+            out.append({**rule_finding, "seen_by": ["rules"]})
+            rules_only += 1
             continue
         family = _family(rule_finding)
         best: tuple[int, int] | None = None

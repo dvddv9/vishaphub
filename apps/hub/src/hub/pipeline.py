@@ -149,14 +149,14 @@ def _spec_for_validator(spec: object, files: dict) -> dict:
     return {"files": list(files)}
 
 
-def _analysis_pieces(material: str, patch: dict) -> list[tuple[str, str]]:
-    """Everything that must pass the analyser: the material and the proposed code."""
+def _analysis_pieces(material: str, files: dict, *, file_kind: str = "file") -> list[tuple[str, str]]:
+    """Everything that must pass the analyser, keeping supplied files distinct from generated patches."""
     pieces: list[tuple[str, str]] = []
     if material.strip():
         pieces.append(("material", material))
-    for name, text in sorted(patch.items()):
+    for name, text in sorted(files.items()):
         if text.strip():
-            pieces.append((f"patch:{name}", text))
+            pieces.append((f"{file_kind}:{name}", text))
     return pieces
 
 
@@ -378,9 +378,10 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
                 if analyser_pass_count > 1 and before_generation:
                     pieces = _analysis_pieces(material, supplied_files)
                 elif analyser_pass_count > 1:
-                    pieces = _analysis_pieces("", files)
+                    pieces = _analysis_pieces("", files, file_kind="patch")
                 else:
-                    pieces = _analysis_pieces(material, {**supplied_files, **files})
+                    pieces = _analysis_pieces(material, supplied_files)
+                    pieces.extend(_analysis_pieces("", files, file_kind="patch"))
                 if not pieces:
                     steps.append(Step("analyser", False, detail="no material supplied"))
                     return _error(steps, envelope.session_id, trace,
