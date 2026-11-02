@@ -11,6 +11,8 @@ dependencies = []
 full = ["pytest>=8", "ruff==0.17.3"]
 # team mode (VISHAP_HUB_DATABASE_URL): the only dependency the hub has, and only loaded when that is set
 postgres = ["psycopg[binary]>=3.2"]
+# installed in the production image for the signed GitHub App PR review route
+github = ["httpx>=0.27,<1", "PyJWT[crypto]>=2.9,<3"]
 
 [project.scripts]
 vishap-hub = "hub.cli:main"

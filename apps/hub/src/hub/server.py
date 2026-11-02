@@ -45,7 +45,7 @@ from . import (
 )
 from .chat import reply
 from .pipeline import run_plan
-from .router import RouteError, plan_for
+from .router import CANONICAL_ORDER, RouteError, Stage, plan_for
 from .store import RunStore, owner_key
 from .teamstore import DEFAULT_RETENTION_DAYS, Denied, TeamStore
 from .tts import available as tts_available
@@ -659,6 +659,9 @@ class Handler(BaseHTTPRequestHandler):
         question = str(body.get("question") or "")
         files = body.get("files") if isinstance(body.get("files"), dict) else {}
         has_spec = bool(spec_text.strip()) or (isinstance(spec_value, dict) and bool(spec_value))
+        if has_spec and not files and material.strip():
+            filename = str(body.get("filename") or "input.txt")
+            files = {filename: material}
         has_files = any(isinstance(value, str) and value.strip() for value in files.values())
         if not (material.strip() or has_spec or has_files or question.strip()):
             self._send(400, {"ok": False, "error": "generation needs a spec, material or a question; nothing was sent"})
@@ -675,6 +678,12 @@ class Handler(BaseHTTPRequestHandler):
         except (RouteError, ValueError) as exc:
             self._send(400, {"ok": False, "error": f"cannot route: {exc}"})
             return None
+        if intent.strip().lower() == "review" and has_spec:
+            # A caller who supplied a spec is asking for it to be checked, even on
+            # the review route. Keep the model and rules review and add validation.
+            plan.stages = (*plan.stages, Stage.VALIDATOR)
+            plan.partial = len(plan.stages) < len(CANONICAL_ORDER)
+            plan.note = "the model and rules reviewed the material; the supplied spec was also validated"
         if intent.strip().lower() == "review" and not question.strip():
             question = DEFAULT_REVIEW_QUESTION
         if (intent == "analyse" and material.strip() and question.strip()
@@ -784,7 +793,9 @@ class Handler(BaseHTTPRequestHandler):
         from . import ci as ci_mod
         # per request, and a copy: the store holds `payload` itself, and the decision is not part of the run
         answer = {**payload, "ci": ci_mod.decide(payload, *self._ci_opts)}
-        self._send(200 if payload["ok"] else 502, answer, extra=extra)
+        # The analysis completed; its risk verdict is data in the JSON contract, not
+        # a transport failure. Reserve HTTP errors for requests the hub could not process.
+        self._send(200, answer, extra=extra)
 
     def _stream(self, args: dict, owner: str = "", extra: dict | None = None, principal=None) -> None:
         """The same run, announced stage by stage: a minute of silence reads as broken."""
@@ -905,6 +916,33 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # stdlib naming
         path = self.path.split("?", 1)[0]
+
+        if path == "/webhook/github":
+            length = self._content_length()
+            self._body_taken = True
+            if length <= 0 or length > MAX_BODY:
+                self._send(400, {"ok": False, "error": f"body must be 1..{MAX_BODY} bytes"})
+                return
+            payload = self.rfile.read(length)
+            if not os.getenv("GITHUB_WEBHOOK_SECRET"):
+                self._send(503, {"ok": False, "error": "GitHub webhook is not configured"})
+                return
+            try:
+                from src.github_app.webhook import WebhookError, handle_payload
+                answer = handle_payload(payload, self.headers.get("X-GitHub-Event", ""),
+                                        self.headers.get("X-Hub-Signature-256", ""))
+            except ImportError:
+                self._send(503, {"ok": False, "error": "GitHub App dependencies are not installed"})
+                return
+            except WebhookError as exc:
+                self._send(exc.status_code, {"ok": False, "error": str(exc)})
+                return
+            except Exception as exc:  # noqa: BLE001 - GitHub retries 5xx; internal details stay in logs
+                print(f"GitHub webhook failed: {type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
+                self._send(500, {"ok": False, "error": "GitHub review could not be completed"})
+                return
+            self._send(200, answer)
+            return
 
         if path.startswith("/api/runs/") and path.endswith(("/accept", "/unaccept")):
             self._accept(path)

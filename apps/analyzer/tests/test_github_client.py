@@ -20,23 +20,31 @@ def test_get_installation_token():
 
 
 def test_post_pr_comment():
-    with patch("src.github_app.client.httpx.post") as post:
+    with patch("src.github_app.client.httpx.get") as get, \
+         patch("src.github_app.client.httpx.post") as post:
+        get.return_value = MagicMock(status_code=200)
+        get.return_value.json.return_value = []
         post.return_value = MagicMock(status_code=201)
         post.return_value.json.return_value = {"id": 1, "body": "hi"}
         result = post_pr_comment("owner/repo", 42, "hi", "t0ken")
     assert result["id"] == 1
+    get.assert_called_once()
     post.assert_called_once()
 
 
 def test_analyze_pr_diff():
-    with patch("src.github_app.client.httpx.get") as get, \
-         patch("src.pipeline.orchestrator.run_pipeline", return_value={
-             "session_id": "s1",
-             "audit": {"risk_verdict": "REQUIRES_REVIEW"},
-             "stage2": {"security": {"findings": [{"id": "SEC-1"}]}},
-             "final_markdown": "md",
-         }):
-        get.return_value = MagicMock(status_code=200, text="diff")
+    pr = MagicMock(status_code=200)
+    pr.json.return_value = {"head": {"sha": "abc123"}}
+    diff = MagicMock(status_code=200, text="diff", content=b"diff")
+    response = MagicMock()
+    response.iter_bytes.return_value = iter([b"archive"])
+    stream_context = MagicMock()
+    stream_context.__enter__.return_value = response
+    with patch("src.github_app.client.httpx.get", side_effect=[pr, diff]) as get, \
+         patch("src.github_app.client.httpx.stream", return_value=stream_context), \
+         patch("src.github_app.client._extract_snapshot", return_value=1), \
+         patch("src.tools.repo_scan.scan_diff", return_value={"findings": [{"id": "SEC-1", "severity": "high"}]}):
         result = analyze_pr_diff("owner/repo", 7, "t0ken")
-    assert result["verdict"] == "REQUIRES_REVIEW"
+    assert result["verdict"] == "FAIL"
     assert result["findings"][0]["id"] == "SEC-1"
+    assert get.call_count == 2

@@ -1,0 +1,25 @@
+{
+  "name": "vishap-security",
+  "displayName": "Vishap Security Scan",
+  "description": "Run Vishap's local repository security rules in VS Code and compatible editors.",
+  "version": "0.1.0",
+  "publisher": "vishap",
+  "license": "AGPL-3.0-or-later",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Linters", "Other"],
+  "activationEvents": ["onStartupFinished", "onCommand:vishap.scanWorkspace"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [{ "command": "vishap.scanWorkspace", "title": "Vishap: Scan Workspace" }],
+    "configuration": {
+      "title": "Vishap Security Scan",
+      "properties": {
+        "vishap.executable": { "type": "string", "default": "vishap", "description": "Path to the installed Vishap CLI executable." },
+        "vishap.scanOnSave": { "type": "boolean", "default": true, "description": "Rescan the workspace after a source file is saved." },
+        "vishap.maxFindings": { "type": "number", "default": 500, "minimum": 1, "maximum": 5000, "description": "Maximum diagnostics shown per workspace scan." }
+      }
+    }
+  },
+  "scripts": { "compile": "tsc -p .", "package": "npm run compile && vsce package" },
+  "devDependencies": { "@types/node": "^22.0.0", "@types/vscode": "^1.85.0", "typescript": "^5.6.0", "@vscode/vsce": "^3.0.0" }
+}

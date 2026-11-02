@@ -34,8 +34,9 @@ into an opinion.
 
 ## The order
 
-Generation → validation → security. Dangerous code does not travel further than the
-first stage that rejects it. Iterations are capped at three and stop early when no
+Security scan of supplied code → generation → security scan of the generated code →
+validation → creator proposes a corrected version from the findings. The final correction
+is not re-verified in the same run. Iterations are capped at three and stop early when no
 stage changes its answer.
 
 ## Shared rules, one home
@@ -124,9 +125,9 @@ A verdict of **SAFE** from the hub's rules means exactly this: for the language 
 
 Everything else is **REQUIRES_REVIEW**, with the reason: any finding of any severity (a critical one says so), a language that is not measured or failed its gates (*unknown coverage*), a text the scan could not read in full. A missing or unreadable `src/tools/quality.json` fails closed: nothing is SAFE. The decision is made in one place, `apps/analyzer/src/tools/safe_gate.py`.
 
-SAFE is currently issued for: no language.
+SAFE is currently issued for: java. Rules-only SAFE is available only after a complete Java scan with no findings; Python and PHP remain in REQUIRES_REVIEW.
 
-The gates, the sampling and the model-mode gates were committed before any example was fetched (`apps/analyzer/tests/bench/blind_public/CRITERION.md`, `SAMPLING.md`); the 402 examples come from three sources that label their own code (OWASP Benchmark for Java, DVWA for PHP, Bandit's examples for Python), are pinned by commit and SHA-256 and are not copied into this repository. The first run, kept untouched as `RESULTS.first-run.md`, found the rules alone calling SAFE 101 of 132 dangerous Java examples (12 of 24 critical), 29 of 38 PHP (8 of 10 critical) and 44 of 76 Python (15 of 24 critical), when the file name is given; and pasted without a name the engine reads Java as Python and PHP as unknown, which is what the hub sees. So the answer today is that none of it may be called SAFE. JavaScript, TypeScript, Go, C, C++, Terraform, YAML and Dockerfile have no blind set and are unmeasured. PHP (19 safe examples, one of them an empty file in its source) and Python (5) are below the registered minimum of 20.
+The gates and sampling were committed before examples were fetched (`apps/analyzer/tests/bench/blind_public/CRITERION.md`, `SAMPLING.md`). The 402 examples are pinned to three independently labelled sources. The first run is preserved in `RESULTS.first-run.md`; the current score is in `apps/analyzer/tests/bench/blind_public/RESULTS.md`. Java passed with 0 false-SAFE results among 132 dangerous examples (95% Wilson upper bound 2.8%). The Java rules are conservative: 97.7% of safe examples were sent to review. Python and PHP remain ineligible: the pasted set has only 2 safe Python examples and 18 safe PHP examples, below the required 20. JavaScript, TypeScript, Go, C, C++, Terraform, YAML and Dockerfile remain unmeasured.
 
 **The hub's verdicts with a model are measured separately and have not been.** `python -m tests.bench.blind_public.model_eval` runs the same sample three times per example through the real model; it spends the key's money, needs `--confirm-spend`, and `--estimate` prints the size (about 372 calls and roughly 340 thousand input tokens by the characters / 4 estimate; no price, because nothing here knows the tariff). Until its result is committed the hub issues no SAFE with a model, in any language. A person who is not the author must also label a small sample of the team's real code (or an anonymised stand-in) for each language the team uses; `python -m tests.bench.blind_public.blind_score --human labels.csv --dir <folder>` scores it with the same code.
 

@@ -251,7 +251,7 @@ class PagesTests(ServerCase):
         os.environ.pop("VISHAP_HUB_LLM_KEY", None)
         status, headers, body = self.post("/run", {"spec": "name: demo\n"})
         payload = json.loads(body)
-        assert status == 502
+        assert status == 200
         run_id = payload["fingerprint"]["id"]
         status, raw = self.get(f"/api/runs/{run_id}.json", self.cookie_of(headers))
         assert status == 200
@@ -548,7 +548,7 @@ class ReviewRoutingTests(ServerCase):
         assert "security" in seen["question"].lower()
 
     def test_a_spec_still_means_generation_and_a_bare_question_still_means_ask(self):
-        assert self.stages(self.sent_to_run_plan({"spec": "x", "material": "a = 1", "api_key": "k"})) == ["generator", "validator", "analyser"]
+        assert self.stages(self.sent_to_run_plan({"spec": "x", "material": "a = 1", "api_key": "k"})) == ["analyser", "generator", "analyser", "validator", "creator"]
         assert self.stages(self.sent_to_run_plan({"question": "what is this?", "api_key": "k"})) == ["generator"]
 
 

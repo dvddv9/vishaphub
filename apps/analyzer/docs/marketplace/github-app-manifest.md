@@ -24,7 +24,7 @@ your own deployment before you submit anything.
     "contents": "read",
     "metadata": "read",
     "pull_requests": "write",
-    "checks": "write"
+    "statuses": "write"
   },
   "default_events": ["pull_request"]
 }
@@ -44,8 +44,8 @@ your own deployment before you submit anything.
 | `public` | `true` is required for a Marketplace listing; `false` means install-only. |
 | `default_permissions.contents` | `read` — the app reads PR diffs; it never needs to write code. |
 | `default_permissions.pull_requests` | `write` — to post the report as a PR comment. |
-| `default_permissions.checks` | `write` — to surface pass/fail as a check run. |
-| `default_events` | `pull_request` only. Adding `push` multiplies webhook volume for no benefit. |
+| `default_permissions.statuses` | `write` — to publish the `vishap/security` commit status that branch rules can require. |
+| `default_events` | `pull_request` only; Vishap handles opened, reopened, synchronize and ready-for-review actions. |
 
 ## Minimal permissions
 
@@ -54,8 +54,9 @@ Ask for nothing you do not use. Vishap needs exactly four scopes:
 - `metadata: read` — implicitly granted to every app; lists the repository.
 - `contents: read` — fetch the diff and the files under review.
 - `pull_requests: write` — post the report as a comment.
-- `checks: write` — optional; needed only if you want a check run instead of a
-  comment.
+- `statuses: write` — publish the `vishap/security` gate result. It blocks merging
+  only after a repository admin marks this context as required in branch protection
+  or a ruleset.
 
 Anything broader (`administration`, `secrets`, `actions`) will slow the
 Marketplace review and is a poor signal to security-conscious buyers.
@@ -67,7 +68,8 @@ Marketplace review and is a poor signal to security-conscious buyers.
    reviewers do install the app and watch for a response.
 3. Check the install flow end to end on a throwaway repository: install → open a
    PR → comment appears.
-4. Keep the manifest in the repository and re-add it whenever permissions change,
+4. Configure `VISHAP_GITHUB_FAIL_ON` if the default high-and-critical merge gate is not right for the repository.
+5. Keep the manifest in the repository and re-add it whenever permissions change,
    so the requested scopes stay reviewable in git history.
 
 See [`publishing-guide.md`](publishing-guide.md) for the full submission process.

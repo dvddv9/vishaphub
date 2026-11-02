@@ -6,6 +6,17 @@ All notable changes to Vishap. Format based on [Keep a Changelog](https://keepac
 
 ## [Unreleased]
 
+### Added (dependency manifests, 2026-11-02)
+- `src/tools/deps_audit.py`: `requirements*.txt`, `pyproject.toml` (PEP 621 and Poetry), `package.json` and npm `package-lock.json` are read from text, by file name or, when no name is given, by content (code and prose are never mistaken for a manifest). Offline, always on: a package taken from a URL, VCS or local path (`deps-direct-url`), a plain-http index (`deps-index-http`), an extra index (`deps-extra-index`, dependency confusion), `--trusted-host` (`deps-trusted-host`), a name one letter from a very popular package (`deps-typosquat`), and one summary finding for dependencies without an exact version (`deps-unpinned`).
+- Opt-in online checks (`VISHAP_DEPS_ONLINE=1`): only package names and versions are sent, never code. A package missing from PyPI / npm (`deps-missing`, the signature of a name a model invented; it can also be a private package) and known advisories from OSV (`deps-vulnerable`; the batch answer carries ids but no score, so a hit is reported high with the ids listed). A lookup that fails is a `degraded` note in the coverage, never silence; a manifest with the online checks off is never SAFE.
+- Tests: `tests/test_deps_audit.py` (fake network; checks that only names and versions leave the process).
+
+### Added (secret value checks, 2026-11-02)
+- `src/tools/secret_check.py`: offline checks on a matched secret (no network by default): placeholder words and repeated characters, the AWS key id alphabet, and GitHub token checksum. Explicit opt-in `VISHAP_SECRET_LIVE_CHECK=1` checks supported GitHub, Slack and Stripe credentials against read-only provider endpoints; the credential is sent to that provider and is never included in output. Unsupported formats remain structurally checked only. A live check is never silently enabled. Tests: `tests/test_secret_check.py`.
+
+### Fixed
+- `README.md`, `ui-next/package.json`, and the root of `ui-next/package-lock.json` match 7.4.7; `scripts/check_version.py` checks the lockfile too. The live-demo table points at VishapHub rather than the retired standalone URLs.
+
 ### Added (questions for the person, 2026-10-28)
 - `src/tools/questions.py`: at most five multiple-choice questions, only about findings the skeptic left `suspected` and only where the answer moves a priority: `exposure` (who can call this function: the public / internal / admin only / unknown, one question per function), `secret_kind` (real in production / real for dev or test / example, one per value), `rowcount_consumer` (does the caller act on the result). Low-severity findings are not asked about (except possible secrets). Answers are `{question_id, answer, impact}`; severity moves one or two steps on the ladder low-medium-high-critical (`severity_asked` keeps the value before), an example value becomes a `false_positive` with basis `answer`; a probe result, `status` and `proof` are never changed. Answers are idempotent and can be changed ("I do not know" restores the original).
 - Answers are remembered: `questions.save_store` / `load_store` keep `{question_id: answer}` and the next run applies them and does not ask again. `vishap prove FILE --answers answers.json` prints the open questions with their ids and applies the stored ones. Tests: `tests/test_questions.py`.

@@ -25,6 +25,12 @@ def check_package_json():
     if not p.exists(): return None
     return json.loads(p.read_text(encoding="utf-8")).get("version")
 
+def check_package_lock():
+    p = ROOT / "ui-next" / "package-lock.json"
+    if not p.exists(): return None
+    data = json.loads(p.read_text(encoding="utf-8"))
+    return (data.get("packages") or {}).get("", {}).get("version") or data.get("version")
+
 def check_readme():
     """v7.3.4: берём версию из бейджа (badge/version-X.Y.Z-blue), а не первое vX.Y.Z.
 
@@ -52,6 +58,7 @@ def check_readme():
 fails = []
 for name, fn in [("pyproject.toml", check_pyproject),
                  ("ui-next/package.json", check_package_json),
+                 ("ui-next/package-lock.json", check_package_lock),
                  ("README.md", check_readme)]:
     got = fn()
     if got is None:

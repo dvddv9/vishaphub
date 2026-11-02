@@ -659,7 +659,7 @@ class UsageTests(TeamCase):
     def test_a_failed_run_is_still_billed(self):
         with mock.patch.object(server, "run_plan", lambda **kw: _Metered(300, 0, ok=False)):
             status, _h, _b = self.call("POST", "/run", self.keys["alice"], {"material": "f = 1", "api_key": "k"})
-        assert status == 502
+        assert status == 200
         (_k, _r, t_in, t_out, _c, measured, _e, _x, outcome, _ch), = self.usage()
         assert (t_in, t_out, measured, outcome) == (300, 0, 1, "failed")
 

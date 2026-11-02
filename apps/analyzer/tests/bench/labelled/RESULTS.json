@@ -47,21 +47,21 @@
      "language": "dockerfile",
      "criticality": "high",
      "examples": 1,
-     "found": 0,
+     "found": 1,
      "expected_findings": 1,
-     "hit_findings": 0,
+     "hit_findings": 1,
      "wrong_line_only": 0,
-     "safe_verdicts": 1
+     "safe_verdicts": 0
     },
     {
      "language": "dockerfile",
      "criticality": "medium",
      "examples": 1,
-     "found": 0,
+     "found": 1,
      "expected_findings": 1,
-     "hit_findings": 0,
+     "hit_findings": 1,
      "wrong_line_only": 0,
-     "safe_verdicts": 1
+     "safe_verdicts": 0
     },
     {
      "language": "dockerfile",
@@ -117,11 +117,11 @@
      "language": "java",
      "criticality": "high",
      "examples": 3,
-     "found": 1,
+     "found": 2,
      "expected_findings": 3,
-     "hit_findings": 1,
+     "hit_findings": 2,
      "wrong_line_only": 0,
-     "safe_verdicts": 2
+     "safe_verdicts": 1
     },
     {
      "language": "java",
@@ -147,11 +147,11 @@
      "language": "javascript",
      "criticality": "high",
      "examples": 4,
-     "found": 3,
+     "found": 4,
      "expected_findings": 4,
-     "hit_findings": 3,
+     "hit_findings": 4,
      "wrong_line_only": 0,
-     "safe_verdicts": 1
+     "safe_verdicts": 0
     },
     {
      "language": "javascript",
@@ -167,9 +167,9 @@
      "language": "php",
      "criticality": "critical",
      "examples": 3,
-     "found": 2,
+     "found": 3,
      "expected_findings": 3,
-     "hit_findings": 2,
+     "hit_findings": 3,
      "wrong_line_only": 0,
      "safe_verdicts": 0
     },
@@ -356,8 +356,8 @@
      "fp_findings": 1,
      "fp_by_severity": {
       "critical": 0,
-      "high": 1,
-      "medium": 0,
+      "high": 0,
+      "medium": 1,
       "low": 0
      }
     },
@@ -445,21 +445,21 @@
      "language": "dockerfile",
      "criticality": "high",
      "examples": 1,
-     "found": 0,
+     "found": 1,
      "expected_findings": 1,
-     "hit_findings": 0,
+     "hit_findings": 1,
      "wrong_line_only": 0,
-     "safe_verdicts": 1
+     "safe_verdicts": 0
     },
     {
      "language": "dockerfile",
      "criticality": "medium",
      "examples": 1,
-     "found": 0,
+     "found": 1,
      "expected_findings": 1,
-     "hit_findings": 0,
+     "hit_findings": 1,
      "wrong_line_only": 0,
-     "safe_verdicts": 1
+     "safe_verdicts": 0
     },
     {
      "language": "dockerfile",
@@ -515,11 +515,11 @@
      "language": "java",
      "criticality": "high",
      "examples": 3,
-     "found": 1,
+     "found": 2,
      "expected_findings": 3,
-     "hit_findings": 1,
+     "hit_findings": 2,
      "wrong_line_only": 0,
-     "safe_verdicts": 2
+     "safe_verdicts": 1
     },
     {
      "language": "java",
@@ -545,11 +545,11 @@
      "language": "javascript",
      "criticality": "high",
      "examples": 4,
-     "found": 3,
+     "found": 4,
      "expected_findings": 4,
-     "hit_findings": 3,
+     "hit_findings": 4,
      "wrong_line_only": 0,
-     "safe_verdicts": 1
+     "safe_verdicts": 0
     },
     {
      "language": "javascript",
@@ -565,9 +565,9 @@
      "language": "php",
      "criticality": "critical",
      "examples": 3,
-     "found": 2,
+     "found": 3,
      "expected_findings": 3,
-     "hit_findings": 2,
+     "hit_findings": 3,
      "wrong_line_only": 0,
      "safe_verdicts": 0
     },
@@ -754,8 +754,8 @@
      "fp_findings": 1,
      "fp_by_severity": {
       "critical": 0,
-      "high": 1,
-      "medium": 0,
+      "high": 0,
+      "medium": 1,
       "low": 0
      }
     },
@@ -981,10 +981,10 @@
     "safe_verdict": false
    },
    "js-jwt-none": {
-    "hits": 0,
+    "hits": 1,
     "expected": 1,
-    "findings": 0,
-    "safe_verdict": true
+    "findings": 1,
+    "safe_verdict": false
    },
    "js-tls-reject-off": {
     "hits": 1,
@@ -1073,7 +1073,7 @@
    "java-sqli-concat": {
     "hits": 1,
     "expected": 1,
-    "findings": 1,
+    "findings": 2,
     "safe_verdict": false
    },
    "java-cmd-runtime-exec": {
@@ -1095,10 +1095,10 @@
     "safe_verdict": true
    },
    "java-path-traversal": {
-    "hits": 0,
+    "hits": 1,
     "expected": 1,
-    "findings": 0,
-    "safe_verdict": true
+    "findings": 1,
+    "safe_verdict": false
    },
    "java-hardcoded-password": {
     "hits": 1,
@@ -1109,7 +1109,7 @@
    "java-md5-password": {
     "hits": 1,
     "expected": 1,
-    "findings": 1,
+    "findings": 2,
     "safe_verdict": false
    },
    "java-safe-prepared-statement": {
@@ -1227,9 +1227,9 @@
     "safe_verdict": true
    },
    "php-sqli-concat": {
-    "hits": 0,
+    "hits": 1,
     "expected": 1,
-    "findings": 1,
+    "findings": 2,
     "safe_verdict": false
    },
    "php-cmd-system": {
@@ -1407,16 +1407,16 @@
     "safe_verdict": true
    },
    "docker-secret-in-env": {
-    "hits": 0,
+    "hits": 1,
     "expected": 1,
-    "findings": 0,
-    "safe_verdict": true
+    "findings": 1,
+    "safe_verdict": false
    },
    "docker-curl-pipe-sh": {
-    "hits": 0,
+    "hits": 1,
     "expected": 1,
-    "findings": 0,
-    "safe_verdict": true
+    "findings": 1,
+    "safe_verdict": false
    },
    "docker-safe-nonroot": {
     "hits": 0,
@@ -1619,10 +1619,10 @@
     "safe_verdict": false
    },
    "js-jwt-none": {
-    "hits": 0,
+    "hits": 1,
     "expected": 1,
-    "findings": 0,
-    "safe_verdict": true
+    "findings": 1,
+    "safe_verdict": false
    },
    "js-tls-reject-off": {
     "hits": 1,
@@ -1711,7 +1711,7 @@
    "java-sqli-concat": {
     "hits": 1,
     "expected": 1,
-    "findings": 1,
+    "findings": 2,
     "safe_verdict": false
    },
    "java-cmd-runtime-exec": {
@@ -1733,10 +1733,10 @@
     "safe_verdict": true
    },
    "java-path-traversal": {
-    "hits": 0,
+    "hits": 1,
     "expected": 1,
-    "findings": 0,
-    "safe_verdict": true
+    "findings": 1,
+    "safe_verdict": false
    },
    "java-hardcoded-password": {
     "hits": 1,
@@ -1747,7 +1747,7 @@
    "java-md5-password": {
     "hits": 1,
     "expected": 1,
-    "findings": 1,
+    "findings": 2,
     "safe_verdict": false
    },
    "java-safe-prepared-statement": {
@@ -1865,21 +1865,21 @@
     "safe_verdict": true
    },
    "php-sqli-concat": {
-    "hits": 0,
-    "expected": 1,
-    "findings": 1,
-    "safe_verdict": false
-   },
-   "php-cmd-system": {
     "hits": 1,
     "expected": 1,
     "findings": 2,
     "safe_verdict": false
    },
+   "php-cmd-system": {
+    "hits": 1,
+    "expected": 1,
+    "findings": 1,
+    "safe_verdict": false
+   },
    "php-eval-post": {
     "hits": 1,
     "expected": 1,
-    "findings": 3,
+    "findings": 1,
     "safe_verdict": false
    },
    "php-unserialize-cookie": {
@@ -2045,16 +2045,16 @@
     "safe_verdict": true
    },
    "docker-secret-in-env": {
-    "hits": 0,
+    "hits": 1,
     "expected": 1,
-    "findings": 0,
-    "safe_verdict": true
+    "findings": 1,
+    "safe_verdict": false
    },
    "docker-curl-pipe-sh": {
-    "hits": 0,
+    "hits": 1,
     "expected": 1,
-    "findings": 0,
-    "safe_verdict": true
+    "findings": 1,
+    "safe_verdict": false
    },
    "docker-safe-nonroot": {
     "hits": 0,

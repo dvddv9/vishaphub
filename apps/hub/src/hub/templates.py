@@ -113,6 +113,9 @@ def _evidence_block(fp: dict) -> str:
     patch = ev.get("patch") or {}
     patch_line = (f"diff <code>{e(str(patch.get('diff_sha256') or '')[:16])}</code> over "
                   f"{len(patch.get('files') or {})} file(s)") if patch.get("proposed") else "no patch"
+    corrected = ev.get("corrected_version") or {}
+    corrected_line = (f"proposed, not re-verified; hash <code>{e(str(corrected.get('sha256') or '')[:16])}</code>"
+                      if corrected.get("files") else "none")
     profile_hash = (f" \u00b7 profile <code>{e(str(prof.get('sha256') or '')[:16])}</code>" if prof.get('sha256') else "")
     lang_rows = "".join(f"<li>{e(languages.sentence(x))}</li>" for x in ev.get("languages") or []) or "<li>-</li>"
     integrity = ("<span class=\"vchip pass\">record intact</span>" if ok
@@ -130,6 +133,7 @@ def _evidence_block(fp: dict) -> str:
         f"<tr><td>rules found</td><td>analyser {int(rules.get('analyser') or 0)} \u00b7 validator {int(rules.get('validator') or 0)} finding(s)</td></tr>"
         f"<tr><td>model said</td><td>{model_line}</td></tr>"
         f"<tr><td>validator ran on</td><td>{ran_on}</td></tr>"
+        f"<tr><td>creator output</td><td>{corrected_line}</td></tr>"
         f"<tr><td>tests that really ran</td><td><ul>{ran_rows}</ul></td></tr>"
         f"<tr><td>left unverified</td><td><ul>{unverified}</ul></td></tr>"
         f"<tr><td>language evidence</td><td><ul>{lang_rows}</ul></td></tr>"
@@ -209,6 +213,10 @@ def report_page(record: dict, retention: str = "") -> str:
     patch_block = (_block("In the model's patch", "<p class=\"meta\">The rules read the patch the model proposed. "
                           "Line numbers refer to the patch, not to your material.</p><ul>"
                           + "".join(_finding(f) for f in in_patch) + "</ul>") if in_patch else "")
+    corrected = result.get("corrected_version") or {}
+    corrected_block = (_block("Corrected version (not re-verified)", "<pre><code>"
+                              + e("\n\n".join(f"--- {name}\n{text}" for name, text in sorted(corrected.items())))
+                              + "</code></pre>") if corrected else "")
     missed = "".join(f"<li>{e(str(item))}</li>" for item in not_checked) or "<li>-</li>"
     rule_chips = "".join(
         f"<span>{e(str(name))} <code>{e(str(version))}</code></span>"
@@ -242,6 +250,7 @@ def report_page(record: dict, retention: str = "") -> str:
 {_block("Steps", f'<div class="table-wrap"><table><tr><th>stage</th><th>verdict</th><th>state</th><th>detail</th></tr>{rows}</table></div>')}
 {_block("Findings", f"<ul>{found}</ul>")}
 {patch_block}
+{corrected_block}
 {_block("Not checked", f"<ul>{missed}</ul>")}
 {_block("Rules that judged", f'<div class="meta-row">{rule_chips}</div>')}
 """

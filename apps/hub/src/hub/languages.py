@@ -27,7 +27,15 @@ MIN_SAFE = 5
 MODE = "pasted"
 
 #: Languages the engine has rules for but the benchmark has no labelled set for, by decision, with the reason.
-EXEMPT = {"log": "log lines are checked for attack patterns, not read as code; there is no labelled set for them yet"}
+EXEMPT = {
+    "log": "log lines are checked for attack patterns, not read as code; there is no labelled set for them yet",
+    "csharp": "Review patterns exist, but no balanced dangerous and safe benchmark is available yet.",
+    "kotlin": "Review patterns exist, but no balanced dangerous and safe benchmark is available yet.",
+    "ruby": "Review patterns exist, but no balanced dangerous and safe benchmark is available yet.",
+    "rust": "Review patterns exist, but no balanced dangerous and safe benchmark is available yet.",
+    "scala": "Review patterns exist, but no balanced dangerous and safe benchmark is available yet.",
+    "swift": "Review patterns exist, but no balanced dangerous and safe benchmark is available yet.",
+}
 
 _PATH = os.path.join(os.path.dirname(__file__), "data", "language_evidence.json")
 _CACHE: dict | None = None
@@ -49,21 +57,34 @@ UNKNOWN = ("the language was not recognised from the text alone (the hub sends t
 
 
 def known() -> list[str]:
-    return sorted(set(data().get("languages", {})) | set(EXEMPT) | {"unknown"})
+    try:
+        from src.tools.language_support import capabilities
+        scanner_languages = set(capabilities())
+    except ImportError:
+        scanner_languages = set()
+    return sorted(set(data().get("languages", {})) | set(EXEMPT) | scanner_languages | {"unknown"})
 
 
 def evidence_for(language: str) -> dict:
     """What was measured for `language`: counts, and the adequacy those counts earn. Deterministic."""
     lang = str(language or "unknown")
     row = (data().get("languages") or {}).get(lang)
+    try:
+        from src.tools.language_support import capabilities
+        scanner_support = capabilities().get(lang)
+    except ImportError:
+        scanner_support = None
     if not row:
-        why = UNKNOWN if lang == "unknown" else (EXEMPT.get(lang) or "no labelled example exists for this language")
-        return {"language": lang, "adequacy": "none", "reason": why, "mode": MODE}
+        why = (UNKNOWN if lang == "unknown" else EXEMPT.get(lang) or
+               (f"recognized by the scanner ({scanner_support['static_analysis']}), but no labelled benchmark exists"
+                if scanner_support else "no labelled example exists for this language"))
+        return {"language": lang, "adequacy": "none", "reason": why, "mode": MODE,
+                "scanner_support": scanner_support}
     m = row.get(MODE) or {}
     dangerous, safe = int(m.get("dangerous_examples", 0)), int(m.get("safe_examples", 0))
     expected, hit = int(m.get("expected_findings", 0)), int(m.get("hit_findings", 0))
     adequacy = "measured" if dangerous >= MIN_DANGEROUS and safe >= MIN_SAFE else "thin"
-    return {"language": lang, "adequacy": adequacy, "mode": MODE,
+    return {"language": lang, "adequacy": adequacy, "mode": MODE, "scanner_support": scanner_support,
             "dangerous_examples": dangerous, "safe_examples": safe,
             "expected_findings": expected, "hit_findings": hit,
             "recall_percent": round(100 * hit / expected) if expected else None,
@@ -91,5 +112,6 @@ def table() -> dict:
     """Everything `/api/languages` says."""
     return {"schema": "vishap.languages/1", "mode": MODE,
             "thresholds": {"measured_needs_dangerous": MIN_DANGEROUS, "measured_needs_safe": MIN_SAFE},
+            "note": "scanner recognition, analysis depth and benchmark adequacy are separate fields; static rules do not imply semantic taint coverage",
             "source": data().get("source", {}), "exempt": EXEMPT,
             "languages": [evidence_for(lang) for lang in known()]}

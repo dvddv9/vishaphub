@@ -1,8 +1,9 @@
 """Pipeline: execute a plan, keep the session, stop when nothing improves.
 
-One path, one verdict. The model proposes (``proposal.py``), the rules decide
-(``local.py``: the validator's six stages, the analyser's patterns), and this module
-merges what came back. Everything runs in this process: one URL means one deployment,
+One path, one verdict. The model proposes and creates a correction (``proposal.py``),
+the rules decide (``local.py``: the validator's six stages, the analyser's patterns),
+and this module merges what came back. The final correction is not re-verified in its
+run. Everything runs in this process: one URL means one deployment,
 and calling our own services over the network would add a cold start and a second
 place where a key can be wrong.
 
@@ -30,6 +31,7 @@ The rules that make the loop honest:
 """
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass, field
 
@@ -77,6 +79,7 @@ class RunResult:
     summary: str = ""
     findings: list = field(default_factory=list)
     patch: dict = field(default_factory=dict)
+    corrected_version: dict = field(default_factory=dict)
     questions: list = field(default_factory=list)
     proof: list = field(default_factory=list)
     model: str = ""
@@ -108,6 +111,7 @@ class RunResult:
             "summary": self.summary,
             "findings": self.findings,
             "patch": self.patch,
+            "corrected_version": self.corrected_version,
             "questions": self.questions,
             "proof": self.proof,
             "model": self.model,
@@ -156,6 +160,14 @@ def _analysis_pieces(material: str, patch: dict) -> list[tuple[str, str]]:
     return pieces
 
 
+def _validator_could_not_run(checks: dict) -> bool:
+    """True when the validator's only complaint is that it had nowhere safe to run: nothing was executed."""
+    for item in ((checks.get("validator") or {}).get("checks") or []):
+        if item.get("name") == "isolation" and not item.get("ok") and not item.get("skipped"):
+            return True
+    return False
+
+
 def _model_trouble(reason: str) -> str:
     """The model's failure in words a person can act on; the raw text goes to the log, not to a page."""
     text = str(reason or "")
@@ -178,10 +190,16 @@ def _not_checked(plan: Plan, checks: dict, has_proof: bool, model_trouble: str =
         missing.append("security was not checked: no analyser stage in this plan")
     if Stage.GENERATOR not in stages:
         missing.append("nothing was generated: no generator stage in this plan")
+    if Stage.CREATOR not in stages:
+        missing.append("no corrected version was produced: no creator stage in this plan")
     if not (checks.get("validator") or {}).get("checks"):
         missing.append("the validator's stage-by-stage detail is not in this answer")
+    elif (checks.get("validator") or {}).get("status") == "NOT_RUN":
+        missing.append("the validator did not run: the host could not isolate submitted code")
     if has_proof:
         missing.append("the proof lines are the model's promise, not the output of a run")
+    if checks.get("creator") and not checks["creator"].get("verified"):
+        missing.append("the creator's corrected version was not re-checked after it was produced")
     if model_trouble:
         missing.append(f"the model's reading is missing: {model_trouble}")
     return missing
@@ -240,6 +258,8 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
     rules_verdict = ""
     checks: dict = {"generator": None, "validator": None, "analyser": None}
     answer: dict = {}
+    creator_answer: dict = {}
+    corrected_version: dict = {}
     model_trouble = ""
     previous: dict[str, str] = {}
     supplied_files = dict(files)
@@ -250,6 +270,8 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
         nonlocal strictest_verdict
         strictest_verdict = verdict if strictest_verdict is None else strictest(strictest_verdict, verdict)
 
+    analyser_pass_count = plan.stages.count(Stage.ANALYSER)
+    analyser_seen = 0
     for pass_no in range(1, int(plan.iterations) + 1):
         passes_run = pass_no
         current: dict[str, str] = {}
@@ -319,7 +341,20 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
                                       detail="the report carried no usable verdict"))
                     return _error(steps, envelope.session_id, trace,
                                   "validator returned no verdict; nothing was verified", plan_dict)
-                checks["validator"] = {"verdict": verdict, "checks": report.get("checks", [])}
+                validator_checks = report.get("checks", [])
+                if _validator_could_not_run({"validator": {"checks": validator_checks}}):
+                    checks["validator"] = {"verdict": None, "status": "NOT_RUN",
+                                            "checks": validator_checks}
+                    if result.get("isolation"):
+                        checks["validator"]["isolation"] = result["isolation"]
+                    detail = "NOT RUN: this host cannot isolate submitted code; no code was executed"
+                    steps.append(Step("validator", False, "NOT_RUN", detail=detail))
+                    trace.append(f"pass {pass_no} validator -> NOT_RUN (host isolation unavailable)")
+                    emit("validator", {"stage": "validator", "verdict": "NOT_RUN",
+                                       "ok": False, "findings": 0, "pass": pass_no})
+                    continue
+                checks["validator"] = {"verdict": verdict, "status": "COMPLETED",
+                                       "checks": validator_checks}
                 if result.get("isolation"):
                     checks["validator"]["isolation"] = result["isolation"]
                 current["validator"] = verdict
@@ -333,7 +368,19 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
                 continue
 
             if stage is Stage.ANALYSER:
-                pieces = _analysis_pieces(material, files if checks["generator"] else {})
+                # The full route has two separate passes: one for caller input and one
+                # for generated output. A single-pass review must still inspect its
+                # input after the model has answered; generation plans inspect both
+                # caller input and the proposed files in that same pass.
+                analyser_seen += 1
+                before_generation = (analyser_pass_count > 1
+                                     and (analyser_seen - 1) % analyser_pass_count == 0)
+                if analyser_pass_count > 1 and before_generation:
+                    pieces = _analysis_pieces(material, supplied_files)
+                elif analyser_pass_count > 1:
+                    pieces = _analysis_pieces("", files)
+                else:
+                    pieces = _analysis_pieces(material, {**supplied_files, **files})
                 if not pieces:
                     steps.append(Step("analyser", False, detail="no material supplied"))
                     return _error(steps, envelope.session_id, trace,
@@ -368,6 +415,17 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
                     for item in result.get("findings") or []:
                         found.append({**item, "source": source})
 
+                if before_generation:
+                    checks["analyser_input"] = {"verdict": worst, "findings": found,
+                                                 "mode": "rules_only", "reasons": reasons,
+                                                 "languages": [languages.evidence_for(lang) for lang in seen_langs]}
+                else:
+                    input_report = checks.get("analyser_input") or {}
+                    found = [*(input_report.get("findings") or []), *found]
+                    worst = strictest(worst, input_report.get("verdict") or "SAFE")
+                    reasons = [*(input_report.get("reasons") or []), *reasons]
+                    seen_langs = [str(item.get("language") or "unknown")
+                                  for item in input_report.get("languages") or []] + seen_langs
                 checks["analyser"] = {"verdict": worst, "findings": found, "mode": "rules_only",
                                       "reasons": reasons, "meaning": meaning,
                                       "languages": [languages.evidence_for(lang) for lang in seen_langs]}
@@ -379,6 +437,48 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
                 emit("analyser", {"stage": "analyser", "verdict": worst, "ok": True,
                                   "findings": len(found), "pieces": len(pieces), "pass": pass_no})
                 merge(worst)
+                continue
+
+            if stage is Stage.CREATOR:
+                if pass_no > 1 and creator_answer:
+                    trace.append(f"pass {pass_no} creator -> reused the pass 1 correction")
+                    continue
+                if not files:
+                    steps.append(Step("creator", False, detail="no generated files to correct"))
+                    return _error(steps, envelope.session_id, trace,
+                                  "creator needs generated files; no corrected version was produced", plan_dict)
+                issues = {
+                    "analyser": (checks.get("analyser") or {}).get("findings", []),
+                    "validator": (checks.get("validator") or {}).get("checks", []),
+                }
+                task = (
+                    "Return a corrected full-file version that fixes the security findings and failed "
+                    "validation checks listed below. Preserve the requested behavior and spec. Do not "
+                    "remove tests or weaken checks. Put every corrected complete file in the JSON patch. "
+                    "This correction will not be checked again in this run; do not claim it is verified.\n\n"
+                    "Findings and checks:\n" + json.dumps(issues, ensure_ascii=False, default=str)
+                )
+                material_for_creator = "\n\n".join(
+                    f"--- {name}\n{text}" for name, text in sorted(files.items())
+                )
+                creator_answer = proposal.propose(
+                    material=material_for_creator,
+                    spec=str(spec or "") if not isinstance(spec, dict) else json.dumps(spec, ensure_ascii=False),
+                    question=task, api_key=api_key, model=model, preset=preset,
+                )
+                corrected_version = dict(creator_answer.get("patch") or {}) if creator_answer.get("ok") else {}
+                if not corrected_version:
+                    error = creator_answer.get("error") or "the creator returned no corrected files"
+                    log.warning("creator failed: %s", error)
+                    steps.append(Step("creator", False, detail=error))
+                    return _error(steps, envelope.session_id, trace,
+                                  "creator did not return a corrected version", plan_dict)
+                checks["creator"] = {"model": creator_answer.get("model", ""),
+                                     "files": len(corrected_version), "verified": False}
+                steps.append(Step("creator", True, detail=f"{len(corrected_version)} corrected file(s) · not re-verified"))
+                trace.append(f"pass {pass_no} creator -> {len(corrected_version)} corrected file(s), not re-verified")
+                emit("creator", {"stage": "creator", "ok": True, "files": len(corrected_version),
+                                  "verified": False, "pass": pass_no})
                 continue
 
         if int(plan.iterations) > 1 and previous and current == previous:
@@ -400,6 +500,9 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
     else:
         final = model_verdict or strictest_verdict or ""
 
+    if not final and _validator_could_not_run(checks):
+        final = "REQUIRES_REVIEW"
+        strictest_verdict = final
     if not final:
         return _error(steps, envelope.session_id, trace,
                       "no stage produced a verdict; an empty run is not a pass", plan_dict)
@@ -408,6 +511,10 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
     # REQUIRES_REVIEW is a successful run that found something.
     ok = final not in BLOCKING_VERDICTS
     reason = plan.note or ""
+    if _validator_could_not_run(checks):
+        reason = (reason + " — " if reason else "") + (
+            "validator status NOT_RUN: this host cannot isolate submitted code; no code was executed, "
+            "so this run does not establish whether the code passes the spec")
     if model_trouble:
         reason = (reason + " · " if reason else "") + f"the model did not answer: {model_trouble}"
     if final == "EMERGENCY":
@@ -460,6 +567,7 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
         findings=merged,
         agreement=overlap,
         patch=final_patch,
+        corrected_version=corrected_version,
         questions=answer.get("questions") or [],
         proof=answer.get("proof") or [],
         model=answer.get("model", ""),
@@ -477,7 +585,8 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
         verdict=final,
         steps=[s.as_dict() for s in steps],
         evidence=evidence_mod.build(
-            supplied_files=supplied_files, checked_files=files, patch=result.patch, checks=checks, answer=answer,
+            supplied_files=supplied_files, checked_files=files, patch=result.patch,
+            corrected_version=corrected_version, checks=checks, answer=answer,
             model_verdict=model_verdict, rules=fingerprint.rules_version(), attempts=passes_run,
             stop_reason=(stop_reason or f"the plan ran to its end ({passes_run} pass(es))")
             + (f"; fix loop: {fix_stop}" if fix_stop else ""),

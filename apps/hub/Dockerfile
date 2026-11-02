@@ -12,18 +12,17 @@ COPY apps/validator/ ./apps/validator/
 COPY apps/analyzer/ ./apps/analyzer/
 COPY apps/hub/ ./apps/hub/
 
-# What the service imports is small. The hub calls the analyser's static rules, which need
-# nothing outside the standard library (checked by loading them over all 104 labelled
-# examples in 11 languages: no third-party module is imported), so the analyser's own
-# requirements.txt (fastapi, celery, stripe, opentelemetry, ...) is NOT installed here and
-# the analyser goes in with --no-deps. No compiler either: every package below ships a wheel.
+# The analyzer's static rules use the standard library, so its large web/worker dependency
+# set (FastAPI, Celery, Stripe, OpenTelemetry, ...) is NOT installed in the hub image.
+# The GitHub App route is the exception: the hub's optional github extra adds only HTTPX
+# and PyJWT/cryptography. No compiler either: the packages below ship wheels.
 #   pytest      - the validator's `behavior` check runs the deliverable's tests with it
 #   edge-tts    - the product voice (/api/speak)
 #   psycopg     - team mode (Postgres)
 # Direct dependencies are pinned so a rebuild cannot change what runs.
 RUN pip install -e ./packages/core -e ./apps/validator \
     && pip install -e ./apps/analyzer --no-deps \
-    && pip install -e ./apps/hub \
+    && pip install -e "./apps/hub[github]" \
     && pip install "psycopg[binary]==3.3.6" "pytest==9.1.1" "edge-tts==7.3.1"
 
 # Non-root on purpose: the code under test is somebody else's code.

@@ -57,7 +57,8 @@ def fix(patch: dict, checked: dict | None = None) -> dict:
 
 
 def verification(ok: bool, verdict: str, checks: dict, plan: dict, not_checked: list) -> dict:
-    ran = [name for name in _CHECKED_STAGES if (checks or {}).get(name)]
+    ran = [name for name in _CHECKED_STAGES
+           if (checks or {}).get(name) and (checks[name] or {}).get("status") != NOT_RUN]
     planned = [s for s in (plan or {}).get("stages", []) if s in _CHECKED_STAGES]
     not_run = sorted(set(planned) - set(ran))
     isolation = ((checks or {}).get("validator") or {}).get("isolation")

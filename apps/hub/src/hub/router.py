@@ -4,8 +4,8 @@ The router is deterministic and has no model in it. The assistant (the Vishap
 persona) may *talk* to the client, but the plan comes from this table — otherwise
 the same request would route differently on different days.
 
-Order is fixed: generation, then validation, then security. Dangerous code does not
-travel further than the first stage that rejects it.
+The full build route screens supplied material, generates code, screens and validates
+the result, then asks the creator for a corrected version.
 """
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ class Stage(str, Enum):
     GENERATOR = "generator"
     ANALYSER = "analyser"
     VALIDATOR = "validator"
+    CREATOR = "creator"
 
 
 ROUTES: dict[str, tuple[Stage, ...]] = {
@@ -29,12 +30,14 @@ ROUTES: dict[str, tuple[Stage, ...]] = {
     # name, because the client's question is "look at my code", not "write me some".
     "review": (Stage.GENERATOR, Stage.ANALYSER),
     "generate+validate": (Stage.GENERATOR, Stage.VALIDATOR),
-    "generate+validate+analyse": (Stage.GENERATOR, Stage.VALIDATOR, Stage.ANALYSER),
+    "generate+validate+analyse": (Stage.ANALYSER, Stage.GENERATOR, Stage.ANALYSER,
+                                  Stage.VALIDATOR, Stage.CREATOR),
     "validate+analyse": (Stage.VALIDATOR, Stage.ANALYSER),
 }
 
 #: The only order the hub ever executes, regardless of how the request was written.
-CANONICAL_ORDER = (Stage.GENERATOR, Stage.VALIDATOR, Stage.ANALYSER)
+CANONICAL_ORDER = (Stage.ANALYSER, Stage.GENERATOR, Stage.ANALYSER,
+                   Stage.VALIDATOR, Stage.CREATOR)
 
 MAX_ITERATIONS = 3
 
@@ -73,7 +76,8 @@ def plan_for(intent: str, iterations: int = 1) -> Plan:
         raise RouteError(f"unknown intent: {intent!r}; ask the client which one they mean")
 
     requested = ROUTES[key]
-    stages = tuple(s for s in CANONICAL_ORDER if s in requested)
+    # Keep route-specific order (including both analyzer passes in the full route).
+    stages = requested
 
     if len(stages) == 1:
         note = ("only the model answered; no rule checked the answer" if key == "ask"

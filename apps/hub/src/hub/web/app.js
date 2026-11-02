@@ -3,14 +3,17 @@
 const I18N = {
   en: {
     title: "Carry the request.<br><em>Prove</em> the result.",
-    lead: "Paste code, a spec or logs. I route it: the generator writes code from the spec, the validator checks it against that spec, the analyser checks whether it is dangerous. I ask only what is missing and return what the pipeline said.",
-    meta: "3 stages · 6 validator checks · strictest verdict wins · audit trail",
+    lead: "Paste code, a spec or logs. I screen supplied code, generate from the spec, screen and validate the result, then return a proposed correction based on the findings. The correction is not re-verified in the same run.",
+    meta: "5 stages · 6 validator checks · strictest verdict wins · audit trail",
     try: "Try with an example", talk: "Talk to Vishap", recent: "recent runs",
     navHow: "How it works", navWork: "Try it",
-    howEyebrow: "how it works", howTitle: "One plan, three jobs, one verdict",
-    s1t: "Generate", s1p: "The model proposes code from your spec. It proposes; it never decides.",
-    s2t: "Validate", s2p: "Six checks compare the code with the promise: structure, syntax, contract, coverage, behavior, conformance.",
-    s3t: "Analyse", s3p: "The analyser checks whether the code is dangerous. Every finding is named, with its source.",
+    howEyebrow: "how it works", howTitle: "One plan, five stages, one verdict",
+    s1t: "Analyse input", s1p: "Screen the code and files you supplied before generation.",
+    s2t: "Generate", s2p: "The model proposes code from your spec. It proposes; it never decides.",
+    s3t: "Analyse output", s3p: "Screen the generated code. Findings from both scans are kept.",
+    s4t: "Validate", s4p: "Six checks compare the generated code with the promise: structure, syntax, contract, coverage, behavior, conformance.",
+    s5t: "Create fix", s5p: "The creator returns corrected files using the findings. This final version is not re-verified in the same run.",
+    correctedVersion: "Corrected version (not re-verified)",
     howFoot: "The strictest verdict wins. Whatever was not checked is listed, not hidden.",
     workEyebrow: "workbench", workTitle: "Try it on your own code",
     workLead: "Paste code, a spec or logs below and press run. You get a verdict, what is wrong and how to fix it, and a report you can forward.",
@@ -23,7 +26,7 @@ const I18N = {
     keySys: "The hub holds no model key. The rules check your code for free; to have the model read it too, add a key below: Anthropic, DeepSeek or ChatGPT (Ollama needs none; the key stays in this browser).",
     keyHint: "Optional. Without a key only the rules run; with your key and a question the model reads the code as well, and the stricter verdict wins. The key is kept in this browser and sent with your run.",
     noModelSummary: "No model read this run, so there is no model summary. The rules found {n} finding(s): open FINDINGS. Add your own key below to have the model read the code too.",
-    verdictHint: "REQUIRES_REVIEW means a person should read the findings. The hub does not issue SAFE yet: its rules are not measured well enough for any language.",
+    verdictHint: "REQUIRES_REVIEW means a person should read the findings. Rules-only SAFE is currently eligible for Java after a complete scan with no findings; other languages remain in review.",
     working: "working…", nothing: "nothing to work on", refused: "refused",
     verdictLabel: "verdict", notChecked: "not checked", openReport: "open the report",
     statRisk: "risk verdict", statFix: "fix", statVerify: "verification",
@@ -36,14 +39,17 @@ const I18N = {
   },
   ru: {
     title: "Принять запрос.<br><em>Доказать</em> результат.",
-    lead: "Вставь код, спеку или логи. Я разложу: генератор напишет код по спеке, валидатор сверит его со спекой, анализатор проверит, опасно ли. Спрошу только то, чего не хватает, и верну то, что сказал конвейер.",
-    meta: "3 стадии · 6 проверок валидатора · побеждает строжайший вердикт · след прогона",
+    lead: "Вставь код, спеку или логи. Сначала я проверю присланный код, затем сгенерирую решение, проверю и сверю результат со спекой, после чего предложу исправленный вариант. В этом прогоне он повторно не проверяется.",
+    meta: "5 стадий · 6 проверок валидатора · побеждает строжайший вердикт · след прогона",
     try: "Показать на примере", talk: "Поговорить с Vishap", recent: "последние прогоны",
     navHow: "Как это работает", navWork: "Попробовать",
-    howEyebrow: "как это работает", howTitle: "Один план, три задачи, один вердикт",
-    s1t: "Сгенерировать", s1p: "Модель предлагает код по твоей спеке. Она предлагает, но не решает.",
-    s2t: "Сверить", s2p: "Шесть проверок сравнивают код с обещанием: структура, синтаксис, контракт, покрытие, поведение, соответствие.",
-    s3t: "Проанализировать", s3p: "Анализатор проверяет, не опасен ли код. Каждая находка названа вместе с источником.",
+    howEyebrow: "как это работает", howTitle: "Один план, пять стадий, один вердикт",
+    s1t: "Проверить вход", s1p: "До генерации проверяется присланный код и файлы.",
+    s2t: "Сгенерировать", s2p: "Модель предлагает код по твоей спеке. Она предлагает, но не решает.",
+    s3t: "Проверить результат", s3p: "Анализатор проверяет сгенерированный код. Находки обоих проходов сохраняются.",
+    s4t: "Сверить", s4p: "Шесть проверок сравнивают код с обещанием: структура, синтаксис, контракт, покрытие, поведение, соответствие.",
+    s5t: "Исправить", s5p: "Создатель выдаёт файлы с исправлениями по найденным проблемам. В этом прогоне версия повторно не проверяется.",
+    correctedVersion: "Исправленная версия (не проверена повторно)",
     howFoot: "Побеждает строжайший вердикт. Что не проверено, то перечислено, а не спрятано.",
     workEyebrow: "рабочий стол", workTitle: "Попробуй на своём коде",
     workLead: "Вставь код, спеку или логи ниже и нажми «запустить». Получишь вердикт, что не так и как исправить, и отчёт, который можно переслать.",
@@ -56,7 +62,7 @@ const I18N = {
     keySys: "У хаба нет ключа модели. Правила проверяют код бесплатно; чтобы код читала ещё и модель, добавь ключ ниже: Anthropic, DeepSeek или ChatGPT (для Ollama ключ не нужен; ключ остаётся в этом браузере).",
     keyHint: "Не обязательно. Без ключа работают только правила; с твоим ключом и вопросом код читает ещё и модель, и побеждает более строгий вердикт. Ключ хранится в этом браузере и уходит вместе с твоим запуском.",
     noModelSummary: "\u042d\u0442\u0443 \u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0443 \u043d\u0435 \u0447\u0438\u0442\u0430\u043b\u0430 \u043c\u043e\u0434\u0435\u043b\u044c, \u043f\u043e\u044d\u0442\u043e\u043c\u0443 \u0441\u0432\u043e\u0434\u043a\u0438 \u043c\u043e\u0434\u0435\u043b\u0438 \u043d\u0435\u0442. \u041f\u0440\u0430\u0432\u0438\u043b\u0430 \u043d\u0430\u0448\u043b\u0438 \u043d\u0430\u0445\u043e\u0434\u043e\u043a: {n}. \u041e\u0442\u043a\u0440\u043e\u0439 \u0432\u043a\u043b\u0430\u0434\u043a\u0443 findings. \u0414\u043e\u0431\u0430\u0432\u044c \u0441\u0432\u043e\u0439 \u043a\u043b\u044e\u0447 \u043d\u0438\u0436\u0435, \u0447\u0442\u043e\u0431\u044b \u043a\u043e\u0434 \u043f\u0440\u043e\u0447\u0438\u0442\u0430\u043b\u0430 \u0435\u0449\u0451 \u0438 \u043c\u043e\u0434\u0435\u043b\u044c.",
-    verdictHint: "REQUIRES_REVIEW значит: человеку стоит прочитать находки. SAFE хаб пока не выдаёт: его правила не измерены достаточно хорошо ни для одного языка.",
+    verdictHint: "REQUIRES_REVIEW значит: человеку стоит прочитать находки. SAFE по одним правилам пока доступен только для Java после полной проверки без находок; остальные языки требуют просмотра.",
     working: "работаю…", nothing: "нечего проверять", refused: "отказ",
     verdictLabel: "вердикт", notChecked: "не проверено", openReport: "открыть отчёт",
     statRisk: "вердикт риска", statFix: "исправление", statVerify: "проверка",
@@ -246,6 +252,9 @@ function renderReport(data){
     patch: Object.keys(data.patch || {}).length
       ? Object.entries(data.patch).map(([n, c]) => `── ${n} ──\n${c}`).join("\n\n")
       : "no patch proposed",
+    [t("correctedVersion")]: Object.keys(data.corrected_version || {}).length
+      ? Object.entries(data.corrected_version).map(([n, c]) => `── ${n} ──\n${c}`).join("\n\n")
+      : "no corrected version produced",
     proof: (data.proof || []).length ? data.proof.map(p => "- " + p).join("\n") : "no proof lines",
     [t("notChecked")]: (data.not_checked || []).length
       ? "• " + (data.not_checked || []).join("\n• ")
@@ -334,8 +343,8 @@ function showResult(data, started){
   renderReport(data);
   $("cardVerdict").textContent = data.verdict || "—";
   $("cardVerdict").dataset.v = data.verdict || "";
-  const doneCount = [checks.analyser, checks.validator].filter(Boolean).length + 1;
-  $("cardChecks").textContent = `${doneCount} of 3`;
+  const doneCount = [checks.analyser_input, checks.generator, checks.analyser, checks.validator, checks.creator].filter(Boolean).length;
+  $("cardChecks").textContent = `${doneCount} of 5`;
   $("cardFindings").textContent = String((data.findings || []).length);
   $("cardTag").textContent = "live";
   $("hear").disabled = false;
