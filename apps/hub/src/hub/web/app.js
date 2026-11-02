@@ -614,7 +614,9 @@ function showResult(data, started){
 async function pipeline(){
   const material = $("material").value;
   const question = $("question").value;
-  const spec = $("spec").value;
+  // The magic surface has one input; use it as both context and specification
+  // so the seven-stage backend remains intact without exposing its machinery.
+  const spec = $("spec").value || (material.trim() ? material : "");
   const intent = $("mode").value;
   const hasProjectFiles = Object.keys(projectFiles).length > 0;
   if (hasProjectFiles && question.trim()){

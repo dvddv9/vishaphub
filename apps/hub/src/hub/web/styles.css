@@ -157,6 +157,23 @@ h1 em{font-style:italic;font-weight:500;padding-right:.05em;
 .steps5{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,1fr);gap:14px;counter-reset:s}
 .steps6{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(6,1fr);gap:12px;counter-reset:s}
 .steps7{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(7,1fr);gap:12px;counter-reset:s}
+
+/* Public surface: one quiet input and one result. The validation route remains
+   available internally, but its mechanics are deliberately not the product UI. */
+.nav,.hero,.how,.chat,.chips,.pipeline-panel>.eyebrow,.pipeline-panel>.k,
+.pipeline-panel>.panel-intro,.pipeline-panel>.field-label,.pipeline-panel>.drop,
+.pipeline-panel>.project-input,.pipeline-panel>.project-hint,.pipeline-panel>#folderPicker,
+.pipeline-panel>#mode,.pipeline-panel>#spec,.pipeline-panel>#question,.pipeline-panel>.model-box,
+.pipeline-panel>.flow-hint,.pipeline-panel>.verdictHint,.pipeline-panel>.waking,
+.pipeline-panel>.verdict + .hint,.pipeline-panel~section{display:none!important}
+.magic-panel{max-width:920px;margin:clamp(28px,8vh,90px) auto 0;padding:clamp(28px,5vw,64px);border-radius:28px}
+.magic-title{margin:0;text-align:center;font-size:clamp(2.2rem,7vw,5.8rem);letter-spacing:.12em;line-height:1;color:var(--ink)}
+.magic-subtitle{text-align:center;color:var(--muted);font-size:1.05rem;margin:14px 0 40px}
+.magic-panel>#material{display:block;width:100%;min-height:260px;margin:0;border:1px solid var(--line);border-radius:18px;padding:22px;font:inherit;font-size:1.05rem;resize:vertical;background:var(--surface)}
+.magic-panel>.pipeline-actions{justify-content:center;margin-top:22px}
+.magic-panel>.pipeline-actions #sampleRun,.magic-panel>.pipeline-actions #hear,.magic-panel>.pipeline-actions #download{display:none}
+.magic-panel>.progress{margin-top:28px}
+.magic-panel>.verdict,.magic-panel>.report{margin-top:24px}
 .step3{position:relative;padding:26px 24px 24px;border:1px solid var(--line);border-radius:var(--r);
   background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
   -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);transition:transform .25s,border-color .25s,box-shadow .25s}
