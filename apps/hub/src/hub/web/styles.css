@@ -199,6 +199,24 @@ h1 em{font-style:italic;font-weight:500;padding-right:.05em;
 .magic-panel>.pipeline-actions #sampleRun,.magic-panel>.pipeline-actions #hear,.magic-panel>.pipeline-actions #download{display:inline-flex}
 .magic-panel>.pipeline-actions{flex-wrap:wrap}
 @media (max-width:760px){.magic-panel>.model-box .model-controls{grid-template-columns:1fr}.magic-panel>.pipeline-actions .btn{flex:1 1 42%}}
+
+/* Refined shell for the public magic experience. */
+.nav{display:block!important}
+.nav-in{max-width:1120px;padding:14px 28px}
+.brand{font-size:17px}
+.shell{max-width:1120px;padding:0 28px 56px}
+.work-wrap{padding:0!important}
+.work-wrap>.sec-head{display:none}
+.work{display:block!important}
+.magic-panel{position:relative;overflow:hidden;max-width:960px;margin:clamp(42px,9vh,104px) auto 0;padding:clamp(30px,5vw,68px);background:linear-gradient(145deg,rgba(19,29,45,.9),rgba(9,14,25,.96));border:1px solid rgba(255,255,255,.13);box-shadow:0 34px 90px -40px rgba(34,211,238,.35),0 0 0 1px rgba(52,211,153,.06)}
+.magic-panel:before{content:"";position:absolute;inset:-35% -10% auto 35%;height:360px;pointer-events:none;background:radial-gradient(circle,rgba(34,211,238,.2),transparent 68%);filter:blur(12px)}
+.magic-panel>*{position:relative;z-index:1}
+.magic-title{font-family:var(--sans);font-weight:750;letter-spacing:.18em;text-shadow:0 0 38px rgba(34,211,238,.24)}
+.magic-subtitle{letter-spacing:.04em}
+.magic-panel>.field-label{font-size:11px;color:#8ee7d3}
+.magic-panel>.pipeline-actions{border-top:1px solid var(--line);padding-top:22px}
+footer{max-width:1120px;margin:40px auto 0;padding:18px 28px;border-top:1px solid var(--line);color:var(--dim)}
+@media (max-width:600px){.nav-in,.shell,footer{padding-left:18px;padding-right:18px}.nav-links,.pill,#say,.palette-control{display:none!important}.magic-panel{margin-top:28px;border-radius:22px;padding:26px 18px}.magic-title{font-size:2rem;letter-spacing:.1em}.magic-subtitle{margin-bottom:28px}}
 .step3{position:relative;padding:26px 24px 24px;border:1px solid var(--line);border-radius:var(--r);
   background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
   -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);transition:transform .25s,border-color .25s,box-shadow .25s}
