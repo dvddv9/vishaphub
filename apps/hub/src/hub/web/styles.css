@@ -93,7 +93,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
   background-image:linear-gradient(to right,rgba(255,255,255,.07) 1px,transparent 1px),linear-gradient(to bottom,rgba(255,255,255,.07) 1px,transparent 1px);
   background-size:64px 64px;
   -webkit-mask-image:radial-gradient(ellipse 60% 70% at 40% 30%,#000 30%,transparent 100%);mask-image:radial-gradient(ellipse 60% 70% at 40% 30%,#000 30%,transparent 100%)}
-.hero>*,.work>*,.steps3>*,.steps4>*,.steps5>*{min-width:0}
+.hero>*,.work>*,.steps3>*,.steps4>*,.steps5>*,.steps6>*{min-width:0}
 .hero-copy>*{animation:rise .7s both cubic-bezier(.2,.7,.2,1)}
 .hero-copy>*:nth-child(2){animation-delay:.06s}.hero-copy>*:nth-child(3){animation-delay:.12s}
 .hero-copy>*:nth-child(4){animation-delay:.18s}.hero-copy>*:nth-child(5){animation-delay:.24s}.hero-copy>*:nth-child(6){animation-delay:.3s}
@@ -155,6 +155,7 @@ h1 em{font-style:italic;font-weight:500;padding-right:.05em;
 .steps3{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:18px;counter-reset:s}
 .steps4{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,1fr);gap:18px;counter-reset:s}
 .steps5{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,1fr);gap:14px;counter-reset:s}
+.steps6{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(6,1fr);gap:12px;counter-reset:s}
 .step3{position:relative;padding:26px 24px 24px;border:1px solid var(--line);border-radius:var(--r);
   background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
   -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);transition:transform .25s,border-color .25s,box-shadow .25s}
@@ -310,7 +311,7 @@ footer .right{margin-left:auto;color:var(--dim-2)}
 @media (max-width:1000px){
   .hero{grid-template-columns:1fr;gap:44px;padding:56px 0 44px}
   .work{grid-template-columns:1fr}
-  .steps3,.steps4,.steps5{grid-template-columns:1fr}
+  .steps3,.steps4,.steps5,.steps6{grid-template-columns:1fr}
   .step3:not(:last-child)::after{display:none}
 }
 @media (max-width:900px),(pointer:coarse){
@@ -436,6 +437,7 @@ h1 em{font-style:normal;font-weight:800;background:linear-gradient(100deg,#6557e
 .sec-lead{color:var(--ink-2)}
 .eyebrow{color:#5145cc}
 .steps5{gap:12px}
+.steps6{gap:10px}
 .step3,.panel,.rep-hero,.block,.run-item{border-color:var(--line);background:#fff;box-shadow:var(--shadow)}
 .step3{border-radius:20px;backdrop-filter:none;-webkit-backdrop-filter:none}
 .step3:hover{border-color:rgba(99,85,232,.28);box-shadow:0 24px 45px -32px rgba(79,79,179,.36)}
@@ -611,3 +613,76 @@ textarea:focus,input:focus{border-color:var(--palette-primary);box-shadow:0 0 0 
 .mode-select:focus,.pipeline-panel textarea:focus,.model-controls input:focus,.model-controls select:focus{outline-color:var(--palette-focus);border-color:var(--palette-primary)}
 .creator-rescan-result a{color:var(--palette-primary)}
 @media(max-width:720px){.palette-select{min-width:96px;padding-left:9px;padding-right:24px}}
+
+/* Balanced is the default: calm surfaces between paper-white and the dark theme. */
+html[data-palette="balanced"]{
+  color-scheme:light;
+  --bg:#e7eaf0;
+  --ink:#202b3b;
+  --ink-2:#435064;
+  --dim:#58677b;
+  --dim-2:#68768a;
+  --line:rgba(32,45,68,.12);
+  --line-2:rgba(32,45,68,.2);
+  --glass:rgba(246,247,249,.68);
+  --glass-2:#e4e8ee;
+  --palette-primary:#53627b;
+  --palette-secondary:#397987;
+  --palette-soft:#e1e5ec;
+  --palette-soft-2:#dce8eb;
+  --palette-border:rgba(71,91,119,.24);
+  --palette-focus:rgba(57,121,135,.22);
+  --palette-glow-1:rgba(91,113,148,.10);
+  --palette-glow-2:rgba(57,121,135,.09);
+  --palette-glow-3:rgba(125,137,159,.07);
+  --violet:var(--palette-primary);
+  --focus:#397987;
+  --accent:linear-gradient(110deg,#62718a,#438794);
+  --shadow:0 24px 60px -38px rgba(36,48,68,.22);
+}
+html[data-palette="balanced"] .nav{background:rgba(231,234,240,.94)}
+html[data-palette="balanced"] .nav-links a:hover{background:#dfe3ea}
+html[data-palette="balanced"] .hero .card{background:linear-gradient(180deg,#f2f3f5,#eceef1) padding-box,linear-gradient(140deg,#8b98ab,#6e9ba3 52%,#adb8c4) border-box}
+html[data-palette="balanced"] .stats,
+html[data-palette="balanced"] .stat-row .stat,
+html[data-palette="balanced"] .step3,
+html[data-palette="balanced"] .panel,
+html[data-palette="balanced"] .rep-hero,
+html[data-palette="balanced"] .block,
+html[data-palette="balanced"] .run-item,
+html[data-palette="balanced"] .empty,
+html[data-palette="balanced"] .creator-rescan{background-color:#f0f2f5}
+html[data-palette="balanced"] .card{background:linear-gradient(180deg,#f2f3f5,#eceef1) padding-box,linear-gradient(140deg,rgba(83,98,123,.42),rgba(57,121,135,.24) 52%,rgba(139,156,174,.34)) border-box}
+html[data-palette="balanced"] .stats,
+html[data-palette="balanced"] .stat-row .stat,
+html[data-palette="balanced"] .step3,
+html[data-palette="balanced"] .panel,
+html[data-palette="balanced"] .rep-hero,
+html[data-palette="balanced"] .block,
+html[data-palette="balanced"] .run-item,
+html[data-palette="balanced"] .empty{background-color:#f0f2f5;box-shadow:0 18px 44px -34px rgba(36,48,68,.26)}
+html[data-palette="balanced"] .msg{background:#e8ebf0}
+html[data-palette="balanced"] .msg.me{background:linear-gradient(135deg,#e1e5ec,#dce8eb)}
+html[data-palette="balanced"] .msg.him{background:#eceef2}
+html[data-palette="balanced"] textarea,
+html[data-palette="balanced"] input,
+html[data-palette="balanced"] .provider,
+html[data-palette="balanced"] .model-field select,
+html[data-palette="balanced"] .mode-select,
+html[data-palette="balanced"] .palette-select,
+html[data-palette="balanced"] .mic,
+html[data-palette="balanced"] .chip,
+html[data-palette="balanced"] .copy,
+html[data-palette="balanced"] .tabs .tab,
+html[data-palette="balanced"] .q{background:#e8ebf0}
+html[data-palette="balanced"] .verdict:not(:empty),
+html[data-palette="balanced"] .rep-verdict,
+html[data-palette="balanced"] .pane,
+html[data-palette="balanced"] .drop{background:#e4e8ee}
+html[data-palette="balanced"] .drop:hover,
+html[data-palette="balanced"] .drop.hot,
+html[data-palette="balanced"] .btn.ghost{background:#e8ebf0}
+html[data-palette="balanced"] .btn.ghost:hover{background:#dce3e9}
+html[data-palette="balanced"] .flow-hint{background:#e1e5ec}
+html[data-palette="balanced"] .model-box{background:linear-gradient(145deg,#eceef2,#e5e8ee)}
+html[data-palette="balanced"] .hero .stats .stat{background:transparent}

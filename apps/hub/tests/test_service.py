@@ -548,7 +548,7 @@ class ReviewRoutingTests(ServerCase):
         assert "security" in seen["question"].lower()
 
     def test_a_spec_still_means_generation_and_a_bare_question_still_means_ask(self):
-        assert self.stages(self.sent_to_run_plan({"spec": "x", "material": "a = 1", "api_key": "k"})) == ["analyser", "generator", "analyser", "validator", "creator"]
+        assert self.stages(self.sent_to_run_plan({"spec": "x", "material": "a = 1", "api_key": "k"})) == ["analyser", "generator", "analyser", "validator", "creator", "validator"]
         assert self.stages(self.sent_to_run_plan({"question": "what is this?", "api_key": "k"})) == ["generator"]
 
 

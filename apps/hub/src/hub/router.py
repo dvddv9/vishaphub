@@ -5,7 +5,7 @@ persona) may *talk* to the client, but the plan comes from this table — otherw
 the same request would route differently on different days.
 
 The full build route screens supplied material, generates code, screens and validates
-the result, then asks the creator for a corrected version.
+the result, asks the creator for a corrected version, then validates that version again.
 """
 from __future__ import annotations
 
@@ -31,13 +31,13 @@ ROUTES: dict[str, tuple[Stage, ...]] = {
     "review": (Stage.GENERATOR, Stage.ANALYSER),
     "generate+validate": (Stage.GENERATOR, Stage.VALIDATOR),
     "generate+validate+analyse": (Stage.ANALYSER, Stage.GENERATOR, Stage.ANALYSER,
-                                  Stage.VALIDATOR, Stage.CREATOR),
+                                  Stage.VALIDATOR, Stage.CREATOR, Stage.VALIDATOR),
     "validate+analyse": (Stage.VALIDATOR, Stage.ANALYSER),
 }
 
 #: The only order the hub ever executes, regardless of how the request was written.
 CANONICAL_ORDER = (Stage.ANALYSER, Stage.GENERATOR, Stage.ANALYSER,
-                   Stage.VALIDATOR, Stage.CREATOR)
+                   Stage.VALIDATOR, Stage.CREATOR, Stage.VALIDATOR)
 
 MAX_ITERATIONS = 3
 

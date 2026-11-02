@@ -3,17 +3,18 @@
 const I18N = {
   en: {
     title: "Carry the request.<br><em>Prove</em> the result.",
-    lead: "Paste code, a spec or logs. I screen supplied code, generate from the spec, screen and validate the result, then return a proposed correction based on the findings. The correction is not re-verified in the same run.",
-    meta: "5 stages · 6 validator checks · Creator returns corrected files · strictest verdict wins · audit trail",
+    lead: "Paste code, a spec or logs. I screen supplied code, generate from the spec, screen and validate the result, return a corrected version, then validate that final version too.",
+    meta: "6 stages · 6 validator checks · Creator correction checked against the spec · strictest verdict wins · audit trail",
     try: "Try with an example", talk: "Talk to Vishap", recent: "recent runs",
     navHow: "How it works", navWork: "Try it",
-    howEyebrow: "how it works", howTitle: "One plan, five stages, one verdict",
+    howEyebrow: "how it works", howTitle: "One plan, six stages, one verdict",
     s1t: "Analyse input", s1p: "Screen the code and files you supplied before generation.",
     s2t: "Generate", s2p: "The model proposes code from your spec. It proposes; it never decides.",
     s3t: "Analyse output", s3p: "Screen the generated code. Findings from both scans are kept.",
     s4t: "Validate", s4p: "Six checks compare the generated code with the promise: structure, syntax, contract, coverage, behavior, conformance.",
-    s5t: "Creator / corrected version", s5p: "The creator returns corrected files using the findings. This final version is not re-verified in the same run.",
-    correctedVersion: "Corrected version (not re-verified)",
+    s5t: "Creator / corrected version", s5p: "Creator returns complete corrected files using the findings and original spec.",
+    s6t: "Validate the correction", s6p: "Validator runs the six checks again against Creator's corrected files and the same spec.",
+    correctedVersion: "Corrected version (checked after Creator)",
     howFoot: "The strictest verdict wins. Whatever was not checked is listed, not hidden.",
     workEyebrow: "workbench", workTitle: "Try it on your own code",
     workLead: "Paste code, a spec or logs below and press run. You get a verdict, what is wrong and how to fix it, and a report you can forward.",
@@ -29,16 +30,18 @@ const I18N = {
     fileNote: "the file is read in this browser and sent with your run",
     runEyebrow: "secure code workflow",
     runTitle: "Run the full pipeline",
-    runIntro: "Choose a mode, add your code and specification, then review the report and corrected version.",
+    runIntro: "Choose a mode, add your code and specification, then review the report and the corrected version's final validation.",
     modeLabel: "Run mode",
-    modeFull: "Full pipeline - 5 stages",
+    modeFull: "Full pipeline - 6 stages",
     modeGenerate: "Generate + validate",
     modeAnalyse: "Analyse only",
     materialLabel: "Existing code or files",
     specLabel: "Specification: what should the code do?",
     specPh: "Describe expected behavior and constraints",
     questionLabel: "Optional instructions for the model",
-    fullFlowHint: "For all five stages and a corrected version, provide both existing code/files and a specification. A specification alone runs generation and validation.",
+    fullFlowHint: "For all six stages and a validated corrected version, provide both existing code/files and a specification. A specification alone runs generation and validation.",
+    stageInput: "input scan", stageGenerate: "generate", stageOutput: "output scan",
+    stageValidate: "validate", stageCreator: "Creator", stageFinalValidate: "validate fix",
     modelTitle: "Model connection",
     modelHint: "Generation and Creator need a model. Your key stays in this browser and is sent with the run. Ollama needs no key.",
     providerLabel: "Provider",
@@ -84,20 +87,22 @@ const I18N = {
     creatorRescanFailed: "Static rescan could not be completed: {error}",
     creatorRescanReport: "Open static rescan report",
     paletteLabel: "Color palette",
+    paletteBalanced: "Balanced",
   },
   ru: {
     title: "Принять запрос.<br><em>Доказать</em> результат.",
-    lead: "Вставь код, спеку или логи. Сначала я проверю присланный код, затем сгенерирую решение, проверю и сверю результат со спекой, после чего предложу исправленный вариант. В этом прогоне он повторно не проверяется.",
-    meta: "5 стадий · 6 проверок валидатора · Creator возвращает исправленные файлы · побеждает строжайший вердикт · след прогона",
+    lead: "Вставь код, спеку или логи. Сначала я проверю исходный код, затем сгенерирую и проверю результат, попрошу Creator исправить его и отдельно проверю исправленную версию по той же спеке.",
+    meta: "6 стадий · 6 проверок Validator · исправление Creator проходит повторную проверку · побеждает строжайший вердикт · след прогона",
     try: "Показать на примере", talk: "Поговорить с Vishap", recent: "последние прогоны",
     navHow: "Как это работает", navWork: "Попробовать",
-    howEyebrow: "как это работает", howTitle: "Один план, пять стадий, один вердикт",
+    howEyebrow: "как это работает", howTitle: "Один план, шесть стадий, один вердикт",
     s1t: "Проверить вход", s1p: "До генерации проверяется присланный код и файлы.",
     s2t: "Сгенерировать", s2p: "Модель предлагает код по твоей спеке. Она предлагает, но не решает.",
     s3t: "Проверить результат", s3p: "Анализатор проверяет сгенерированный код. Находки обоих проходов сохраняются.",
     s4t: "Сверить", s4p: "Шесть проверок сравнивают код с обещанием: структура, синтаксис, контракт, покрытие, поведение, соответствие.",
-    s5t: "Creator / исправленная версия", s5p: "Creator выдаёт файлы с исправлениями по найденным проблемам. В этом прогоне версия повторно не проверяется.",
-    correctedVersion: "Исправленная версия (не проверена повторно)",
+    s5t: "Creator / исправленная версия", s5p: "Creator возвращает целые файлы с исправлениями по находкам, сохраняя исходную спеку.",
+    s6t: "Проверить исправление", s6p: "Validator повторно запускает шесть проверок на исправленных Creator файлах и той же спеке.",
+    correctedVersion: "Исправленная версия (проверена после Creator)",
     howFoot: "Побеждает строжайший вердикт. Что не проверено, то перечислено, а не спрятано.",
     workEyebrow: "рабочий стол", workTitle: "Попробуй на своём коде",
     workLead: "Вставь код, спеку или логи ниже и нажми «запустить». Получишь вердикт, что не так и как исправить, и отчёт, который можно переслать.",
@@ -113,16 +118,18 @@ const I18N = {
     fileNote: "файл читается в браузере и передаётся вместе с запуском",
     runEyebrow: "\u0417\u0430\u0449\u0438\u0442\u0430 \u043a\u043e\u0434\u0430 \u0438 \u043f\u043e\u043b\u043d\u044b\u0439 \u0446\u0438\u043a\u043b",
     runTitle: "\u0417\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c \u043f\u043e\u043b\u043d\u0443\u044e \u0446\u0435\u043f\u043e\u0447\u043a\u0443",
-    runIntro: "\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0440\u0435\u0436\u0438\u043c, \u0434\u043e\u0431\u0430\u0432\u044c\u0442\u0435 \u043a\u043e\u0434 \u0438 \u0442\u0440\u0435\u0431\u043e\u0432\u0430\u043d\u0438\u044f, \u0430 \u0437\u0430\u0442\u0435\u043c \u0438\u0437\u0443\u0447\u0438\u0442\u0435 \u043e\u0442\u0447\u0451\u0442 \u0438 \u0438\u0441\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u043d\u0443\u044e \u0432\u0435\u0440\u0441\u0438\u044e.",
+    runIntro: "Выбери режим, добавь код и требования, затем просмотри отчёт и итоговую проверку исправленной версии.",
     modeLabel: "\u0420\u0435\u0436\u0438\u043c \u0440\u0430\u0431\u043e\u0442\u044b",
-    modeFull: "\u041f\u043e\u043b\u043d\u044b\u0439 \u0446\u0438\u043a\u043b - 5 \u044d\u0442\u0430\u043f\u043e\u0432",
+    modeFull: "Полный цикл - 6 этапов",
     modeGenerate: "\u0413\u0435\u043d\u0435\u0440\u0430\u0446\u0438\u044f + \u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0430",
     modeAnalyse: "\u0422\u043e\u043b\u044c\u043a\u043e \u0430\u043d\u0430\u043b\u0438\u0437",
     materialLabel: "\u0418\u0441\u0445\u043e\u0434\u043d\u044b\u0439 \u043a\u043e\u0434 \u0438\u043b\u0438 \u0444\u0430\u0439\u043b\u044b",
     specLabel: "\u0427\u0442\u043e \u0434\u043e\u043b\u0436\u0435\u043d \u0434\u0435\u043b\u0430\u0442\u044c \u043a\u043e\u0434?",
     specPh: "\u041e\u043f\u0438\u0448\u0438\u0442\u0435 \u043e\u0436\u0438\u0434\u0430\u0435\u043c\u043e\u0435 \u043f\u043e\u0432\u0435\u0434\u0435\u043d\u0438\u0435 \u0438 \u043e\u0433\u0440\u0430\u043d\u0438\u0447\u0435\u043d\u0438\u044f.",
     questionLabel: "\u0414\u043e\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0443\u043a\u0430\u0437\u0430\u043d\u0438\u044f \u0434\u043b\u044f \u043c\u043e\u0434\u0435\u043b\u0438",
-    fullFlowHint: "\u0414\u043b\u044f \u0432\u0441\u0435\u0445 \u043f\u044f\u0442\u0438 \u044d\u0442\u0430\u043f\u043e\u0432 \u0438 \u0438\u0441\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u043d\u043e\u0439 \u0432\u0435\u0440\u0441\u0438\u0438 \u043d\u0443\u0436\u043d\u044b \u0438 \u0438\u0441\u0445\u043e\u0434\u043d\u044b\u0439 \u043a\u043e\u0434, \u0438 \u0442\u0440\u0435\u0431\u043e\u0432\u0430\u043d\u0438\u044f. \u0422\u043e\u043b\u044c\u043a\u043e \u043f\u043e \u0442\u0440\u0435\u0431\u043e\u0432\u0430\u043d\u0438\u044e \u0432\u044b\u043f\u043e\u043b\u043d\u044f\u044e\u0442\u0441\u044f \u0433\u0435\u043d\u0435\u0440\u0430\u0446\u0438\u044f \u0438 \u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0430.",
+    fullFlowHint: "Для всех шести этапов и проверенной исправленной версии добавь исходный код и спецификацию. Только спецификация запускает генерацию и проверку.",
+    stageInput: "проверка входа", stageGenerate: "генерация", stageOutput: "проверка результата",
+    stageValidate: "валидация", stageCreator: "Creator", stageFinalValidate: "проверка исправления",
     modelTitle: "\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 \u043c\u043e\u0434\u0435\u043b\u0438",
     modelHint: "\u0414\u043b\u044f \u0433\u0435\u043d\u0435\u0440\u0430\u0446\u0438\u0438 \u0438 Creator \u043d\u0443\u0436\u043d\u0430 \u043c\u043e\u0434\u0435\u043b\u044c. API-\u043a\u043b\u044e\u0447 \u0445\u0440\u0430\u043d\u0438\u0442\u0441\u044f \u0432 \u044d\u0442\u043e\u043c \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435 \u0438 \u043f\u0435\u0440\u0435\u0434\u0430\u0451\u0442\u0441\u044f \u0441 \u0437\u0430\u043f\u0443\u0441\u043a\u043e\u043c. Ollama \u0440\u0430\u0431\u043e\u0442\u0430\u0435\u0442 \u0431\u0435\u0437 \u043a\u043b\u044e\u0447\u0430.",
     providerLabel: "\u041f\u0440\u043e\u0432\u0430\u0439\u0434\u0435\u0440",
@@ -168,6 +175,7 @@ const I18N = {
     creatorRescanFailed: "Не удалось выполнить статическую проверку: {error}",
     creatorRescanReport: "Открыть отчёт статической проверки",
     paletteLabel: "Цветовая палитра",
+    paletteBalanced: "Средний режим",
   }
 };
 let lang = localStorage.getItem("vishap_lang")
@@ -531,23 +539,42 @@ function escapeHtml(s){
 }
 
 function setProgress(states){
-  const names = ["model", "rules", "validator", "verdict"];
-  $("progress").innerHTML = names.map(n =>
-    `<span class="step ${states[n]||""}"><span class="b"></span>${n}</span>`).join("");
+  const stages = [
+    ["analyser_input", t("stageInput")], ["generator", t("stageGenerate")],
+    ["analyser", t("stageOutput")], ["validator", t("stageValidate")],
+    ["creator", t("stageCreator")], ["creator_validator", t("stageFinalValidate")],
+  ];
+  $("progress").innerHTML = stages.map(([key, label]) =>
+    `<span class="step ${states[key]||""}"><span class="b"></span>${escapeHtml(label)}</span>`).join("");
 }
 
 function showResult(data, started){
   if (!data.ok){
-    setProgress({"model":"fail"});
+    const states = {};
+    let seenAnalyser = 0;
+    for (const step of data.steps || []){
+      let key = step.stage;
+      if (step.stage === "analyser") key = ++seenAnalyser === 1 ? "analyser_input" : "analyser";
+      if (step.stage === "validator" && /after Creator/i.test(step.detail || "")) key = "creator_validator";
+      states[key] = step.ok ? "done" : "fail";
+    }
+    setProgress(states);
     $("verdict").innerHTML = `<b>${escapeHtml(t("refused"))}</b> ${escapeHtml(data.error || "failed")}`;
     if (data.fingerprint && data.fingerprint.id) renderReport(data);
     return;
   }
 
   const checks = data.checks || {};
+  const checkState = check => !check ? "" : (check.status === "NOT_RUN" || /FAIL|ERROR/i.test(check.verdict || "") ? "fail" : "done");
   const states = {"model": checks.generator ? "done" : ""};
-  if (checks.analyser) states.rules = "done";
-  if (checks.validator) states.validator = "done";
+  Object.assign(states, {
+    analyser_input: checkState(checks.analyser_input),
+    generator: checkState(checks.generator),
+    analyser: checkState(checks.analyser),
+    validator: checkState(checks.validator),
+    creator: checkState(checks.creator),
+    creator_validator: checkState(checks.creator_validator),
+  });
   states.verdict = /SAFE|PASS/i.test(data.verdict) ? "done" : "fail";
   setProgress(states);
 
@@ -555,6 +582,7 @@ function showResult(data, started){
   if (checks.generator) bits.push(`generator <b>${escapeHtml(checks.generator.verdict)}</b>`);
   if (checks.analyser) bits.push(`analyser <b>${escapeHtml(checks.analyser.verdict)}</b>`);
   if (checks.validator) bits.push(`validator <b>${escapeHtml(checks.validator.verdict)}</b>`);
+  if (checks.creator_validator) bits.push(`validator after Creator <b>${escapeHtml(checks.creator_validator.verdict || checks.creator_validator.status)}</b>`);
   const secs = ((performance.now() - started) / 1000).toFixed(1);
   $("verdict").innerHTML = `${escapeHtml(t("verdictLabel"))} <b>${escapeHtml(data.verdict)}</b>`
     + (bits.length ? " · " + bits.join(" · ") : "")
@@ -564,8 +592,8 @@ function showResult(data, started){
   renderReport(data);
   $("cardVerdict").textContent = data.verdict || "—";
   $("cardVerdict").dataset.v = data.verdict || "";
-  const doneCount = [checks.analyser_input, checks.generator, checks.analyser, checks.validator, checks.creator].filter(Boolean).length;
-  $("cardChecks").textContent = `${doneCount} of 5`;
+  const doneCount = [checks.analyser_input, checks.generator, checks.analyser, checks.validator, checks.creator, checks.creator_validator].filter(Boolean).length;
+  $("cardChecks").textContent = `${doneCount} of 6`;
   $("cardFindings").textContent = String((data.findings || []).length);
   $("cardTag").textContent = "live";
   $("hear").disabled = false;
@@ -610,7 +638,7 @@ async function pipeline(){
   $("report").innerHTML = "";
   $("hear").disabled = true;
   $("download").disabled = true;
-  setProgress({"model":"run"});
+  setProgress({"analyser_input":"run"});
 
   const payload = hasProjectFiles
     ? {files: projectFiles, intent: "analyse"}
@@ -642,7 +670,7 @@ async function pipeline(){
     const decoder = new TextDecoder();
     let buffer = "";
     let done = null;
-    let modelSeen = false;
+    const liveStates = {};
     while (true) {
       const chunk = await reader.read();
       if (chunk.done) break;
@@ -659,11 +687,11 @@ async function pipeline(){
         let data = null;
         try { data = JSON.parse(payload); } catch (e) { continue; }
         if (name === "stage"){
-          if (data.stage === "generator") modelSeen = true;
-          const states = {"model": modelSeen ? "done" : ""};
-          if (data.stage === "validator") states.validator = "done";
-          if (data.stage === "analyser") states.rules = "done";
-          setProgress(states);
+          if (data.stage === "generator") liveStates.generator = "done";
+          if (data.stage === "analyser") liveStates[data.target === "input" ? "analyser_input" : "analyser"] = "done";
+          if (data.stage === "validator") liveStates[data.target === "creator" ? "creator_validator" : "validator"] = data.verdict === "NOT_RUN" ? "fail" : "done";
+          if (data.stage === "creator") liveStates.creator = "done";
+          setProgress(liveStates);
         }
         if (name === "done") done = data;
         if (name === "error") done = {ok:false, error:data.error};
@@ -698,13 +726,14 @@ setProgress({});
 applyLang();
 updateProjectSummary();
 const palette = $("palette");
-const allowedPalettes = ["violet", "ocean", "sunset"];
+const allowedPalettes = ["balanced", "violet", "ocean", "sunset"];
 palette.value = allowedPalettes.includes(document.documentElement.dataset.palette)
-  ? document.documentElement.dataset.palette : "violet";
+  ? document.documentElement.dataset.palette : "balanced";
 palette.onchange = () => {
-  const selected = allowedPalettes.includes(palette.value) ? palette.value : "violet";
+  const selected = allowedPalettes.includes(palette.value) ? palette.value : "balanced";
   document.documentElement.dataset.palette = selected;
   localStorage.setItem("vishap_palette", selected);
+  localStorage.setItem("vishap_palette_version", "2");
 };
 $("lang").onclick = () => {
   lang = lang === "ru" ? "en" : "ru";

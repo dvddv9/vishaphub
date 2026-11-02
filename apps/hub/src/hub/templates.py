@@ -115,8 +115,12 @@ def _evidence_block(fp: dict) -> str:
     patch_line = (f"diff <code>{e(str(patch.get('diff_sha256') or '')[:16])}</code> over "
                   f"{len(patch.get('files') or {})} file(s)") if patch.get("proposed") else "no patch"
     corrected = ev.get("corrected_version") or {}
-    corrected_line = (f"proposed, not re-verified; hash <code>{e(str(corrected.get('sha256') or '')[:16])}</code>"
+    corrected_status = "validated after Creator" if corrected.get("verified") else "not verified after Creator"
+    corrected_line = (f"{corrected_status}; hash <code>{e(str(corrected.get('sha256') or '')[:16])}</code>"
                       if corrected.get("files") else "none")
+    creator_v = ev.get("creator_validator_ran_on") or {}
+    creator_v_line = (f"{e(str(creator_v.get('what')))} · {e(str(creator_v.get('status') or 'not run'))}"
+                      if creator_v.get("what") not in (None, "", "not run") else "did not run")
     profile_hash = (f" \u00b7 profile <code>{e(str(prof.get('sha256') or '')[:16])}</code>" if prof.get('sha256') else "")
     lang_rows = "".join(f"<li>{e(languages.sentence(x))}</li>" for x in ev.get("languages") or []) or "<li>-</li>"
     integrity = ("<span class=\"vchip pass\">record intact</span>" if ok
@@ -135,6 +139,7 @@ def _evidence_block(fp: dict) -> str:
         f"<tr><td>model said</td><td>{model_line}</td></tr>"
         f"<tr><td>validator ran on</td><td>{ran_on}</td></tr>"
         f"<tr><td>creator output</td><td>{corrected_line}</td></tr>"
+        f"<tr><td>validator after Creator</td><td>{creator_v_line}</td></tr>"
         f"<tr><td>tests that really ran</td><td><ul>{ran_rows}</ul></td></tr>"
         f"<tr><td>left unverified</td><td><ul>{unverified}</ul></td></tr>"
         f"<tr><td>language evidence</td><td><ul>{lang_rows}</ul></td></tr>"
@@ -215,7 +220,7 @@ def report_page(record: dict, retention: str = "") -> str:
                           "Line numbers refer to the patch, not to your material.</p><ul>"
                           + "".join(_finding(f) for f in in_patch) + "</ul>") if in_patch else "")
     corrected = result.get("corrected_version") or {}
-    corrected_block = (_block("Corrected version (not re-verified)", "<pre><code>"
+    corrected_block = (_block("Corrected version (validated after Creator)", "<pre><code>"
                               + e("\n\n".join(f"--- {name}\n{text}" for name, text in sorted(corrected.items())))
                               + "</code></pre>") if corrected else "")
     missed = "".join(f"<li>{e(str(item))}</li>" for item in not_checked) or "<li>-</li>"

@@ -40,12 +40,13 @@ def _sandbox_profile(validator: dict) -> dict:
     return {"name": "in-process", "note": notes[0] if notes else "no isolation note"}
 
 
-def _check_rows(validator: dict, analyser: dict) -> list[dict]:
+def _check_rows(validator: dict, analyser: dict, creator_validator: dict | None = None) -> list[dict]:
     rows = []
-    for c in (validator or {}).get("checks", []):
-        rows.append({"stage": "validator", "name": c.get("name"), "ok": bool(c.get("ok")),
-                     "skipped": bool(c.get("skipped")), "findings": len(c.get("findings") or []),
-                     "note": c.get("note") or ""})
+    for stage, check in (("validator", validator), ("creator_validator", creator_validator)):
+        for c in (check or {}).get("checks", []):
+            rows.append({"stage": stage, "name": c.get("name"), "ok": bool(c.get("ok")),
+                         "skipped": bool(c.get("skipped")), "findings": len(c.get("findings") or []),
+                         "note": c.get("note") or ""})
     if analyser:
         rows.append({"stage": "analyser", "name": analyser.get("mode") or "rules", "ok": True,
                      "skipped": False, "findings": len(analyser.get("findings") or []),
@@ -69,8 +70,9 @@ def build(*, supplied_files: dict, checked_files: dict, patch: dict, corrected_v
           checks: dict, answer: dict, model_verdict: str,
           rules: dict, attempts: int, stop_reason: str, not_checked: list, patch_check: dict | None = None, fix_attempts: list | None = None, external: list | None = None, question: str = "") -> dict:
     validator = checks.get("validator") or {}
+    creator_validator = checks.get("creator_validator") or {}
     analyser = checks.get("analyser") or {}
-    iso = validator.get("isolation") or {}
+    iso = creator_validator.get("isolation") or validator.get("isolation") or {}
     patch_files = file_hashes(patch)
     out = {
         "snapshot": {"files": file_hashes(supplied_files), "sha256": sha(file_hashes(supplied_files))},
@@ -80,9 +82,15 @@ def build(*, supplied_files: dict, checked_files: dict, patch: dict, corrected_v
         "validator_ran_on": {"what": ("model patch" if patch and not supplied_files else
                                        "supplied files" if supplied_files else "nothing"),
                              "files": file_hashes(checked_files) if validator else {}},
+        "creator_validator_ran_on": {
+            "what": "Creator corrected version" if creator_validator else "not run",
+            "files": file_hashes(corrected_version) if creator_validator else {},
+            "verdict": creator_validator.get("verdict"),
+            "status": creator_validator.get("status"),
+        },
         "analyser_read": {"material": bool(analyser), "patch_files": sorted(patch_files) if analyser else []},
         "versions": {"rules": rules, "sandbox_profile": _sandbox_profile(validator)},
-        "checks_run": _check_rows(validator, analyser),
+        "checks_run": _check_rows(validator, analyser, creator_validator),
         "exploit_tests": list((patch_check or {}).get("exploit") or []),
         "fix_check": _fix_check(patch_check),
         "fix_attempts": list(fix_attempts or []),
@@ -94,13 +102,19 @@ def build(*, supplied_files: dict, checked_files: dict, patch: dict, corrected_v
         # how well the rules are measured for each language they read: counts from a labelled benchmark
         "languages": list(analyser.get("languages") or []),
         "rules_found": {"analyser": len(analyser.get("findings") or []),
-                        "validator": sum(len(c.get("findings") or []) for c in validator.get("checks", []))},
+                        "validator": sum(len(c.get("findings") or []) for c in validator.get("checks", [])),
+                        "creator_validator": sum(len(c.get("findings") or [])
+                                                  for c in creator_validator.get("checks", []))},
         "not_checked": list(not_checked or []),
     }
     if corrected_version:
         corrected_files = file_hashes(corrected_version)
-        out["corrected_version"] = {"files": corrected_files, "sha256": sha(corrected_files),
-                                    "verified": False}
+        out["corrected_version"] = {
+            "files": corrected_files, "sha256": sha(corrected_files),
+            "verified": creator_validator.get("status") == "COMPLETED",
+            "validator_status": creator_validator.get("status"),
+            "validator_verdict": creator_validator.get("verdict"),
+        }
     if out["model"]["consulted"]:
         # what the model said decided the verdict, so the record holds the content and not only the count:
         # two runs whose answers differ must not share a fingerprint. Only when present, so a run without

@@ -2,8 +2,8 @@
 
 One path, one verdict. The model proposes and creates a correction (``proposal.py``),
 the rules decide (``local.py``: the validator's six stages, the analyser's patterns),
-and this module merges what came back. The final correction is not re-verified in its
-run. Everything runs in this process: one URL means one deployment,
+and this module merges what came back. Creator output goes through a final validator
+pass in the full route. Everything runs in this process: one URL means one deployment,
 and calling our own services over the network would add a cold start and a second
 place where a key can be wrong.
 
@@ -162,9 +162,10 @@ def _analysis_pieces(material: str, files: dict, *, file_kind: str = "file") -> 
 
 def _validator_could_not_run(checks: dict) -> bool:
     """True when the validator's only complaint is that it had nowhere safe to run: nothing was executed."""
-    for item in ((checks.get("validator") or {}).get("checks") or []):
-        if item.get("name") == "isolation" and not item.get("ok") and not item.get("skipped"):
-            return True
+    for name in ("validator", "creator_validator"):
+        for item in ((checks.get(name) or {}).get("checks") or []):
+            if item.get("name") == "isolation" and not item.get("ok") and not item.get("skipped"):
+                return True
     return False
 
 
@@ -199,7 +200,10 @@ def _not_checked(plan: Plan, checks: dict, has_proof: bool, model_trouble: str =
     if has_proof:
         missing.append("the proof lines are the model's promise, not the output of a run")
     if checks.get("creator") and not checks["creator"].get("verified"):
-        missing.append("the creator's corrected version was not re-checked after it was produced")
+        if checks.get("creator_validator", {}).get("status") == "NOT_RUN":
+            missing.append("the Creator output validator did not run: the host could not isolate the corrected code")
+        else:
+            missing.append("the Creator's corrected version was not re-checked after it was produced")
     if model_trouble:
         missing.append(f"the model's reading is missing: {model_trouble}")
     return missing
@@ -256,7 +260,7 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
     strictest_verdict: str | None = None
     model_verdict = ""
     rules_verdict = ""
-    checks: dict = {"generator": None, "validator": None, "analyser": None}
+    checks: dict = {"generator": None, "validator": None, "creator_validator": None, "analyser": None}
     answer: dict = {}
     creator_answer: dict = {}
     corrected_version: dict = {}
@@ -322,46 +326,64 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
                 continue
 
             if stage is Stage.VALIDATOR:
-                if not files:
+                validating_creator = bool(creator_answer)
+                validation_files = corrected_version if validating_creator else files
+                check_name = "creator_validator" if validating_creator else "validator"
+                if not validation_files:
                     steps.append(Step("validator", False, detail="no files supplied"))
                     return _error(steps, envelope.session_id, trace,
                                   "validation needs files; nothing was sent", plan_dict)
-                result = local.validate_code(files, _spec_for_validator(spec, files))
+                result = local.validate_code(validation_files, _spec_for_validator(spec, validation_files))
                 if not result.get("ok"):
                     log.warning("validator failed: %s", result.get("error"))
-                    steps.append(Step("validator", False, detail=INTERNAL_ERROR))
+                    detail = "Creator output validator failed" if validating_creator else "validator failed"
+                    steps.append(Step("validator", False,
+                                      detail=(detail + ": " + INTERNAL_ERROR) if validating_creator else INTERNAL_ERROR))
                     return _error(steps, envelope.session_id, trace,
-                                  "validator failed; the deliverable is unverified", plan_dict)
+                                  f"{detail}; the deliverable is unverified", plan_dict)
                 report = result.get("report") or {}
                 try:
                     verdict = normalise(report.get("verdict"))
                 except ValueError:
                     log.warning("validator returned an unusable verdict: %r", report.get("verdict"))
+                    detail = "Creator output validator" if validating_creator else "validator"
                     steps.append(Step("validator", False, verdict="",
-                                      detail="the report carried no usable verdict"))
+                                      detail=f"{detail} report carried no usable verdict"))
                     return _error(steps, envelope.session_id, trace,
-                                  "validator returned no verdict; nothing was verified", plan_dict)
+                                  f"{detail} returned no verdict; nothing was verified", plan_dict)
                 validator_checks = report.get("checks", [])
                 if _validator_could_not_run({"validator": {"checks": validator_checks}}):
-                    checks["validator"] = {"verdict": None, "status": "NOT_RUN",
-                                            "checks": validator_checks}
+                    checks[check_name] = {"verdict": None, "status": "NOT_RUN",
+                                          "checks": validator_checks, "files": sorted(validation_files)}
                     if result.get("isolation"):
-                        checks["validator"]["isolation"] = result["isolation"]
-                    detail = "NOT RUN: this host cannot isolate submitted code; no code was executed"
+                        checks[check_name]["isolation"] = result["isolation"]
+                    if validating_creator:
+                        checks["creator"]["verified"] = False
+                    detail = ("NOT RUN: this host cannot isolate the Creator's corrected code; no code was executed"
+                              if validating_creator else
+                              "NOT RUN: this host cannot isolate submitted code; no code was executed")
                     steps.append(Step("validator", False, "NOT_RUN", detail=detail))
-                    trace.append(f"pass {pass_no} validator -> NOT_RUN (host isolation unavailable)")
+                    trace.append(f"pass {pass_no} {check_name} -> NOT_RUN (host isolation unavailable)")
                     emit("validator", {"stage": "validator", "verdict": "NOT_RUN",
+                                       "target": "creator" if validating_creator else "generated",
                                        "ok": False, "findings": 0, "pass": pass_no})
                     continue
-                checks["validator"] = {"verdict": verdict, "status": "COMPLETED",
-                                       "checks": validator_checks}
+                checks[check_name] = {"verdict": verdict, "status": "COMPLETED",
+                                      "checks": validator_checks, "files": sorted(validation_files)}
                 if result.get("isolation"):
-                    checks["validator"]["isolation"] = result["isolation"]
-                current["validator"] = verdict
+                    checks[check_name]["isolation"] = result["isolation"]
+                if validating_creator:
+                    checks["creator"]["verified"] = True
+                    checks["creator"]["validation_verdict"] = verdict
+                    current["creator_validator"] = verdict
+                else:
+                    current["validator"] = verdict
                 steps.append(Step("validator", verdict not in BLOCKING_VERDICTS, verdict,
-                                  detail=f"{report.get('finding_count', 0)} findings"))
-                trace.append(f"pass {pass_no} validator -> {verdict}")
+                                  detail=("after Creator · " if validating_creator else "")
+                                  + f"{report.get('finding_count', 0)} findings"))
+                trace.append(f"pass {pass_no} {check_name} -> {verdict}")
                 emit("validator", {"stage": "validator", "verdict": verdict,
+                                   "target": "creator" if validating_creator else "generated",
                                    "ok": verdict not in BLOCKING_VERDICTS,
                                    "findings": report.get("finding_count", 0), "pass": pass_no})
                 merge(verdict)
@@ -436,6 +458,7 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
                                   detail=f"{len(found)} findings · {len(pieces)} piece(s) · rules only" + (f" - {why}" if why else "")))
                 trace.append(f"pass {pass_no} analyser -> {worst} ({len(pieces)} piece(s))")
                 emit("analyser", {"stage": "analyser", "verdict": worst, "ok": True,
+                                  "target": "input" if before_generation else "output",
                                   "findings": len(found), "pieces": len(pieces), "pass": pass_no})
                 merge(worst)
                 continue
@@ -456,7 +479,8 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
                     "Return a corrected full-file version that fixes the security findings and failed "
                     "validation checks listed below. Preserve the requested behavior and spec. Do not "
                     "remove tests or weaken checks. Put every corrected complete file in the JSON patch. "
-                    "This correction will not be checked again in this run; do not claim it is verified.\n\n"
+                    "A final validator will check the corrected files against the spec after you return them. "
+                    "Do not claim success for checks that have not passed.\n\n"
                     "Findings and checks:\n" + json.dumps(issues, ensure_ascii=False, default=str)
                 )
                 material_for_creator = "\n\n".join(
@@ -476,8 +500,8 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
                                   "creator did not return a corrected version", plan_dict)
                 checks["creator"] = {"model": creator_answer.get("model", ""),
                                      "files": len(corrected_version), "verified": False}
-                steps.append(Step("creator", True, detail=f"{len(corrected_version)} corrected file(s) · not re-verified"))
-                trace.append(f"pass {pass_no} creator -> {len(corrected_version)} corrected file(s), not re-verified")
+                steps.append(Step("creator", True, detail=f"{len(corrected_version)} corrected file(s) · awaiting Validator"))
+                trace.append(f"pass {pass_no} creator -> {len(corrected_version)} corrected file(s), awaiting creator validator")
                 emit("creator", {"stage": "creator", "ok": True, "files": len(corrected_version),
                                   "verified": False, "pass": pass_no})
                 continue
@@ -489,7 +513,8 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
         previous = current
 
     # ---- nothing produced a verdict: this is a failure, not a pass --------
-    rules_parts = [check["verdict"] for check in (checks["validator"], checks["analyser"])
+    rules_parts = [check["verdict"] for check in
+                   (checks["validator"], checks["creator_validator"], checks["analyser"])
                    if check and check.get("verdict")]
     rules_verdict = strictest(*rules_parts) if rules_parts else ""
 
@@ -514,7 +539,7 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
     reason = plan.note or ""
     if _validator_could_not_run(checks):
         reason = (reason + " — " if reason else "") + (
-            "validator status NOT_RUN: this host cannot isolate submitted code; no code was executed, "
+            "validator status NOT_RUN: this host cannot isolate one of the submitted versions; no code was executed, "
             "so this run does not establish whether the code passes the spec")
     if model_trouble:
         reason = (reason + " · " if reason else "") + f"the model did not answer: {model_trouble}"

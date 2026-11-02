@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>VishapHub — carry the request, prove the result</title>
-<meta name="description" content="VishapHub screens supplied code, generates from the spec, screens and validates the result, then returns proposed corrected files that are not re-verified in the same run.">
+<meta name="description" content="VishapHub screens supplied code, generates from the spec, validates it, creates a correction, and validates the corrected version again.">
 <meta name="theme-color" content="#f5f7ff">
 <meta name="color-scheme" content="light">
 <meta property="og:type" content="website">
 <meta property="og:title" content="VishapHub — carry the request, prove the result">
-<meta property="og:description" content="One plan, one verdict: security scan, generation, security scan, validation. Creator proposes corrected files; they are not re-verified in the same run.">
+<meta property="og:description" content="One plan, one verdict: security scan, generation, validation, Creator correction, and final validation of corrected files.">
 <meta name="twitter:card" content="summary">
 <link rel="canonical" href="/">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -34,6 +34,7 @@
     <label class="palette-control">
       <span class="sr-only" data-i18n="paletteLabel">Color palette</span>
       <select id="palette" class="palette-select" data-i18n-aria="paletteLabel" aria-label="Color palette">
+        <option value="balanced" data-i18n="paletteBalanced">Balanced</option>
         <option value="violet">Violet</option>
         <option value="ocean">Ocean</option>
         <option value="sunset">Sunset</option>
@@ -47,18 +48,18 @@
   <main id="main">
     <section class="hero" aria-labelledby="hero-title">
       <div class="hero-copy">
-        <span class="badge"><span class="dot" aria-hidden="true"></span>analyser &rarr; generator &rarr; analyser &rarr; validator &rarr; creator</span>
+        <span class="badge"><span class="dot" aria-hidden="true"></span>analyser &rarr; generator &rarr; analyser &rarr; validator &rarr; creator &rarr; validator</span>
         <h1 id="hero-title" data-i18n-html="title">Carry the request.<br><em>Prove</em> the result.</h1>
         <p class="lead" data-i18n="lead">
           Paste code, a spec or logs. The pipeline screens your input, generates from the spec,
-          screens the generated code, validates it, then returns a corrected version from Creator.
+          screens the generated code, validates it, then checks Creator's corrected version against the same spec.
         </p>
         <div class="cta">
           <button type="button" class="btn" id="tryExample" data-i18n="try">Try with an example</button>
           <button type="button" class="btn ghost" id="focusComposer" data-i18n="talk">Talk to Vishap</button>
           <a href="/runs" class="cta-link" data-i18n="recent">recent runs</a>
         </div>
-        <p class="meta" data-i18n="meta">5 stages · 6 validator checks · Creator returns corrected files · strictest verdict wins · audit trail</p>
+        <p class="meta" data-i18n="meta">6 stages · 6 validator checks · Creator correction checked against the spec · strictest verdict wins · audit trail</p>
         <dl class="stats">
           <div class="stat"><dt>generator</dt><dd>spec → code</dd></div>
           <div class="stat"><dt>validator</dt><dd>6 checks</dd></div>
@@ -71,7 +72,7 @@
           <div class="head">pipeline report <span class="right" id="cardTag">example</span></div>
           <div class="cells">
             <div class="cell accent"><k>verdict</k><v id="cardVerdict">REQUIRES_REVIEW</v></div>
-          <div class="cell"><k>checks</k><v id="cardChecks">5 of 5</v></div>
+            <div class="cell"><k>checks</k><v id="cardChecks">6 of 6</v></div>
             <div class="cell"><k>findings</k><v id="cardFindings">1</v></div>
           </div>
           <div class="body">
@@ -96,11 +97,11 @@
             </div>
             <div>
               <p class="label">Trace</p>
-              <p class="small mt-xs">pass 1 analyser → generator → analyser → validator → creator</p>
+              <p class="small mt-xs">pass 1 analyser → generator → analyser → validator → creator → validator</p>
             </div>
             <div>
               <p class="label">Creator output</p>
-              <div class="row mt-sm"><span class="tag">files proposed</span><span class="tag">not re-verified</span></div>
+              <div class="row mt-sm"><span class="tag">corrected files</span><span class="tag ok">validated against spec</span></div>
             </div>
           </div>
         </div>
@@ -111,9 +112,9 @@
     <section id="how" class="how" aria-labelledby="how-title">
       <div class="sec-head">
         <span class="eyebrow" data-i18n="howEyebrow">how it works</span>
-        <h2 class="sec-title" id="how-title" data-i18n="howTitle">One plan, five stages, one verdict</h2>
+        <h2 class="sec-title" id="how-title" data-i18n="howTitle">One plan, six stages, one verdict</h2>
       </div>
-      <ol class="steps5">
+      <ol class="steps6">
         <li class="step3">
           <span class="num" aria-hidden="true">1</span>
           <h3 data-i18n="s1t">Analyse input</h3>
@@ -137,7 +138,12 @@
         <li class="step3">
           <span class="num" aria-hidden="true">5</span>
           <h3 data-i18n="s5t">Creator / corrected version</h3>
-          <p data-i18n="s5p">Creator returns corrected files from the findings. The final version is not re-verified in this run.</p>
+          <p data-i18n="s5p">Creator returns complete corrected files using the findings and original spec.</p>
+        </li>
+        <li class="step3">
+          <span class="num" aria-hidden="true">6</span>
+          <h3 data-i18n="s6t">Validate the correction</h3>
+          <p data-i18n="s6p">Validator runs the six checks again against Creator's corrected files and the same spec.</p>
         </li>
       </ol>
       <p class="how-foot" data-i18n="howFoot">The strictest verdict wins. Whatever was not checked is listed, not hidden.</p>
@@ -183,7 +189,7 @@
           <label class="field-label" for="question" data-i18n="questionLabel">Optional instructions for the model</label>
           <textarea id="question" rows="2" class="mt-sm" placeholder="add a question or extra requirement" data-i18n-ph="questionPh"></textarea>
 
-          <p class="flow-hint" id="mode-hint" data-i18n="modeHint">For all five stages and a corrected version, provide both existing code/files and a specification. A specification alone runs generation and validation.</p>
+          <p class="flow-hint" id="mode-hint" data-i18n="fullFlowHint">For all six stages and a validated corrected version, provide both existing code/files and a specification. A specification alone runs generation and validation.</p>
 
           <div class="model-box" id="model-key">
             <div class="model-box-head">

@@ -13,6 +13,8 @@ and only upwards). A verdict that rests on the model alone is a guess, and says 
 """
 from __future__ import annotations
 
+from .verdicts import strictest
+
 NO_PATCH = "NO_PATCH"
 FIX_UNVERIFIED = "FIX_UNVERIFIED"
 FIX_VERIFIED = "FIX_VERIFIED"
@@ -26,7 +28,7 @@ NOT_RUN = "NOT_RUN"
 ERROR = "ERROR"
 VERIFICATION_STATUSES = (COMPLETE, PARTIAL, NOT_RUN, ERROR)
 
-_CHECKED_STAGES = ("analyser", "validator")
+_CHECKED_STAGES = ("analyser", "validator", "creator_validator")
 
 
 def _verdict_of(checks: dict, name: str) -> str | None:
@@ -36,7 +38,9 @@ def _verdict_of(checks: dict, name: str) -> str | None:
 
 def risk(verdict: str, checks: dict, model_verdict: str) -> dict:
     """The verdict and what it rests on. The model can only raise it, never lower it."""
-    basis = {"rules": _verdict_of(checks, "analyser"), "tests": _verdict_of(checks, "validator"),
+    test_verdicts = [_verdict_of(checks, name) for name in ("validator", "creator_validator")]
+    test_verdicts = [item for item in test_verdicts if item]
+    basis = {"rules": _verdict_of(checks, "analyser"), "tests": strictest(*test_verdicts) if test_verdicts else None,
              "model": model_verdict or None}
     grounded = bool(basis["rules"] or basis["tests"])
     return {"verdict": verdict, "basis": basis, "rests_on_model_alone": bool(basis["model"]) and not grounded}
@@ -59,9 +63,14 @@ def fix(patch: dict, checked: dict | None = None) -> dict:
 def verification(ok: bool, verdict: str, checks: dict, plan: dict, not_checked: list) -> dict:
     ran = [name for name in _CHECKED_STAGES
            if (checks or {}).get(name) and (checks[name] or {}).get("status") != NOT_RUN]
-    planned = [s for s in (plan or {}).get("stages", []) if s in _CHECKED_STAGES]
+    stages = (plan or {}).get("stages", [])
+    planned = [s for s in stages if s in ("analyser", "validator")]
+    validator_after_creator = "creator" in stages and stages.index("creator") < max(
+        (i for i, stage in enumerate(stages) if stage == "validator"), default=-1)
+    if validator_after_creator:
+        planned.append("creator_validator")
     not_run = sorted(set(planned) - set(ran))
-    isolation = ((checks or {}).get("validator") or {}).get("isolation")
+    isolation = ((checks or {}).get("creator_validator") or (checks or {}).get("validator") or {}).get("isolation")
     if not ran:
         status = ERROR if verdict == "ERROR" else NOT_RUN
     elif (plan or {}).get("partial") or not_checked or not_run:
