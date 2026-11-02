@@ -21,7 +21,7 @@ import shutil
 import tempfile
 import threading
 
-from . import isolation
+from . import isolation, paths
 
 MAX_FILES = 200
 
@@ -64,10 +64,9 @@ def _materialize(files: dict) -> tuple[str, int]:
     for rel, text in (files or {}).items():
         if not isinstance(rel, str) or not isinstance(text, str):
             continue
-        safe = os.path.normpath(rel).lstrip("\\/")
-        if safe.startswith("..") or os.path.isabs(safe):
+        target = paths.contained(root, rel)
+        if target is None:
             continue
-        target = os.path.join(root, safe)
         os.makedirs(os.path.dirname(target) or root, exist_ok=True)
         with open(target, "w", encoding="utf-8") as fh:
             fh.write(text)
@@ -157,10 +156,9 @@ def validate_code(files: dict, spec: dict, *, require_netns: bool = True) -> dic
         for rel, text in files.items():
             if not isinstance(rel, str) or not isinstance(text, str):
                 continue
-            safe = os.path.normpath(rel).lstrip("\\/")
-            if safe.startswith("..") or os.path.isabs(safe):
-                continue  # a path that climbs out is not a deliverable
-            target = os.path.join(root, safe)
+            target = paths.contained(root, rel)
+            if target is None:
+                continue  # a path that climbs out, or names a drive, is not a deliverable
             os.makedirs(os.path.dirname(target) or root, exist_ok=True)
             with open(target, "w", encoding="utf-8") as fh:
                 fh.write(text)
