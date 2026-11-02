@@ -104,6 +104,7 @@ nothing is worse than a page that says «bring a key».
 | `POST /run` | one run, one verdict | a model call on the caller's key | 6 a minute per address |
 | `POST /run/stream` | the same run as server-sent events | same | same |
 | `POST /speak` | the voice | an outside synthesis service | 20 a minute, 600 characters, cached by the words |
+| `POST /webhook/github` | verifies GitHub's HMAC and scans supported PR diffs against the bounded full-repository snapshot | GitHub App installation token | one scan per PR event; source archive ≤50 MB, 2,000 files, 400 KB per file |
 | `GET /r/<id>` | a finished run as a page, owner only | nothing | — |
 | `GET /api/runs` | your own recent runs, JSON | nothing | last 200 kept |
 | `GET /api/runs/<id>.json` | one run, JSON, owner only | nothing | — |
@@ -124,6 +125,24 @@ One rule separates the two halves of the surface: **`/api/*` is JSON, everything
 is a page**. A wrong address under `/api` answers a JSON error; a wrong address
 anywhere else answers an HTML page with a way back. That is why `/runs` is a list you
 can read and `/api/runs` is the same list a program can parse.
+
+### GitHub pull request gate
+
+The production hub serves `POST /webhook/github`; the older analyzer API route is only
+an adapter and is not required for the deployed hub. Set `GITHUB_WEBHOOK_SECRET`,
+`GITHUB_APP_ID`, and `GITHUB_PRIVATE_KEY` (path to the App PEM) in the hub service.
+Install the GitHub App with `contents:read`, `pull_requests:write`, and `statuses:write`.
+The hub scans on PR open, reopen, synchronize, and ready-for-review events, updates one
+summary comment, and writes the `vishap/security` commit status. The default gate fails
+on high or critical findings; set `VISHAP_GITHUB_FAIL_ON` to `critical`, `high`,
+`medium`, or `low` to change the threshold. Draft PRs are deferred until ready for
+review.
+
+GitHub does not block a merge merely because a status exists. A repository owner must
+add `vishap/security` to required status checks in branch protection or a ruleset.
+The webhook runs the deterministic repository scanner; it does not use a model key.
+Only changed-line findings affect the gate, while the bounded source snapshot supplies
+inter-file Python context.
 
 A run belongs to whoever started it: a token in a cookie or in the owner header. Without
 one the answer is `403`; for somebody else's run it is `404`, so the existence of that run

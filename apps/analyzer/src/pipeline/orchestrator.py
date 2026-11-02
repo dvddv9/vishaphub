@@ -263,7 +263,10 @@ def detect_language(filename: str) -> str:
         "py": "python", "go": "go", "js": "javascript", "ts": "typescript",
         "java": "java", "rs": "rust",
         "jsx": "javascript", "mjs": "javascript", "cjs": "javascript",
-        "tsx": "typescript",
+        "tsx": "typescript", "c": "c", "h": "c", "cc": "cpp", "cpp": "cpp", "hpp": "cpp",
+        "php": "php", "rb": "ruby", "cs": "csharp", "kt": "kotlin", "kts": "kotlin",
+        "swift": "swift", "scala": "scala", "sc": "scala", "tf": "terraform", "tfvars": "terraform",
+        "yaml": "yaml", "yml": "yaml", "sql": "sql", "sh": "shell", "bash": "shell",
     }.get(ext, "other")
 
 

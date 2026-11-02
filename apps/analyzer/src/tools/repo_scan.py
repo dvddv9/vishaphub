@@ -26,10 +26,10 @@ import urllib.request
 from pathlib import Path
 
 from src.tools.findings_diff import assign_fingerprints, diff_findings, load_baseline, render_diff_md, save_baseline
+from src.tools.language_support import DOCKERFILE_NAMES, REPOSITORY_EXTENSIONS
 from src.tools.static_scan import SEV_ORDER, scan_material, to_rules_view
 
-CODE_EXT = {".py", ".pyw", ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".java", ".c", ".h", ".cc", ".cpp", ".hpp",
-            ".go", ".php", ".tf", ".tfvars", ".yml", ".yaml", ".sh"}
+CODE_EXT = REPOSITORY_EXTENSIONS
 SKIP_DIRS = {".git", "node_modules", "venv", ".venv", "env", "__pycache__", "dist", "build", ".next", "target",
              "vendor", "site-packages", ".tox", ".mypy_cache", ".pytest_cache", "_to_delete", ".idea", ".vscode"}
 SKIP_PREFIX = ("_backup", "_docs_backup", "_logs_")
@@ -37,7 +37,7 @@ SKIP_PREFIX = ("_backup", "_docs_backup", "_logs_")
 
 def _is_code_file(name: str) -> bool:
     low = name.lower()
-    return Path(low).suffix in CODE_EXT or low == "dockerfile" or low.startswith("dockerfile.")
+    return Path(low).suffix in CODE_EXT or low in DOCKERFILE_NAMES or low.startswith("dockerfile.")
 
 
 def scan_repo(root: str, *, only: set | None = None, max_files: int = 2000, max_file_bytes: int = 400_000,
@@ -47,6 +47,8 @@ def scan_repo(root: str, *, only: set | None = None, max_files: int = 2000, max_
     findings: list[dict] = []
     routes: list[dict] = []
     skipped: list[dict] = []
+    python_files: dict[str, str] = {}
+    language_counts: dict[str, int] = {}
     scanned = 0
     for dirpath, dirnames, filenames in os.walk(base, followlinks=False):
         dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS and not d.startswith(SKIP_PREFIX)
@@ -74,17 +76,32 @@ def scan_repo(root: str, *, only: set | None = None, max_files: int = 2000, max_
             text = full.read_text(encoding="utf-8", errors="replace")
             res = scan_material(text, rel)
             scanned += 1
+            language = str(res.get("language") or "unknown")
+            language_counts[language] = language_counts.get(language, 0) + 1
+            if full.suffix.lower() in (".py", ".pyw"):
+                python_files[rel] = text
             for f in res["findings"]:
                 f = dict(f)
                 f["file"] = rel
                 findings.append(f)
             for r in res.get("routes", []):
                 routes.append({**r, "file": rel})
+    interfile_findings: list[dict] = []
+    if python_files:
+        try:
+            from src.tools.interfile_dataflow import analyze_project
+            interfile_findings = analyze_project(python_files)
+            findings.extend(interfile_findings)
+        except Exception as exc:  # a project-level pass must not stop ordinary SAST
+            skipped.append({"file": "<project>", "reason": f"inter-file taint pass unavailable: {type(exc).__name__}"})
     findings.sort(key=lambda f: (SEV_ORDER.get(f["severity"], 9), f["file"], f["line"]))
     by_sev = {s: sum(1 for f in findings if f["severity"] == s) for s in SEV_ORDER}
     return {"root": str(base), "files_scanned": scanned, "files_skipped": skipped, "findings": findings,
             "routes": routes, "by_severity": by_sev, "total_findings": len(findings),
-            "logic_findings": sum(1 for f in findings if f.get("kind") == "logic")}
+            "logic_findings": sum(1 for f in findings if f.get("kind") == "logic"),
+            "languages_scanned": dict(sorted(language_counts.items())),
+            "interfile_dataflow": {"available": True, "language": "python", "files": len(python_files),
+                                   "findings": len(interfile_findings)}}
 
 
 # ----------------------------------------------------------------------------- diff
@@ -122,7 +139,9 @@ def parse_diff(diff_text: str) -> dict:
 def scan_diff(root: str, diff_text: str, **kw) -> dict:
     """Scan the files a diff touches and keep only findings on lines the diff added."""
     added = parse_diff(diff_text)
-    res = scan_repo(root, only={p for p, ls in added.items() if ls}, **kw)
+    # Scan the whole bounded project to build cross-file context; report only findings
+    # whose sink lands on an added line in the PR, so pre-existing issues do not gate it.
+    res = scan_repo(root, **kw)
     res["findings"] = [f for f in res["findings"] if f["line"] in added.get(f["file"], set())]
     res["by_severity"] = {s: sum(1 for f in res["findings"] if f["severity"] == s) for s in SEV_ORDER}
     res["total_findings"] = len(res["findings"])

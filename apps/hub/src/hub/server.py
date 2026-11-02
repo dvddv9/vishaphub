@@ -918,6 +918,33 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # stdlib naming
         path = self.path.split("?", 1)[0]
 
+        if path == "/webhook/github":
+            length = self._content_length()
+            self._body_taken = True
+            if length <= 0 or length > MAX_BODY:
+                self._send(400, {"ok": False, "error": f"body must be 1..{MAX_BODY} bytes"})
+                return
+            payload = self.rfile.read(length)
+            if not os.getenv("GITHUB_WEBHOOK_SECRET"):
+                self._send(503, {"ok": False, "error": "GitHub webhook is not configured"})
+                return
+            try:
+                from src.github_app.webhook import WebhookError, handle_payload
+                answer = handle_payload(payload, self.headers.get("X-GitHub-Event", ""),
+                                        self.headers.get("X-Hub-Signature-256", ""))
+            except ImportError:
+                self._send(503, {"ok": False, "error": "GitHub App dependencies are not installed"})
+                return
+            except WebhookError as exc:
+                self._send(exc.status_code, {"ok": False, "error": str(exc)})
+                return
+            except Exception as exc:  # noqa: BLE001 - GitHub retries 5xx; internal details stay in logs
+                print(f"GitHub webhook failed: {type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
+                self._send(500, {"ok": False, "error": "GitHub review could not be completed"})
+                return
+            self._send(200, answer)
+            return
+
         if path.startswith("/api/runs/") and path.endswith(("/accept", "/unaccept")):
             self._accept(path)
             return
