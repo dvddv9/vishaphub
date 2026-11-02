@@ -4,7 +4,7 @@ const I18N = {
   en: {
     title: "Carry the request.<br><em>Prove</em> the result.",
     lead: "Paste code, a spec or logs. I screen supplied code, generate from the spec, screen and validate the result, return a corrected version, validate it, then generate a final version clearly marked as not re-verified.",
-    meta: "7 stages · 6 validator checks · Creator correction checked against the spec · final version is clearly marked · audit trail",
+    meta: "private analysis · Creator correction checked against the spec · final version is clearly marked · audit trail",
     try: "Try with an example", recent: "recent runs",
     navHow: "How it works", navWork: "Try it",
     howEyebrow: "how it works", howTitle: "One plan, seven stages, one verdict",
@@ -33,7 +33,7 @@ const I18N = {
     runTitle: "Run the full pipeline",
     runIntro: "Choose a mode, add your code and specification, then review the report and the corrected version's final validation.",
     modeLabel: "Run mode",
-    modeFull: "Full pipeline - 7 stages",
+    modeFull: "Full pipeline",
     modeGenerate: "Generate + validate",
     modeAnalyse: "Analyse only",
     materialLabel: "Existing code or files",
@@ -93,7 +93,7 @@ const I18N = {
   ru: {
     title: "Принять запрос.<br><em>Доказать</em> результат.",
     lead: "Вставь код, спеку или логи. Сначала я проверю исходный код, затем сгенерирую и проверю результат, попрошу Creator исправить его, проверю исправление и соберу финальную версию с явной пометкой о неповторной проверке.",
-    meta: "7 стадий · 6 проверок Validator · исправление Creator проходит повторную проверку · финальная версия помечена явно · след прогона",
+    meta: "закрытый анализ · исправление Creator проходит повторную проверку · финальная версия помечена явно · след прогона",
     try: "Показать на примере", recent: "последние прогоны",
     navHow: "Как это работает", navWork: "Попробовать",
     howEyebrow: "как это работает", howTitle: "Один план, семь стадий, один вердикт",
@@ -122,7 +122,7 @@ const I18N = {
     runTitle: "\u0417\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c \u043f\u043e\u043b\u043d\u0443\u044e \u0446\u0435\u043f\u043e\u0447\u043a\u0443",
     runIntro: "Выбери режим, добавь код и требования, затем просмотри отчёт и итоговую проверку исправленной версии.",
     modeLabel: "\u0420\u0435\u0436\u0438\u043c \u0440\u0430\u0431\u043e\u0442\u044b",
-    modeFull: "Полный цикл - 7 этапов",
+    modeFull: "Полный цикл",
     modeGenerate: "\u0413\u0435\u043d\u0435\u0440\u0430\u0446\u0438\u044f + \u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0430",
     modeAnalyse: "\u0422\u043e\u043b\u044c\u043a\u043e \u0430\u043d\u0430\u043b\u0438\u0437",
     materialLabel: "\u0418\u0441\u0445\u043e\u0434\u043d\u044b\u0439 \u043a\u043e\u0434 \u0438\u043b\u0438 \u0444\u0430\u0439\u043b\u044b",
@@ -244,9 +244,8 @@ function loadExample(){
   $("run-title").scrollIntoView({behavior:"smooth", block:"start"});
 }
 $("mode").onchange = () => { $("mode-hint").textContent = t("modeHint"); };
-$("tryExample").onclick = loadExample;
-
-$("sampleRun").onclick = $("tryExample").onclick;
+if ($("tryExample")) $("tryExample").onclick = loadExample;
+if ($("sampleRun")) $("sampleRun").onclick = loadExample;
 
 const providerValue = () => { const v = $("provider").value; return ["deepseek","openai","ollama"].includes(v) ? v : "anthropic"; };
 const modelValue = () => ($("modelname").value || "").trim();

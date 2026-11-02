@@ -688,3 +688,4 @@ html[data-palette="balanced"] .btn.ghost:hover{background:#dce3e9}
 html[data-palette="balanced"] .flow-hint{background:#e1e5ec}
 html[data-palette="balanced"] .model-box{background:linear-gradient(145deg,#eceef2,#e5e8ee)}
 html[data-palette="balanced"] .hero .stats .stat{background:transparent}
+.how,.hero .cta #tryExample,.pipeline-actions #sampleRun{display:none!important}
