@@ -217,6 +217,35 @@ h1 em{font-style:italic;font-weight:500;padding-right:.05em;
 .magic-panel>.pipeline-actions{border-top:1px solid var(--line);padding-top:22px}
 footer{max-width:1120px;margin:40px auto 0;padding:18px 28px;border-top:1px solid var(--line);color:var(--dim)}
 @media (max-width:600px){.nav-in,.shell,footer{padding-left:18px;padding-right:18px}.nav-links,.pill,#say,.palette-control{display:none!important}.magic-panel{margin-top:28px;border-radius:22px;padding:26px 18px}.magic-title{font-size:2rem;letter-spacing:.1em}.magic-subtitle{margin-bottom:28px}}
+
+/* Serious graphite palette: restrained contrast, no candy-neon surfaces. */
+:root{
+  --bg:#080a0e;
+  --ink:#d9dee7;
+  --ink-2:#aeb6c3;
+  --dim:#7d8796;
+  --dim-2:#626d7d;
+  --line:rgba(210,220,235,.11);
+  --line-2:rgba(210,220,235,.2);
+  --glass:rgba(20,25,34,.72);
+  --glass-2:rgba(31,38,50,.82);
+  --emerald:#70b7a4;
+  --cyan:#78a9bc;
+  --violet:#8e91ad;
+  --accent:linear-gradient(135deg,#688f8f 0%,#7189a5 100%);
+  --focus:#9db8c5;
+}
+body::before{background:radial-gradient(900px 520px at 8% -12%,rgba(72,103,112,.12),transparent 64%),radial-gradient(820px 500px at 96% -8%,rgba(79,78,104,.1),transparent 64%),radial-gradient(1000px 620px at 50% 110%,rgba(44,67,77,.08),transparent 64%)}
+body::after{opacity:.22}
+.nav{background:rgba(8,10,14,.9)}
+.magic-panel{background:linear-gradient(145deg,rgba(22,27,35,.97),rgba(11,14,20,.98));border-color:rgba(190,204,220,.15);box-shadow:0 30px 70px -44px rgba(0,0,0,.95),0 0 0 1px rgba(160,180,195,.04)}
+.magic-panel:before{background:radial-gradient(circle,rgba(98,132,145,.1),transparent 68%)}
+.magic-title{text-shadow:0 0 28px rgba(120,169,188,.12)}
+.btn{box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 10px 25px -16px rgba(90,125,140,.7)}
+.btn:hover{box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 14px 30px -15px rgba(90,125,140,.7)}
+.magic-panel>#material,.magic-panel>#spec,.magic-panel>#question{background:rgba(5,8,12,.62);border-color:rgba(180,195,210,.14)}
+.magic-panel>.model-box{background:rgba(6,9,13,.52);border-color:rgba(180,195,210,.13)}
+.magic-panel>.drop{background:rgba(6,9,13,.38);border-color:rgba(180,195,210,.2)}
 .step3{position:relative;padding:26px 24px 24px;border:1px solid var(--line);border-radius:var(--r);
   background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));
   -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);transition:transform .25s,border-color .25s,box-shadow .25s}
