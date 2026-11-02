@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>VishapHub — carry the request, prove the result</title>
-<meta name="description" content="VishapHub screens supplied code, generates from the spec, screens and validates the result, then returns a proposed correction.">
-<meta name="theme-color" content="#05070d">
-<meta name="color-scheme" content="dark">
+<meta name="description" content="VishapHub screens supplied code, generates from the spec, screens and validates the result, then returns proposed corrected files that are not re-verified in the same run.">
+<meta name="theme-color" content="#f5f7ff">
+<meta name="color-scheme" content="light">
 <meta property="og:type" content="website">
 <meta property="og:title" content="VishapHub — carry the request, prove the result">
-<meta property="og:description" content="One plan, one verdict: security scan, generation, security scan, validation. Rules decide; the model proposes.">
+<meta property="og:description" content="One plan, one verdict: security scan, generation, security scan, validation. Creator proposes corrected files; they are not re-verified in the same run.">
 <meta name="twitter:card" content="summary">
 <link rel="canonical" href="/">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -49,7 +49,7 @@
           <button type="button" class="btn ghost" id="focusComposer" data-i18n="talk">Talk to Vishap</button>
           <a href="/runs" class="cta-link" data-i18n="recent">recent runs</a>
         </div>
-        <p class="meta" data-i18n="meta">Creator returns corrected files | 5 stages | 6 validator checks | audit trail</p>
+        <p class="meta" data-i18n="meta">5 stages · 6 validator checks · Creator returns corrected files · strictest verdict wins · audit trail</p>
         <dl class="stats">
           <div class="stat"><dt>generator</dt><dd>spec → code</dd></div>
           <div class="stat"><dt>validator</dt><dd>6 checks</dd></div>
@@ -88,10 +88,10 @@
             <div>
               <p class="label">Trace</p>
               <p class="small mt-xs">pass 1 analyser → generator → analyser → validator → creator</p>
+            </div>
             <div>
               <p class="label">Creator output</p>
-              <div class="row mt-sm"><span class="tag ok">corrected files</span><span class="tag">not re-verified</span></div>
-            </div>
+              <div class="row mt-sm"><span class="tag">files proposed</span><span class="tag">not re-verified</span></div>
             </div>
           </div>
         </div>
@@ -141,6 +141,85 @@
         <p class="sec-lead" data-i18n="workLead">Paste code, a spec or logs, or just ask. Every run gets a report you can open and forward.</p>
       </div>
       <div class="work">
+
+        <section class="panel pipeline-panel" aria-labelledby="run-title">
+          <span class="eyebrow" data-i18n="runEyebrow">secure code workflow</span>
+          <h3 class="k" id="run-title" data-i18n="runTitle">Run the full pipeline</h3>
+          <p class="panel-intro" data-i18n="runIntro">Choose a mode, add your code and specification, then review the report and corrected version.</p>
+
+          <label class="field-label" for="mode" data-i18n="modeLabel">Run mode</label>
+          <select id="mode" class="mode-select" aria-describedby="mode-hint">
+            <option value="generate+validate+analyse" data-i18n="modeFull">Full pipeline: analyse, generate, analyse, validate, Creator</option>
+            <option value="generate+validate" data-i18n="modeGenerate">Generate from a spec and validate</option>
+            <option value="analyse" data-i18n="modeAnalyse">Analyse existing code only</option>
+          </select>
+
+          <label class="field-label" for="material" data-i18n="materialLabel">Existing code or files</label>
+          <div id="drop" class="drop" role="button" tabindex="0" aria-label="Choose an existing code file" data-i18n-aria="chooseFile">
+            drop a file here, or <b>click to choose</b><br>
+            <span class="fine" data-i18n="fileNote">the file is read in this browser and sent with your run</span>
+          </div>
+          <input id="picker" type="file" hidden>
+          <div class="project-input">
+            <button type="button" class="btn ghost sm" id="chooseProject" data-i18n="chooseProject">choose project folder</button>
+            <p class="hint" id="projectSummary" aria-live="polite">No project files loaded.</p>
+          </div>
+          <input id="folderPicker" type="file" webkitdirectory directory multiple hidden>
+          <p class="hint project-hint" data-i18n="projectHint">Folder scans use Vishap's static rules only. Files are sent to VishapHub, not to your model provider.</p>
+          <textarea id="material" rows="6" class="mt-sm" placeholder="paste existing code or load a file above" data-i18n-ph="materialPh"></textarea>
+
+          <label class="field-label" for="spec" data-i18n="specLabel">Specification: what should the code do?</label>
+          <textarea id="spec" rows="4" class="mt-sm" placeholder="describe expected behavior and constraints" data-i18n-ph="specPh"></textarea>
+
+          <label class="field-label" for="question" data-i18n="questionLabel">Optional instructions for the model</label>
+          <textarea id="question" rows="2" class="mt-sm" placeholder="add a question or extra requirement" data-i18n-ph="questionPh"></textarea>
+
+          <p class="flow-hint" id="mode-hint" data-i18n="modeHint">For all five stages and a corrected version, provide both existing code/files and a specification. A specification alone runs generation and validation.</p>
+
+          <div class="model-box" id="model-key">
+            <div class="model-box-head">
+              <h4 data-i18n="modelTitle">Model connection</h4>
+              <p class="hint" data-i18n="modelHint">Generation and Creator need a model. Your key stays in this browser and is sent with the run. Ollama needs no key.</p>
+              <p class="hint" data-i18n="keyHint">Optional. Without a key only the rules run; with your key and a question the model reads the code as well, and the stricter verdict wins. The key is kept in this browser and sent with your run.</p>
+            </div>
+            <div class="model-controls">
+              <div class="model-field">
+                <label class="field-label" for="provider" data-i18n="providerLabel">Provider</label>
+                <select id="provider" class="provider">
+                  <option value="anthropic">Anthropic (Claude)</option>
+                  <option value="deepseek">DeepSeek</option>
+                  <option value="openai">ChatGPT (OpenAI)</option>
+                  <option value="ollama">Ollama (on this computer)</option>
+                </select>
+              </div>
+              <div class="model-field">
+                <label class="field-label" for="modelname" data-i18n="modelNameLabel">Model name (optional)</label>
+                <input id="modelname" type="text" autocomplete="off" class="provider" placeholder="Optional model name" data-i18n-ph="modelNamePh">
+              </div>
+              <div class="model-field">
+                <label class="field-label" for="key" data-i18n="apiKeyLabel">API key</label>
+                <input id="key" type="password" autocomplete="off" placeholder="Paste your provider key" data-i18n-ph="apiKeyPh">
+              </div>
+            </div>
+            <div class="row mt-sm">
+              <button type="button" class="btn ghost sm" id="save" data-i18n="save">Save key</button>
+              <button type="button" class="btn ghost sm" id="clear" data-i18n="clear">Clear key</button>
+            </div>
+          </div>
+
+          <div class="row mt pipeline-actions">
+            <button type="button" class="btn run" id="run" data-i18n="run">Run selected mode</button>
+            <button type="button" class="btn ghost run" id="sampleRun" data-i18n="sampleBtn">Load example</button>
+            <button type="button" class="btn ghost run" id="hear" disabled data-i18n="hear">&#x1f50a; read it</button>
+            <button type="button" class="btn ghost run" id="download" disabled data-i18n="json">&#x2193; JSON report</button>
+          </div>
+          <div class="progress" id="progress" aria-live="polite"></div>
+          <div class="verdict" id="verdict" role="status" aria-live="polite"></div>
+          <p class="hint" data-i18n="verdictHint">REQUIRES_REVIEW means a person should read the findings. Rules-only SAFE is currently eligible for Java after a complete scan with no findings; other languages remain in review.</p>
+          <div class="hint waking" id="waking">The free service sleeps; the first run may take about 20 seconds to wake it.</div>
+          <div id="report" class="report"></div>
+        </section>
+
         <section class="panel" aria-labelledby="chat-title">
           <h3 class="k" id="chat-title">talk to Vishap</h3>
           <div class="chat" id="chat" role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversation">
@@ -158,50 +237,7 @@
             <button type="button" class="chip" data-q="Where do I get a key?">where is the key</button>
           </div>
           <p class="hint">▶ hear me turns on the product voice; answers are read aloud with it.</p>
-        </section>
-
-        <section class="panel" aria-labelledby="run-title">
-          <h3 class="k" id="run-title">run the pipeline</h3>
-          <div id="drop" class="drop" role="button" tabindex="0" aria-label="Choose a file to load as material">
-            drop a file here, or <b>click to choose</b><br>
-            <span class="fine">it is read in the browser and sent as text</span>
-          </div>
-          <input id="picker" type="file" hidden>
-          <label class="sr-only" for="material">Material: code, a spec or logs</label>
-          <textarea id="material" rows="6" class="mt-sm" placeholder="…or paste code, a spec or logs" data-i18n-ph="materialPh"></textarea>
-          <label class="sr-only" for="question">What you want</label>
-          <textarea id="question" rows="2" class="mt-sm" placeholder="what do you want: «is this safe», «fix it», «write it from this spec»…" data-i18n-ph="questionPh"></textarea>
-          <div class="row mt">
-            <button type="button" class="btn run" id="run" data-i18n="run">run</button>
-            <button type="button" class="btn ghost run" id="sampleRun" data-i18n="sampleBtn">paste a sample and run</button>
-            <button type="button" class="btn ghost run" id="hear" disabled data-i18n="hear">🔊 read it</button>
-            <button type="button" class="btn ghost run" id="download" disabled data-i18n="json">↓ json</button>
-          </div>
-          <div class="progress" id="progress" aria-live="polite"></div>
-          <div class="verdict" id="verdict" role="status" aria-live="polite"></div>
-          <p class="hint" data-i18n="verdictHint">REQUIRES_REVIEW means a person should read the findings. Rules-only SAFE is currently eligible for Java after a complete scan with no findings; other languages remain in review.</p>
-          <div class="hint waking" id="waking">the free tier sleeps — the first run wakes it, ~20 s</div>
-          <div id="report" class="report"></div>
-
-          <h3 class="k k-gap">your model key</h3>
-          <label class="sr-only" for="provider">Model provider</label>
-          <select id="provider" class="provider">
-            <option value="anthropic">Anthropic (Claude)</option>
-            <option value="deepseek">DeepSeek</option>
-            <option value="openai">ChatGPT (OpenAI)</option>
-            <option value="ollama">Ollama (on this computer)</option>
-          </select>
-          <label class="sr-only" for="modelname">Model name</label>
-          <input id="modelname" type="text" autocomplete="off" class="provider" placeholder="model name (optional)">
-          <label class="sr-only" for="key">Your model key</label>
-          <input id="key" type="password" autocomplete="off" placeholder="sk-… (optional, kept in this browser)">
-          <div class="row mt-sm">
-            <button type="button" class="btn ghost sm" id="save">save</button>
-            <button type="button" class="btn ghost sm" id="clear">clear</button>
-          </div>
-          <p class="hint" data-i18n="keyHint">Optional. Without a key only the rules run; with your key and a question the model reads the code as well, and the stricter verdict wins. The key is kept in this browser and sent with your run.</p>
-        </section>
-      </div>
+        </section></div>
     </section>
   </main>
 
