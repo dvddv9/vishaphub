@@ -572,6 +572,16 @@ textarea:focus,input:focus{border-color:rgba(99,85,232,.6);box-shadow:0 0 0 4px 
 .step.done .b{box-shadow:none}
 .step.fail{color:var(--rose);border-color:rgba(189,49,81,.22);background:#fff2f4}
 footer{border-color:var(--line);color:var(--dim)}
+html[data-palette="balanced"] body{background:#080a0e;color:var(--ink-2)}
+html[data-palette="balanced"] .nav{background:rgba(8,10,14,.92)}
+html[data-palette="balanced"] .magic-panel{background:linear-gradient(145deg,rgba(22,27,35,.97),rgba(11,14,20,.98))}
+html[data-palette="balanced"] .magic-panel>#material,
+html[data-palette="balanced"] .magic-panel>#spec,
+html[data-palette="balanced"] .magic-panel>#question,
+html[data-palette="balanced"] .magic-panel>.model-box input,
+html[data-palette="balanced"] .magic-panel>.model-box select{background:rgba(5,8,12,.8);color:var(--ink);border-color:var(--line)}
+html[data-palette="balanced"] .magic-panel>.model-box{background:rgba(6,9,13,.52)}
+html[data-palette="balanced"] .magic-panel>.drop{background:rgba(6,9,13,.38);color:var(--dim)}
 footer a,.foot-brand{color:var(--ink-2)}
 footer .right{color:var(--dim)}
 .doc{color:var(--ink-2)}
@@ -777,3 +787,22 @@ html[data-palette="balanced"] .btn.ghost:hover{background:#dce3e9}
 html[data-palette="balanced"] .flow-hint{background:#e1e5ec}
 html[data-palette="balanced"] .model-box{background:linear-gradient(145deg,#eceef2,#e5e8ee)}
 html[data-palette="balanced"] .hero .stats .stat{background:transparent}
+
+/* Final serious theme: overrides the legacy bright palette above. */
+:root{color-scheme:dark;--bg:#080a0e;--ink:#d9dee7;--ink-2:#aeb6c3;--dim:#7d8796;--dim-2:#626d7d;--line:rgba(210,220,235,.11);--line-2:rgba(210,220,235,.2);--glass:rgba(20,25,34,.72);--glass-2:rgba(31,38,50,.82);--emerald:#70b7a4;--cyan:#78a9bc;--violet:#8e91ad;--accent:linear-gradient(135deg,#688f8f,#7189a5);--focus:#9db8c5}
+body{background:#080a0e;color:var(--ink-2)}
+body::before{background:radial-gradient(900px 520px at 8% -12%,rgba(72,103,112,.12),transparent 64%),radial-gradient(820px 500px at 96% -8%,rgba(79,78,104,.1),transparent 64%),radial-gradient(1000px 620px at 50% 110%,rgba(44,67,77,.08),transparent 64%)}
+body::after{opacity:.22;mix-blend-mode:overlay}
+.nav{background:rgba(8,10,14,.92);border-color:var(--line);box-shadow:none}
+.brand,h1,h2,h3,.cell v,.stat dd{color:var(--ink)}
+.nav-links a,.btn.ghost{color:var(--ink-2)}
+.btn.ghost{background:rgba(18,23,31,.8);border-color:var(--line-2);box-shadow:none}
+.btn.ghost:hover{background:rgba(34,42,53,.9);color:var(--ink)}
+.magic-panel{background:linear-gradient(145deg,rgba(22,27,35,.97),rgba(11,14,20,.98));border-color:rgba(190,204,220,.15);box-shadow:0 30px 70px -44px rgba(0,0,0,.95),0 0 0 1px rgba(160,180,195,.04)}
+.magic-panel:before{background:radial-gradient(circle,rgba(98,132,145,.1),transparent 68%)}
+.magic-panel>#material,.magic-panel>#spec,.magic-panel>#question{background:rgba(5,8,12,.62);color:var(--ink);border-color:rgba(180,195,210,.14)}
+.magic-panel>.model-box{background:rgba(6,9,13,.52);border-color:rgba(180,195,210,.13)}
+.magic-panel>.model-box input,.magic-panel>.model-box select{background:rgba(5,8,12,.8);color:var(--ink);border-color:var(--line)}
+.magic-panel>.drop{background:rgba(6,9,13,.38);color:var(--dim);border-color:rgba(180,195,210,.2)}
+.verdict:not(:empty),.report,.pane{background:rgba(11,15,21,.85);border-color:var(--line);color:var(--ink-2)}
+footer{border-color:var(--line);color:var(--dim)}
