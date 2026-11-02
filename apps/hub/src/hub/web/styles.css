@@ -700,3 +700,21 @@ html[data-palette="balanced"] .hero .stats .stat{background:transparent}
 .work>.pipeline-panel{width:100%}
 .work>.pipeline-panel+.panel{display:none}
 @media (max-width:760px){.work-wrap{padding-bottom:38px!important}}
+
+/* Dark product surface, applied last so the legacy light palette cannot win. */
+:root{color-scheme:dark;--bg:#080a0e;--ink:#d9dee7;--ink-2:#aeb6c3;--dim:#7d8796;--dim-2:#626d7d;--line:rgba(210,220,235,.11);--line-2:rgba(210,220,235,.2);--glass:rgba(20,25,34,.72);--glass-2:rgba(31,38,50,.82);--emerald:#70b7a4;--cyan:#78a9bc;--violet:#8e91ad;--accent:linear-gradient(135deg,#688f8f,#7189a5);--focus:#9db8c5}
+body{background:#080a0e!important;color:var(--ink-2)!important}
+body::before{background:radial-gradient(900px 520px at 8% -12%,rgba(72,103,112,.12),transparent 64%),radial-gradient(820px 500px at 96% -8%,rgba(79,78,104,.1),transparent 64%),radial-gradient(1000px 620px at 50% 110%,rgba(44,67,77,.08),transparent 64%)}
+body::after{opacity:.2;mix-blend-mode:overlay}
+.nav{background:rgba(8,10,14,.94)!important;border-color:var(--line)!important;box-shadow:none!important}
+.brand,h1,h2,h3,.cell v,.stat dd{color:var(--ink)!important}
+.btn.ghost{background:#151a21!important;color:var(--ink-2)!important;border-color:var(--line-2)!important;box-shadow:none!important}
+.btn.ghost:hover{background:#222a35!important;color:var(--ink)!important}
+.panel,.card,.step3,.stats,.stat,.block,.run-item,.rep-hero{background:#11151b!important;border-color:var(--line)!important;color:var(--ink-2)!important;box-shadow:0 24px 60px -42px rgba(0,0,0,.9)!important}
+textarea,input,.provider,.mode-select{background:#0b0e13!important;color:var(--ink)!important;border-color:#2a323d!important}
+.drop{background:#0f1318!important;color:var(--dim)!important;border-color:#343c48!important}
+.verdict:not(:empty),.pane,.report{background:#11151b!important;color:var(--ink-2)!important;border-color:var(--line)!important}
+html[data-palette="balanced"] body{background:#080a0e!important;color:var(--ink-2)!important}
+html[data-palette="balanced"] .nav{background:rgba(8,10,14,.94)!important}
+html[data-palette="balanced"] textarea,html[data-palette="balanced"] input,html[data-palette="balanced"] .provider,html[data-palette="balanced"] .mode-select{background:#0b0e13!important;color:var(--ink)!important}
+html[data-palette="balanced"] .panel,html[data-palette="balanced"] .step3,html[data-palette="balanced"] .stats{background:#11151b!important}
