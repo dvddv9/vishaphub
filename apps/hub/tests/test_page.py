@@ -16,7 +16,8 @@ def _app() -> str:
 def test_the_page_does_not_promise_a_key_the_hub_does_not_hold():
     page = _page()
     assert "own key" not in page and "answers with its own" not in page
-    assert 'data-i18n="keySys"' in page and 'data-i18n="keyHint"' in page
+    assert 'data-i18n="keyHint"' in page
+    assert 'talk to Vishap' not in page.lower()
 
 
 def test_material_comes_before_the_question_and_a_sample_runs_in_one_click():

@@ -5,7 +5,7 @@ const I18N = {
     title: "Carry the request.<br><em>Prove</em> the result.",
     lead: "Paste code, a spec or logs. I screen supplied code, generate from the spec, screen and validate the result, return a corrected version, validate it, then generate a final version clearly marked as not re-verified.",
     meta: "7 stages · 6 validator checks · Creator correction checked against the spec · final version is clearly marked · audit trail",
-    try: "Try with an example", talk: "Talk to Vishap", recent: "recent runs",
+    try: "Try with an example", recent: "recent runs",
     navHow: "How it works", navWork: "Try it",
     howEyebrow: "how it works", howTitle: "One plan, seven stages, one verdict",
     s1t: "Analyse input", s1p: "Screen the code and files you supplied before generation.",
@@ -94,7 +94,7 @@ const I18N = {
     title: "Принять запрос.<br><em>Доказать</em> результат.",
     lead: "Вставь код, спеку или логи. Сначала я проверю исходный код, затем сгенерирую и проверю результат, попрошу Creator исправить его, проверю исправление и соберу финальную версию с явной пометкой о неповторной проверке.",
     meta: "7 стадий · 6 проверок Validator · исправление Creator проходит повторную проверку · финальная версия помечена явно · след прогона",
-    try: "Показать на примере", talk: "Поговорить с Vishap", recent: "последние прогоны",
+    try: "Показать на примере", recent: "последние прогоны",
     navHow: "Как это работает", navWork: "Попробовать",
     howEyebrow: "как это работает", howTitle: "Один план, семь стадий, один вердикт",
     s1t: "Проверить вход", s1p: "До генерации проверяется присланный код и файлы.",
@@ -204,6 +204,7 @@ const voiceOn = {v:false};
 const history = [];
 
 function bubble(role, text){
+  if (!chat) return null;
   const div = document.createElement("div");
   div.className = "msg " + (role === "user" ? "me" : role === "assistant" ? "him" : "sys");
   div.textContent = text;
@@ -232,7 +233,6 @@ $("say").onclick = () => {
     $("voice").pause();
   }
 };
-$("focusComposer").onclick = () => $("text").focus();
 function loadExample(){
   clearProjectFiles();
   $("mode").value = "generate+validate+analyse";
@@ -277,9 +277,11 @@ async function ask(message){
   } catch (e) { thinking.remove(); bubble("sys", e.message); }
 }
 
-$("send").onclick = () => { const line = $("text").value; $("text").value=""; ask(line); };
-$("text").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey){ e.preventDefault(); $("send").click(); } });
-document.querySelectorAll(".chip").forEach(c => c.onclick = () => ask(c.dataset.q));
+if ($("send") && $("text")) {
+  $("send").onclick = () => { const line = $("text").value; $("text").value=""; ask(line); };
+  $("text").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey){ e.preventDefault(); $("send").click(); } });
+  document.querySelectorAll(".chip").forEach(c => c.onclick = () => ask(c.dataset.q));
+}
 
 function clearProjectFiles(){
   projectFiles = Object.create(null);
@@ -386,10 +388,11 @@ $("drop").addEventListener("drop", async e => {
 
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const micOn = (state) => {
+  if (!$("mic")) return;
   $("mic").classList.toggle("on", state);
   $("mic").setAttribute("aria-pressed", String(state));
 };
-$("mic").onclick = () => {
+if ($("mic")) $("mic").onclick = () => {
   if (!Recognition){ bubble("sys", t("micOff")); return; }
   const r = new Recognition(); r.lang = lang === "ru" ? "ru-RU" : "en-US"; r.interimResults = false; r.maxAlternatives = 1;
   micOn(true);

@@ -56,7 +56,6 @@
         </p>
         <div class="cta">
           <button type="button" class="btn" id="tryExample" data-i18n="try">Try with an example</button>
-          <button type="button" class="btn ghost" id="focusComposer" data-i18n="talk">Talk to Vishap</button>
           <a href="/runs" class="cta-link" data-i18n="recent">recent runs</a>
         </div>
         <p class="meta" data-i18n="meta">7 stages · 6 validator checks · Creator correction checked against the spec · final version is clearly marked · audit trail</p>
@@ -240,24 +239,7 @@
           <div id="report" class="report"></div>
         </section>
 
-        <section class="panel" aria-labelledby="chat-title">
-          <h3 class="k" id="chat-title">talk to Vishap</h3>
-          <div class="chat" id="chat" role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversation">
-            <div class="msg sys" data-i18n="keySys">The hub holds no model key. The rules check your code for free; to have the model read it too, add a key below: Anthropic, DeepSeek or ChatGPT (Ollama needs none; the key stays in this browser).</div>
-          </div>
-          <div class="composer">
-            <label class="sr-only" for="text">Message to Vishap</label>
-            <textarea id="text" rows="1" placeholder="write, or press the mic and speak…" data-i18n-ph="textPh"></textarea>
-            <button type="button" class="mic" id="mic" aria-label="Speak to Vishap" aria-pressed="false">🎙</button>
-            <button type="button" class="btn" id="send" data-i18n="send">send</button>
-          </div>
-          <div class="chips">
-            <button type="button" class="chip" data-q="What can you do?">what can you do</button>
-            <button type="button" class="chip" data-q="Check this code: cur.execute('select * from t where a = ' + x)">check code</button>
-            <button type="button" class="chip" data-q="Where do I get a key?">where is the key</button>
-          </div>
-          <p class="hint">▶ hear me turns on the product voice; answers are read aloud with it.</p>
-        </section></div>
+        </div>
     </section>
   </main>
 
