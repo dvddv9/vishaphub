@@ -726,3 +726,8 @@ html[data-palette="balanced"] .panel,html[data-palette="balanced"] .step3,html[d
 .btn:hover{filter:brightness(1.08)}
 textarea:focus,input:focus,.magic-panel>#material:focus,.magic-panel>#spec:focus,.magic-panel>#question:focus{border-color:#df8545!important;box-shadow:0 0 0 3px rgba(223,133,69,.15)!important}
 .drop:hover,.drop.hot{border-color:#df8545!important}
+.pipeline-panel textarea,.pipeline-panel input,.pipeline-panel select,.model-field input,.model-field select,.mode-select,.provider,.palette-select{background:#0b0e13!important;color:#d9dee7!important;border-color:#343b46!important;color-scheme:dark}
+.pipeline-panel textarea::placeholder,.pipeline-panel input::placeholder{color:#747e8c!important}
+.model-box,.model-controls{background:#10141a!important;border-color:#2a3039!important}
+.model-box-head h4,.pipeline-panel .field-label{color:#b9c1cb!important}
+option{background:#11151b;color:#d9dee7}
