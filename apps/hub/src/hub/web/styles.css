@@ -739,3 +739,16 @@ html,body,.shell,main,.hero,.work-wrap,.work{background-color:#080a0e!important;
 .pipeline-panel textarea,.pipeline-panel input,.pipeline-panel select,.model-field select,.model-field input,.mode-select,.provider{background-color:#10141a!important;color:#d9dee7!important;border-color:#303844!important}
 .pipeline-panel textarea::placeholder,.pipeline-panel input::placeholder{color:#707b89!important}
 .pipeline-panel .btn.ghost{background:#171c24!important;color:#c1c8d1!important}
+/* Remaining status and report surfaces that were defined by the former light theme. */
+.pill,.badge,.stats,.stat-row .stat,.num,.msg,.mic,.chip,.copy,.tabs .tab,.step,.doc .meta-row span,.q,.step.run,.step.fail,.rep-verdict,.block,.empty,.flow-hint,.creator-rescan{background-color:#11151b!important;color:#b9c1cb!important;border-color:#303844!important}
+.msg.me{background:#191b1f!important;border-color:rgba(237,138,67,.28)!important}
+.msg.him{background:#11151b!important;border-left-color:#ed8a43!important}
+.step.done{background:#17201e!important;color:#8fc2ae!important;border-color:#34473f!important}
+.step.fail,.st.fail,.vchip.bad,.sev.critical,.sev.high{background:#25171a!important;color:#e58a8e!important;border-color:#533137!important}
+.step.run,.sev.medium,.vchip.warn{background:#241e16!important;color:#e2b278!important;border-color:#51402a!important}
+.verdict:not(:empty),.pane{background:#10141a!important;color:#c0c6ce!important}
+.drop,.flow-hint,.creator-rescan{background:#10141a!important;color:#aeb6c3!important}
+.nav-links a:hover,.mic:hover,.chip:hover,.copy:hover,.q:hover{background:#20242b!important;color:#ed8a43!important}
+.pill.live{background:#17201e!important;color:#8fc2ae!important}
+footer,.caption,.hint,.dim,.report-meta{color:#828c99!important}
+html[data-palette="sunset"] .palette-select{background:#11151b!important;color:#d9dee7!important}
