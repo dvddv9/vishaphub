@@ -164,7 +164,7 @@ def _analysis_pieces(material: str, files: dict, *, file_kind: str = "file") -> 
 
 def _validator_could_not_run(checks: dict) -> bool:
     """True when the validator's only complaint is that it had nowhere safe to run: nothing was executed."""
-    for name in ("validator", "creator_validator"):
+    for name in ("validator", "creator_validator", "final_validator"):
         for item in ((checks.get(name) or {}).get("checks") or []):
             if item.get("name") == "isolation" and not item.get("ok") and not item.get("skipped"):
                 return True
@@ -199,6 +199,8 @@ def _not_checked(plan: Plan, checks: dict, has_proof: bool, model_trouble: str =
         missing.append("no final version was produced after the Creator validation")
     if checks.get("final_generator") and not checks["final_generator"].get("verified"):
         missing.append("the final generator version was not re-verified after it was produced")
+    if checks.get("final_validator", {}).get("status") == "NOT_RUN":
+        missing.append("the final version validator did not run: the host could not isolate the generated code")
     if not (checks.get("validator") or {}).get("checks"):
         missing.append("the validator's stage-by-stage detail is not in this answer")
     elif (checks.get("validator") or {}).get("status") == "NOT_RUN":
@@ -363,10 +365,56 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
                 checks["final_generator"] = {"model": final_answer.get("model", ""),
                                               "files": len(final_version), "verified": False}
                 steps.append(Step("final_generator", True,
-                                  detail=f"{len(final_version)} final file(s) · not re-verified"))
-                trace.append(f"pass {pass_no} final_generator -> {len(final_version)} final file(s), not re-verified")
+                                  detail=f"{len(final_version)} final file(s) · verification follows"))
                 emit("final_generator", {"stage": "final_generator", "ok": True,
                                           "files": len(final_version), "verified": False, "pass": pass_no})
+                final_findings: list[dict] = []
+                final_verdict = "SAFE"
+                for name, source in sorted(final_version.items()):
+                    scan = local.analyse_static(source, model_verdict=model_verdict)
+                    if not scan.get("ok"):
+                        steps.append(Step("final_analyser", False, detail=INTERNAL_ERROR))
+                        return _error(steps, envelope.session_id, trace,
+                                      "final version analyser failed; deliverable is unverified", plan_dict)
+                    final_verdict = strictest(final_verdict, normalise(scan.get("verdict")))
+                    final_findings.extend({**item, "source": f"final:{name}"}
+                                          for item in scan.get("findings") or [])
+                checks["final_analyser"] = {"verdict": final_verdict, "findings": final_findings,
+                                              "mode": "rules_only"}
+                merge(final_verdict)
+                steps.append(Step("final_analyser", True, final_verdict,
+                                  detail=f"{len(final_findings)} findings · final files"))
+                emit("final_analyser", {"stage": "final_analyser", "verdict": final_verdict,
+                                        "ok": True, "findings": len(final_findings), "pass": pass_no})
+                validation = local.validate_code(final_version, _spec_for_validator(spec, final_version))
+                if not validation.get("ok"):
+                    checks["final_validator"] = {"status": "ERROR", "verified": False}
+                    steps.append(Step("final_validator", False, "ERROR", detail=INTERNAL_ERROR))
+                    return _error(steps, envelope.session_id, trace,
+                                  "final version validator failed; deliverable is unverified", plan_dict)
+                final_report = validation.get("report") or {}
+                try:
+                    final_validation_verdict = normalise(final_report.get("verdict"))
+                except ValueError:
+                    checks["final_validator"] = {"status": "ERROR", "verified": False}
+                    steps.append(Step("final_validator", False, "ERROR", detail="validator returned no usable verdict"))
+                    return _error(steps, envelope.session_id, trace,
+                                  "final version validator returned no verdict", plan_dict)
+                final_check_rows = final_report.get("checks", [])
+                final_status = "NOT_RUN" if _validator_could_not_run({"validator": {"checks": final_check_rows}}) else "COMPLETED"
+                checks["final_validator"] = {"verdict": final_validation_verdict, "status": final_status,
+                                               "verified": final_status == "COMPLETED",
+                                               "checks": final_check_rows, "files": sorted(final_version)}
+                merge(final_validation_verdict if final_status == "COMPLETED" else "REQUIRES_REVIEW")
+                checks["final_generator"]["verified"] = final_status == "COMPLETED"
+                steps.append(Step("final_validator", final_status == "COMPLETED" and final_validation_verdict not in BLOCKING_VERDICTS,
+                                  final_validation_verdict if final_status == "COMPLETED" else "NOT_RUN",
+                                  detail=f"{final_report.get('finding_count', 0)} findings · {'verified' if final_status == 'COMPLETED' else 'isolation unavailable'}"))
+                trace.append(f"pass {pass_no} final_generator -> {len(final_version)} files; analyser {final_verdict}; validator {final_status}/{final_validation_verdict}")
+                emit("final_validator", {"stage": "final_validator", "verdict": final_validation_verdict,
+                                         "ok": final_status == "COMPLETED" and final_validation_verdict not in BLOCKING_VERDICTS,
+                                         "target": "final", "findings": final_report.get("finding_count", 0),
+                                         "pass": pass_no})
                 continue
 
             if stage is Stage.VALIDATOR:
@@ -558,7 +606,8 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
 
     # ---- nothing produced a verdict: this is a failure, not a pass --------
     rules_parts = [check["verdict"] for check in
-                   (checks["validator"], checks["creator_validator"], checks["analyser"])
+                   (checks["validator"], checks["creator_validator"], checks["analyser"],
+                    checks.get("final_analyser"), checks.get("final_validator"))
                    if check and check.get("verdict")]
     rules_verdict = strictest(*rules_parts) if rules_parts else ""
 
@@ -592,7 +641,9 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
     if model_verdict and rules_verdict and rank(model_verdict) > rank(rules_verdict):
         reason = (reason + " · " if reason else "") + f"the model rated the risk higher than the rules did ({model_verdict} against {rules_verdict})"
 
-    merged, overlap = findings_mod.merge(answer.get("findings") or [], (checks["analyser"] or {}).get("findings") or [])
+    all_rule_findings = [*((checks["analyser"] or {}).get("findings") or []),
+                         *((checks.get("final_analyser") or {}).get("findings") or [])]
+    merged, overlap = findings_mod.merge(answer.get("findings") or [], all_rule_findings)
     if not (checks["generator"] and checks["analyser"]):
         overlap = {}                  # one reader only: there is nothing to agree with
 

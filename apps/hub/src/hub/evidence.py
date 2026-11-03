@@ -40,9 +40,11 @@ def _sandbox_profile(validator: dict) -> dict:
     return {"name": "in-process", "note": notes[0] if notes else "no isolation note"}
 
 
-def _check_rows(validator: dict, analyser: dict, creator_validator: dict | None = None) -> list[dict]:
+def _check_rows(validator: dict, analyser: dict, creator_validator: dict | None = None,
+                final_validator: dict | None = None, final_analyser: dict | None = None) -> list[dict]:
     rows = []
-    for stage, check in (("validator", validator), ("creator_validator", creator_validator)):
+    for stage, check in (("validator", validator), ("creator_validator", creator_validator),
+                         ("final_validator", final_validator)):
         for c in (check or {}).get("checks", []):
             rows.append({"stage": stage, "name": c.get("name"), "ok": bool(c.get("ok")),
                          "skipped": bool(c.get("skipped")), "findings": len(c.get("findings") or []),
@@ -51,6 +53,9 @@ def _check_rows(validator: dict, analyser: dict, creator_validator: dict | None 
         rows.append({"stage": "analyser", "name": analyser.get("mode") or "rules", "ok": True,
                      "skipped": False, "findings": len(analyser.get("findings") or []),
                      "note": analyser.get("verdict") or ""})
+    if final_analyser:
+        rows.append({"stage": "final_analyser", "name": "rules", "ok": True, "skipped": False,
+                     "findings": len(final_analyser.get("findings") or []), "note": final_analyser.get("verdict") or ""})
     return rows
 
 
@@ -72,7 +77,9 @@ def build(*, supplied_files: dict, checked_files: dict, patch: dict, corrected_v
           rules: dict, attempts: int, stop_reason: str, not_checked: list, patch_check: dict | None = None, fix_attempts: list | None = None, external: list | None = None, question: str = "") -> dict:
     validator = checks.get("validator") or {}
     creator_validator = checks.get("creator_validator") or {}
+    final_validator = checks.get("final_validator") or {}
     analyser = checks.get("analyser") or {}
+    final_analyser = checks.get("final_analyser") or {}
     iso = creator_validator.get("isolation") or validator.get("isolation") or {}
     patch_files = file_hashes(patch)
     out = {
@@ -91,7 +98,7 @@ def build(*, supplied_files: dict, checked_files: dict, patch: dict, corrected_v
         },
         "analyser_read": {"material": bool(analyser), "patch_files": sorted(patch_files) if analyser else []},
         "versions": {"rules": rules, "sandbox_profile": _sandbox_profile(validator)},
-        "checks_run": _check_rows(validator, analyser, creator_validator),
+        "checks_run": _check_rows(validator, analyser, creator_validator, final_validator, final_analyser),
         "exploit_tests": list((patch_check or {}).get("exploit") or []),
         "fix_check": _fix_check(patch_check),
         "fix_attempts": list(fix_attempts or []),
@@ -105,7 +112,9 @@ def build(*, supplied_files: dict, checked_files: dict, patch: dict, corrected_v
         "rules_found": {"analyser": len(analyser.get("findings") or []),
                         "validator": sum(len(c.get("findings") or []) for c in validator.get("checks", [])),
                         "creator_validator": sum(len(c.get("findings") or [])
-                                                  for c in creator_validator.get("checks", []))},
+                                                  for c in creator_validator.get("checks", [])),
+                        "final_analyser": len(final_analyser.get("findings") or []),
+                        "final_validator": sum(len(c.get("findings") or []) for c in final_validator.get("checks", []))},
         "not_checked": list(not_checked or []),
     }
     if corrected_version:
@@ -118,7 +127,13 @@ def build(*, supplied_files: dict, checked_files: dict, patch: dict, corrected_v
         }
     if final_version:
         final_files = file_hashes(final_version)
-        out["final_version"] = {"files": final_files, "sha256": sha(final_files), "verified": False}
+        final_validator = checks.get("final_validator") or {}
+        final_analyser = checks.get("final_analyser") or {}
+        out["final_version"] = {"files": final_files, "sha256": sha(final_files),
+                                "verified": final_validator.get("status") == "COMPLETED",
+                                "validator_status": final_validator.get("status"),
+                                "validator_verdict": final_validator.get("verdict"),
+                                "analyser_verdict": final_analyser.get("verdict")}
     if out["model"]["consulted"]:
         # what the model said decided the verdict, so the record holds the content and not only the count:
         # two runs whose answers differ must not share a fingerprint. Only when present, so a run without

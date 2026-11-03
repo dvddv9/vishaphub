@@ -20,6 +20,8 @@ why, and `/health` still answers. Each kept run records what it was sent and wha
 from __future__ import annotations
 
 import json
+import io
+import zipfile
 import os
 import re
 import secrets
@@ -502,6 +504,32 @@ class Handler(BaseHTTPRequestHandler):
                 return
             from . import export as export_mod
             self._send(200, export_mod.markdown(record), "text/markdown", extra=PRIVATE)
+            return
+        if path.startswith("/api/runs/") and path.endswith(".zip"):
+            run_id = path[len("/api/runs/"):].removesuffix(".zip")
+            if principal is not None:
+                ok, record = self._team(TEAMS.get, principal, run_id, ip)
+                if not ok:
+                    return
+            else:
+                token = self._token()
+                record = RUNS.get_for(run_id, owner_key(token) if token else None)
+            if record is None:
+                self._send(404, {"error": "no such run, or it is not yours, or it has expired"}, extra=PRIVATE)
+                return
+            files = (record.get("result") or {}).get("final_version") or {}
+            if not files:
+                self._send(404, {"error": "this run has no final files"}, extra=PRIVATE)
+                return
+            archive = io.BytesIO()
+            with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as bundle:
+                for name, content in sorted(files.items()):
+                    safe = str(name).replace("\\", "/").lstrip("/")
+                    if not safe or any(part in ("", ".", "..") for part in safe.split("/")):
+                        continue
+                    bundle.writestr(safe, str(content))
+            self._send(200, archive.getvalue(), "application/zip",
+                       extra={**PRIVATE, "content-disposition": f'attachment; filename="vishap-final-{run_id}.zip"'})
             return
         if path.startswith("/api/verify/"):
             ok, record = self._visible(path[len("/api/verify/"):], principal, ip)

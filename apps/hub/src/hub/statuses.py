@@ -28,7 +28,7 @@ NOT_RUN = "NOT_RUN"
 ERROR = "ERROR"
 VERIFICATION_STATUSES = (COMPLETE, PARTIAL, NOT_RUN, ERROR)
 
-_CHECKED_STAGES = ("analyser", "validator", "creator_validator")
+_CHECKED_STAGES = ("analyser", "validator", "creator_validator", "final_analyser", "final_validator")
 
 
 def _verdict_of(checks: dict, name: str) -> str | None:
@@ -38,7 +38,7 @@ def _verdict_of(checks: dict, name: str) -> str | None:
 
 def risk(verdict: str, checks: dict, model_verdict: str) -> dict:
     """The verdict and what it rests on. The model can only raise it, never lower it."""
-    test_verdicts = [_verdict_of(checks, name) for name in ("validator", "creator_validator")]
+    test_verdicts = [_verdict_of(checks, name) for name in ("validator", "creator_validator", "final_validator")]
     test_verdicts = [item for item in test_verdicts if item]
     basis = {"rules": _verdict_of(checks, "analyser"), "tests": strictest(*test_verdicts) if test_verdicts else None,
              "model": model_verdict or None}
@@ -69,6 +69,8 @@ def verification(ok: bool, verdict: str, checks: dict, plan: dict, not_checked: 
         (i for i, stage in enumerate(stages) if stage == "validator"), default=-1)
     if validator_after_creator:
         planned.append("creator_validator")
+    if "final_generator" in stages:
+        planned.extend(("final_analyser", "final_validator"))
     not_run = sorted(set(planned) - set(ran))
     isolation = ((checks or {}).get("creator_validator") or (checks or {}).get("validator") or {}).get("isolation")
     if not ran:

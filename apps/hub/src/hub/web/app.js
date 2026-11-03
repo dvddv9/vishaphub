@@ -14,8 +14,8 @@ const I18N = {
     s4t: "Validate", s4p: "Six checks compare the generated code with the promise: structure, syntax, contract, coverage, behavior, conformance.",
     s5t: "Creator / corrected version", s5p: "Creator returns complete corrected files using the findings and original spec.",
     s6t: "Validate the correction", s6p: "Validator runs the six checks again against Creator's corrected files and the same spec.",
-    s7t: "Final generator", s7p: "Generate the final complete version after validation. It is delivered clearly as not re-verified.",
-    correctedVersion: "Corrected version (checked after Creator)", finalVersion: "Final generator version (not re-verified)",
+    s7t: "Final generator", s7p: "Generate the final complete version after validation, then analyse and validate it.",
+    correctedVersion: "Corrected version (checked after Creator)", finalVersion: "Final generated version (checked)",
     howFoot: "The strictest verdict wins. Whatever was not checked is listed, not hidden.",
     workEyebrow: "workbench", workTitle: "Try it on your own code",
     workLead: "Paste code, a spec or logs below and press run. You get a verdict, what is wrong and how to fix it, and a report you can forward.",
@@ -103,8 +103,8 @@ const I18N = {
     s4t: "Сверить", s4p: "Шесть проверок сравнивают код с обещанием: структура, синтаксис, контракт, покрытие, поведение, соответствие.",
     s5t: "Creator / исправленная версия", s5p: "Creator возвращает целые файлы с исправлениями по находкам, сохраняя исходную спеку.",
     s6t: "Проверить исправление", s6p: "Validator повторно запускает шесть проверок на исправленных Creator файлах и той же спеке.",
-    s7t: "Финальная генерация", s7p: "После валидации Generator собирает итоговую полную версию и честно помечает её как непроверенную повторно.",
-    correctedVersion: "Исправленная версия (проверена после Creator)", finalVersion: "Итоговая версия Generator (не проверена повторно)",
+    s7t: "Финальная генерация", s7p: "После валидации Generator собирает итоговую версию, затем она проходит анализатор и валидатор.",
+    correctedVersion: "Исправленная версия (проверена после Creator)", finalVersion: "Итоговая версия (проверена)",
     howFoot: "Побеждает строжайший вердикт. Что не проверено, то перечислено, а не спрятано.",
     workEyebrow: "рабочий стол", workTitle: "Попробуй на своём коде",
     workLead: "Вставь код, спеку или логи ниже и нажми «запустить». Получишь вердикт, что не так и как исправить, и отчёт, который можно переслать.",
@@ -551,6 +551,7 @@ function setProgress(states){
     ["analyser", t("stageOutput")], ["validator", t("stageValidate")],
     ["creator", t("stageCreator")], ["creator_validator", t("stageFinalValidate")],
     ["final_generator", t("stageFinalGenerate")],
+    ["final_analyser", "final scan"], ["final_validator", "final validation"],
   ];
   $("progress").innerHTML = stages.map(([key, label]) =>
     `<span class="step ${states[key]||""}"><span class="b"></span>${escapeHtml(label)}</span>`).join("");
@@ -583,6 +584,8 @@ function showResult(data, started){
     creator: checkState(checks.creator),
     creator_validator: checkState(checks.creator_validator),
     final_generator: checkState(checks.final_generator),
+    final_analyser: checkState(checks.final_analyser),
+    final_validator: checkState(checks.final_validator),
   });
   states.verdict = /SAFE|PASS/i.test(data.verdict) ? "done" : "fail";
   setProgress(states);
@@ -706,6 +709,8 @@ async function pipeline(){
           if (data.stage === "validator") liveStates[data.target === "creator" ? "creator_validator" : "validator"] = data.verdict === "NOT_RUN" ? "fail" : "done";
           if (data.stage === "creator") liveStates.creator = "done";
           if (data.stage === "final_generator") liveStates.final_generator = "done";
+          if (data.stage === "final_analyser") liveStates.final_analyser = "done";
+          if (data.stage === "final_validator") liveStates.final_validator = data.verdict === "NOT_RUN" ? "fail" : "done";
           setProgress(liveStates);
         }
         if (name === "done") done = data;

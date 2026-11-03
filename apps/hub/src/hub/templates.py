@@ -226,7 +226,10 @@ def report_page(record: dict, retention: str = "") -> str:
                               + e("\n\n".join(f"--- {name}\n{text}" for name, text in sorted(corrected.items())))
                               + "</code></pre>") if corrected else "")
     final_version = result.get("final_version") or {}
-    final_block = (_block("Final generator version (not re-verified)", "<pre><code>"
+    final_verified = bool((result.get("checks") or {}).get("final_validator", {}).get("verified"))
+    final_title = "Final version (analysed and validated)" if final_verified else "Final version (verification incomplete)"
+    final_export = (f'<p><a href="/api/runs/{e(str(record.get("id") or ""))}.zip" download>Download final files (ZIP)</a></p>')
+    final_block = (_block(final_title, final_export + "<pre><code>"
                           + e("\n\n".join(f"--- {name}\n{text}" for name, text in sorted(final_version.items())))
                           + "</code></pre>") if final_version else "")
     missed = "".join(f"<li>{e(str(item))}</li>" for item in not_checked) or "<li>-</li>"
