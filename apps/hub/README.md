@@ -1,5 +1,11 @@
 # VishapHub
 
+## Product value
+
+**Vishap shows what stands behind a code change made by a person or AI, and what actually passed verification.**
+
+For users, this means less manual checking and less blind trust in generated code. For businesses, it means faster decisions on code changes while preserving evidence of quality and security.
+
 The layer that carries a request between the client and three services, used in five stages on the full build route:
 **generator** (code from a spec), **validator** (does the code match the promise),
 **analyser** (is it safe).
