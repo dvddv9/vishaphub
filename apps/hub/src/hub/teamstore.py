@@ -164,8 +164,11 @@ class TeamStore:
             except ValueError as exc:
                 self._audit(conn, p, "run.accept", run_id, ip, {**note, "outcome": "invalid"})
                 return "invalid", str(exc)
-            conn.execute("UPDATE runs SET result = %s WHERE team_id = %s::uuid AND run_id = %s",
-                         (_jsonb(new), p.team_id, run_id))
+            updated = conn.execute("UPDATE runs SET result = %s WHERE team_id = %s::uuid AND run_id = %s",
+                                   (_jsonb(new), p.team_id, run_id))
+            if updated.rowcount != 1:
+                self._audit(conn, p, "run.accept", run_id, ip, {**note, "outcome": "missing"})
+                return "missing", ""
             self._audit(conn, p, "run.accept", run_id, ip, {**note, "outcome": "ok"})
         return "ok", ""
 
@@ -185,7 +188,8 @@ class TeamStore:
         row stays (who, when, which id - no content)."""
         with self._tx(p.team_id) as conn:
             row = conn.execute(
-                "SELECT creators FROM runs WHERE team_id = %s::uuid AND run_id = %s AND expires_at > now()",
+                "SELECT creators FROM runs WHERE team_id = %s::uuid AND run_id = %s AND expires_at > now() "
+                "FOR UPDATE",
                 (p.team_id, run_id)).fetchone()
             if row is None:
                 self._audit(conn, p, "run.delete", run_id, ip, {"outcome": "missing"})
@@ -194,7 +198,11 @@ class TeamStore:
             if not (p.can("run.delete.any") or (p.can("run.delete.own") and mine)):
                 self._audit(conn, p, "run.delete", run_id, ip, {"outcome": "forbidden"})
                 return "forbidden"
-            conn.execute("DELETE FROM runs WHERE team_id = %s::uuid AND run_id = %s", (p.team_id, run_id))
+            deleted = conn.execute("DELETE FROM runs WHERE team_id = %s::uuid AND run_id = %s",
+                                   (p.team_id, run_id))
+            if deleted.rowcount != 1:
+                self._audit(conn, p, "run.delete", run_id, ip, {"outcome": "missing"})
+                return "missing"
             # the usage rows keep their numbers and let go of the id: it pointed at content that is gone
             conn.execute("UPDATE usage SET run_id = NULL WHERE team_id = %s::uuid AND run_id = %s", (p.team_id, run_id))
             self._audit(conn, p, "run.delete", run_id, ip, {"outcome": "deleted"})
@@ -254,13 +262,15 @@ class TeamStore:
         measured = meter.measured() if meter else None
         est = meter_mod.estimate(input_chars, result_chars)
         with self._tx(p.team_id) as conn:
-            conn.execute(
+            updated = conn.execute(
                 "UPDATE usage SET run_id = %s, result_chars = %s, tokens_in = %s, tokens_out = %s, model_calls = %s, "
                 "measured_calls = %s, est_tokens_in = %s, est_tokens_out = %s, outcome = %s "
                 "WHERE id = %s AND team_id = %s::uuid",
                 (run_id, result_chars, measured["input"] if measured else None, measured["output"] if measured else None,
                  meter.calls if meter else 0, meter.measured_calls if meter else 0, est["input"], est["output"],
                  outcome, usage_id, p.team_id))
+            if updated.rowcount != 1:
+                raise LookupError("usage reservation no longer exists for this team")
 
     # ---- audit and retention ----------------------------------------------------------------
 

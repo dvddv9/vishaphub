@@ -199,7 +199,7 @@ def validate_code(files: dict, spec: dict, *, require_netns: bool = True) -> dic
         shutil.rmtree(root, ignore_errors=True)
 
 
-def analyse_static(material: str, model_verdict: str = "") -> dict:
+def analyse_static(material: str, model_verdict: str = "", filename: str = "") -> dict:
     """Static rules only: no model, no network, a verdict in milliseconds.
 
     This is honest about what it is: `rules_only` in the report, so nobody mistakes a
@@ -215,7 +215,9 @@ def analyse_static(material: str, model_verdict: str = "") -> dict:
         return {"ok": False, "error": "nothing to analyse"}
 
     try:
-        scan = scan_material(material)
+        # Preserve the submitted filename: pasted text often has too few syntax
+        # hints to distinguish languages, while uploads already carry a reliable suffix.
+        scan = scan_material(material, filename=filename)
     except Exception as exc:  # noqa: BLE001
         return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
 

@@ -7,6 +7,7 @@ const I18N = {
     meta: "private analysis · Creator correction checked against the spec · final version is clearly marked · audit trail",
     try: "Try with an example", recent: "recent runs",
     navHow: "How it works", navWork: "Try it",
+    signIn: "Sign in",
     howEyebrow: "how it works", howTitle: "One plan, seven stages, one verdict",
     s1t: "Analyse input", s1p: "Screen the code and files you supplied before generation.",
     s2t: "Generate", s2p: "The model proposes code from your spec. It proposes; it never decides.",
@@ -37,6 +38,9 @@ const I18N = {
     modeGenerate: "Generate + validate",
     modeAnalyse: "Analyse only",
     materialLabel: "Existing code or files",
+    languageLabel: "Language for pasted code",
+    languageAuto: "Auto-detect",
+    languageHint: "Choose a language for pasted code. Uploaded files use their filename; project folders use each file's extension.",
     specLabel: "Specification: what should the code do?",
     specPh: "Describe expected behavior and constraints",
     questionLabel: "Optional instructions for the model",
@@ -69,7 +73,7 @@ const I18N = {
     analyseStaticOnly: "Analyse mode uses static rules only. Clear the specification and model instructions, or choose a generation mode.",
     keyHint: "Optional. Without a key only the rules run; with your key and a question the model reads the code as well, and the stricter verdict wins. The key is kept in this browser and sent with your run.",
     noModelSummary: "No model read this run, so there is no model summary. The rules found {n} finding(s): open FINDINGS. Add your own key below to have the model read the code too.",
-    verdictHint: "REQUIRES_REVIEW means a person should read the findings. Rules-only SAFE is currently eligible for Java after a complete scan with no findings; other languages remain in review.",
+    verdictHint: "Vishap recognizes many languages and applies the static rules available for each. Rule depth and evidence vary; review coverage and findings in the report.",
     working: "working…", nothing: "nothing to work on", refused: "refused",
     verdictLabel: "verdict", notChecked: "not checked", openReport: "open the report",
     statRisk: "risk verdict", statFix: "fix", statVerify: "verification",
@@ -96,6 +100,7 @@ const I18N = {
     meta: "закрытый анализ · исправление Creator проходит повторную проверку · финальная версия помечена явно · след прогона",
     try: "Показать на примере", recent: "последние прогоны",
     navHow: "Как это работает", navWork: "Попробовать",
+    signIn: "Войти",
     howEyebrow: "как это работает", howTitle: "Один план, семь стадий, один вердикт",
     s1t: "Проверить вход", s1p: "До генерации проверяется присланный код и файлы.",
     s2t: "Сгенерировать", s2p: "Модель предлагает код по твоей спеке. Она предлагает, но не решает.",
@@ -126,6 +131,9 @@ const I18N = {
     modeGenerate: "\u0413\u0435\u043d\u0435\u0440\u0430\u0446\u0438\u044f + \u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0430",
     modeAnalyse: "\u0422\u043e\u043b\u044c\u043a\u043e \u0430\u043d\u0430\u043b\u0438\u0437",
     materialLabel: "\u0418\u0441\u0445\u043e\u0434\u043d\u044b\u0439 \u043a\u043e\u0434 \u0438\u043b\u0438 \u0444\u0430\u0439\u043b\u044b",
+    languageLabel: "Язык вставленного кода",
+    languageAuto: "Определить автоматически",
+    languageHint: "Для вставленного кода выбери язык. Загруженные файлы определяются по имени, файлы папки — по расширению.",
     specLabel: "\u0427\u0442\u043e \u0434\u043e\u043b\u0436\u0435\u043d \u0434\u0435\u043b\u0430\u0442\u044c \u043a\u043e\u0434?",
     specPh: "\u041e\u043f\u0438\u0448\u0438\u0442\u0435 \u043e\u0436\u0438\u0434\u0430\u0435\u043c\u043e\u0435 \u043f\u043e\u0432\u0435\u0434\u0435\u043d\u0438\u0435 \u0438 \u043e\u0433\u0440\u0430\u043d\u0438\u0447\u0435\u043d\u0438\u044f.",
     questionLabel: "\u0414\u043e\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u044c\u043d\u044b\u0435 \u0443\u043a\u0430\u0437\u0430\u043d\u0438\u044f \u0434\u043b\u044f \u043c\u043e\u0434\u0435\u043b\u0438",
@@ -158,7 +166,7 @@ const I18N = {
     analyseStaticOnly: "\u0420\u0435\u0436\u0438\u043c \u0430\u043d\u0430\u043b\u0438\u0437\u0430 \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0435\u0442 \u0442\u043e\u043b\u044c\u043a\u043e \u0441\u0442\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0438\u0435 \u043f\u0440\u0430\u0432\u0438\u043b\u0430. \u041e\u0447\u0438\u0441\u0442\u0438\u0442\u0435 \u043f\u043e\u043b\u044f \u0442\u0440\u0435\u0431\u043e\u0432\u0430\u043d\u0438\u0439 \u0438 \u0438\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0438\u0439 \u0438\u043b\u0438 \u0432\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0440\u0435\u0436\u0438\u043c \u0433\u0435\u043d\u0435\u0440\u0430\u0446\u0438\u0438.",
     keyHint: "Необязательно. Без ключа работают только правила; с твоим ключом и вопросом код читает ещё и модель, а побеждает более строгий вердикт. Ключ хранится в этом браузере и передаётся вместе с запуском.",
     noModelSummary: "\u042d\u0442\u0443 \u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0443 \u043d\u0435 \u0447\u0438\u0442\u0430\u043b\u0430 \u043c\u043e\u0434\u0435\u043b\u044c, \u043f\u043e\u044d\u0442\u043e\u043c\u0443 \u0441\u0432\u043e\u0434\u043a\u0438 \u043c\u043e\u0434\u0435\u043b\u0438 \u043d\u0435\u0442. \u041f\u0440\u0430\u0432\u0438\u043b\u0430 \u043d\u0430\u0448\u043b\u0438 \u043d\u0430\u0445\u043e\u0434\u043e\u043a: {n}. \u041e\u0442\u043a\u0440\u043e\u0439 \u0432\u043a\u043b\u0430\u0434\u043a\u0443 findings. \u0414\u043e\u0431\u0430\u0432\u044c \u0441\u0432\u043e\u0439 \u043a\u043b\u044e\u0447 \u043d\u0438\u0436\u0435, \u0447\u0442\u043e\u0431\u044b \u043a\u043e\u0434 \u043f\u0440\u043e\u0447\u0438\u0442\u0430\u043b\u0430 \u0435\u0449\u0451 \u0438 \u043c\u043e\u0434\u0435\u043b\u044c.",
-    verdictHint: "REQUIRES_REVIEW значит: человеку стоит прочитать находки. SAFE по одним правилам пока доступен только для Java после полной проверки без находок; остальные языки требуют просмотра.",
+    verdictHint: "Vishap распознаёт многие языки и применяет доступные для них статические правила. Глубина правил и доказательность различаются; смотри покрытие и находки в отчёте.",
     working: "работаю…", nothing: "нечего проверять", refused: "отказ",
     verdictLabel: "вердикт", notChecked: "не проверено", openReport: "открыть отчёт",
     statRisk: "вердикт риска", statFix: "исправление", statVerify: "проверка",
@@ -365,7 +373,7 @@ $("picker").onchange = async e => {
   const file = e.target.files && e.target.files[0];
   if (file){
     clearProjectFiles();
-    try { $("material").value = await file.text(); }
+    try { $("material").value = await file.text(); materialFilename = file.name; }
     catch (err) { $("verdict").textContent = t("projectReadError"); }
   }
   e.target.value = "";
@@ -380,7 +388,7 @@ $("drop").addEventListener("drop", async e => {
   const file = e.dataTransfer.files && e.dataTransfer.files[0];
   if (file){
     clearProjectFiles();
-    try { $("material").value = await file.text(); }
+    try { $("material").value = await file.text(); materialFilename = file.name; }
     catch (err) { $("verdict").textContent = t("projectReadError"); }
   }
 });
@@ -405,11 +413,20 @@ let lastSpoken = "";
 
 let lastResult = null;
 let projectFiles = Object.create(null);
+let materialFilename = "";
 let projectStatus = {type:"empty"};
 let previousMode = "";
 try { const saved = sessionStorage.getItem("vishap_last"); if (saved) { lastResult = JSON.parse(saved); $("download").disabled = false; } } catch (e) {}
 
 const sevRank = {critical: 4, high: 3, medium: 2, low: 1};
+const LANGUAGE_FILENAMES = {
+  python:"snippet.py", javascript:"snippet.js", typescript:"snippet.ts", java:"Snippet.java",
+  c:"snippet.c", cpp:"snippet.cpp", go:"snippet.go", php:"snippet.php", ruby:"snippet.rb",
+  rust:"snippet.rs", csharp:"snippet.cs", kotlin:"snippet.kt", swift:"snippet.swift",
+  scala:"snippet.scala", sql:"snippet.sql", shell:"snippet.sh", terraform:"snippet.tf",
+  yaml:"snippet.yaml", dockerfile:"Dockerfile", log:"snippet.log"
+};
+$("material").addEventListener("input", () => { materialFilename = ""; });
 const readers = f => new Set(f.seen_by || []).size;
 
 // More than one reader first, then the rest; by severity within each, in the order found within a tie.
@@ -660,6 +677,8 @@ async function pipeline(){
   const payload = hasProjectFiles
     ? {files: projectFiles, intent: "analyse"}
     : {material, question, spec, intent,
+       ...((materialFilename || LANGUAGE_FILENAMES[$("codeLanguage").value])
+         ? {filename: materialFilename || LANGUAGE_FILENAMES[$("codeLanguage").value]} : {}),
        api_key: intent === "analyse" ? "" : (localStorage.getItem("vishap_key") || ""),
        provider: providerValue(),
        model: intent === "analyse" ? "" : modelValue()};

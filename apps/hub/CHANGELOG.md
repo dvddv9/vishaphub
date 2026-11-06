@@ -6,6 +6,9 @@ All notable changes to VishapHub. Format based on [Keep a Changelog](https://kee
 
 ### Fixed
 
+- **Mixed-language scans now preserve filenames.** The hub passes each uploaded file's name to the analyser, so its extension selects the language-specific rules; pasted snippets can set a language in the workbench.
+- **Required access no longer dead-ends without a team database.** A configured `VISHAP_HUB_ACCESS_KEY` provides shared access in standalone mode. Render now enables key enforcement and requests that secret; startup fails clearly if enforcement is on but there is no usable key path.
+
 - **A submitted file name like `D:evil.py` could land outside the temp directory on Windows.** The old check only refused `..` and absolute paths; it did not know a bare drive letter escapes the root too. Paths are now checked on the joined result (`hub.paths.contained`), on any platform, in both the hub and the validator.
 
 

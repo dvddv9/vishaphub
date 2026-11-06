@@ -381,7 +381,7 @@ def login_page(error: str = "") -> str:
     problem = f'<p class="rep-reason" role="alert">{e(error)}</p>' if error else ""
     body = (
         '<div class="empty"><h1 class="page-title">Sign in</h1>'
-        '<p>Paste the API key your team\'s operator gave you. It is kept in a cookie this site can read and '
+        '<p>Paste the access key your hub or team operator gave you. It is kept in a cookie this site can read and '
         'scripts cannot, and it is never shown again.</p>' + problem +
         '<form method="post" action="/login">'
         '<p><label for="key">API key</label><br>'

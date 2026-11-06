@@ -1,0 +1,1 @@
+cur.execute("select * from users where name = '" + name + "'")

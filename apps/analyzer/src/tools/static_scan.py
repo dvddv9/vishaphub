@@ -695,6 +695,23 @@ def scan_material(material: str, filename: str = "") -> dict:
                     "snippet": str(flow["sink"].get("content", ""))[:160],
                     "fix": "Validate/escape the value or use a safe API at this sink.", "tainted": True,
                 })
+    elif lang in {"javascript", "typescript", "java", "go", "rust"}:
+        try:
+            from src.tools.polyglot_dataflow import analyze_dataflow as analyze_polyglot
+            flow = analyze_polyglot(material, language=lang) or {}
+        except Exception:
+            flow = {}
+            degraded.append(f"the {lang} data-flow analysis failed")
+        if flow and flow.get("sink"):
+            sink = flow["sink"]
+            sink_line = int(sink.get("line") or 1)
+            findings.append({
+                "id": "taint-flow-polyglot", "title": f"Untrusted {lang} input reaches a {sink.get('name', 'dangerous')} operation",
+                "severity": "high", "cwe": sink.get("cwe", "CWE-20"), "kind": "security",
+                "line": sink_line, "snippet": str(sink.get("content", ""))[:160],
+                "fix": "Validate the input and use a parameterized or context-safe API at this operation.",
+                "tainted": True,
+            })
     try:   # dependency manifests: requirements*.txt, pyproject.toml, package.json (see deps_audit.py)
         from src.tools import deps_audit
         audit = deps_audit.audit(filename, material)

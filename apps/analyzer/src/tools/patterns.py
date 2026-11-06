@@ -604,7 +604,6 @@ AST_TAINT_SOURCES = {
     "flask_request": ["request.args", "request.form", "request.json", "request.data"],
     "builtin_input": ["input"],
     "env": ["os.environ", "os.getenv"],
-    "file_read": ["open"],
 }
 
 AST_TAINT_SINKS = {

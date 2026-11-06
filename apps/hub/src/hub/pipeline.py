@@ -151,14 +151,15 @@ def _spec_for_validator(spec: object, files: dict) -> dict:
     return {"files": list(files)}
 
 
-def _analysis_pieces(material: str, files: dict, *, file_kind: str = "file") -> list[tuple[str, str]]:
+def _analysis_pieces(material: str, files: dict, *, file_kind: str = "file",
+                     material_filename: str = "") -> list[tuple[str, str, str]]:
     """Everything that must pass the analyser, keeping supplied files distinct from generated patches."""
-    pieces: list[tuple[str, str]] = []
+    pieces: list[tuple[str, str, str]] = []
     if material.strip():
-        pieces.append(("material", material))
+        pieces.append(("material", material, material_filename))
     for name, text in sorted(files.items()):
         if text.strip():
-            pieces.append((f"{file_kind}:{name}", text))
+            pieces.append((f"{file_kind}:{name}", text, name))
     return pieces
 
 
@@ -371,7 +372,7 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
                 final_findings: list[dict] = []
                 final_verdict = "SAFE"
                 for name, source in sorted(final_version.items()):
-                    scan = local.analyse_static(source, model_verdict=model_verdict)
+                    scan = local.analyse_static(source, model_verdict=model_verdict, filename=name)
                     if not scan.get("ok"):
                         steps.append(Step("final_analyser", False, detail=INTERNAL_ERROR))
                         return _error(steps, envelope.session_id, trace,
@@ -490,11 +491,11 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
                 before_generation = (analyser_pass_count > 1
                                      and (analyser_seen - 1) % analyser_pass_count == 0)
                 if analyser_pass_count > 1 and before_generation:
-                    pieces = _analysis_pieces(material, supplied_files)
+                    pieces = _analysis_pieces(material, supplied_files, material_filename=filename)
                 elif analyser_pass_count > 1:
                     pieces = _analysis_pieces("", files, file_kind="patch")
                 else:
-                    pieces = _analysis_pieces(material, supplied_files)
+                    pieces = _analysis_pieces(material, supplied_files, material_filename=filename)
                     pieces.extend(_analysis_pieces("", files, file_kind="patch"))
                 if not pieces:
                     steps.append(Step("analyser", False, detail="no material supplied"))
@@ -506,8 +507,9 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
                 reasons: list[str] = []
                 meaning = ""
                 seen_langs: list[str] = []
-                for source, text in pieces:
-                    result = local.analyse_static(text, model_verdict=model_verdict)
+                for source, text, source_filename in pieces:
+                    result = local.analyse_static(text, model_verdict=model_verdict,
+                                                  filename=source_filename)
                     if not result.get("ok"):
                         log.warning("analyser failed on %s: %s", source, result.get("error"))
                         steps.append(Step("analyser", False, detail=INTERNAL_ERROR))

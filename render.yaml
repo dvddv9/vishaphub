@@ -27,8 +27,12 @@ services:
         value: x-forwarded-for
       - key: VISHAP_HUB_TRUSTED_HOPS
         value: "1"
-      # Team mode is off until VISHAP_HUB_DATABASE_URL is set in the panel (the vishap_hub_app role's URL;
-      # see the README, "Teams"). Add VISHAP_HUB_REQUIRE_KEY=1 to refuse callers without a key.
+      # Require an access key on the public spending endpoints. With no team database,
+      # this shared secret authorizes access; it does not enable team accounts or durable run storage.
+      - key: VISHAP_HUB_REQUIRE_KEY
+        value: "1"
+      - key: VISHAP_HUB_ACCESS_KEY
+        sync: false
 
 # The separate services (analyzer, generator, validator) are deliberately absent: the
 # hub does not call them over the network any more. Their repositories still build and

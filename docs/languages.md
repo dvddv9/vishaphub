@@ -16,7 +16,9 @@ export and `GET /api/languages` show it in words:
 | `thin` | some, fewer than that | the counts are shown as counts: a percentage of three examples is not a rate |
 | `none` | no labelled example | nothing is known about how often the rules miss |
 
-The hub sends only text to the rules, so the numbers are the benchmark's `pasted` mode.
+Uploaded project files are now scanned with their filenames, allowing the analyser to select rules by extension.
+For pasted snippets without a name, select the language in the workbench or send a `filename` with the request.
+The evidence numbers remain from the benchmark's `pasted` mode and describe the rules' performance on that set.
 
 ## In a pipeline
 
@@ -43,8 +45,7 @@ fails on a stale copy.
 
 - Only Python reaches `measured`. JavaScript (9 dangerous, 4 safe), Java and the rest are `thin`; Dockerfile hit
   0 of 3 expected findings.
-- The language is recognised from the text alone for Python, JavaScript, Java and YAML. Go, PHP and Dockerfile
-  material comes through as `unknown`: only the language-independent rules ran on it, and the evidence says so.
-  A file name would fix the recognition; the hub does not send one yet.
+- This benchmark run used text without filenames. Runtime scans now use filenames when available; the language is
+  shown per file in the report. Recognition, rule depth and benchmark adequacy remain separate measures.
 - The benchmark's own release blocker (no critical example may get SAFE) holds; the benchmark counts are in
   `GET /api/languages`.

@@ -64,6 +64,21 @@ def _node_content(node: ast.AST) -> str:
         return ""
 
 
+def _is_sink_call(call: ast.Call, flat_sinks: dict) -> bool:
+    """Match a configured sink, distinguishing file reads from writes."""
+    dotted = _call_to_dotted(call.func)
+    if dotted is None or not any(dotted == p or dotted.startswith(p + ".") for p in flat_sinks):
+        return False
+    if dotted == "open" or dotted.endswith(".open"):
+        mode = call.args[1] if len(call.args) > 1 else None
+        if mode is None:
+            mode = next((kw.value for kw in call.keywords if kw.arg == "mode"), None)
+        if isinstance(mode, ast.Constant) and isinstance(mode.value, str):
+            return any(flag in mode.value for flag in ("w", "a", "x", "+"))
+        return False
+    return True
+
+
 def _trace_origin(tree: ast.AST, sink: dict, flat_sources: dict) -> dict | None:
     """Origin (source dict) of the tainted names used in ``sink``, or None when it cannot be traced.
 
@@ -243,8 +258,7 @@ def analyze_dataflow(material: str, language: str = "python") -> dict:
         dotted = _call_to_dotted(node.func)
         if dotted is None:
             continue
-        is_sink = any(dotted == p or dotted.startswith(p + ".") for p in flat_sinks)
-        if not is_sink:
+        if not _is_sink_call(node, flat_sinks):
             continue
         # Any argument referencing a tainted name?
         for sub in ast.walk(node):
@@ -258,13 +272,9 @@ def analyze_dataflow(material: str, language: str = "python") -> dict:
         if tainted_sink:
             break
 
-    # If no tainted sink found, fall back to first sink (best-effort).
+    # Do not invent a flow merely because a configured sink exists in the file.
     if tainted_sink is None:
-        tainted_sink = {
-            "line": sink["line"],
-            "name": sink["name"],
-            "content": sink["content"],
-        }
+        return {}
 
     # P2-7c: report the source that really feeds this sink (a function argument or a source call
     # assigned on the way), not just the first source call anywhere in the file. Without this a

@@ -96,6 +96,11 @@ TEAMS = _init_teams()
 ALERTS = alerts.from_env()
 #: with this on, /run, /chat and /speak refuse a caller who has no API key (the setting for a pilot)
 REQUIRE_KEY = os.getenv("VISHAP_HUB_REQUIRE_KEY", "").lower() in ("1", "true", "yes")
+SHARED_ACCESS_KEY = os.getenv("VISHAP_HUB_ACCESS_KEY", "").strip()
+if SHARED_ACCESS_KEY and access.credentials({"x-vishap-key": SHARED_ACCESS_KEY}) != ("key", SHARED_ACCESS_KEY):
+    raise RuntimeError("VISHAP_HUB_ACCESS_KEY must be a vhk_ key with at least 32 random characters")
+if REQUIRE_KEY and TEAMS is None and not SHARED_ACCESS_KEY:
+    raise RuntimeError("VISHAP_HUB_REQUIRE_KEY needs VISHAP_HUB_ACCESS_KEY or VISHAP_HUB_DATABASE_URL")
 KEY_COOKIE_MAX_AGE = 30 * 24 * 3600
 #: Behind a proxy (Render's) every visitor reaches the app from the proxy's address, so the address limits, the
 #: owner's audit trail and the quotas' logs would all see one visitor. Name the header the proxy fills in and the
@@ -250,12 +255,17 @@ class Handler(BaseHTTPRequestHandler):
 
     def _principal(self):
         """(principal, refused). principal is None for an anonymous caller. refused is True when a reply
-        was already sent: the caller presented a key, and it is wrong, revoked, or team mode is off."""
+        was already sent: the caller presented a malformed, invalid, or revoked key."""
         creds = access.credentials(self.headers)
         if creds is None:
             return None, False
         kind, token = creds
-        if kind != "key" or TEAMS is None:
+        if kind != "key":
+            self._refuse_key("an API key was sent but it is not valid here")
+            return None, True
+        if SHARED_ACCESS_KEY and secrets.compare_digest(token, SHARED_ACCESS_KEY):
+            return None, False
+        if TEAMS is None:
             self._refuse_key("an API key was sent but it is not valid here")
             return None, True
         try:
@@ -281,7 +291,10 @@ class Handler(BaseHTTPRequestHandler):
         if refused:
             return None, True
         if principal is None:
-            if REQUIRE_KEY:
+            creds = access.credentials(self.headers)
+            shared_key = bool(creds and creds[0] == "key" and SHARED_ACCESS_KEY
+                              and secrets.compare_digest(creds[1], SHARED_ACCESS_KEY))
+            if REQUIRE_KEY and not shared_key:
                 self._send(401, {"error": "an API key is required"}, extra=PRIVATE)
                 return None, True
             return None, False
@@ -743,6 +756,7 @@ class Handler(BaseHTTPRequestHandler):
         return {
             "plan": plan,
             "material": material,
+            "filename": str(body.get("filename") or "input.txt"),
             "files": files,
             "spec": spec_value if isinstance(spec_value, dict) else spec_text,
             "question": question,
@@ -991,7 +1005,9 @@ class Handler(BaseHTTPRequestHandler):
                     print(f"team storage error: {type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
                     self._send(503, {"error": "team storage is unavailable"})
                     return
-            if principal is None:
+            shared_key = bool(creds and creds[0] == "key" and SHARED_ACCESS_KEY
+                              and secrets.compare_digest(creds[1], SHARED_ACCESS_KEY))
+            if principal is None and not shared_key:
                 self._html(401, templates.login_page("That key is not valid."), extra=PRIVATE)
                 return
             cookie = (f"{access.KEY_COOKIE}={key}; Path=/; HttpOnly; SameSite=Lax; Max-Age={KEY_COOKIE_MAX_AGE}"

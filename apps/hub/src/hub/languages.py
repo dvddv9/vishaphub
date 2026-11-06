@@ -13,7 +13,8 @@ Three adequacies, by rule and not by opinion:
   is not a rate.
 * `none`: no labelled example. Nothing is known about how often the rules miss in this language.
 
-The hub sends only text to the rules (no file name), so the numbers used are the benchmark's `pasted` mode.
+Uploaded files are scanned with their filenames so the rules can select the right language. These evidence
+counts still come from the benchmark's `pasted` mode, which measures language detection without a filename.
 A language that the engine has rules for but no labelled set must be named in EXEMPT, with the reason: a new
 language cannot get rules without data or an explicit, visible exemption (see the gate test).
 """
@@ -52,7 +53,7 @@ def data() -> dict:
     return _CACHE
 
 
-UNKNOWN = ("the language was not recognised from the text alone (the hub sends text without a file name), "
+UNKNOWN = ("the language was not recognised from the file name or text, "
            "so only the language-independent rules ran")
 
 
