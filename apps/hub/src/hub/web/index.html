@@ -13,9 +13,9 @@
 <meta name="twitter:card" content="summary">
 <link rel="canonical" href="/">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/styles.css?v=d6a3dfa">
+<link rel="stylesheet" href="/styles.css?v=onboarding-20261108-2">
 <script src="/palette.js" defer></script>
-<script src="/app.js?v=d6a3dfa" defer></script>
+<script src="/app.js?v=onboarding-20261108-2" defer></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -165,6 +165,10 @@
           </select>
           <p class="hint" data-i18n="languageHint">Choose a language for pasted code. Uploaded files use their filename.</p>
           <textarea id="material" rows="6" class="mt-sm" placeholder="paste existing code or load a file above" data-i18n-ph="materialPh"></textarea>
+          <div class="sample-tool">
+            <button type="button" class="btn ghost sm" id="sampleRun" data-i18n="sampleBtn">Load example</button>
+            <span class="hint" data-i18n="sampleHint">A small vulnerable snippet for a free static scan. It goes to VishapHub, not an AI provider.</span>
+          </div>
 
           <label class="field-label" for="spec" data-i18n="specLabel">Specification: what should the code do?</label>
           <textarea id="spec" rows="4" class="mt-sm" placeholder="describe expected behavior and constraints" data-i18n-ph="specPh"></textarea>

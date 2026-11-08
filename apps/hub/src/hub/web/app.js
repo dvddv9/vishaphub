@@ -29,7 +29,8 @@ const I18N = {
     questionPh: "optional: what you want to know, e.g. “is this safe?” or “fix it”",
     materialPh: "e.g. paste something like this:\n\n@app.get(\"/user\")\ndef user():\n    name = request.args.get(\"name\", \"\")\n    cur.execute(f\"select * from users where name = '{name}'\")",
     exampleQuestion: "is this safe?",
-    sampleBtn: "Load example",
+    sampleBtn: "Try a free scan example",
+    sampleHint: "A small SQL-injection example for static rules. It goes to VishapHub, not an AI provider.",
     keySys: "The hub holds no model key. The rules check your code for free; to have the model read it too, add a key below: Anthropic, DeepSeek or ChatGPT (Ollama needs none; the key stays in this browser).",
     chooseProject: "choose project folder",
     chooseFile: "Choose an existing code file",
@@ -87,7 +88,9 @@ const I18N = {
     savedKey: "key saved in this browser", clearedKey: "key cleared",
     streamLost: "the stream ended without a verdict",
     truncated: "…the answer was cut by the token limit; ask to continue if it matters",
-    modeHint: "The full flow uses both code and a specification. Analysis-only scans code with static rules.",
+    modeHint: "The full flow needs existing code, a specification and a model API key. The provider receives the material used for generation.",
+    modeHintAnalyse: "Static rules only. No model API key or provider is needed; the source is sent to VishapHub for scanning.",
+    modeHintGenerate: "Generation and validation need a specification and a model API key. The provider receives the prompt and any source material used.",
     keyRequired: "Add an API key for the selected provider, or choose Ollama.",
     creatorRescan: "Rescan Creator files with static rules",
     creatorRescanBusy: "Scanning the exact Creator files…",
@@ -126,7 +129,8 @@ const I18N = {
     questionPh: "\u0414\u043e\u0431\u0430\u0432\u044c\u0442\u0435 \u0432\u043e\u043f\u0440\u043e\u0441 \u0438\u043b\u0438 \u043f\u043e\u0436\u0435\u043b\u0430\u043d\u0438\u0435",
     materialPh: "например, вставь что-то такое:\n\n@app.get(\"/user\")\ndef user():\n    name = request.args.get(\"name\", \"\")\n    cur.execute(f\"select * from users where name = '{name}'\")",
     exampleQuestion: "это безопасно?",
-    sampleBtn: "\u0417\u0430\u043f\u043e\u043b\u043d\u0438\u0442\u044c \u043f\u0440\u0438\u043c\u0435\u0440",
+    sampleBtn: "\u0411\u0435\u0441\u043f\u043b\u0430\u0442\u043d\u044b\u0439 \u043f\u0440\u0438\u043c\u0435\u0440 \u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0438",
+    sampleHint: "Небольшой пример SQL-инъекции для статических правил. Код отправляется в VishapHub, но не провайдеру ИИ.",
     keySys: "У хаба нет ключа модели. Правила проверяют код бесплатно; чтобы код читала ещё и модель, добавь ключ ниже: Anthropic, DeepSeek или ChatGPT (для Ollama ключ не нужен; ключ остаётся в этом браузере).",
     chooseProject: "выбрать папку проекта",
     chooseFile: "Выбрать файл с исходным кодом",
@@ -184,7 +188,9 @@ const I18N = {
     savedKey: "ключ сохранён в этом браузере", clearedKey: "ключ стёрт",
     streamLost: "поток закончился без вердикта",
     truncated: "…ответ обрезан лимитом токенов; если важно — попроси продолжить",
-    modeHint: "\u041f\u043e\u043b\u043d\u0430\u044f \u0446\u0435\u043f\u043e\u0447\u043a\u0430 \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0435\u0442 \u043a\u043e\u0434 \u0438 \u0442\u0440\u0435\u0431\u043e\u0432\u0430\u043d\u0438\u044f. \u0420\u0435\u0436\u0438\u043c \u00ab\u0422\u043e\u043b\u044c\u043a\u043e \u0430\u043d\u0430\u043b\u0438\u0437\u00bb \u043f\u0440\u043e\u0432\u0435\u0440\u044f\u0435\u0442 \u043a\u043e\u0434 \u0441\u0442\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0438\u043c\u0438 \u043f\u0440\u0430\u0432\u0438\u043b\u0430\u043c\u0438.",
+    modeHint: "Полный цикл требует исходный код, спецификацию и ключ модели. Провайдер получит данные, которые нужны для генерации.",
+    modeHintAnalyse: "Только статические правила. Ключ модели и провайдер не нужны; исходный код отправляется в VishapHub для проверки.",
+    modeHintGenerate: "Генерация и проверка требуют спецификацию и ключ модели. Провайдер получит запрос и исходный материал, который используется.",
     keyRequired: "\u0414\u043e\u0431\u0430\u0432\u044c\u0442\u0435 API-\u043a\u043b\u044e\u0447 \u0434\u043b\u044f \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u043e\u0433\u043e \u043f\u0440\u043e\u0432\u0430\u0439\u0434\u0435\u0440\u0430 \u0438\u043b\u0438 \u0432\u044b\u0431\u0435\u0440\u0438\u0442\u0435 Ollama.",
     creatorRescan: "Повторно проверить файлы Creator статическими правилами",
     creatorRescanBusy: "Проверяю точные файлы Creator…",
@@ -251,15 +257,21 @@ $("say").onclick = () => {
 };
 function loadExample(){
   clearProjectFiles();
-  $("mode").value = "generate+validate+analyse";
-  $("material").value = "cur.execute(\"select * from users where name = '\" + name + \"'\")";
-  $("spec").value = "Add a function that safely looks up a user by name. Use parameterized SQL, validate the input, and return a clear not-found result.";
+  $("mode").value = "analyse";
+  $("codeLanguage").value = "python";
+  $("material").value = "def find_user(name):\n    query = \"SELECT * FROM users WHERE name = '\" + name + \"'\"\n    cursor.execute(query)\n    return cursor.fetchone()";
+  $("spec").value = "";
   $("question").value = "";
-  $("mode-hint").textContent = t("modeHint");
+  updateModeHint();
   $("material").focus();
   $("run-title").scrollIntoView({behavior:"smooth", block:"start"});
 }
-$("mode").onchange = () => { $("mode-hint").textContent = t("modeHint"); };
+function updateModeHint(){
+  const key = $("mode").value === "analyse" ? "modeHintAnalyse"
+    : $("mode").value === "generate+validate" ? "modeHintGenerate" : "modeHint";
+  $("mode-hint").textContent = t(key);
+}
+$("mode").onchange = updateModeHint;
 if ($("tryExample")) $("tryExample").onclick = loadExample;
 if ($("sampleRun")) $("sampleRun").onclick = loadExample;
 
@@ -646,10 +658,10 @@ function showResult(data, started){
 async function pipeline(){
   const material = $("material").value;
   const question = $("question").value;
-  // The magic surface has one input; use it as both context and specification
-  // so the seven-stage backend remains intact without exposing its machinery.
-  const spec = $("spec").value || (material.trim() ? material : "");
   const intent = $("mode").value;
+  // In generation modes, the single pasted input can serve as context and spec.
+  // Static analysis must keep the spec empty: the server rejects mixed modes.
+  const spec = $("spec").value || (intent !== "analyse" && material.trim() ? material : "");
   const hasProjectFiles = Object.keys(projectFiles).length > 0;
   if (hasProjectFiles && question.trim()){
     $("verdict").textContent = t("projectQuestionBlocked");
@@ -771,11 +783,13 @@ $("download").onclick = () => {
 
 setProgress({});
 applyLang();
+updateModeHint();
 updateProjectSummary();
 $("lang").onclick = () => {
   lang = lang === "ru" ? "en" : "ru";
   localStorage.setItem("vishap_lang", lang);
   applyLang();
+  updateModeHint();
   updateProjectSummary();
 };
 fetch("/health").then(r=>r.json()).then(d=>{$("ver").textContent = d.version;}).catch(()=>{});
