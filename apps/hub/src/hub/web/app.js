@@ -82,7 +82,7 @@ const I18N = {
     working: "working…", nothing: "nothing to work on", refused: "refused",
     verdictLabel: "verdict", notChecked: "not checked", openReport: "open the report",
     statRisk: "risk verdict", statFix: "fix", statVerify: "verification",
-    reportAt: "run", copy: "copy", copied: "copied", noAccess: "no access",
+    reportAt: "fingerprint", copy: "copy", copied: "copied", noAccess: "no access",
     micOff: "this browser has no speech input; Chrome and Edge do",
     micNo: "microphone refused or unavailable",
     savedKey: "key saved in this browser", clearedKey: "key cleared",
@@ -182,7 +182,7 @@ const I18N = {
     working: "работаю…", nothing: "нечего проверять", refused: "отказ",
     verdictLabel: "вердикт", notChecked: "не проверено", openReport: "открыть отчёт",
     statRisk: "вердикт риска", statFix: "исправление", statVerify: "проверка",
-    reportAt: "прогон", copy: "копировать", copied: "скопировано", noAccess: "нет доступа",
+    reportAt: "отпечаток", copy: "копировать", copied: "скопировано", noAccess: "нет доступа",
     micOff: "в этом браузере нет распознавания речи; есть в Chrome и Edge",
     micNo: "микрофон недоступен или отклонён",
     savedKey: "ключ сохранён в этом браузере", clearedKey: "ключ стёрт",
@@ -505,8 +505,9 @@ function renderReport(data){
   };
   const names = Object.keys(panes);
   const fp = data.fingerprint || {};
-  const reportLink = fp.id
-    ? `<a href="/r/${encodeURIComponent(fp.id)}" target="_blank" rel="noopener"
+  const runId = data.run_id || fp.id;
+  const reportLink = runId
+    ? `<a href="/r/${encodeURIComponent(runId)}" target="_blank" rel="noopener"
          class="report-link">${escapeHtml(t("openReport"))} ↗</a>`
     : "";
   const st = data.statuses || {};
@@ -541,8 +542,8 @@ function renderReport(data){
         const scan = await response.json();
         if (!response.ok || !scan.ok) throw new Error(scan.error || `HTTP ${response.status}`);
         const count = (scan.findings || []).length;
-        const report = scan.fingerprint && scan.fingerprint.id
-          ? `<a href="/r/${encodeURIComponent(scan.fingerprint.id)}" target="_blank" rel="noopener">${escapeHtml(t("creatorRescanReport"))} ↗</a>`
+        const report = scan.run_id || (scan.fingerprint && scan.fingerprint.id)
+          ? `<a href="/r/${encodeURIComponent(scan.run_id || scan.fingerprint.id)}" target="_blank" rel="noopener">${escapeHtml(t("creatorRescanReport"))} ↗</a>`
           : "";
         resultBox.textContent = t("creatorRescanDone").replace("{n}", String(count));
         if (report) resultBox.insertAdjacentHTML("beforeend", " · " + report);

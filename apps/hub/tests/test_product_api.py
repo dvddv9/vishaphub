@@ -73,7 +73,7 @@ class ApiTests(ServerCase):
     def test_a_run_carries_the_schema_and_the_decision_but_the_stored_record_does_not(self):
         status, _h, data = self.run_json(SQLI)
         assert status == 200 and data["schema"] == "vishap.run/1" and data["ci"]["schema"] == "vishap.run/1"
-        stored = server.RUNS.get(data["fingerprint"]["id"])
+        stored = server.RUNS.get(data["run_id"])
         assert "ci" not in stored and "ci" not in stored["result"]
 
     def test_the_options_are_per_request(self):
@@ -118,7 +118,7 @@ class ApiTests(ServerCase):
 
     def test_the_report_page_offers_the_exports_and_the_integrity_check(self):
         _s, headers, data = self.run_json(SQLI)
-        run_id = data["fingerprint"]["id"]
+        run_id = data["run_id"]
         _status, page = self.get(f"/r/{run_id}", self.cookie_of(headers))
         for link in (f"/api/runs/{run_id}.json", f"/api/runs/{run_id}.sarif", f"/api/runs/{run_id}.md",
                      f"/api/verify/{run_id}"):
@@ -129,7 +129,7 @@ class ApiTests(ServerCase):
     def test_a_stored_record_can_be_re_checked_and_an_edit_is_caught(self):
         files = {"calc.py": "def add(a, b):\n    return a + b\n"}
         _s, headers, data = self.run_json(SQLI, files=files)
-        run_id, cookie = data["fingerprint"]["id"], self.cookie_of(headers)
+        run_id, cookie = data["run_id"], self.cookie_of(headers)
         status, raw = self.get(f"/api/verify/{run_id}", cookie)
         assert status == 200 and json.loads(raw)["intact"] is True and json.loads(raw)["files_checked"] is False
         _s, _h, ok = self.post(f"/api/verify/{run_id}", {"files": files}, cookie)
@@ -142,7 +142,7 @@ class ApiTests(ServerCase):
 
     def test_the_integrity_check_is_as_private_as_the_run_and_wants_files_to_compare(self):
         _s, headers, data = self.run_json(SQLI)
-        run_id, cookie = data["fingerprint"]["id"], self.cookie_of(headers)
+        run_id, cookie = data["run_id"], self.cookie_of(headers)
         assert self.get(f"/api/verify/{run_id}")[0] == 404
         assert self.post(f"/api/verify/{run_id}", {"files": {"a": "b"}})[0] == 404
         assert self.post(f"/api/verify/{run_id}", {}, cookie)[0] == 400

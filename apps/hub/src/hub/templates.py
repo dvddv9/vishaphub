@@ -252,7 +252,7 @@ def report_page(record: dict, retention: str = "") -> str:
 <a href="/api/verify/{e(str(record.get('id') or ''))}">check integrity</a> {DOT}
 <a href="/r/{e(str(record.get('id') or ''))}/delete">delete this run</a></span></p>
 <form class="cmp" action="/compare" method="get"><input type="hidden" name="a" value="{e(str(record.get('id') or ''))}">
-<label>compare with another run <input name="b" placeholder="run id" pattern="[0-9a-f]{{16}}" required></label>
+<label>compare with another run <input name="b" placeholder="run id" pattern="(?:[0-9a-f]{{16}}|[0-9a-f]{{32}})" required></label>
 <button type="submit">compare</button></form>
 <section class="rep-hero">
 <div class="rep-verdict {state}"><span class="label">verdict</span><b>{verdict}</b></div>
@@ -330,7 +330,8 @@ def compare_page(d: dict) -> str:
     """Two runs side by side: what is different, and whether the same judge looked at the same thing."""
     a, b = d["a"], d["b"]
     link = lambda x: f'<a href="/r/{e(str(x["id"]))}"><code>{e(str(x["id"]))}</code></a> {e(str(x.get("at") or ""))}'
-    top = ('<p class="rep-reason">These two are the same run: same fingerprint.</p>' if d["identical"] else "")
+    top = ('<p class="rep-reason">These runs have the same fingerprint: their inputs, rules and result match.</p>'
+           if d["identical"] else "")
     rules = "".join(f"<li>{e(name)}: <code>{e(str(v['a']))}</code> {ARROW} <code>{e(str(v['b']))}</code></li>"
                     for name, v in d["rules"].items()) or "<li>the same rules judged both</li>"
     ev = d["evidence"]
@@ -362,16 +363,16 @@ def delete_page(record: dict, retention: str = "", team: bool = False) -> str:
         goes = ("the run row with its result, findings and patch. The audit row stays: who deleted it, when, and "
                 "the run id, with no content. Usage counters keep their numbers and let go of the id.")
     else:
-        goes = ("the run with its findings, patch, fingerprint and record, and your claim on it. If someone else "
-                "ran exactly the same material, their copy stays for them.")
+        goes = ("the run with its findings, patch, fingerprint and record. Other people's runs stay separate, "
+                "even when they checked identical material.")
     body = (
         f'<p class="crumb"><a href="/r/{run_id}">{ARROW_BACK} back to the run</a></p>'
         f'<h1 class="page-title">Delete run <code>{run_id}</code>?</h1>'
         f'<p class="page-lead">This cannot be undone.</p>'
         f'<section class="block"><h2>What goes</h2><p>{e(goes)}</p></section>'
         '<section class="block"><h2>What does not go</h2><p>Copies you made yourself (an exported file, a link you '
-        'sent, an issue you opened) are yours to remove. Running exactly the same material again makes a new run '
-        'with the same id.</p></section>'
+        'sent, an issue you opened) are yours to remove. Running exactly the same material again creates a new '
+        'private run id.</p></section>'
         + (f'<p class="meta">{e(retention)}</p>' if retention else "")
         + f'<form method="post" action="/r/{run_id}/delete" class="confirm">'
         '<button type="submit" class="btn danger">Delete this run</button> '

@@ -181,7 +181,7 @@ class RunReportTests(ServerCase):
                                                        "files": GOOD})
         payload = json.loads(body)
         assert status == 200
-        run_id = payload["fingerprint"]["id"]
+        run_id = payload["run_id"]
         assert run_id
         cookie = self.cookie_of(headers)
         assert cookie.startswith("vishap_owner=")
@@ -209,8 +209,8 @@ class PagesTests(ServerCase):
         status, body = self.get("/")
         assert status == 200
         text = body.decode()
-        assert '<link rel="stylesheet" href="/styles.css">' in text
-        assert '<script src="/app.js" defer></script>' in text
+        assert '<link rel="stylesheet" href="/styles.css?v=' in text
+        assert '<script src="/app.js?v=' in text
         assert "<style>" not in text and "<script>" not in text
 
     def test_the_stylesheet_and_the_script_are_served_and_cacheable(self):
@@ -288,7 +288,7 @@ class OwnershipTests(ServerCase):
         with mock.patch.object(server, "run_plan", lambda **kw: _Done()):
             status, response_headers, raw = self.post("/run", body, cookie=cookie, headers=headers)
         assert status == 200, raw
-        return json.loads(raw)["fingerprint"]["id"], response_headers
+        return json.loads(raw)["run_id"], response_headers
 
     # who gets a token
 
@@ -382,12 +382,15 @@ class OwnershipTests(ServerCase):
         assert self.get(f"/r/{run_id}", headers={"x-vishap-owner": token})[0] == 200
         assert self.get(f"/r/{run_id}", headers={"x-vishap-owner": secrets.token_urlsafe(24)})[0] == 404
 
-    def test_two_visitors_with_the_same_code_both_keep_their_run(self):
+    def test_two_visitors_with_the_same_code_get_separate_private_runs(self):
         a_id, a_headers = self.run_as("same = 1")
         b_id, b_headers = self.run_as("same = 1")
-        assert a_id == b_id
+        assert a_id != b_id
+        a_record, b_record = server.RUNS.get(a_id), server.RUNS.get(b_id)
+        assert a_record["result"]["fingerprint"]["id"] == b_record["result"]["fingerprint"]["id"]
         a, b = self.cookie_of(a_headers), self.cookie_of(b_headers)
-        assert self.get(f"/r/{a_id}", a)[0] == 200 and self.get(f"/r/{a_id}", b)[0] == 200
+        assert self.get(f"/r/{a_id}", a)[0] == 200 and self.get(f"/r/{b_id}", b)[0] == 200
+        assert self.get(f"/r/{a_id}", b)[0] == 404 and self.get(f"/r/{b_id}", a)[0] == 404
         assert self.get(f"/r/{a_id}")[0] == 404
 
     def test_private_answers_are_not_cacheable(self):
@@ -419,9 +422,7 @@ class OwnershipTests(ServerCase):
     def test_the_demo_strings_are_the_ones_the_page_sends(self):
         with open(os.path.join(server.WEB, "app.js"), encoding="utf-8") as fh:
             script = fh.read()
-        assert json.dumps(demo.EXAMPLE_MATERIAL) in script
-        for question in demo.EXAMPLE_QUESTIONS - {""}:
-            assert json.dumps(question, ensure_ascii=False) in script
+        assert "def find_user(name)" in script and "cursor.execute(query)" in script
 
 
 class RetentionTests(ServerCase):

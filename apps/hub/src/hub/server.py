@@ -415,10 +415,13 @@ class Handler(BaseHTTPRequestHandler):
             payload["fingerprint"] = fp
         if not fp.get("id"):
             return
+        # Proof ids are deterministic; report ids must be per-run and private.
+        run_id = secrets.token_hex(16)
+        payload["run_id"] = run_id
         input_chars = limits.input_chars(args or {})
         result_chars = len(json.dumps(payload, ensure_ascii=False, default=str))
         record = {
-            "id": fp["id"],
+            "id": run_id,
             "at": fp.get("at", ""),
             "verdict": payload.get("verdict"),
             "ok": payload.get("ok"),
@@ -433,7 +436,7 @@ class Handler(BaseHTTPRequestHandler):
         if principal is None:
             RUNS.save(record)
             return
-        self._finish_usage(fp["id"], result_chars, "ok" if payload.get("ok") else "failed")
+        self._finish_usage(run_id, result_chars, "ok" if payload.get("ok") else "failed")
         try:
             TEAMS.save(principal, record, self._client_ip())
             payload["stored"] = True
@@ -1038,8 +1041,8 @@ class Handler(BaseHTTPRequestHandler):
                     "The run is gone: its findings, patch, fingerprint and record. "
                     "Running exactly the same material again will make a new run with the same id.")),
                 "unlinked": (200, "Removed from your runs", (
-                    "The run is out of your list and your reach. Someone else "
-                    "ran exactly the same material, so their copy stays for them.")),
+                    "The run is out of your list and your reach. A legacy record had another owner, "
+                    "so that owner's copy stays available.")),
                 "forbidden": (403, "Not deleted", (
                     "Only an owner, or the person who made the run, may delete it. "
                     "The page's own example cannot be deleted.")),
@@ -1185,7 +1188,7 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, {"deleted": True}, extra=PRIVATE)
         elif outcome == "unlinked":
             self._send(200, {"deleted": False, "unlinked": True,
-                             "note": "someone else ran the same material; their copy stays for them"}, extra=PRIVATE)
+                             "note": "a legacy record has another owner; their copy stays available"}, extra=PRIVATE)
         elif outcome == "forbidden":
             self._send(403, {"error": "only an owner, or the person who made the run, may delete it"}, extra=PRIVATE)
         else:

@@ -10,8 +10,8 @@ Every run carries the owners who made it, as hashes of their tokens (the token i
 is never stored), and a `demo` flag the server sets for the page's own example. A run is
 visible to its owners and, if it is a demo, to anyone. Nothing else is: `get_for` and
 `list_for` are the doors, `get` and `list` are for code that already holds the whole
-store. Two visitors who run the same material get the same run id, so owners are merged
-on save rather than overwritten.
+store. Run ids are random and separate from reproducible fingerprint ids, so matching
+content never merges owners or gives one visitor another visitor's report.
 """
 from __future__ import annotations
 
@@ -99,8 +99,7 @@ class RunStore:
         with self._lock:
             old = self._runs.get(run_id)
             if old is not None:
-                # same material, same plan, same id: both visitors keep their run. The demo
-                # flag is NOT merged - it belongs to this record's own content alone.
+                # Compatibility for records written before private run ids were introduced.
                 record["owners"] = sorted(set(old.get("owners") or []) | set(record.get("owners") or []))
                 kept = (old.get("result") or {}).get("accepted")
                 if kept and isinstance(record.get("result"), dict) and not record["result"].get("accepted"):
@@ -115,10 +114,21 @@ class RunStore:
     def get_for(self, run_id: str, owner: str | None) -> dict | None:
         """The run, if `owner` made it or it is a demo; otherwise None - the same None as a missing run."""
         with self._lock:
-            record = self._runs.get(str(run_id))
-        if record is None or not (record.get("demo") or _owns(record, owner)):
-            return None
+            _key, record = self._find_for_locked(str(run_id), owner)
+            if record is None:
+                return None
         return accepted.shown({k: v for k, v in record.items() if k != "owners"})
+
+    def _find_for_locked(self, run_id: str, owner: str | None) -> tuple[str | None, dict | None]:
+        """Resolve an old fingerprint URL only within its owner's runs."""
+        record = self._runs.get(run_id)
+        if record is not None and (record.get("demo") or _owns(record, owner)):
+            return run_id, record
+        for key, candidate in reversed(self._runs.items()):
+            fp = ((candidate.get("result") or {}).get("fingerprint") or {})
+            if fp.get("id") == run_id and (candidate.get("demo") or _owns(candidate, owner)):
+                return key, candidate
+        return None, None
 
     def annotate(self, run_id: str, owner: str | None, change) -> tuple[str, str]:
         """Change the result of a run this owner made: ("ok", ""), ("missing", "") or ("invalid", why).
@@ -127,7 +137,7 @@ class RunStore:
         theirs is "missing", the same answer as a run that is not there.
         """
         with self._lock:
-            record = self._runs.get(str(run_id))
+            _key, record = self._find_for_locked(str(run_id), owner)
             if record is None or not _owns(record, owner):
                 return "missing", ""
             try:
@@ -146,11 +156,10 @@ class RunStore:
     def delete(self, run_id: str, owner: str | None) -> str:
         """'deleted', 'unlinked', 'forbidden' or 'missing' (the same word for a run that is not yours).
 
-        Two visitors who run the same material share one record and both own it. Removing yours takes the run
-        out of your list and your reach; the record itself goes only when nobody owns it any more.
+        Older records can still have several owners. Current runs get independent ids, even for matching inputs.
         """
         with self._lock:
-            record = self._runs.get(str(run_id))
+            key, record = self._find_for_locked(str(run_id), owner)
             if record is None or not _owns(record, owner):
                 return "missing"
             if record.get("demo"):
@@ -160,14 +169,21 @@ class RunStore:
                 record["owners"] = rest
                 self._flush()
                 return "unlinked"
-            del self._runs[str(run_id)]
+            del self._runs[key]
             self._flush()
             return "deleted"
 
     def get(self, run_id: str) -> dict | None:
         """Unfiltered. For code that holds the whole store; a door uses `get_for`."""
         with self._lock:
-            return self._runs.get(str(run_id))
+            record = self._runs.get(str(run_id))
+            if record is not None:
+                return record
+            for candidate in reversed(self._runs.values()):
+                fp = ((candidate.get("result") or {}).get("fingerprint") or {})
+                if fp.get("id") == str(run_id):
+                    return candidate
+            return None
 
     def list(self, limit: int = 20) -> list[dict]:
         """Unfiltered, newest first. For code that holds the whole store; a door uses `list_for`."""

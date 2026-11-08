@@ -20,11 +20,13 @@ def test_the_page_does_not_promise_a_key_the_hub_does_not_hold():
     assert 'talk to Vishap' not in page.lower()
 
 
-def test_material_comes_before_the_question_and_a_sample_runs_in_one_click():
+def test_material_comes_before_the_question_and_free_sample_loads_in_one_click():
     page = _page()
     assert page.index('id="material"') < page.index('id="question"')
-    assert 'id="sampleRun"' not in page
-    assert 'id="tryExample"' not in page
+    assert 'id="sampleRun"' in page
+    assert 'data-i18n="sampleBtn"' in page and 'data-i18n="sampleHint"' in page
+    app = _app()
+    assert 'if ($("sampleRun")) $("sampleRun").onclick = loadExample;' in app
 
 
 def test_every_new_string_exists_in_both_languages():

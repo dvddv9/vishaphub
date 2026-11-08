@@ -87,7 +87,7 @@ class Doors(ServerCase):
         status, headers, raw = self.post("/run", {"material": material, "intent": "analyse"}, cookie=cookie)
         assert status == 200, raw
         data = json.loads(raw)
-        return data["fingerprint"]["id"], self.cookie_of(headers) or cookie
+        return data["run_id"], self.cookie_of(headers) or cookie
 
     def delete(self, path, cookie=None):
         request = urllib.request.Request(f"http://127.0.0.1:{self.port}{path}", method="DELETE",
@@ -127,7 +127,8 @@ class Doors(ServerCase):
     def test_the_report_page_offers_the_comparison_and_the_deletion(self):
         run_id, cookie = self.run_json(SQLI)
         page = self.get(f"/r/{run_id}", cookie)[1].decode()
-        assert f'name="a" value="{run_id}"' in page and 'action="/compare"' in page and 'pattern="[0-9a-f]{16}"' in page
+        assert f'name="a" value="{run_id}"' in page and 'action="/compare"' in page
+        assert 'pattern="(?:[0-9a-f]{16}|[0-9a-f]{32})"' in page
         assert f"/r/{run_id}/delete" in page
 
     # delete
@@ -166,17 +167,24 @@ class Doors(ServerCase):
         ok, _h2, _r = self.post(f"/r/{run_id}/delete", {}, cookie, headers={"Origin": f"http://127.0.0.1:{self.port}"})
         assert ok == 200
 
-    def test_two_visitors_with_the_same_material_each_remove_only_their_own_claim(self):
+    def test_two_visitors_with_the_same_material_get_separate_private_runs(self):
         shared = f"{SQLI}# {secrets.token_hex(6)}\n"
         run_id, first = self.run_json(shared, unique=False)
         again, second = self.run_json(shared, unique=False)
-        assert again == run_id and first != second                              # one record, two owners
+        assert again != run_id and first != second
+        assert server.RUNS.get(run_id)["result"]["fingerprint"]["id"] == \
+               server.RUNS.get(again)["result"]["fingerprint"]["id"]
+        assert self.get(f"/r/{run_id}", first)[0] == 200
+        assert self.get(f"/r/{again}", second)[0] == 200
+        assert self.get(f"/r/{run_id}", second)[0] == 404
+        assert self.get(f"/r/{again}", first)[0] == 404
         _s, _h, raw = self.post(f"/r/{run_id}/delete", {}, first)
-        assert "Removed from your runs" in raw.decode() and "their copy stays" in raw.decode()
+        assert "Run deleted" in raw.decode()
         assert self.get(f"/r/{run_id}", first)[0] == 404
-        assert self.get(f"/r/{run_id}", second)[0] == 200
-        _s, _h, raw = self.post(f"/r/{run_id}/delete", {}, second)
-        assert "Run deleted" in raw.decode() and server.RUNS.get(run_id) is None
+        assert self.get(f"/r/{run_id}", second)[0] == 404
+        assert self.get(f"/r/{again}", second)[0] == 200
+        _s, _h, raw = self.post(f"/r/{again}/delete", {}, second)
+        assert "Run deleted" in raw.decode() and server.RUNS.get(again) is None
 
     def test_the_pages_own_example_cannot_be_deleted(self):
         run_id, cookie = self.run_json(demo.EXAMPLE_MATERIAL, unique=False)

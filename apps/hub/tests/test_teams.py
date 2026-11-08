@@ -111,7 +111,7 @@ class TeamCase(ServerCase):
         with mock.patch.object(server, "run_plan", lambda **kw: _Said(said)):
             status, _h, raw = self.call("POST", "/run", self.keys[who], {"material": material, "api_key": "k"})
         assert status == 200, raw
-        return json.loads(raw)["fingerprint"]["id"]
+        return json.loads(raw)["run_id"]
 
     def admin_rows(self, sql, *args):
         import psycopg
@@ -351,14 +351,17 @@ class RetentionTests(TeamCase):
         assert self.admin_rows("SELECT detail FROM audit_log WHERE action = 'run.expired'") == [({"count": 1},)]
         assert self.store.purge_expired() == 0
 
-    def test_a_run_again_refreshes_its_life(self):
+    def test_repeating_identical_work_creates_a_distinct_run(self):
         run_id = self.run_as("alice", "again = 1")
-        import psycopg
-        with psycopg.connect(ADMIN_URL, autocommit=True) as conn:
-            conn.execute("UPDATE runs SET expires_at = now() + interval '1 hour'")
-        assert self.run_as("alice", "again = 1") == run_id
-        days = self.admin_rows("SELECT extract(epoch FROM expires_at - now()) / 86400 FROM runs")[0][0]
-        assert round(float(days)) == 30
+        second_run_id = self.run_as("alice", "again = 1")
+        assert second_run_id != run_id
+        assert [r[0] for r in self.admin_rows(
+            "SELECT run_id FROM runs WHERE team_id = %s::uuid ORDER BY run_id", self.alpha
+        )] == sorted((run_id, second_run_id))
+        for actual_id in (run_id, second_run_id):
+            days = self.admin_rows("SELECT extract(epoch FROM expires_at - now()) / 86400 "
+                                   "FROM runs WHERE run_id = %s", actual_id)[0][0]
+            assert round(float(days)) == 30
 
 
 @needs_pg
@@ -639,7 +642,7 @@ class UsageTests(TeamCase):
     def test_measured_tokens_and_the_estimate_are_kept_apart(self):
         with mock.patch.object(server, "run_plan", lambda **kw: _Metered(120, 45)):
             _status, _h, raw = self.call("POST", "/run", self.keys["alice"], {"material": "m" * 40, "api_key": "k"})
-        run_id = json.loads(raw)["fingerprint"]["id"]
+        run_id = json.loads(raw)["run_id"]
         (kind, rid, t_in, t_out, calls, measured, e_in, e_out, outcome, chars), = self.usage()
         assert (kind, rid, t_in, t_out, calls, measured, outcome, chars) == ("run", run_id, 120, 45, 1, 1, "ok", 40)
         assert e_in == 10 and e_out > 0                                   # 40 chars / 4; an estimate, not 120
@@ -650,7 +653,7 @@ class UsageTests(TeamCase):
     def test_a_provider_that_reports_nothing_is_none_not_zero(self):
         with mock.patch.object(server, "run_plan", lambda **kw: _Said()):
             _s, _h, raw = self.call("POST", "/run", self.keys["alice"], {"material": "n" * 8, "api_key": "k"})
-        run_id = json.loads(raw)["fingerprint"]["id"]
+        run_id = json.loads(raw)["run_id"]
         (_k, _r, t_in, t_out, _c, measured, e_in, _e, _o, _ch), = self.usage()
         assert t_in is None and t_out is None and measured == 0 and e_in == 2
         cost = json.loads(self.call("GET", f"/api/runs/{run_id}", self.keys["alice"])[2])["cost"]
@@ -706,7 +709,7 @@ class UsageTests(TeamCase):
     def test_deleting_a_run_unlinks_its_usage_but_keeps_the_numbers(self):
         with mock.patch.object(server, "run_plan", lambda **kw: _Metered()):
             _s, _h, raw = self.call("POST", "/run", self.keys["alice"], {"material": "d = 1", "api_key": "k"})
-        run_id = json.loads(raw)["fingerprint"]["id"]
+        run_id = json.loads(raw)["run_id"]
         assert self.usage()[0][1] == run_id
         assert self.call("DELETE", f"/api/runs/{run_id}", self.keys["alice"])[0] == 200
         (kind, rid, t_in, *_rest), = self.usage()
@@ -943,7 +946,7 @@ class ProductApiTeamTests(TeamCase):
         with mock.patch.object(server, "run_plan", lambda **kw: _Statused()):
             status, _h, raw = self.call("POST", "/run", self.keys[who], {"material": material, "api_key": "k"})
         assert status == 200, raw
-        return json.loads(raw)["fingerprint"]["id"]
+        return json.loads(raw)["run_id"]
 
     def test_the_team_list_carries_the_fix_and_verification_statuses(self):
         new = self.run_statused("alice", "a = 1")

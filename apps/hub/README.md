@@ -118,7 +118,7 @@ nothing is worse than a page that says «bring a key».
 | `POST /run/stream` | the same run as server-sent events | same | same |
 | `POST /speak` | the voice | an outside synthesis service | 20 a minute, 600 characters, cached by the words |
 | `POST /webhook/github` | verifies GitHub's HMAC and scans supported PR diffs against the bounded full-repository snapshot | GitHub App installation token | one scan per PR event; source archive ≤50 MB, 2,000 files, 400 KB per file |
-| `GET /r/<id>` | a finished run as a page, owner only | nothing | — |
+| `GET /r/<run_id>` | a finished run as a page, owner only | nothing | — |
 | `GET /api/runs` | your own recent runs, JSON | nothing | last 200 kept |
 | `GET /api/runs/<id>.json` | one run, JSON, owner only | nothing | — |
 | `GET /api/runs/<id>.sarif` | one run as SARIF 2.1.0, owner only | nothing | needs the analyser in the image, else `501` |
@@ -187,11 +187,12 @@ Also: `VISHAP_HUB_TTS_MAX_CHARS`, `VISHAP_HUB_TTS_CACHE`, `VISHAP_HUB_RUNS_KEEP`
 
 ## Runs are stored, not believed
 
-A finished run gets a fingerprint: the material, the spec, the plan, the verdict, the
-steps, and the versions of the rules that judged it, hashed as canonical JSON. The id
-is the first 16 hex characters of that hash, so the same run computed elsewhere gives
-the same id — and `GET /r/<id>` shows the verdict, every step, every finding with its
-source (`material` or `patch:<file>`), and **what was not checked**.
+A finished run gets two identifiers. `fingerprint.id` is reproducible: it is the first
+16 hex characters of a canonical hash over the material, spec, plan, verdict, steps and
+rule versions. `run_id` is a private, random identifier for opening and managing this
+particular saved report. Identical fingerprints never merge owners or saved runs.
+`GET /r/<run_id>` shows the verdict, every step, every finding with its source
+(`material` or `patch:<file>`), and **what was not checked**.
 
 That last section is the point. «Safety was not checked: no analyser stage in this
 plan» is the sentence that turns a result into a proof instead of an opinion. A run
@@ -203,8 +204,8 @@ that ends in ERROR is stored too: a failure is a result.
   seconds away, not a decision about what to paste;
 - the run is read as a stream: each stage lights up as it finishes, because a minute of
   silence reads as broken;
-- **open the report** opens `/r/<id>` — a link that can be sent to someone who was not
-  here;
+- **open the report** opens `/r/<run_id>` — a private link for returning to this report
+  from the same browser or signed-in team;
 - **not checked** is a tab of its own, in the same place as the findings;
 - the microphone uses the browser's own speech recognition (Chrome and Edge; elsewhere
   the button says so), and the voice answers through `/speak`;
