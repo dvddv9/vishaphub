@@ -31,7 +31,7 @@ def _match_call(call: ast.Call, patterns: list[str]) -> str | None:
 
 
 def _call_to_dotted(node: ast.AST) -> str | None:
-    """Convert ast.Call func to dotted name: request.args.get -> 'request.args.get'."""
+    """Convert an attribute expression to a dotted name: request.args.get -> 'request.args.get'."""
     parts = []
     cur = node
     while isinstance(cur, ast.Attribute):
@@ -42,6 +42,16 @@ def _call_to_dotted(node: ast.AST) -> str | None:
     else:
         return None
     return ".".join(reversed(parts))
+
+
+def _source_expression(node: ast.AST, flat_sources: dict) -> tuple[str, str] | None:
+    """Return a configured source found in a call, attribute or indexed request value."""
+    candidate = node.func if isinstance(node, ast.Call) else node.value if isinstance(node, ast.Subscript) else node
+    dotted = _call_to_dotted(candidate)
+    if dotted is None:
+        return None
+    matched = next((p for p in flat_sources if dotted == p or dotted.startswith(p + ".")), None)
+    return (matched, dotted) if matched else None
 
 
 def _flatten_patterns(mapping: dict) -> dict:
@@ -65,16 +75,9 @@ def _node_content(node: ast.AST) -> str:
 
 
 def _is_sink_call(call: ast.Call, flat_sinks: dict) -> bool:
-    """Match a configured sink, distinguishing file reads from writes."""
+    """Match a configured sink, including reads through an input-controlled file path."""
     dotted = _call_to_dotted(call.func)
     if dotted is None or not any(dotted == p or dotted.startswith(p + ".") for p in flat_sinks):
-        return False
-    if dotted == "open" or dotted.endswith(".open"):
-        mode = call.args[1] if len(call.args) > 1 else None
-        if mode is None:
-            mode = next((kw.value for kw in call.keywords if kw.arg == "mode"), None)
-        if isinstance(mode, ast.Constant) and isinstance(mode.value, str):
-            return any(flag in mode.value for flag in ("w", "a", "x", "+"))
         return False
     return True
 
@@ -108,11 +111,11 @@ def _trace_origin(tree: ast.AST, sink: dict, flat_sources: dict) -> dict | None:
         if isinstance(node, ast.Assign):
             src = None
             for sub in ast.walk(node.value):
-                if isinstance(sub, ast.Call):
-                    dotted = _call_to_dotted(sub.func)
-                    if dotted and any(dotted == p or dotted.startswith(p + ".") for p in flat_sources):
-                        src = {"line": _node_line(sub), "name": dotted, "content": _node_content(sub)}
-                        break
+                match = _source_expression(sub, flat_sources)
+                if match:
+                    name, _dotted = match
+                    src = {"line": _node_line(sub), "name": name, "content": _node_content(sub)}
+                    break
             for t in node.targets:
                 if isinstance(t, ast.Name):
                     links.append((t.id, names_in(node.value), src, node.lineno))
@@ -213,13 +216,8 @@ def analyze_dataflow(material: str, language: str = "python") -> dict:
             rhs_names = set()
             rhs_has_source = False
             for sub in ast.walk(node.value):
-                if isinstance(sub, ast.Call):
-                    dotted = _call_to_dotted(sub.func)
-                    if dotted and any(
-                        dotted == p or dotted.startswith(p + ".")
-                        for p in flat_sources
-                    ):
-                        rhs_has_source = True
+                if _source_expression(sub, flat_sources):
+                    rhs_has_source = True
                 if isinstance(sub, ast.Name):
                     rhs_names.add(sub.id)
             for target in node.targets:

@@ -109,7 +109,7 @@ def set_quota(url: str, team: str, kind: str, user: int | None = None, team_limi
         team_id = _team_id(conn, team)
         cursor = conn.execute(
             "UPDATE teams SET quotas = COALESCE(quotas, '{}'::jsonb) || "
-            "jsonb_build_object(%s, COALESCE(quotas -> %s, '{}'::jsonb) || %s) "
+            "jsonb_build_object(%s::text, COALESCE(quotas -> %s::text, '{}'::jsonb) || %s::jsonb) "
             "WHERE id = %s::uuid RETURNING quotas",
             (kind, kind, Jsonb(entry_patch), team_id),
         )
