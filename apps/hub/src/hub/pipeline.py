@@ -198,10 +198,10 @@ def _not_checked(plan: Plan, checks: dict, has_proof: bool, model_trouble: str =
         missing.append("no corrected version was produced: no creator stage in this plan")
     if Stage.FINAL_GENERATOR in stages and not checks.get("final_generator"):
         missing.append("no final version was produced after the Creator validation")
-    if checks.get("final_generator") and not checks["final_generator"].get("verified"):
-        missing.append("the final generator version was not re-verified after it was produced")
     if checks.get("final_validator", {}).get("status") == "NOT_RUN":
         missing.append("the final version validator did not run: the host could not isolate the generated code")
+    elif checks.get("final_generator") and not checks["final_generator"].get("verified"):
+        missing.append("the final generated version did not complete its post-generation checks")
     if not (checks.get("validator") or {}).get("checks"):
         missing.append("the validator's stage-by-stage detail is not in this answer")
     elif (checks.get("validator") or {}).get("status") == "NOT_RUN":
@@ -275,6 +275,7 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
     creator_answer: dict = {}
     corrected_version: dict = {}
     final_version: dict = {}
+    final_generator_called = False
     model_trouble = ""
     previous: dict[str, str] = {}
     supplied_files = dict(files)
@@ -341,34 +342,41 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
                     steps.append(Step("final_generator", False, detail="no Creator version supplied"))
                     return _error(steps, envelope.session_id, trace,
                                   "final generation needs the corrected Creator version", plan_dict)
-                final_prompt = (
-                    "Return the final complete files after the corrected version has passed validation. "
-                    "Preserve the validated behavior and do not introduce new changes. Put every final "
-                    "complete file in the JSON patch. This final generator output is not verified again in "
-                    "this run, so do not claim it is verified.\n\n"
-                    "Validator result:\n" + json.dumps(checks.get("creator_validator") or {},
-                                                          ensure_ascii=False, default=str)
-                )
-                material_for_final = "\n\n".join(
-                    f"--- {name}\n{text}" for name, text in sorted(corrected_version.items())
-                )
-                final_answer = proposal.propose(
-                    material=material_for_final,
-                    spec=str(spec or "") if not isinstance(spec, dict) else json.dumps(spec, ensure_ascii=False),
-                    question=final_prompt, api_key=api_key, model=model, preset=preset,
-                )
-                final_version = dict(final_answer.get("patch") or {}) if final_answer.get("ok") else {}
-                if not final_version:
-                    error = final_answer.get("error") or "the final generator returned no files"
-                    steps.append(Step("final_generator", False, detail=error))
-                    return _error(steps, envelope.session_id, trace,
-                                  "final generator did not return a final version", plan_dict)
-                checks["final_generator"] = {"model": final_answer.get("model", ""),
-                                              "files": len(final_version), "verified": False}
+                if not final_generator_called:
+                    final_prompt = (
+                        "Return the final complete files from the Creator version after the Creator validator "
+                        "has checked them. Preserve the checked behavior and constraints; do not make unrelated "
+                        "changes. Put every final complete file in the JSON patch. The hub will run its analyser "
+                        "and validator on these final files before returning them. Do not claim those checks pass; "
+                        "the hub's recorded results decide that.\n\n"
+                        "Validator result:\n" + json.dumps(checks.get("creator_validator") or {},
+                                                              ensure_ascii=False, default=str)
+                    )
+                    material_for_final = "\n\n".join(
+                        f"--- {name}\n{text}" for name, text in sorted(corrected_version.items())
+                    )
+                    final_answer = proposal.propose(
+                        material=material_for_final,
+                        spec=str(spec or "") if not isinstance(spec, dict) else json.dumps(spec, ensure_ascii=False),
+                        question=final_prompt, api_key=api_key, model=model, preset=preset,
+                    )
+                    final_version = dict(final_answer.get("patch") or {}) if final_answer.get("ok") else {}
+                    if not final_version:
+                        error = final_answer.get("error") or "the final generator returned no files"
+                        steps.append(Step("final_generator", False, detail=error))
+                        return _error(steps, envelope.session_id, trace,
+                                      "final generator did not return a final version", plan_dict)
+                    final_generator_called = True
+                    checks["final_generator"] = {"model": final_answer.get("model", ""),
+                                                  "files": len(final_version), "verified": False}
+                    trace.append(f"pass {pass_no} final_generator -> generated {len(final_version)} file(s)")
+                else:
+                    trace.append(f"pass {pass_no} final_generator -> reused prior output; re-running checks")
                 steps.append(Step("final_generator", True,
-                                  detail=f"{len(final_version)} final file(s) · verification follows"))
+                                  detail=f"{len(final_version)} final file(s) · analyser and validator follow"))
                 emit("final_generator", {"stage": "final_generator", "ok": True,
-                                          "files": len(final_version), "verified": False, "pass": pass_no})
+                                          "files": len(final_version), "verified": False,
+                                          "reused": pass_no > 1, "pass": pass_no})
                 final_findings: list[dict] = []
                 final_verdict = "SAFE"
                 for name, source in sorted(final_version.items()):
@@ -408,6 +416,9 @@ def run_plan(plan: Plan, material: str = "", files: dict | None = None,
                                                "checks": final_check_rows, "files": sorted(final_version)}
                 merge(final_validation_verdict if final_status == "COMPLETED" else "REQUIRES_REVIEW")
                 checks["final_generator"]["verified"] = final_status == "COMPLETED"
+                current["final_analyser"] = final_verdict
+                current["final_validator"] = (final_validation_verdict if final_status == "COMPLETED"
+                                               else "REQUIRES_REVIEW")
                 steps.append(Step("final_validator", final_status == "COMPLETED" and final_validation_verdict not in BLOCKING_VERDICTS,
                                   final_validation_verdict if final_status == "COMPLETED" else "NOT_RUN",
                                   detail=f"{final_report.get('finding_count', 0)} findings · {'verified' if final_status == 'COMPLETED' else 'isolation unavailable'}"))

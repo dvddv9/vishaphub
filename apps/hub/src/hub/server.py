@@ -19,14 +19,14 @@ why, and `/health` still answers. Each kept run records what it was sent and wha
 """
 from __future__ import annotations
 
-import json
 import io
-import zipfile
+import json
 import os
 import re
 import secrets
 import sys
 import threading
+import zipfile
 from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit

@@ -118,7 +118,7 @@ def test_another_language_is_read_as_thin():
 def test_a_language_the_text_alone_does_not_reveal_is_unknown_and_says_why():
     """Go, PHP and Dockerfile are recognised by file name; the hub sends text. Measured, and said."""
     ev = analyse(GO).checks["analyser"]["languages"][0]
-    assert ev["language"] == "unknown" and ev["adequacy"] == "none" and "without a file name" in ev["reason"]
+    assert ev["language"] == "unknown" and ev["adequacy"] == "none" and "language was not recognised" in ev["reason"]
 
 
 def result_of(languages_row, verdict="REQUIRES_REVIEW", ok=True):

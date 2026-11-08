@@ -6,7 +6,7 @@
 
 For users, this means less manual checking and less blind trust in generated code. For businesses, it means faster decisions on code changes while preserving evidence of quality and security.
 
-The layer that carries a request between the client and three services, used in five stages on the full build route:
+The layer that carries a request through the full build route:
 **generator** (code from a spec), **validator** (does the code match the promise),
 **analyser** (is it safe).
 
@@ -25,7 +25,11 @@ POST /run  →  router (what was asked)  →  run_plan
                                           ├── generator  : the model proposes — a patch, findings, questions, proof
                                           ├── analyser   : screen the generated code
                                           ├── validator  : six stages on the generated code
-                                          └── creator    : propose a corrected version from the findings
+                                          ├── creator    : propose a corrected version from the findings
+                                          ├── validator  : check the Creator correction against the spec
+                                          ├── generator  : assemble the final complete files once
+                                          ├── analyser   : screen the exact final files
+                                          └── validator  : check the exact final files against the spec
                                          → verdicts.py: the strictest verdict wins
 ```
 
@@ -77,10 +81,10 @@ about the model's own patch, a different question). Nothing is ever dropped by t
 
 Rules that matter:
 
-- **order is fixed**: analyse supplied code → generate → analyse generated code → validate → creator proposes a correction;
-  findings from both scans contribute to the final security result, and the correction is marked not re-verified;
+- **order is fixed**: analyse supplied code → generate → analyse generated code → validate → Creator proposes a correction → validate that correction → generate final files → analyse and validate those exact files;
+  findings from every scan contribute to the final security result. A final version is marked checked only when its post-generation checks complete;
 - **iterations** capped at 3, and only for multi-stage routes; stop early when the verdict stops improving;
-- **the generator runs once** — later passes re-check the same patch instead of paying the model again;
+- **each generation runs once** — later passes re-check the same initial and final files instead of paying the model again;
 - **partial runs are marked**: a single stage returns `partial: true` with a note, so the client never reads «done» where «not verified» is true.
 
 ## The envelope

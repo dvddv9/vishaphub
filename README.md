@@ -34,10 +34,12 @@ into an opinion.
 
 ## The order
 
-Security scan of supplied code → generation → security scan of the generated code →
-validation → creator proposes a corrected version from the findings. The final correction
-is not re-verified in the same run. Iterations are capped at three and stop early when no
-stage changes its answer.
+Security scan of supplied code → generation → security scan of generated code →
+validation → Creator proposes a corrected version → validation of that correction →
+final generation → security scan and validation of the exact final files. A final version
+is labelled checked only when those post-generation checks complete. Iterations are
+capped at three; later passes re-check the same generated files instead of paying for
+another final-generation call, and stop early when no verdict changes.
 
 ## Shared rules, one home
 
@@ -124,6 +126,8 @@ Team mode is off until `VISHAP_HUB_DATABASE_URL` is set. Without it nothing belo
 ## What SAFE means
 
 A **SAFE** verdict means the applicable rules completed their full scan, found no findings, and met their validation criteria for the language. It describes those checks only; it is not a guarantee that code has no vulnerabilities. Model output may raise the risk verdict, but cannot lower the rules' verdict. Findings or unsupported coverage are reported for review; incomplete checks return the reason they could not verify the material.
+
+SAFE is currently issued for: java.
 
 For pilots, use synthetic or anonymised examples until rule coverage has been evaluated for the languages and workloads in use. Treat results as review evidence, not a guarantee.
 
