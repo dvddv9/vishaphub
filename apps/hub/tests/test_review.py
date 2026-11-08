@@ -25,7 +25,7 @@ def fake(**over):
 
 def review(monkeypatch, model, rules, **kw):
     monkeypatch.setattr(proposal, "propose", lambda **k: model)
-    monkeypatch.setattr(local, "analyse_static", lambda text, model_verdict="": rules)
+    monkeypatch.setattr(local, "analyse_static", lambda text, model_verdict="", **kwargs: rules)
     return run_plan(plan_for("review"), material=CODE, question="is this safe?", api_key="k", **kw)
 
 
@@ -81,7 +81,7 @@ def test_a_review_with_nothing_to_review_is_still_an_error_not_a_pass(monkeypatc
 
 def test_generation_without_its_model_is_still_an_error(monkeypatch):
     monkeypatch.setattr(proposal, "propose", lambda **k: {"ok": False, "error": "model refused: HTTP 401"})
-    monkeypatch.setattr(local, "analyse_static", lambda text, model_verdict="": RULES_FOUND)
+    monkeypatch.setattr(local, "analyse_static", lambda text, model_verdict="", **kwargs: RULES_FOUND)
     result = run_plan(plan_for("generate+analyse"), material=CODE, question="fix it", api_key="k")
     assert result.verdict == "ERROR" and not result.ok                  # review is the only mode with a soft model
 
@@ -97,7 +97,7 @@ def test_a_finding_both_readers_saw_is_one_finding_and_the_run_says_how_much_the
 
 
 def test_one_reader_alone_has_nothing_to_agree_with(monkeypatch):
-    monkeypatch.setattr(local, "analyse_static", lambda text, model_verdict="": RULES_FOUND)
+    monkeypatch.setattr(local, "analyse_static", lambda text, model_verdict="", **kwargs: RULES_FOUND)
     rules_only = run_plan(plan_for("analyse"), material=CODE)
     assert rules_only.agreement == {} and rules_only.findings[0]["seen_by"] == ["rules"]
     monkeypatch.setattr(proposal, "propose", lambda **k: fake(verdict="REQUIRES_REVIEW", findings=[MODEL_FINDING]))

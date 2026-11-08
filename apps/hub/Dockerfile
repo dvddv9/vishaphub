@@ -22,6 +22,7 @@ COPY apps/hub/ ./apps/hub/
 # Direct dependencies are pinned so a rebuild cannot change what runs.
 RUN pip install -e ./packages/core -e ./apps/validator \
     && pip install -e ./apps/analyzer --no-deps \
+    && pip install "tree-sitter==0.26.0" "tree-sitter-javascript==0.25.0" "tree-sitter-typescript==0.23.2" "tree-sitter-java==0.23.5" "tree-sitter-go==0.25.0" "tree-sitter-rust==0.24.2" \
     && pip install -e "./apps/hub[github]" \
     && pip install "psycopg[binary]==3.3.6" "pytest==9.1.1" "edge-tts==7.3.1"
 

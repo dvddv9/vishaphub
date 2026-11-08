@@ -10,7 +10,9 @@ flag in the request, which anyone could set on their own code.
 """
 from __future__ import annotations
 
-EXAMPLE_MATERIAL = "cur.execute(\"select * from users where name = '\" + name + \"'\")"
+from pathlib import Path
+
+EXAMPLE_MATERIAL = (Path(__file__).with_name("data") / "example_insecure.py.txt").read_text(encoding="utf-8").strip()
 #: the questions the page puts next to the example, one per language; an empty one is the API default
 EXAMPLE_QUESTIONS = frozenset({
     "",

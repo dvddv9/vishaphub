@@ -10,7 +10,7 @@ HTTP: `POST /run` (or `/run/stream`) with `"fail_on"` and `"require_complete"` i
 
 | Option | Meaning |
 |---|---|
-| `fail_on` = `review` / `fail` / `emergency` | the lowest verdict that fails the check. Default `fail`. Rules-only SAFE is currently eligible for Java after a complete scan with no findings; other languages remain `REQUIRES_REVIEW` until they pass their registered gates. |
+| `fail_on` = `review` / `fail` / `emergency` | the lowest verdict that fails the check. Default `fail`. Static scanning recognizes many languages; SAFE eligibility follows the registered blind-set gates. Check current coverage and eligibility in `GET /api/languages`. |
 | `require_complete` | a run whose verification is not `COMPLETE` does not pass, whatever its verdict says. A run that checked nothing, or only part of its plan, must not be a green build. |
 | `require_measured` | a run that read a language the rules are not measured well enough for (`thin` or `none`: see `docs/languages.md`) ends with exit 3. Off by default. |
 

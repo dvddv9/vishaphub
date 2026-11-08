@@ -30,8 +30,10 @@ _UUID = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4
 
 
 def _team_id(conn, team: str) -> str:
-    row = conn.execute("SELECT id FROM teams WHERE " + ("id = %s::uuid" if _UUID.match(team) else "name = %s"),
-                       (team,)).fetchone()
+    if _UUID.fullmatch(team):
+        row = conn.execute("SELECT id FROM teams WHERE id = %s::uuid", (team,)).fetchone()
+    else:
+        row = conn.execute("SELECT id FROM teams WHERE name = %s", (team,)).fetchone()
     if row is None:
         raise SystemExit(f"no such team: {team}")
     return str(row[0])
@@ -96,16 +98,27 @@ def set_quota(url: str, team: str, kind: str, user: int | None = None, team_limi
         raise SystemExit(f"kind must be one of {', '.join(KINDS)}")
     if user is None and team_limit is None:
         raise SystemExit("give --user and/or --team")
+    if user is not None and user < 0 or team_limit is not None and team_limit < 0:
+        raise SystemExit("quota limits must be zero (unlimited) or a positive integer")
+    entry_patch = {}
+    if user is not None:
+        entry_patch["user"] = user
+    if team_limit is not None:
+        entry_patch["team"] = team_limit
     with db.connect(url) as conn:
         team_id = _team_id(conn, team)
-        quotas = conn.execute("SELECT quotas FROM teams WHERE id = %s::uuid", (team_id,)).fetchone()[0] or {}
-        entry = quotas.setdefault(kind, {})
-        if user is not None:
-            entry["user"] = user
-        if team_limit is not None:
-            entry["team"] = team_limit
-        conn.execute("UPDATE teams SET quotas = %s WHERE id = %s::uuid", (Jsonb(quotas), team_id))
-    return quotas
+        cursor = conn.execute(
+            "UPDATE teams SET quotas = COALESCE(quotas, '{}'::jsonb) || "
+            "jsonb_build_object(%s::text, COALESCE(quotas -> %s::text, '{}'::jsonb) || %s::jsonb) "
+            "WHERE id = %s::uuid RETURNING quotas",
+            (kind, kind, Jsonb(entry_patch), team_id),
+        )
+        row = cursor.fetchone()
+        if cursor.rowcount != 1:
+            raise RuntimeError("team quota update did not affect exactly one team")
+        if row is None:
+            raise SystemExit(f"no such team: {team}")
+    return row[0]
 
 
 def usage_report(url: str, team: str, days: int = 7) -> list[dict]:

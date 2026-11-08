@@ -115,8 +115,7 @@ def _evidence_block(fp: dict) -> str:
     patch_line = (f"diff <code>{e(str(patch.get('diff_sha256') or '')[:16])}</code> over "
                   f"{len(patch.get('files') or {})} file(s)") if patch.get("proposed") else "no patch"
     corrected = ev.get("corrected_version") or {}
-    final_version = ev.get("final_version") or {}
-    corrected_status = "validated after Creator" if corrected.get("verified") else "not verified after Creator"
+    corrected_status = "Validator ran after Creator" if corrected.get("verified") else "Creator validation incomplete"
     corrected_line = (f"{corrected_status}; hash <code>{e(str(corrected.get('sha256') or '')[:16])}</code>"
                       if corrected.get("files") else "none")
     creator_v = ev.get("creator_validator_ran_on") or {}
@@ -132,6 +131,9 @@ def _evidence_block(fp: dict) -> str:
     vro = ev.get("validator_ran_on") or {}
     ran_on = (f"{e(str(vro.get('what')))} ({len(vro.get('files') or {})} file(s))"
               if vro.get("what") not in (None, "", "nothing") else "did not run: nothing for it to check")
+    final_ev = ev.get("final_version") or {}
+    final_line = (("analyser and Validator ran" if final_ev.get("verified") else "post-generation checks incomplete")
+                  if final_ev.get("files") else "none")
     body = (
         f"<p class=\"meta\">{integrity} \u00b7 snapshot {snap}"
         f" \u00b7 {patch_line} \u00b7 attempts {int(ev.get('attempts') or 0)}: {e(str(ev.get('stop_reason') or ''))}</p>"
@@ -140,7 +142,7 @@ def _evidence_block(fp: dict) -> str:
         f"<tr><td>model said</td><td>{model_line}</td></tr>"
         f"<tr><td>validator ran on</td><td>{ran_on}</td></tr>"
         f"<tr><td>creator output</td><td>{corrected_line}</td></tr>"
-        f"<tr><td>final generator output</td><td>{'proposed, not re-verified' if final_version.get('files') else 'none'}</td></tr>"
+        f"<tr><td>final generator output</td><td>{final_line}</td></tr>"
         f"<tr><td>validator after Creator</td><td>{creator_v_line}</td></tr>"
         f"<tr><td>tests that really ran</td><td><ul>{ran_rows}</ul></td></tr>"
         f"<tr><td>left unverified</td><td><ul>{unverified}</ul></td></tr>"
@@ -222,12 +224,14 @@ def report_page(record: dict, retention: str = "") -> str:
                           "Line numbers refer to the patch, not to your material.</p><ul>"
                           + "".join(_finding(f) for f in in_patch) + "</ul>") if in_patch else "")
     corrected = result.get("corrected_version") or {}
-    corrected_block = (_block("Corrected version (validated after Creator)", "<pre><code>"
+    corrected_verified = bool(((result.get("checks") or {}).get("creator_validator") or {}).get("verified"))
+    corrected_title = "Corrected version (Validator ran after Creator)" if corrected_verified else "Corrected version (validation incomplete)"
+    corrected_block = (_block(corrected_title, "<pre><code>"
                               + e("\n\n".join(f"--- {name}\n{text}" for name, text in sorted(corrected.items())))
                               + "</code></pre>") if corrected else "")
     final_version = result.get("final_version") or {}
-    final_verified = bool((result.get("checks") or {}).get("final_validator", {}).get("verified"))
-    final_title = "Final version (analysed and validated)" if final_verified else "Final version (verification incomplete)"
+    final_verified = bool(((result.get("checks") or {}).get("final_validator") or {}).get("verified"))
+    final_title = "Final version (checks completed)" if final_verified else "Final version (checks incomplete)"
     final_export = (f'<p><a href="/api/runs/{e(str(record.get("id") or ""))}.zip" download>Download final files (ZIP)</a></p>')
     final_block = (_block(final_title, final_export + "<pre><code>"
                           + e("\n\n".join(f"--- {name}\n{text}" for name, text in sorted(final_version.items())))
@@ -381,7 +385,7 @@ def login_page(error: str = "") -> str:
     problem = f'<p class="rep-reason" role="alert">{e(error)}</p>' if error else ""
     body = (
         '<div class="empty"><h1 class="page-title">Sign in</h1>'
-        '<p>Paste the API key your team\'s operator gave you. It is kept in a cookie this site can read and '
+        '<p>Paste the access key your hub or team operator gave you. It is kept in a cookie this site can read and '
         'scripts cannot, and it is never shown again.</p>' + problem +
         '<form method="post" action="/login">'
         '<p><label for="key">API key</label><br>'

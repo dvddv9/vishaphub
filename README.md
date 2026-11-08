@@ -34,10 +34,12 @@ into an opinion.
 
 ## The order
 
-Security scan of supplied code → generation → security scan of the generated code →
-validation → creator proposes a corrected version from the findings. The final correction
-is not re-verified in the same run. Iterations are capped at three and stop early when no
-stage changes its answer.
+Security scan of supplied code → generation → security scan of generated code →
+validation → Creator proposes a corrected version → validation of that correction →
+final generation → security scan and validation of the exact final files. A final version
+is labelled checked only when those post-generation checks complete. Iterations are
+capped at three; later passes re-check the same generated files instead of paying for
+another final-generation call, and stop early when no verdict changes.
 
 ## Shared rules, one home
 
@@ -85,11 +87,13 @@ The report page says the same in one line, taken from the store: `Kept in memory
 
 ## How good are the analyzer's rules
 
-`apps/analyzer/tests/bench/labelled/` holds 106 labelled examples in 11 languages (Python, JavaScript, TypeScript, Java, C, C++, PHP, Go, Terraform, Kubernetes YAML, Dockerfile): 71 dangerous and 35 safe. Each has the findings it should produce (CWE and line) and a written reason for its label in `manifest.json`; the expectations were written from the code, not copied from the engine's output. `python -m tests.bench.labelled_score` scores the rule engine on them, and `--write` refreshes `labelled/RESULTS.md`: recall, false positives, language detection and time, per language and per criticality, in two modes (file name given, as an upload; and pasted without one, as the hub does).
+`apps/analyzer/tests/bench/labelled/` holds 106 labelled examples in 11 languages (Python, JavaScript, TypeScript, Java, C, C++, PHP, Go, Terraform, Kubernetes YAML, Dockerfile): 71 dangerous and 35 safe. Each has the findings it should produce (CWE and line) and a written reason for its label in `manifest.json`; the expectations were written from the code, not copied from the engine's output. `python -m tests.bench.labelled_score` scores the rule engine on them, and `--write` refreshes `labelled/RESULTS.md`: recall, false positives, language detection and time, per language and per criticality, in two modes (filename provided, as for uploaded files; and pasted text without a filename).
+
+The Hub's static analyser selects rules by each file's extension. Project-folder uploads are scanned file by file, including mixed-language projects. For pasted snippets, select the language above the editor or upload a source file so the analyser can identify it. The scanner recognises Python, JavaScript, TypeScript, Java, C, C++, Go, PHP, Ruby, Rust, C#, Kotlin, Swift, Scala, SQL, shell, Terraform, YAML, Dockerfile and logs. Rule depth varies by language; the six-stage executable validator is a separate workflow and does not yet provide the same language coverage.
 
 **What this does not measure.** It runs the rules alone: no model, no network, no key, so it is free and repeatable. It says nothing about the quality of hub verdicts that used a model. There the model proposes and the rules decide, and none of that is exercised here. A good number in this set is not a good hub, and a bad one is not a bad hub.
 
-**Release blocker.** No example labelled critical may get SAFE (the rules found nothing at all), in either mode. `apps/analyzer/tests/test_bench_labelled.py` fails the analyzer CI job if one does, and it has no list of known failures to hide behind. The same file also fails when an example gets worse than the recorded results. Go has no language-specific rules, only the language-independent ones; the set includes it to show what that gives.
+**Release blocker.** No example labelled critical may get SAFE (the rules found nothing at all), in either mode. `apps/analyzer/tests/test_bench_labelled.py` fails the analyzer CI job if one does, and it has no list of known failures to hide behind. The same file also fails when an example gets worse than the recorded results. Go has a targeted shell-invocation rule; the benchmark still shows gaps beyond that pattern.
 
 Four rules flag every call site on purpose (`subprocess` in Python, `ProcessBuilder` in Java, `system`/`execvp` in C, the shell functions in PHP), so safe code that calls them is counted as a false positive; the PHP rule skips a line that escapes its argument on that same line. The set counts them, and says so.
 
@@ -106,7 +110,7 @@ The model was also run on six payloads, including one with a prompt-injection co
 Team mode is off until `VISHAP_HUB_DATABASE_URL` is set. Without it nothing below is loaded and the hub behaves as described above. With it, the runs of signed-in people are kept in Postgres, per team, and survive a restart. The driver is the hub's only dependency (`pip install "vishap-hub[postgres]"`), and the image has it.
 
 - **Who owns the data.** A team owns its runs. A person belongs to one team and has one of three roles: `owner` (everything a member can, plus delete any run of the team and read the audit trail), `member` (run, read the team's runs, delete the ones they made) and `viewer` (read the team's runs, nothing that spends or removes). Everyone in a team reads all of the team's runs; nobody reads another team's.
-- **How people get in.** An operator creates teams, people and keys with `python -m hub.admin`; there is no self-service. A key (`vhk_...`) is shown once when it is issued and only its SHA-256 is stored. Send it as `Authorization: Bearer vhk_...` (or `x-vishap-key`); a browser signs in at `/login`, which puts the key in an `HttpOnly` cookie. A wrong or revoked key is a 401 and never falls back to anonymous. `VISHAP_HUB_REQUIRE_KEY=1` makes `/run`, `/chat` and `/speak` refuse callers without a key (the setting for a pilot); without it anonymous callers behave as before, with the memory store.
+- **How people get in.** With team mode, an operator creates teams, people and keys with `python -m hub.admin`; there is no self-service. A team key (`vhk_...`) is shown once and only its SHA-256 is stored. Send it as `Authorization: Bearer vhk_...` (or `x-vishap-key`); browser sign-in puts it in an `HttpOnly` cookie. Without team mode, `VISHAP_HUB_ACCESS_KEY` can provide one shared access key for `/run`, `/chat` and `/speak`; it does not create team identities or persistent team storage. Generate a random key with `python -c "import secrets; print('vhk_'+secrets.token_urlsafe(32))"` and store it as a private environment secret. Set `VISHAP_HUB_REQUIRE_KEY=1` to refuse anonymous spending requests. Render enables this setting and asks for the shared key; the service fails at startup if key enforcement is enabled but neither team mode nor a valid shared key is configured.
 - **How the teams are kept apart.** Twice. Every query filters on the team, and Postgres row-level security enforces the same on `runs`, `audit_log` and `usage` for the role the server connects as (`vishap_hub_app`: not a superuser, cannot bypass RLS). That role cannot read `teams`, `users` or `api_keys` at all, and cannot change or delete an audit row. The tests check each layer on its own: with the code's filter removed isolation still holds, and with the policy removed the SQL-level test fails.
 - **How long a run lives.** 30 days by default (`VISHAP_HUB_RETENTION_DAYS`), or the team's own value (`create-team --retention-days`). An expired run is unreadable at once and is deleted by a timer (`VISHAP_HUB_PURGE_MINUTES`, default 60) or by `purge-expired`. Running the same code again renews it. The report page says: `Kept in your team's database for 30 days from the run; an owner, or the person who made it, can delete it earlier.`
 - **How to delete.** `DELETE /api/runs/<id>` removes the run row, with the result, findings and patch in it. What stays is one audit row (who, when, which id, no content) and the usage row for that request (sizes and token counts, with the link to the run removed). `python -m hub.admin purge-team <team> --yes` removes a team's runs, people and keys; its audit trail stays unless `--include-audit` is added.
@@ -121,17 +125,11 @@ Team mode is off until `VISHAP_HUB_DATABASE_URL` is set. Without it nothing belo
 
 ## What SAFE means
 
-A verdict of **SAFE** from the hub's rules means exactly this: for the language of the text, the rules have been **measured** against an independently labelled blind set and passed the gates written down before the measurement; the scan could read **all** of the text (language recognised, no line cut, no part of the analysis quietly failed); and the rules **found nothing**. It is not a claim that the code has no vulnerabilities, and the rules do not look for every class of defect (authorization, business logic, dependencies, runtime configuration). Every response carries the `reason` and a `meaning` that says this.
+A **SAFE** verdict means the applicable rules completed their full scan, found no findings, and met their validation criteria for the language. It describes those checks only; it is not a guarantee that code has no vulnerabilities. Model output may raise the risk verdict, but cannot lower the rules' verdict. Findings or unsupported coverage are reported for review; incomplete checks return the reason they could not verify the material.
 
-Everything else is **REQUIRES_REVIEW**, with the reason: any finding of any severity (a critical one says so), a language that is not measured or failed its gates (*unknown coverage*), a text the scan could not read in full. A missing or unreadable `src/tools/quality.json` fails closed: nothing is SAFE. The decision is made in one place, `apps/analyzer/src/tools/safe_gate.py`.
+SAFE is currently issued for: java.
 
-SAFE is currently issued for: java. Rules-only SAFE is available only after a complete Java scan with no findings; Python and PHP remain in REQUIRES_REVIEW.
-
-The gates and sampling were committed before examples were fetched (`apps/analyzer/tests/bench/blind_public/CRITERION.md`, `SAMPLING.md`). The 402 examples are pinned to three independently labelled sources. The first run is preserved in `RESULTS.first-run.md`; the current score is in `apps/analyzer/tests/bench/blind_public/RESULTS.md`. Java passed with 0 false-SAFE results among 132 dangerous examples (95% Wilson upper bound 2.8%). The Java rules are conservative: 97.7% of safe examples were sent to review. Python and PHP remain ineligible: the pasted set has only 2 safe Python examples and 18 safe PHP examples, below the required 20. JavaScript, TypeScript, Go, C, C++, Terraform, YAML and Dockerfile remain unmeasured.
-
-**The hub's verdicts with a model are measured separately and have not been.** `python -m tests.bench.blind_public.model_eval` runs the same sample three times per example through the real model; it spends the key's money, needs `--confirm-spend`, and `--estimate` prints the size (about 372 calls and roughly 340 thousand input tokens by the characters / 4 estimate; no price, because nothing here knows the tariff). Until its result is committed the hub issues no SAFE with a model, in any language. A person who is not the author must also label a small sample of the team's real code (or an anonymised stand-in) for each language the team uses; `python -m tests.bench.blind_public.blind_score --human labels.csv --dir <folder>` scores it with the same code.
-
-**Until then a pilot should use synthetic or anonymised examples.** What the hub says is a list of reasons to look, not an assurance.
+For pilots, use synthetic or anonymised examples until rule coverage has been evaluated for the languages and workloads in use. Treat results as review evidence, not a guarantee.
 
 ## Known gaps
 
